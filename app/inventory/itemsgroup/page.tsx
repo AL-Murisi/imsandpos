@@ -6,15 +6,7 @@ import CardContainer from "../../../components/common/CardContainer";
 export default function Group() {
   return (
     <div>
-      <CardContainer
-        title="Products"
-        total={0}
-        action={<AddNewItemPage />}
-        children={undefined}
-      >
-        {/* <Table /> */}
-      </CardContainer>
-      <div className="p-2 mb-3 flex justify-between items-center  ">
+      <div className="mb-3 flex items-center justify-between p-2">
         <ItemDropdown />
         <AddNewItemPage />
       </div>
