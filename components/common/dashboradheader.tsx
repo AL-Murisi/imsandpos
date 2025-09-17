@@ -1,0 +1,80 @@
+"use client";
+
+import { Bell, LogOut, User } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { DateRangeFilter } from "./testting";
+import CardSelector from "./cardslex";
+import NotificationBell from "../NotificationBell";
+import { useSearchParams } from "next/navigation";
+
+export default function DashboardHeader({
+  sections,
+  chartConfigs,
+}: {
+  // card: string;
+  sections: any;
+  chartConfigs: any;
+}) {
+  const searchParams = useSearchParams();
+  const card = searchParams.get("card") || "all";
+  return (
+    <header className="flex  items-center justify-between px-6 py-4 rounded-2xl sticky top-0  z-50">
+      {/* Left side: Logo */}
+      <div className="flex items-center space-x-2">
+        {/* <img
+          src="/icons/ims.png" // replace with your logo path
+          alt="Company Logo"
+          className="h-8 w-auto"
+        /> */}
+        <span className="font-bold text-xl">MyCompany</span>
+      </div>
+
+      {/* Middle (optional search) */}
+      <div className="hidden md:flex flex-1 justify-center px-4">
+        <div className="flex gap-4 mb-4 items-center">
+          <DateRangeFilter fromKey={`${card}From`} toKey={`${card}To`} />
+
+          <CardSelector sections={sections} chartConfigs={chartConfigs} />
+        </div>
+      </div>
+
+      {/* Right side: Profile + Notifications */}
+      <div className="flex items-center space-x-4">
+        <Button variant="ghost" size="icon">
+          <NotificationBell />
+        </Button>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Avatar className="cursor-pointer">
+              <AvatarImage src="" alt="User" />
+              <AvatarFallback>
+                <User className="h-5 w-5" />
+              </AvatarFallback>
+            </Avatar>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem>Profile</DropdownMenuItem>
+            <DropdownMenuItem>Settings</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="text-red-600">
+              <LogOut className="mr-2 h-4 w-4" />
+              Logout
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </header>
+  );
+}

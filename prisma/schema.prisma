@@ -1,0 +1,479 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User Management
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  phoneNumber   String?   @map("phone_number")
+  password      String?   // For local auth
+  supabaseId    String?   @unique @map("supabase_id")
+  isActive      Boolean   @default(true) @map("is_active")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  roles         UserRole[]
+  warehouses    UserWarehouse[]
+  sales         Sale[]
+  payments      Payment[]
+  activityLogs ActivityLogs[]
+  stockMovements StockMovement[]
+  
+  @@map("users")
+  @@index([isActive])
+@@index([createdAt])
+
+}
+
+model ActivityLogs{
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  action    String
+  details   String?
+  ip        String?
+  userAgent String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+@@index([userId])
+@@index([createdAt])
+
+
+}
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique // "admin", "manager", "cashier", "warehouse_staff"
+  description String?
+  permissions Json     // Store permissions as JSON
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  users UserRole[]
+  
+  @@map("roles")
+}
+
+model UserRole {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  roleId    String   @map("role_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, roleId])
+  @@map("user_roles")
+  @@index([roleId])
+
+}
+
+// Warehouse Management
+model Warehouse {
+  id          String   @id @default(cuid())
+  name        String
+  location    String
+  address     String?
+  city        String?
+  state       String?
+  country     String?
+  postalCode  String?  @map("postal_code")
+  phoneNumber String?  @map("phone_number")
+  email       String?
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  users     UserWarehouse[]
+  products  Product[]
+  inventory Inventory[]
+  stockMovements StockMovement[]
+  
+  @@map("warehouses")
+  @@index([isActive])
+@@index([createdAt])
+
+}
+
+model UserWarehouse {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  warehouseId String   @map("warehouse_id")
+  isDefault   Boolean  @default(false) @map("is_default")
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  // Relations
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, warehouseId])
+  @@map("user_warehouses")
+}
+
+// Product Management
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  parentId    String?  @map("parent_id")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryHierarchy")
+  products Product[]
+  
+  @@map("categories")
+}
+
+model Brand {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  website     String?
+  contactInfo String?  @map("contact_info")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  products Product[]
+  
+  @@map("brands")
+}
+
+model Supplier {
+  id          String   @id @default(cuid())
+  name        String
+  contactPerson String? @map("contact_person")
+  email       String?
+  phoneNumber String?  @map("phone_number")
+  address     String?
+  city        String?
+  state       String?
+  country     String?
+  postalCode  String?  @map("postal_code")
+  taxId       String?  @map("tax_id")
+  paymentTerms String? @map("payment_terms")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  products Product[]
+  
+  @@map("suppliers")
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  sku         String   @unique
+  barcode     String?  @unique
+  description String?
+  
+  // Categorization
+  categoryId  String   @map("category_id")
+  brandId     String?  @map("brand_id")
+  type  String? 
+  // Packaging
+  unitsPerPacket    Int     @map("units_per_packet")
+  packetsPerCarton  Int     @map("packets_per_carton")
+  
+  // Pricing
+  costPrice         Decimal @map("cost_price") @db.Decimal(10, 2)
+  pricePerUnit      Decimal? @map("price_per_unit") @db.Decimal(10, 2)
+  pricePerPacket    Decimal @map("price_per_packet") @db.Decimal(10, 2)
+  pricePerCarton    Decimal @map("price_per_carton") @db.Decimal(10, 2)
+  wholesalePrice    Decimal @map("wholesale_price") @db.Decimal(10, 2)
+  minWholesaleQty   Int     @map("min_wholesale_qty")
+  
+  // Physical properties
+  weight      Decimal? @db.Decimal(8, 3)
+  dimensions  String?  // JSON string for length, width, height
+  image       String?  // Image URL/path
+  
+  // Supplier
+  supplierId  String?  @map("supplier_id")
+  
+  // Warehouse
+  warehouseId String   @map("warehouse_id")
+  
+  // Status
+  status      String   @default("active") // "active", "inactive", "discontinued"
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  category      Category       @relation(fields: [categoryId], references: [id])
+  brand         Brand?         @relation(fields: [brandId], references: [id])
+  supplier      Supplier?      @relation(fields: [supplierId], references: [id])
+  warehouse     Warehouse      @relation(fields: [warehouseId], references: [id])
+  inventory     Inventory[]
+  saleItems     SaleItem[]
+  stockMovements StockMovement[]
+  
+  @@map("products")
+  @@index([categoryId])
+@@index([brandId])
+@@index([supplierId])
+@@index([warehouseId])
+@@index([status])
+@@index([createdAt])
+
+}
+
+// Inventory Management
+model Inventory {
+  id              String   @id @default(cuid())
+  productId       String   @map("product_id")
+  warehouseId     String   @map("warehouse_id")
+  
+  // Stock quantities
+  stockQuantity   Int      @map("stock_quantity")
+  reservedQuantity Int     @default(0) @map("reserved_quantity")
+  availableQuantity Int    @map("available_quantity")
+  reorderLevel    Int      @default(0) @map("reorder_level")
+  maxStockLevel   Int?     @map("max_stock_level")
+  
+  // Location in warehouse
+  location        String?  // "A-1-001", "B-2-005"
+  
+  // Status
+  status          String   @default("available") // "available", "low", "out_of_stock"
+  
+  lastStockTake   DateTime? @map("last_stock_take")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  product   Product   @relation(fields: [productId], references: [id ],onDelete:Cascade)
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id])
+  
+  @@unique([productId, warehouseId])
+  @@map("inventory")
+  @@index([warehouseId])
+@@index([status])
+@@index([updatedAt])
+
+}
+
+// Stock Movement Tracking
+model StockMovement {
+  id            String   @id @default(cuid())
+  productId     String   @map("product_id")
+  warehouseId   String   @map("warehouse_id")
+  userId        String   @map("user_id")
+  
+  // Movement details
+  movementType  String   // "in", "out", "transfer", "adjustment"
+  quantity      Int
+  reason        String?  // "purchase", "sale", "return", "damage", "theft"
+  
+  // Before/After quantities
+  quantityBefore Int     @map("quantity_before")
+  quantityAfter  Int     @map("quantity_after")
+  
+  // Reference
+  referenceType String?  @map("reference_type") // "Sale", "transfer", "adjustment"
+  referenceId   String?  @map("reference_id")
+  
+  notes         String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  
+  // Relations
+  product   Product   @relation(fields: [productId], references: [id],onDelete: Cascade)
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
+  
+  @@map("stock_movements")
+  @@index([productId])
+@@index([warehouseId])
+@@index([userId])
+@@index([createdAt])
+@@index([movementType])
+
+}
+
+// Customer Management
+model Customer {
+  id          String   @id @default(cuid())
+  name        String
+  email       String?  @unique
+  phoneNumber String?  @map("phone_number")
+  
+  // Address
+  address     String?
+  city        String?
+  state       String?
+  country     String?
+  
+  // Business info
+  customerType String  @default("individual") @map("customer_type") // "individual", "business"
+  taxId       String?  @map("tax_id")
+  creditLimit Decimal? @map("credit_limit") @db.Decimal(10, 2)
+  
+  // Outstanding balance
+  outstandingBalance Decimal @default(0) @map("outstanding_balance") @db.Decimal(10, 2)
+  
+  // Status
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  sales       Sale[]
+  payments    Payment[]
+  
+  @@map("customers")
+  @@index([isActive])
+@@index([createdAt])
+
+}
+
+// Sales Management
+model Sale {
+  id            String   @id @default(cuid())
+  saleNumber    String   @unique @map("sale_number")
+  customerId    String?  @map("customer_id") // Optional - for anonymous sales
+  cashierId     String   @map("cashier_id") // The cashier who processed the sale
+  
+  // Sale details
+  saleType      String   @default("sale") // "sale", "return", "exchange"
+  status        String   @default("completed") // "completed", "returned", "cancelled"
+  
+  // Financial
+  subtotal      Decimal  @db.Decimal(10, 2)  
+  taxAmount     Decimal  @default(0) @map("tax_amount") @db.Decimal(10, 2)
+  discountAmount Decimal @default(0) @map("discount_amount") @db.Decimal(10, 2)
+  totalAmount   Decimal  @map("total_amount") @db.Decimal(10, 2)
+  
+  // Payment info
+  amountPaid    Decimal  @default(0) @map("amount_paid") @db.Decimal(10, 2)
+  amountDue     Decimal  @default(0) @map("amount_due") @db.Decimal(10, 2)
+  paymentStatus String   @default("pending") @map("payment_status") // "paid", "partial", "pending"
+  
+  // Timestamps
+  saleDate      DateTime @default(now()) @map("sale_date")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  customer      Customer?  @relation(fields: [customerId], references: [id])
+  cashier       User       @relation(fields: [cashierId], references: [id])
+  saleItems     SaleItem[]
+  payments      Payment[]
+  
+  @@map("sales")
+  @@index([customerId])
+@@index([cashierId])
+@@index([saleDate])
+@@index([status])
+
+}
+
+model SaleItem {
+  id        String   @id @default(cuid())
+  saleId    String   @map("sale_id")
+  productId String   @map("product_id")
+  
+  // Quantities and unit
+  quantity    Int
+  sellingUnit String   @map("selling_unit") // "unit", "packet", "carton"
+  unitPrice   Decimal  @map("unit_price") @db.Decimal(10, 2)
+  totalPrice  Decimal  @map("total_price") @db.Decimal(10, 2)
+  
+  // Discounts
+  discountPercent Decimal? @default(0) @map("discount_percent") @db.Decimal(5, 2)
+  discountAmount  Decimal? @default(0) @map("discount_amount") @db.Decimal(10, 2)
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  // Relations
+  sale    Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id],onDelete: Cascade)
+  
+  @@map("sale_items")
+  @@index([saleId])
+@@index([productId])
+
+}
+
+// Payment Management for Physical Store
+model Payment {
+  id            String   @id @default(cuid())
+  saleId        String?  @map("sale_id") // Optional - for standalone payments
+  customerId    String?  @map("customer_id") // For customer payments
+  cashierId     String   @map("cashier_id") // Who processed the payment
+  
+  // Payment details
+  paymentType   String   // "sale_payment", "outstanding_payment", "refund"
+  paymentMethod String   @map("payment_method") // "cash", "card", "check", "bank_transfer"
+  amount        Decimal  @db.Decimal(10, 2)
+  
+  // Reference
+  referenceNumber String? @map("reference_number") // For checks, transfers
+  
+  // Status
+  status        String   @default("completed") // "completed", "pending", "failed"
+  
+  notes         String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  
+  // Relations
+  sale     Sale?     @relation(fields: [saleId], references: [id])
+  customer Customer? @relation(fields: [customerId], references: [id])
+  cashier  User      @relation(fields: [cashierId], references: [id])
+  
+  @@map("payments")
+  @@index([customerId])
+@@index([saleId])
+@@index([cashierId])
+@@index([paymentMethod])
+@@index([status])
+
+}
+model CompanyProfile {
+  id        String   @id @default(cuid())
+  name      String
+  logoUrl   String?
+  address   String?
+  taxNumber String?
+  phone     String?
+  email     String?
+  footerMsg String? // for receipts
+}
+
+// Offline Support
+model OfflineOperation {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  operation   String   // "CREATE", "UPDATE", "DELETE"
+  tableName   String   @map("table_name")
+  recordId    String   @map("record_id")
+  data        Json
+  status      String   @default("pending") // "pending", "synced", "failed"
+  createdAt   DateTime @default(now()) @map("created_at")
+  syncedAt    DateTime? @map("synced_at")
+  
+  @@map("offline_operations")
+}

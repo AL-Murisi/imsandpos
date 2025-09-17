@@ -1,0 +1,620 @@
+// app/actions/warehouse.ts
+"use server";
+import { revalidatePath } from "next/cache";
+
+import prisma from "@/lib/prisma";
+
+import {
+  CashierSchema,
+  InventoryUpdateWithTrackingSchema,
+  Reservation,
+  UpdateInventorySchema,
+} from "@/lib/zodType";
+import { z } from "zod";
+import { Prisma } from "@prisma/client";
+import { SortingState } from "@tanstack/react-table";
+
+export type InventoryUpdateWithTrackingInput = z.infer<
+  typeof InventoryUpdateWithTrackingSchema
+>;
+
+// 1. Update inventory record (for form submissions)
+export async function updateInventory(data: InventoryUpdateWithTrackingInput) {
+  try {
+    const {
+      id,
+      userId = "system",
+      reason = "manual_update",
+      notes,
+      ...updateData
+    } = data;
+
+    return await prisma.$transaction(async (tx) => {
+      // Get current inventory to track changes
+      const currentInventory = await tx.inventory.findUnique({
+        where: { id },
+        include: {
+          product: true,
+          warehouse: true,
+        },
+      });
+
+      if (!currentInventory) {
+        throw new Error("Inventory record not found");
+      }
+
+      // Calculate status based on quantities if not provided
+      let calculatedStatus: "available" | "low" | "out_of_stock" | undefined;
+
+      if (
+        data.availableQuantity !== undefined &&
+        data.reorderLevel !== undefined
+      ) {
+        if (data.availableQuantity === 0) {
+          calculatedStatus = "out_of_stock";
+        } else if (data.availableQuantity <= data.reorderLevel) {
+          calculatedStatus = "low";
+        } else {
+          calculatedStatus = "available";
+        }
+      }
+
+      // Update inventory
+      const updatedInventory = await tx.inventory.update({
+        where: { id },
+        data: {
+          ...updateData,
+          ...(calculatedStatus && { status: calculatedStatus }),
+          ...(data.lastStockTake && {
+            lastStockTake: new Date(data.lastStockTake),
+          }),
+        },
+        include: {
+          product: {
+            select: {
+              name: true,
+              sku: true,
+            },
+          },
+          warehouse: {
+            select: {
+              name: true,
+              location: true,
+            },
+          },
+        },
+      });
+
+      // Create stock movement record if stock quantity changed
+      if (
+        data.stockQuantity !== undefined &&
+        data.stockQuantity !== currentInventory.stockQuantity
+      ) {
+        const difference = data.stockQuantity - currentInventory.stockQuantity;
+
+        await tx.stockMovement.create({
+          data: {
+            productId: currentInventory.productId,
+            warehouseId: currentInventory.warehouseId,
+            userId: "cmd5xocl8000juunw1hcxsyre",
+            movementType: difference > 0 ? "in" : "out",
+            quantity: Math.abs(difference),
+            reason,
+            quantityBefore: currentInventory.stockQuantity,
+            quantityAfter: data.stockQuantity,
+            notes:
+              notes ||
+              `Manual inventory update: ${
+                difference > 0 ? "+" : ""
+              }${difference}`,
+          },
+        });
+      }
+      revalidatePath("/manageinvetory");
+      return {
+        success: true,
+        data: updatedInventory,
+      };
+    });
+  } catch (error) {
+    console.error("Error updating inventory:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to update inventory",
+    };
+  }
+}
+// type FormValues = z.infer<typeof UpdateInventorySchema>;
+
+// // // 2. Add stock to warehouse (when receiving inventory) - Updated for form compatibility
+// export async function addStock(data: InventoryUpdateWithTrackingInput) {
+//   try {
+//     // If id is provided, update existing inventory (from form)
+//     if (data.id) {
+//       return await updateInventory(data as any);
+//     }
+
+//     // Otherwise, handle as new stock addition
+//     const {
+//       productId,
+//       warehouseId,
+//       stockQuantity = 0,
+//       userId = "system",
+//       reason = "purchase",
+//       notes,
+//     } = data;
+
+//     if (!productId || !warehouseId) {
+//       throw new Error("Product ID and Warehouse ID are required for new stock");
+//     }
+
+//     return await prisma.$transaction(async (tx) => {
+//       // Get current inventory
+//       const inventory = await tx.inventory.findUnique({
+//         where: {
+//           productId_warehouseId: {
+//             productId,
+//             warehouseId,
+//           },
+//         },
+//       });
+
+//       if (!inventory) {
+//         // Create new inventory record
+//         const newInventory = await tx.inventory.create({
+//           data: {
+//             productId,
+//             warehouseId,
+//             stockQuantity,
+//             availableQuantity: stockQuantity,
+//             reservedQuantity: data.reservedQuantity || 0,
+//             reorderLevel: data.reorderLevel || 10,
+//             maxStockLevel: data.maxStockLevel,
+//             status: data.status || "available",
+//             lastStockTake: data.lastStockTake
+//               ? new Date(data.lastStockTake)
+//               : undefined,
+//           },
+//         });
+
+//         // Create stock movement
+//         await tx.stockMovement.create({
+//           data: {
+//             productId,
+//             warehouseId,
+//             userId,
+//             movementType: "in",
+//             quantity: stockQuantity,
+//             reason,
+//             quantityBefore: 0,
+//             quantityAfter: stockQuantity,
+//             notes,
+//           },
+//         });
+
+//         return { success: true, data: newInventory };
+//       } else {
+//         // Update existing inventory
+//         const newStockQuantity = inventory.stockQuantity + stockQuantity;
+//         const newAvailableQuantity =
+//           inventory.availableQuantity + stockQuantity;
+
+//         const updatedInventory = await tx.inventory.update({
+//           where: {
+//             productId_warehouseId: {
+//               productId,
+//               warehouseId,
+//             },
+//           },
+//           data: {
+//             stockQuantity: newStockQuantity,
+//             availableQuantity: newAvailableQuantity,
+//             reservedQuantity:
+//               data.reservedQuantity ?? inventory.reservedQuantity,
+//             reorderLevel: data.reorderLevel ?? inventory.reorderLevel,
+//             maxStockLevel: data.maxStockLevel ?? inventory.maxStockLevel,
+//             status: data.status || "available",
+//             lastStockTake: data.lastStockTake
+//               ? new Date(data.lastStockTake)
+//               : inventory.lastStockTake,
+//           },
+//         });
+
+//         // Create stock movement
+//         await tx.stockMovement.create({
+//           data: {
+//             productId,
+//             warehouseId,
+//             userId,
+//             movementType: "in",
+//             quantity: stockQuantity,
+//             reason,
+//             quantityBefore: inventory.stockQuantity,
+//             quantityAfter: newStockQuantity,
+//             notes,
+//           },
+//         });
+
+//         return { success: true, data: updatedInventory };
+//       }
+//     });
+//   } catch (error) {
+//     console.error("Error adding/updating stock:", error);
+//     return {
+//       success: false,
+//       error: error instanceof Error ? error.message : "Failed to process stock",
+//     };
+//   }
+// }
+
+// // 3. Manual stock adjustment (for corrections, damage, theft, etc.)
+export async function adjustStock(
+  productId: string,
+  warehouseId: string,
+  newQuantity: number,
+  userId: string,
+  reason: string,
+  notes?: string
+) {
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const inventory = await tx.inventory.findUnique({
+        where: {
+          productId_warehouseId: {
+            productId,
+            warehouseId,
+          },
+        },
+      });
+
+      if (!inventory) {
+        throw new Error("Inventory record not found");
+      }
+
+      const difference = newQuantity - inventory.stockQuantity;
+      const newAvailableQuantity = Math.max(
+        0,
+        newQuantity - inventory.reservedQuantity
+      );
+
+      // Determine status
+      let status = "available";
+      if (newAvailableQuantity === 0) {
+        status = "out_of_stock";
+      } else if (newAvailableQuantity <= inventory.reorderLevel) {
+        status = "low";
+      }
+
+      // Update inventory
+      const updatedInventory = await tx.inventory.update({
+        where: {
+          productId_warehouseId: {
+            productId,
+            warehouseId,
+          },
+        },
+        data: {
+          stockQuantity: newQuantity,
+          availableQuantity: newAvailableQuantity,
+          status,
+        },
+      });
+
+      // Create stock movement
+      await tx.stockMovement.create({
+        data: {
+          productId,
+          warehouseId,
+          userId: "cmd5xocl8000juunw1hcxsyre",
+          movementType: difference > 0 ? "in" : "out",
+          quantity: Math.abs(difference),
+          reason,
+          quantityBefore: inventory.stockQuantity,
+          quantityAfter: newQuantity,
+          notes:
+            notes ||
+            `Stock adjustment: ${difference > 0 ? "+" : ""}${difference}`,
+        },
+      });
+      revalidatePath("/manageinvetory");
+      return { success: true, data: updatedInventory };
+    });
+  } catch (error) {
+    console.error("Error adjusting stock:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to adjust stock",
+    };
+  }
+}
+const reserve = CashierSchema.extend({
+  reason: z.string().optional(),
+  customerId: z.string().optional(),
+  customerName: z.string().optional(),
+});
+type CashierFormValues = z.infer<typeof CashierSchema>;
+
+// 4. Reserve stock (when order is placed but not yet fulfilled)
+export async function reserveStock(data: CashierFormValues) {
+  const { cart } = data;
+  try {
+    return await prisma.$transaction(async (tx) => {
+      for (const item of cart) {
+        // Convert selling quantity to base units (cartons)
+
+        const inventory = await tx.inventory.findUnique({
+          where: {
+            productId_warehouseId: {
+              productId: item.id,
+              warehouseId: item.warehouseId,
+            },
+          },
+        });
+
+        if (!inventory) {
+          throw new Error("Inventory record not found");
+        }
+
+        if (inventory.availableQuantity < item.selectedQty) {
+          throw new Error("Insufficient available stock for reservation");
+        }
+
+        const newReservedQuantity =
+          inventory.reservedQuantity + item.selectedQty;
+        const newAvailableQuantity =
+          inventory.availableQuantity - item.selectedQty;
+
+        const updatedInventory = await tx.inventory.update({
+          where: {
+            productId_warehouseId: {
+              productId: item.id,
+              warehouseId: item.warehouseId,
+            },
+          },
+          data: {
+            reservedQuantity: newReservedQuantity,
+            availableQuantity: newAvailableQuantity,
+          },
+        });
+
+        return { success: true, data: updatedInventory };
+      }
+    });
+  } catch (error) {
+    console.error("Error reserving stock:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to reserve stock",
+    };
+  }
+}
+
+// 5. Get current inventory levels
+export async function getInventoryLevels(warehouseId?: string) {
+  try {
+    const inventory = await prisma.inventory.findMany({
+      where: warehouseId ? { warehouseId } : undefined,
+      include: {
+        product: {
+          select: {
+            name: true,
+            sku: true,
+            unitsPerPacket: true,
+            packetsPerCarton: true,
+          },
+        },
+        warehouse: {
+          select: {
+            name: true,
+            location: true,
+          },
+        },
+      },
+    });
+
+    return inventory.map((inv) => ({
+      ...inv,
+      totalUnits:
+        inv.stockQuantity *
+        inv.product.packetsPerCarton *
+        inv.product.unitsPerPacket,
+      totalPackets: inv.stockQuantity * inv.product.packetsPerCarton,
+      needsReorder: inv.availableQuantity <= inv.reorderLevel,
+    }));
+  } catch (error) {
+    console.error("Error getting inventory levels:", error);
+    throw error;
+  }
+}
+type DateRange = {
+  from: Date | null;
+  to: Date | null;
+};
+
+type SortState = {
+  id: string;
+  desc: boolean;
+}[];
+export async function getStockMovements(
+  searchQuery: string = "",
+  where: Prisma.StockMovementWhereInput = {},
+  from?: string,
+  to?: string,
+  page: number = 0, // 0-indexed page number
+  pageSize: number = 5,
+  sort?: SortingState
+) {
+  try {
+    const orderBy = sort?.length
+      ? { [sort[0].id]: sort[0].desc ? "desc" : "asc" }
+      : { createdAt: "desc" as const };
+    const fromatDate = from ? new Date(from).toISOString() : undefined;
+    const toDate = to ? new Date(to).toISOString() : undefined;
+    const dateRange: any = { gte: fromatDate, lte: toDate };
+    // Build where clause with optional filters
+    const combinedWhere: Prisma.StockMovementWhereInput = {
+      ...where, // Existing filters (category, warehouse, etc.)
+    };
+    if (searchQuery) {
+      combinedWhere.OR = [
+        { product: { name: { contains: searchQuery, mode: "insensitive" } } },
+        { product: { sku: { contains: searchQuery, mode: "insensitive" } } },
+
+        { movementType: { contains: searchQuery, mode: "insensitive" } },
+        { reason: { contains: searchQuery, mode: "insensitive" } },
+        { notes: { contains: searchQuery, mode: "insensitive" } },
+      ];
+    }
+    if (fromatDate || toDate) {
+      combinedWhere.createdAt = {
+        ...(fromatDate && {
+          gte: fromatDate,
+        }),
+        ...(toDate && {
+          lte: toDate,
+        }),
+      };
+    }
+    console.log(dateRange);
+    // If you want to support global filter search, add to where using OR on fields:
+
+    // Get total count for pagination
+    const totalCount = await prisma.stockMovement.count({
+      where,
+    });
+
+    // Get paginated data
+    const movements = await prisma.stockMovement.findMany({
+      select: {
+        id: true,
+        movementType: true,
+        quantity: true,
+        reason: true,
+        quantityBefore: true,
+        quantityAfter: true,
+        notes: true,
+        createdAt: true,
+
+        product: {
+          select: {
+            name: true,
+            sku: true,
+          },
+        },
+        user: {
+          select: {
+            name: true,
+          },
+        },
+        warehouse: {
+          select: {
+            name: true,
+            location: true,
+          },
+        },
+      },
+      where: combinedWhere,
+      orderBy,
+      skip: page * pageSize,
+      take: pageSize,
+    });
+
+    return { movements, totalCount };
+  } catch (error) {
+    console.error("Error getting stock movements:", error);
+    throw error;
+  }
+}
+
+// 7. Get single inventory item by ID
+export async function getInventoryById(
+  searchQuery: string = "",
+  where: Prisma.InventoryWhereInput = {},
+  from?: string,
+  to?: string,
+  page: number = 0, // 0-indexed page number
+  pageSize: number = 5,
+  sort: SortState = []
+) {
+  try {
+    const fromatDate = from ? new Date(from).toISOString() : undefined;
+    const toDate = to ? new Date(to).toISOString() : undefined;
+    const dateRange: any = { gte: fromatDate, lte: toDate };
+    // Build where clause with optional filters
+    const combinedWhere: Prisma.InventoryWhereInput = {
+      ...where, // Existing filters (category, warehouse, etc.)
+    };
+    if (searchQuery) {
+      combinedWhere.OR = [
+        { product: { name: { contains: searchQuery, mode: "insensitive" } } },
+        { location: { contains: searchQuery, mode: "insensitive" } },
+        { warehouseId: { contains: searchQuery, mode: "insensitive" } },
+        { productId: { contains: searchQuery, mode: "insensitive" } },
+      ];
+    }
+    if (fromatDate || toDate) {
+      combinedWhere.createdAt = {
+        ...(fromatDate && {
+          gte: fromatDate,
+        }),
+        ...(toDate && {
+          lte: toDate,
+        }),
+      };
+    }
+
+    // If you want to support global filter search, add to where using OR on fields:
+
+    // Get total count for pagination
+    const totalCount = await prisma.inventory.count({
+      where,
+    });
+
+    const inventory = await prisma.inventory.findMany({
+      select: {
+        id: true,
+        product: {
+          select: {
+            name: true,
+            sku: true,
+          },
+        },
+        productId: true,
+        warehouse: {
+          select: {
+            name: true,
+            location: true,
+          },
+        },
+        warehouseId: true,
+
+        // Stock quantities
+        stockQuantity: true,
+        reservedQuantity: true,
+        availableQuantity: true,
+        reorderLevel: true,
+        maxStockLevel: true,
+
+        // Location in warehouse
+        location: true,
+
+        // Status
+        status: true,
+
+        lastStockTake: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+      where: combinedWhere,
+      // orderBy: orderBy.length > 0 ? orderBy : undefined, // Apply sorting if available
+      skip: page * pageSize,
+      take: pageSize,
+    });
+
+    return { inventory, totalCount };
+  } catch (error) {
+    console.error("Error getting inventory by ID:", error);
+    throw error;
+  }
+}

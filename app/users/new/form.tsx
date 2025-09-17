@@ -1,0 +1,145 @@
+"use client";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../../components/ui/select";
+import { Input } from "../../../components/ui/input";
+import { Label } from "../../../components/ui/label";
+import { Button } from "../../../components/ui/button";
+
+import { CreateUserSchema } from "@/lib/zodType";
+import { createUser, fetchRolesForSelect } from "@/app/actions/roles";
+
+type Role = {
+  id: string;
+  name: string;
+};
+
+type FormValues = z.infer<typeof CreateUserSchema>;
+
+export default function UserForm() {
+  const [roles, setRoles] = useState<Role[]>([]);
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    reset,
+    watch,
+    formState: { errors },
+  } = useForm<FormValues>({
+    resolver: zodResolver(CreateUserSchema),
+    defaultValues: {
+      email: "",
+      name: "",
+      phoneNumber: "",
+      password: "",
+      roleId: "",
+    },
+  });
+
+  // Load roles on mount
+  useEffect(() => {
+    const loadRoles = async () => {
+      const result = await fetchRolesForSelect();
+      setRoles(result);
+      if (result.length > 0) {
+        setValue("roleId", result[0].id);
+
+        // Default role
+      }
+    };
+    loadRoles();
+  }, [setValue]);
+
+  const selectedRole = watch("roleId");
+
+  const onSubmit = async (data: FormValues) => {
+    console.log("Submitted:", data);
+
+    await createUser(data);
+    // await createUser(data)
+    reset();
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" dir="rtl">
+      <div className="grid gap-4">
+        <div className="grid grid-cols-2 gap-4">
+          {/* Email */}
+          <div className="grid gap-2">
+            <Label htmlFor="email">البريد الإلكتروني</Label>
+            <Input id="email" type="email" {...register("email")} />
+            {errors.email && (
+              <p className="text-red-500 text-xs">{errors.email.message}</p>
+            )}
+          </div>
+
+          {/* Full Name */}
+          <div className="grid gap-2">
+            <Label htmlFor="name">الاسم الكامل</Label>
+            <Input id="name" {...register("name")} />
+            {errors.name && (
+              <p className="text-red-500 text-xs">{errors.name.message}</p>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          {/* Phone */}
+          <div className="grid gap-2">
+            <Label htmlFor="phoneNumber">رقم الهاتف</Label>
+            <Input id="phoneNumber" type="tel" {...register("phoneNumber")} />
+          </div>
+
+          {/* Password */}
+          <div className="grid gap-2">
+            <Label htmlFor="password">كلمة المرور</Label>
+            <Input id="password" type="password" {...register("password")} />
+            {errors.password && (
+              <p className="text-red-500 text-xs">{errors.password.message}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Role select */}
+        <div className="grid gap-2">
+          <Label htmlFor="role">الدور</Label>
+          <Select
+            value={selectedRole}
+            onValueChange={(value) => setValue("roleId", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="اختر الدور" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                {roles.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>
+                    {r.name}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+          {errors.roleId && (
+            <p className="text-red-500 text-xs">{errors.roleId.message}</p>
+          )}
+        </div>
+      </div>
+
+      <div className="flex justify-end">
+        <Button type="submit">تأكيد</Button>
+      </div>
+    </form>
+  );
+}

@@ -1,0 +1,39 @@
+{
+  "name": "نظام إدارة المنتجات ",
+  "short_name": "إدارة المنتجات",
+  "description": "نظام شامل لإدارة المنتجات والمخزون - Comprehensive product and inventory management system",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3b82f6",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "ar",
+  "dir": "rtl",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/icons/ims.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "إضافة منتج جديد",
+      "short_name": "منتج جديد",
+      "description": "إضافة منتج جديد بسرعة",
+      "url": "/products/new"
+    },
+    {
+      "name": "قائمة المنتجات",
+      "short_name": "المنتجات",
+      "description": "عرض جميع المنتجات",
+      "url": "/products"
+    }
+  ],
+  "prefer_related_applications": false,
+  "edge_side_panel": {
+    "preferred_width": 400
+  }
+}
