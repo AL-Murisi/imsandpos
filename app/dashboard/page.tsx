@@ -54,8 +54,10 @@ export default async function Dashboard({
     }
   });
 
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+
   const response = await fetch(
-    `(${process.env.NEXT_PUBLIC_BASE_URL}?${queryParams.toString()}`,
+    `${baseUrl}/api/salesSummary?${queryParams.toString()}`,
     {
       // ❌ remove "no-store" unless you *really* want no caching
       cache: "no-store",
