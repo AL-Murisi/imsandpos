@@ -176,7 +176,7 @@ export function SectionCards({
             />
           ))}
         </div>
-        <div className="grid w-full grid-cols-2 justify-end gap-x-4 gap-y-4 py-4 md:grid-cols-4">
+        <div className="grid w-52 grid-cols-1 justify-end gap-x-4 gap-y-4 py-4 sm:w-sm sm:grid-cols-2 md:w-md md:grid-cols-4 lg:w-full lg:grid-cols-4">
           <Button aria-label="report" asChild>
             <Link href="/admin/reports" prefetch={false}>
               إنشاء التقارير
