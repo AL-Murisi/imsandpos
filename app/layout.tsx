@@ -92,6 +92,7 @@ export default function RootLayout({
           href="https://tailwindcss.com"
           data-precedence="next"
         /> */}
+            <link rel="manifest" href="/manifest.json" />
             <link rel="icon" href="/favicon.ico" sizes="512x512" />
           </header>
           <AuthProvider>
