@@ -53,17 +53,24 @@ export default async function Dashboard({
       queryParams.append(key, value);
     }
   });
+  const baseUrl =
+    process.env.NEXT_PUBLIC_BASE_URL ||
+    `http://localhost:${process.env.PORT ?? 3000}`;
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+  const url = `${baseUrl}/api/salesSummary${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
 
-  const response = await fetch(
-    `${baseUrl}/api/salesSummary?${queryParams.toString()}`,
-    {
-      // ❌ remove "no-store" unless you *really* want no caching
-      cache: "no-store",
-      headers: { "Content-Type": "application/json" },
-    },
-  );
+  const response = await fetch(url, {
+    cache: "no-store",
+    headers: { "Content-Type": "application/json" },
+  });
+
+  // const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+
+  // const response = await fetch(`/api/salesSummary?${queryParams.toString()}`, {
+  //   // ❌ remove "no-store" unless you *really* want no caching
+  //   cache: "no-store",
+
+  // });
 
   if (!response.ok) {
     const errorData = await response.json();
