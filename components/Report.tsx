@@ -10,8 +10,8 @@ export function ReportTemplate({
   data: any[];
 }) {
   return (
-    <div className="p-6 font-sans">
-      <header className="flex items-center gap-4 mb-6">
+    <div className="p-6">
+      <header className="mb-6 flex items-center gap-4">
         {company.logoUrl && (
           <img src={company.logoUrl} alt="logo" className="h-12" />
         )}
@@ -21,7 +21,7 @@ export function ReportTemplate({
         </div>
       </header>
 
-      <h2 className="text-lg font-semibold mb-4">Sales Report</h2>
+      <h2 className="mb-4 text-lg font-semibold">Sales Report</h2>
 
       {/* Chart */}
       <BarChart width={600} height={300} data={data}>
@@ -33,7 +33,7 @@ export function ReportTemplate({
       </BarChart>
 
       {/* Table */}
-      <table className="w-full mt-6 border-collapse border text-sm">
+      <table className="mt-6 w-full border-collapse border text-sm">
         <thead>
           <tr className="bg-gray-100">
             <th className="border px-2 py-1">Product</th>

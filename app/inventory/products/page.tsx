@@ -65,12 +65,11 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
     to,
     pageIndex,
     pageSize,
-    parsedSort
+    parsedSort,
   );
 
   return (
-    <div className=" mt-5 p-1">
-      {" "}
+    <div className="mt-5 p-1">
       <Suspense fallback={<TableSkeleton columns={columns.length} />}>
         <ProductClient
           products={products}

@@ -40,10 +40,10 @@ interface ProductsListProps {
   action: (products: ProductForSale) => void;
   cart: CartItem[];
   formData: {
-    warehouses: { id: string; name: string }[];
+    // warehouses: { id: string; name: string }[];
     categories: { id: string; name: string }[];
     // brands: { id: string; name: string }[];
-    suppliers: { id: string; name: string }[];
+    // suppliers: { id: string; name: string }[];
   };
   refreshTrigger?: number; // Add this prop to force refresh
 }
@@ -130,7 +130,7 @@ export default function ProductsList({
   };
 
   return (
-    <div className="w-full flex-1 rounded-2xl p-2" dir="rtl">
+    <div className="rounded-2xl p-2 lg:col-span-1" dir="rtl">
       <div className="mb-4 flex justify-between bg-transparent px-3">
         <SearchInput placeholder={"بحث "} paramKey="product" />
 

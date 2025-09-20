@@ -6,8 +6,14 @@ import { Prisma } from "@prisma/client";
 import Payment from "./Payment";
 import ProductListRedux from "./ProductList";
 import CartDisplayRedux from "./Showpriceandquanityt";
-import { ScrollArea } from "@radix-ui/react-scroll-area";
-
+import dynamic from "next/dynamic";
+const ScrollArea = dynamic(
+  () => import("@/components/ui/scroll-area").then((m) => m.ScrollArea),
+  {
+    // ensures it only loads on the client
+    // optional fallback
+  },
+);
 type Props = {
   searchParams: Promise<{
     productquery?: string;
@@ -19,10 +25,7 @@ type Props = {
     id?: string;
   }>;
 };
-type user = {
-  name: string;
-  id: string;
-};
+
 export default async function Cart({ searchParams }: Props) {
   const {
     productquery = "",
@@ -38,8 +41,8 @@ export default async function Cart({ searchParams }: Props) {
   const categories = Array.isArray(categoryId)
     ? categoryId
     : categoryId
-    ? [categoryId]
-    : [];
+      ? [categoryId]
+      : [];
   const where: Prisma.ProductWhereInput = {
     id: id || undefined,
     supplierId: supplierId || undefined,
@@ -48,11 +51,6 @@ export default async function Cart({ searchParams }: Props) {
     // 👆 can extend with other filters later
   };
 
-  // const wheree: Prisma.CustomerWhereInput = {
-  //   name,
-  // };
-  // Fetch on server
-
   const products = await getAllactiveproductsForSale(where, productquery);
   const [formData, users] = await Promise.all([
     fetchAllFormData(),
@@ -60,21 +58,24 @@ export default async function Cart({ searchParams }: Props) {
     // fetchProductStats("admin"),
     // Fetchusers(true),
   ]);
+  console.log(formData);
 
   // Hydrate Redux store
 
   return (
-    <ScrollArea
-      className=" flex flex-col md:flex-row p-3 gap-4 overflow-auto py-2 "
-      dir="rtl"
-    >
-      <ProductListRedux
-        product={products}
-        formData={formData}
-        searchParams={searchParam}
-        queryr={productquery}
-      />
-      <CartDisplayRedux payment={<Payment users={users} />} />
+    <ScrollArea className="grid" dir="rtl">
+      <div className="grid grid-cols-1 gap-4 p-3 py-2 lg:grid-cols-2">
+        {/* Right side → Products (take 2/3 on large screens) */}
+
+        <ProductListRedux
+          product={products}
+          formData={formData}
+          searchParams={searchParam}
+          queryr={productquery}
+        />
+
+        <CartDisplayRedux payment={<Payment users={users} />} />
+      </div>
     </ScrollArea>
   );
 }

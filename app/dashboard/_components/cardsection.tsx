@@ -35,35 +35,36 @@ export function SectionCards({
   > = {
     revenue: {
       label: "الإيرادات",
-      stroke: "#22c55e",
-      fill: "var(--primary)",
+      stroke: "#22c55e", // green line
+      fill: "#16a34a", // green fill
       dateFormat: "MMM dd",
     },
     purchases: {
       label: "المشتريات",
-      stroke: "#22c55e",
-      fill: "var(--primary)",
+      stroke: "#10b981", // teal line
+      fill: "#059669", // teal fill
       dateFormat: "MMM dd",
     },
     sales: {
       label: "المبيعات",
-      stroke: "#2563eb",
-      fill: "var(--primary)",
+      stroke: "#2563eb", // blue line
+      fill: "#3b82f6", // blue fill
       dateFormat: "MMM dd",
     },
     debt: {
       label: "الديون",
-      stroke: "#dc2626",
-      fill: "var(--primary)",
+      stroke: "#dc2626", // red line
+      fill: "#b91c1c", // red fill
       dateFormat: "MMM dd",
     },
     ss: {
       label: "الديون",
-      stroke: "#dc2626",
-      fill: "var(--primary)",
+      stroke: "#9333ea", // purple line
+      fill: "#7e22ce", // purple fill
       dateFormat: "MMM dd",
     },
   };
+
   const sections = [
     {
       icon: <DollarSign size={40} className="text-blue-500" />,

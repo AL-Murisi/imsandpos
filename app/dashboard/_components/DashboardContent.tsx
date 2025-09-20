@@ -6,6 +6,7 @@ import TopSellingChartWrapper from "../../../components/common/Barchart";
 import UserActivityTable from "../_components/userActivityTable";
 import Charts from "./overview";
 import { ReusableAreaChart } from "@/components/common/Chart";
+import SearchInput from "@/components/common/searchtest";
 
 interface DashboardData {
   summary: any;
@@ -77,16 +78,16 @@ interface DashboardContentProps {
 // );
 export default function DashboardContent({ result }: any) {
   const chartData = [
-    { browser: "chrome", visitors: 275, fill: "var(--chart-1)" },
-    { browser: "safari", visitors: 200, fill: "var(--chart-2)" },
-    { browser: "firefox", visitors: 187, fill: "var(--chart-3)" },
-    { browser: "edge", visitors: 173, fill: "var(--chart-4)" },
-    { browser: "other", visitors: 90, fill: "var(--chart-5)" },
+    { id: 1, browser: "chrome", visitors: 275, fill: "var(--chart-1)" },
+    { id: 2, browser: "safari", visitors: 200, fill: "var(--chart-2)" },
+    { id: 3, browser: "firefox", visitors: 187, fill: "var(--chart-3)" },
+    { id: 4, browser: "edge", visitors: 173, fill: "var(--chart-4)" },
+    { id: 5, browser: "other", visitors: 90, fill: "var(--chart-5)" },
   ];
   if (!result) return <div>No data available</div>;
   const salesChartConfig = {
-    revenue: { label: "الإيرادات", color: "var(--chart-2)" },
-    purchases: { label: "المشتريات", color: "var(--chart-2)" },
+    revenue: { label: "الإيرادات", color: "#dc2626" },
+    purchases: { label: "المشتريات", color: "#3b82f6" },
   };
   return (
     <>
@@ -145,28 +146,9 @@ export default function DashboardContent({ result }: any) {
             config={salesChartConfig}
           />
           <Charts topProducts={result.topProducts} formData={result.formData} />
-          {/* <TopSellingChartWrapper
-              data={result.topProducts}
-              formData={result.formData}
-              title="Top Sales"
-              width=" w-sm md:w-3xl lg:w-5xl "
-              widthco=" xl:w-2xl 2xl:w-4xl lg:w-5xs  sm:w-md  "
-              dataKey="quantity"
-              paramKey="topItems"
-            /> */}
-          {/* <Charts
-            combinedChartData={result.combinedChartData}
-            topProducts={result.topProducts}
-            formData={result.formData}
-          /> */}
         </div>
-        {/* </Suspense> */}
+
         <div className="col-span-2 flex flex-col items-stretch gap-x-6 gap-y-6 lg:col-span-1">
-          {/* <Suspense
-            fallback={
-              <div className="h-[320px] w-full animate-pulse rounded-lg bg-gray-200" />
-            } 
-          >*/}
           <TopSellingChartWrapper
             data={result.revenue}
             formData={result.formData}
@@ -179,16 +161,13 @@ export default function DashboardContent({ result }: any) {
           <ChartPieLegend chartData={chartData} /> {/* </Suspense> */}
         </div>
         <LazySection>
-          {/* <h1 className="text-center">recent sales</h1> */}
-
           <div className="rounded-2xl">
-            {/* <h1 className="text-center">Users activity logs</h1> */}
             <UserActivityTable
               Sales={result.recentSales}
               total={result.pagination.total}
               logs={result.activityLogs}
               totals={result.activityLogs.length}
-              sort={result.sort} // You might need to parse this from searchParams.sort
+              sort={result.sort}
             />
           </div>
         </LazySection>

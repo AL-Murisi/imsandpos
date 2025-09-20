@@ -10,9 +10,9 @@ const DataTable = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="h-52 bg-gray-200 rounded-lg animate-pulse" />
+      <div className="h-52 animate-pulse rounded-lg bg-gray-200" />
     ),
-  }
+  },
 );
 
 type ProductClientProps = {
@@ -56,10 +56,10 @@ export default function UserActivityTable({
         </div>
       }
     >
-      <div className="flex flex-col gap-x-6 gap-y-6 bg-transparent ">
-        <div className=" p-2 shadow-2xl rounded-2xl bg-accent">
-          <SearchInput placeholder={"search"} paramKey="selas" />
+      <div className="flex flex-col gap-x-6 gap-y-6">
+        <div className="bg-accent rounded-2xl p-2 shadow-2xl">
           <DataTable
+            search={<SearchInput placeholder={"search"} paramKey="selas" />}
             data={logs}
             columns={userActivity}
             initialPageSize={pagination.pageSize}
@@ -74,10 +74,10 @@ export default function UserActivityTable({
             highet={"h-100"}
           />
         </div>
-        <div className="p-2 shadow-2xl rounded-2xl bg-accent">
-          <SearchInput placeholder={"search"} paramKey="selas" />
+        <div className="bg-accent rounded-2xl p-2 shadow-2xl">
           <DataTable
             data={Sales}
+            search={<SearchInput placeholder={"search"} paramKey="selas" />}
             columns={RecentSale}
             initialPageSize={pagination.pageSize}
             pageCount={Math.ceil(totals / pagination.pageSize)}

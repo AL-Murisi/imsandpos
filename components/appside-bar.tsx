@@ -73,6 +73,12 @@ const menuItems = [
     roles: ["admin"],
   },
   {
+    title: "الرئيسية", // Home
+    url: "/inventory/dashboardUser",
+    icon: () => <Home className="text-indigo-600" />,
+    roles: ["manager_wh"],
+  },
+  {
     title: "المستخدمون", // Users
     url: "/users",
     icon: () => <Users className="text-red-600" />,
@@ -87,26 +93,26 @@ const menuItems = [
       {
         title: "إدارة المخزون", // Products
         url: "/inventory/manageinvetory",
-        icon: <Warehouse className="w-4 h-4 text-green-600" />,
+        icon: <Warehouse className="h-4 w-4 text-green-600" />,
         roles: ["admin", "manager_wh"],
       },
 
       {
         title: "الفئات", // Categories
         url: "/inventory/categories",
-        icon: <FolderKanban className="w-4 h-4 text-purple-600" />,
+        icon: <FolderKanban className="h-4 w-4 text-purple-600" />,
         roles: ["admin", "manager_wh"],
       },
       {
         title: "الموردون", // Suppliers
         url: "/inventory/suppliers",
-        icon: <Users className="w-4 h-4 text-orange-600" />,
+        icon: <Users className="h-4 w-4 text-orange-600" />,
         roles: ["admin", "manager_wh"],
       },
       {
         title: "المستودعات", // Warehouses
         url: "/inventory/warehouses",
-        icon: <Building2 className="w-4 h-4 text-cyan-600" />,
+        icon: <Building2 className="h-4 w-4 text-cyan-600" />,
         roles: ["admin", "manager_wh"],
       },
     ],
@@ -114,7 +120,7 @@ const menuItems = [
   {
     title: "المنتجات", // Products
     url: "/inventory/products",
-    icon: () => <Package className="w-4 h-4 text-green-600" />,
+    icon: () => <Package className="h-4 w-4 text-green-600" />,
     roles: ["admin", "manager_wh"],
   },
   {
@@ -139,13 +145,13 @@ const menuItems = [
       {
         title: " المحجوزة", // Reserved Orders
         url: "/sells/reservation",
-        icon: <Clock className="w-4 h-4 text-teal-600" />,
+        icon: <Clock className="h-4 w-4 text-teal-600" />,
         roles: ["admin", "cashier"],
       },
       {
         title: "الدين", // Due / Credit Sales
         url: "/sells/debtSell",
-        icon: <Receipt className=" text-orange-500" size={50} />,
+        icon: <Receipt className="text-orange-500" size={50} />,
         roles: ["admin", "cashier"],
       },
     ],
@@ -214,27 +220,27 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   return (
     <Sidebar collapsible="icon" {...props} className=" ">
-      <SidebarContent className="dark:bg-accent bg-gray-800 dark:text-foreground text-sidebar">
+      <SidebarContent className="dark:bg-accent dark:text-foreground text-sidebar bg-gray-800">
         <SidebarGroup>
           <div className="flex items-center gap-2 transition-all">
             <div
               className={
-                "flex aspect-square size-8 items-center justify-center rounded-lg bg-amber-400 "
+                "flex aspect-square size-8 items-center justify-center rounded-lg bg-amber-400"
               }
             >
-              <Package className="text-2xl " />
+              <Package className="text-2xl" />
             </div>
 
-            <div className="flex  items-center gap-1 text-left text-sm leading-tight">
-              <span className=" truncate font-semibold text-[15px] dark:text-amber-50 text-sidebar">
+            <div className="flex items-center gap-1 text-left text-sm leading-tight">
+              <span className="text-sidebar truncate text-[15px] font-semibold dark:text-amber-50">
                 Stockly
               </span>
             </div>
           </div>
-          <SidebarGroupLabel className="text-xs dark:text-foreground text-sidebar">
+          <SidebarGroupLabel className="dark:text-foreground text-sidebar text-xs">
             مرحباً {user.name}
           </SidebarGroupLabel>
-          <SidebarGroupLabel className="text-xs dark:text-foreground text-sidebar mb-2">
+          <SidebarGroupLabel className="dark:text-foreground text-sidebar mb-2 text-xs">
             الأدوار: {user.roles.join(", ")}
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -269,14 +275,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                               >
                                 <SidebarMenuButton
                                   asChild
-                                  className={`
-                                    ${
-                                      pathname === subItem.url
-                                        ? "bg-orange-400 text-white rounded-l-lg border-r-4 border-r-orange-600 w-40 "
-                                        : "text-white hover:bg-orange-300/20"
-                                    }
-                                    !justify-start !pr-4 !pl-8
-                                  `}
+                                  className={` ${
+                                    pathname === subItem.url
+                                      ? "w-40 rounded-l-lg border-r-4 border-r-orange-600 bg-orange-400 text-white"
+                                      : "text-white hover:bg-orange-300/20"
+                                  } !justify-start !pr-4 !pl-8`}
                                 >
                                   <Link href={subItem.url || "#"}>
                                     {subItem.icon}
@@ -305,14 +308,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <SidebarMenuItem key={item.title} className="text-[20px]">
                     <SidebarMenuButton
                       asChild
-                      className={`
-                                    ${
-                                      pathname === item.url
-                                        ? "bg-orange-400 text-white rounded-l-lg border-r-4 border-r-orange-600 w-52"
-                                        : "text-white hover:bg-orange-300/20"
-                                    }
-                                    !justify-start !pr-4 !pl-8 text-[18px]
-                                  `}
+                      className={` ${
+                        pathname === item.url
+                          ? "w-52 rounded-l-lg border-r-4 border-r-orange-600 bg-orange-400 text-white"
+                          : "text-white hover:bg-orange-300/20"
+                      } !justify-start !pr-4 !pl-8 text-[18px]`}
                     >
                       <Link href={item.url || "#"}>
                         <item.icon />
@@ -339,9 +339,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarMenuItem>
               <SidebarMenuButton
                 onClick={() => {
-                  logout(), handelLogout();
+                  (logout(), handelLogout());
                 }}
-                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+                className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950"
               >
                 <LogOut />
                 <span>تسجيل الخروج</span>

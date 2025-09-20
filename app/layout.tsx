@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Roboto } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./global.css";
 import { ThemeProvider } from "../components/theme-provider";
 import { AuthProvider } from "@/lib/context/AuthContext";
@@ -9,19 +9,19 @@ const inter = Inter({
   subsets: ["latin"],
   variable: "--font-sans",
   display: "swap", // ✅ Already implemented
-  // preload: true,
+  weight: ["400", "700"],
 
   // fallback: ["system-ui", "arial"], // Add fallback
 });
-const roboto = Roboto({
-  subsets: ["latin"],
-  variable: "--font-roboto-mono",
-  display: "swap", // ✅ Already implemented
-  weight: "200",
-  // preload: true,
+// const roboto = Roboto({
+//   subsets: ["latin"],
+//   variable: "--font-roboto-mono",
+//   display: "swap", // ✅ Already implemented
+//   weight: ["400", "700"],
+//   // preload: true,
 
-  // fallback: ["system-ui", "arial"], // Add fallback
-});
+//   // fallback: ["system-ui", "arial"], // Add fallback
+// });
 
 // Add to head
 export const metadata: Metadata = {
@@ -71,29 +71,29 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <header>
-        {/* <link
-          rel="preload"
-          href="/_next/static/fonts/inter-latin.woff2"
-          as="font"
-          type="font/woff2"
-          crossOrigin="anonymous"
-        /> */}{" "}
-        {/* <link
-          rel="stylesheet"
-          href="https://tailwindcss.com"
-          data-precedence="next"
-        /> */}
-        <link rel="icon" href="/favicon.ico" sizes="512x512" />
-      </header>
-      <body className={`${inter.variable} ${roboto.variable}`}>
+    <html lang="en" className={`${inter.className} `}>
+      <body className="font-sans">
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
         >
+          <header>
+            {/* <link
+          rel="preload"
+          href="/_next/static/fonts/inter-latin.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        /> */}{" "}
+            {/* <link
+          rel="stylesheet"
+          href="https://tailwindcss.com"
+          data-precedence="next"
+        /> */}
+            <link rel="icon" href="/favicon.ico" sizes="512x512" />
+          </header>
           <AuthProvider>
             <ClientLayoutWrapper>{children}</ClientLayoutWrapper>
           </AuthProvider>

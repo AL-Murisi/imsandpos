@@ -38,7 +38,7 @@ export default function UserClinet({ users, total, role }: ProductClientProps) {
   } = useTablePrams();
 
   return (
-    <div className="space-y-4" dir="rtl">
+    <div className="flex flex-col" dir="rtl">
       {" "}
       {/* Add dir="rtl" for proper RTL layout */}
       <div className="flex flex-1/5 gap-2">
@@ -90,6 +90,7 @@ export default function UserClinet({ users, total, role }: ProductClientProps) {
         sorting={sorting}
         pagination={pagination}
         totalCount={total}
+        highet="h-[70vh]"
       />
     </div>
   );

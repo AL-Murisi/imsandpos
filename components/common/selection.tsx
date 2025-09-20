@@ -30,7 +30,7 @@ export function SelectField({
   // };
   return (
     <Select onValueChange={onValueChange}>
-      <SelectTrigger className="border-2 border-primary rounded-md">
+      <SelectTrigger className="border-primary rounded-md border-2">
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>

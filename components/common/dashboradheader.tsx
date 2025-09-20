@@ -27,7 +27,7 @@ export default function DashboardHeader({
   const searchParams = useSearchParams();
   const card = searchParams.get("card") || "all";
   return (
-    <header className="flex  items-center justify-between px-6 py-4 rounded-2xl sticky top-0  z-50">
+    <div className="top-0 z-10 flex items-center justify-between rounded-2xl py-4">
       {/* Left side: Logo */}
       <div className="flex items-center space-x-2">
         {/* <img
@@ -35,12 +35,12 @@ export default function DashboardHeader({
           alt="Company Logo"
           className="h-8 w-auto"
         /> */}
-        <span className="font-bold text-xl">MyCompany</span>
+        <span className="text-xl font-bold">MyCompany</span>
       </div>
 
       {/* Middle (optional search) */}
-      <div className="hidden md:flex flex-1 justify-center px-4">
-        <div className="flex gap-4 mb-4 items-center">
+      <div className="hidden flex-1 justify-center px-4 md:flex">
+        <div className="mb-4 flex items-center gap-4">
           <DateRangeFilter fromKey={`${card}From`} toKey={`${card}To`} />
 
           <CardSelector sections={sections} chartConfigs={chartConfigs} />
@@ -75,6 +75,6 @@ export default function DashboardHeader({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-    </header>
+    </div>
   );
 }

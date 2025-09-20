@@ -95,21 +95,21 @@ export function Selection({
       : options.filter((option) => value.includes(option.id));
 
   return (
-    <div className="flex flex-col gap-4  ">
-      <div className="border-2 border-primary rounded-2xl">
+    <div className="flex flex-col gap-4">
+      <div className="border-primary rounded-2xl border-2">
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
             <Button
               variant="outline"
               role="combobox"
               aria-expanded={open}
-              className="w-full justify-between "
+              className="w-full justify-between"
             >
               <span className="text-muted-foreground">{placeholder}</span>
 
               <ChevronDown
                 color={"white"}
-                className="ml-2 h-4 w-4 shrink-0 opacity-50 "
+                className="ml-2 h-4 w-4 shrink-0 opacity-50"
               />
             </Button>
           </PopoverTrigger>
@@ -120,34 +120,35 @@ export function Selection({
                 <CommandGroup>
                   <CommandItem
                     value="All"
+                    key={""}
                     onSelect={() => updateCategories([])}
-                    className="flex items-center gap-2 cursor-pointer"
+                    className="flex cursor-pointer items-center gap-2"
                   >
                     <div
                       className={cn(
-                        "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                        "border-primary mr-2 flex h-4 w-4 items-center justify-center rounded-sm border",
                         value.length === 0
                           ? "bg-primary text-primary-foreground"
-                          : "opacity-50"
+                          : "opacity-50",
                       )}
                     >
                       <Check className="h-4 w-4" />
                     </div>
                     <span>الكل</span>
                   </CommandItem>
-                  {options.map((option) => (
+                  {options.map((option, idx) => (
                     <CommandItem
-                      key={option.id}
+                      key={idx}
                       value={option.id}
                       onSelect={() => handleToggle(option.id)}
-                      className="flex items-center gap-2 cursor-pointer"
+                      className="flex cursor-pointer items-center gap-2"
                     >
                       <div
                         className={cn(
-                          "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                          "border-primary mr-2 flex h-4 w-4 items-center justify-center rounded-sm border",
                           value.includes(option.id)
                             ? "bg-primary text-primary-foreground"
-                            : "opacity-50"
+                            : "opacity-50",
                         )}
                       >
                         <Check className="h-4 w-4" />
@@ -164,8 +165,11 @@ export function Selection({
       <div className="flex flex-wrap gap-1">
         {badgesToRender.length > 0 &&
           badgesToRender.map((option) => (
-            <div className="border-2 border-amber-500 rounded-[10px]">
-              <Badge key={option.id} className="cursor-pointer w-20 h-8  ">
+            <div
+              key={option.id}
+              className="rounded-[10px] border-2 border-amber-500"
+            >
+              <Badge className="h-8 w-20 cursor-pointer">
                 {option.name}
                 {value.length > 0 ? ( // Only show the remove button if not in "All" mode
                   <button

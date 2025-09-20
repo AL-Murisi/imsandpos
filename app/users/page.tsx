@@ -1,17 +1,12 @@
-import Table from "./dashborad/Table";
+import { TabsContent } from "../../components/ui/tabs";
 
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-} from "../../components/ui/tabs";
-import Roles from "./userRole/page";
-import { fetchRolesForSelect, fetechUser } from "../actions/roles";
+import { fetchRoles, fetchRolesForSelect, fetechUser } from "../actions/roles";
 import UserClinet from "./dashborad/Table";
-import { Prisma } from "@prisma/client";
+
 import UserActivityTable from "./_compoent/userActivityLogs";
 import { getActivityLogs } from "../actions/activitylogs";
+import DashboardTabs from "@/components/common/Tabs";
+import RoleTable from "./userRole/roleTable";
 type Users = {
   searchParams: Promise<{
     from?: string;
@@ -50,31 +45,33 @@ export default async function User({ searchParams }: Users) {
     from,
     to,
     pageIndex,
-    pageSize
+    pageSize,
     // parsedSort
   );
   const logs = await getActivityLogs(pageIndex, pageSize);
 
   // const data = await fetechUser();
-  const roles = await fetchRolesForSelect();
+  const roless = await fetchRolesForSelect();
+  const roles = await fetchRoles(pageIndex, pageSize);
   return (
-    <div className="py-3 px-2">
-      <Tabs defaultValue="userDashboard">
-        <TabsList className="bg-accent">
-          <TabsTrigger value="userDashboard">Dashboard</TabsTrigger>
-          <TabsTrigger value="useractivity">user activity</TabsTrigger>
-          <TabsTrigger value="user roles">user roles</TabsTrigger>
-        </TabsList>
-        <TabsContent value="userDashboard">
-          <UserClinet users={data} total={0} role={roles} />
-        </TabsContent>
-        <TabsContent value="useractivity">
-          <UserActivityTable logs={logs} total={logs.length} sort={[]} />
-        </TabsContent>
-        <TabsContent value="user roles">
-          <Roles />
-        </TabsContent>
-      </Tabs>
-    </div>
+    <DashboardTabs
+      defualt={"userDashboard"}
+      tabs={[
+        { value: "userDashboard", label: "Dashboard" },
+        { value: "useractivity", label: "useractivity" },
+        { value: "userroles", label: "userroles" },
+      ]}
+    >
+      <TabsContent value="userDashboard">
+        <UserClinet users={data} total={0} role={roless} />
+      </TabsContent>
+
+      <TabsContent value={"useractivity"}>
+        <UserActivityTable logs={logs} total={logs.length} sort={[]} />
+      </TabsContent>
+      <TabsContent value={"userroles"}>
+        <RoleTable role={roles} total={logs.length} sort={[]} />
+      </TabsContent>
+    </DashboardTabs>
   );
 }

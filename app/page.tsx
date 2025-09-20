@@ -9,10 +9,10 @@ export default async function Dashboard() {
     redirect("/dashboard");
   } else if (userRoles.includes("cashier")) {
     redirect("/sells");
-  } else if (userRoles.includes("customer")) {
-    redirect("/customer");
+    // } else if (userRoles.includes("customer")) {
+    //   redirect("/customer");
   } else if (userRoles.includes("manager_wh")) {
-    redirect("/inventory/manageinvetory");
+    redirect("/inventory/dashboard");
   } else {
     redirect("/login");
   }

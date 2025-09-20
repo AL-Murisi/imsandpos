@@ -35,13 +35,10 @@ export default function UserActivityTable({
   } = useTablePrams();
 
   return (
-    <div
-      className="p-2 bg-accent rounded-2xl border-2 border-amber-500  "
-      dir="rtl"
-    >
-      <SearchInput placeholder={"search"} paramKey="selas" />
+    <div className="bg-accent rounded-2xl p-2" dir="rtl">
       <DataTable
         data={logs}
+        search={<SearchInput placeholder={"search"} paramKey="selas" />}
         columns={userActivity}
         initialPageSize={pagination.pageSize}
         pageCount={Math.ceil(total / pagination.pageSize)}
@@ -52,7 +49,7 @@ export default function UserActivityTable({
         sorting={sort}
         pagination={pagination}
         totalCount={total}
-        highet={"h-[100vh]"}
+        highet="h-[70vh]"
       />
     </div>
   );

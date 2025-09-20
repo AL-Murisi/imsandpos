@@ -11,7 +11,8 @@ type TabItem = {
 };
 
 type DashboardTabsProps = {
-  currentTab: string;
+  currentTab?: string;
+  defualt?: string;
   tabs: TabItem[];
   children?: ReactNode; // 👈 optional children (if you want manual control)
 };
@@ -19,6 +20,7 @@ type DashboardTabsProps = {
 export default function DashboardTabs({
   currentTab,
   tabs,
+  defualt,
   children,
 }: DashboardTabsProps) {
   const router = useRouter();
@@ -47,9 +49,10 @@ export default function DashboardTabs({
 
   return (
     <Tabs
+      defaultValue={defualt}
       value={currentTab}
       onValueChange={handleChange}
-      className="py-2 px-2 "
+      className="px-2 py-2"
       dir="rtl"
     >
       <TabsList>
@@ -74,7 +77,7 @@ export default function DashboardTabs({
             <TabsContent key={tab.value} value={tab.value}>
               {tab.content}
             </TabsContent>
-          )
+          ),
       )}
     </Tabs>
   );

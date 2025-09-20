@@ -1,36 +1,47 @@
-// slices/tableSlice.ts
+// lib/slices/table.ts
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { ColumnFiltersState, VisibilityState } from "@tanstack/react-table";
+import {
+  ColumnFiltersState,
+  VisibilityState,
+  RowSelectionState,
+  PaginationState,
+  SortingState,
+} from "@tanstack/react-table";
 
 interface TableState {
   columnFilters: ColumnFiltersState;
   columnVisibility: VisibilityState;
-  rowSelection: Record<string, boolean>;
+  rowSelection: RowSelectionState;
+  pagination: PaginationState;
+  sorting: SortingState;
 }
 
 const initialState: TableState = {
   columnFilters: [],
   columnVisibility: {},
   rowSelection: {},
+  pagination: { pageIndex: 0, pageSize: 10 },
+  sorting: [],
 };
 
-const tableSlice = createSlice({
+export const tableSlice = createSlice({
   name: "table",
   initialState,
   reducers: {
-    setColumnFilters(state, action: PayloadAction<ColumnFiltersState>) {
+    setColumnFilters: (state, action: PayloadAction<ColumnFiltersState>) => {
       state.columnFilters = action.payload;
     },
-    setColumnVisibility(state, action: PayloadAction<VisibilityState>) {
+    setColumnVisibility: (state, action: PayloadAction<VisibilityState>) => {
       state.columnVisibility = action.payload;
     },
-    setRowSelection(state, action: PayloadAction<Record<string, boolean>>) {
+    setRowSelection: (state, action: PayloadAction<RowSelectionState>) => {
       state.rowSelection = action.payload;
     },
-    resetTable(state) {
-      state.columnFilters = [];
-      state.columnVisibility = {};
-      state.rowSelection = {};
+    setPagination: (state, action: PayloadAction<PaginationState>) => {
+      state.pagination = action.payload;
+    },
+    setSorting: (state, action: PayloadAction<SortingState>) => {
+      state.sorting = action.payload;
     },
   },
 });
@@ -39,7 +50,7 @@ export const {
   setColumnFilters,
   setColumnVisibility,
   setRowSelection,
-  resetTable,
+  setPagination,
+  setSorting,
 } = tableSlice.actions;
-
 export default tableSlice.reducer;

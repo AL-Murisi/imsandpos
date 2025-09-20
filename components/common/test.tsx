@@ -37,6 +37,7 @@ import {
   setColumnVisibility,
   setRowSelection,
 } from "@/lib/slices/table";
+import { ReactNode } from "react";
 
 interface DataTableProps<T> {
   data: T[];
@@ -52,14 +53,14 @@ interface DataTableProps<T> {
   highet?: string;
   /** ✅ The missing prop that caused your error */
   pageCount: number;
-
+  search?: React.ReactNode;
   /** ✅ All these match what you passed from ProductClient */
   totalCount: number;
   pageActiom: (
-    updater: PaginationState | ((old: PaginationState) => PaginationState)
+    updater: PaginationState | ((old: PaginationState) => PaginationState),
   ) => void;
   onSortingChange: (
-    updater: SortingState | ((old: SortingState) => SortingState)
+    updater: SortingState | ((old: SortingState) => SortingState),
   ) => void;
   onGlobalFilterChange: (value: string) => void;
   globalFilter: string;
@@ -75,6 +76,7 @@ export function DataTable<T>({
   filterOptions = [],
   pageCount,
   totalCount,
+  search,
   pageActiom,
   onSortingChange,
   onGlobalFilterChange,
@@ -86,7 +88,7 @@ export function DataTable<T>({
   const dispatch = useAppDispatch();
 
   const { columnFilters, columnVisibility, rowSelection } = useAppSelector(
-    (state) => state.table
+    (state) => state.table,
   );
   function resolveUpdater<T>(updater: T | ((old: T) => T), old: T): T {
     return typeof updater === "function"
@@ -135,8 +137,8 @@ export function DataTable<T>({
     setParam,
   } = useTablePrams();
   return (
-    <Card className="@container/card  border-0   px-2  bg-transparent">
-      <div className="flex items-center justify-between space-x-2 py-4 px-2 flex-wrap gap-2 border-t">
+    <Card className="@container/card border-transparent bg-transparent px-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 space-x-2 px-2 py-4">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="mr-auto">
@@ -154,7 +156,7 @@ export function DataTable<T>({
               .map((column) => (
                 <DropdownMenuCheckboxItem
                   key={column.id}
-                  className="capitalize text-right" // Align text to the right
+                  className="text-right capitalize" // Align text to the right
                   checked={column.getIsVisible()}
                   onCheckedChange={(value) => column.toggleVisibility(!!value)}
                 >
@@ -165,18 +167,17 @@ export function DataTable<T>({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <div className="text-muted-foreground flex-1 text-sm min-w-[150px] text-right">
-          {" "}
+        <div className="text-muted-foreground min-w-[150px] flex-1 text-right text-sm">
           {/* Align text to the right */}
           تم اختيار {table.getFilteredSelectedRowModel().rows.length} من{" "}
           {table.getFilteredRowModel().rows.length} صف.
         </div>
-
+        {search}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="secondary"
-              className="mr-auto border-2 border-primary" // Use mr-auto for right alignment
+              className="border-primary mr-auto border-2" // Use mr-auto for right alignment
             >
               {initialPageSize} صفوف لكل صفحة{" "}
               <ChevronDown className="mr-2 h-4 w-4" />{" "}
@@ -184,7 +185,6 @@ export function DataTable<T>({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
-            {" "}
             {/* Align to the start (right) for RTL */}
             {[5, 10, 20, 50].map((size) => (
               <DropdownMenuItem
@@ -202,9 +202,9 @@ export function DataTable<T>({
         </DropdownMenu>
 
         <div className="space-x-2">
-          {" "}
           {/* space-x-2 works for RTL, but you might consider space-x-reverse for explicit control */}
           <Button
+            aria-label=""
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
@@ -220,26 +220,24 @@ export function DataTable<T>({
       </div>
 
       <ScrollArea
-        className={` ${
-          highet ?? "h-190"
-        }  min-h-[30vh]  w-full  border rounded-2xl pl-1`}
+        className={` ${highet ?? "h-190"} min-h-[30vh] w-full rounded-2xl pl-1`}
         dir="rtl"
       >
-        <Table className="min-w-full ">
-          <TableHeader className="sticky top-0 bg-background z-10">
+        <Table className="min-w-full">
+          <TableHeader className="bg-background sticky top-0 z-10">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <TableHead
                     key={header.id}
                     style={{ width: header.getSize() }}
-                    className=" text-center"
+                    className="text-center"
                   >
                     {header.isPlaceholder
                       ? null
                       : flexRender(
                           header.column.columnDef.header,
-                          header.getContext()
+                          header.getContext(),
                         )}
                   </TableHead>
                 ))}
@@ -251,10 +249,10 @@ export function DataTable<T>({
               table.getRowModel().rows.map((row) => (
                 <TableRow key={row.id}>
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className=" text-center">
+                    <TableCell key={cell.id} className="text-center">
                       {flexRender(
                         cell.column.columnDef.cell,
-                        cell.getContext()
+                        cell.getContext(),
                       )}
                     </TableCell>
                   ))}

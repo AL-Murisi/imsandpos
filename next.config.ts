@@ -15,6 +15,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   experimental: {
     // optimizeCss: true,
+
     inlineCss: true,
   },
   productionBrowserSourceMaps: true,

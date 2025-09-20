@@ -73,7 +73,7 @@ export default function CartDisplay({ payment }: CustomDialogProps) {
 
   const totals = useAppSelector(selectCartTotals);
   return (
-    <div className="bg-background w-full flex-1 rounded-2xl p-2">
+    <div className="bg-background rounded-2xl p-2 lg:col-span-1">
       {/* Header */}
       <div className="flex justify-between">
         <div className="flex justify-between gap-1">

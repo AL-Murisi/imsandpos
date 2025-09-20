@@ -49,8 +49,8 @@ const ChartContainer = React.forwardRef<
         data-chart={chartId}
         ref={ref}
         className={cn(
-          "flex aspect-video justify-center text-xs [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/50 [&_.recharts-curve.recharts-tooltip-cursor]:stroke-border [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer]:outline-none [&_.recharts-polar-grid_[stroke='#ccc']]:stroke-border [&_.recharts-radial-bar-background-sector]:fill-muted [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_[stroke='#ccc']]:stroke-border [&_.recharts-sector[stroke='#fff']]:stroke-transparent [&_.recharts-sector]:outline-none [&_.recharts-surface]:outline-none",
-          className
+          "[&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/50 [&_.recharts-curve.recharts-tooltip-cursor]:stroke-border [&_.recharts-polar-grid_[stroke='#ccc']]:stroke-border [&_.recharts-radial-bar-background-sector]:fill-muted [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_[stroke='#ccc']]:stroke-border flex aspect-video justify-center text-xs [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer]:outline-none [&_.recharts-sector]:outline-none [&_.recharts-sector[stroke='#fff']]:stroke-transparent [&_.recharts-surface]:outline-none",
+          className,
         )}
         {...props}
       >
@@ -66,7 +66,7 @@ ChartContainer.displayName = "Chart";
 
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   const colorConfig = Object.entries(config).filter(
-    ([_, config]) => config.theme || config.color
+    ([_, config]) => config.theme || config.color,
   );
 
   if (!colorConfig.length) {
@@ -155,13 +155,13 @@ interface ChartTooltipProps {
   hideIndicator?: boolean;
   indicator?: "line" | "dot" | "dashed";
   nameKey?: string;
-  labelKey?: string;
+  labelkey?: string;
   labelFormatter?: (value: any, payload?: Array<any>) => string;
   formatter?: (
     value: any,
     name?: string,
     entry?: any,
-    index?: number
+    index?: number,
   ) => [React.ReactNode, string?];
 }
 
@@ -181,12 +181,12 @@ const ChartTooltipContent = React.forwardRef<
       indicator = "dot",
       className,
       nameKey,
-      labelKey,
+      labelkey,
       labelFormatter,
       formatter,
       ...props
     },
-    ref
+    ref,
   ) => {
     const { config } = useChart();
 
@@ -201,19 +201,19 @@ const ChartTooltipContent = React.forwardRef<
       }
 
       const [item] = payload;
-      const key = `${labelKey || item?.dataKey || "value"}`;
+      const key = `${labelkey || item?.dataKey || "value"}`;
       const itemConfig = config[key as keyof typeof config];
       const value =
-        !labelKey && typeof label === "string"
+        !labelkey && typeof label === "string"
           ? config[label as keyof typeof config]?.label || label
           : itemConfig?.label;
 
-      if (labelKey) {
+      if (labelkey) {
         return value;
       }
 
       return value || label;
-    }, [label, labelKey, payload, hideLabel, config, labelFormatter]);
+    }, [label, labelkey, payload, hideLabel, config, labelFormatter]);
 
     if (!active || !payload || payload.length === 0) {
       return null;
@@ -223,13 +223,13 @@ const ChartTooltipContent = React.forwardRef<
       <div
         ref={ref}
         className={cn(
-          "grid min-w-[8rem] items-start gap-1.5 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl",
-          className
+          "border-border/50 bg-background grid min-w-[8rem] items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs shadow-xl",
+          className,
         )}
         {...props}
       >
         {tooltipLabel && (
-          <div className="font-medium text-foreground">{tooltipLabel}</div>
+          <div className="text-foreground font-medium">{tooltipLabel}</div>
         )}
         <div className="grid gap-1.5">
           {payload.map((item: any, index: number) => {
@@ -246,7 +246,7 @@ const ChartTooltipContent = React.forwardRef<
                 item.value,
                 item.name,
                 item,
-                index
+                index,
               );
               displayValue = formattedValue;
               if (formattedName) displayName = formattedName;
@@ -255,7 +255,7 @@ const ChartTooltipContent = React.forwardRef<
             return (
               <div
                 key={item.dataKey || index}
-                className="flex w-full flex-wrap items-stretch gap-2 [&>svg]:h-2.5 [&>svg]:w-2.5 [&>svg]:text-muted-foreground"
+                className="[&>svg]:text-muted-foreground flex w-full flex-wrap items-stretch gap-2 [&>svg]:h-2.5 [&>svg]:w-2.5"
               >
                 {!hideIndicator && (
                   <div
@@ -267,7 +267,7 @@ const ChartTooltipContent = React.forwardRef<
                         "w-0 border-[1.5px] border-dashed bg-transparent":
                           indicator === "dashed",
                         "my-0.5": hideLabel && indicator === "dashed",
-                      }
+                      },
                     )}
                     style={
                       {
@@ -280,14 +280,14 @@ const ChartTooltipContent = React.forwardRef<
                 <div
                   className={cn(
                     "flex flex-1 justify-between leading-none",
-                    hideLabel ? "items-center" : "flex-col"
+                    hideLabel ? "items-center" : "flex-col",
                   )}
                 >
                   <div className="grid gap-1.5">
                     <span className="text-muted-foreground">{displayName}</span>
                   </div>
                   {displayValue && (
-                    <span className="font-mono font-medium tabular-nums text-foreground">
+                    <span className="text-foreground font-mono font-medium tabular-nums">
                       {typeof displayValue === "number"
                         ? displayValue.toLocaleString()
                         : displayValue}
@@ -300,7 +300,7 @@ const ChartTooltipContent = React.forwardRef<
         </div>
       </div>
     );
-  }
+  },
 );
 ChartTooltipContent.displayName = "ChartTooltipContent";
 
@@ -312,7 +312,7 @@ interface ChartLegendProps {
     id?: string;
     color?: string;
   }>;
-  hideIcon?: boolean;
+  hideicon?: boolean;
   nameKey?: string;
 }
 
@@ -321,7 +321,7 @@ const ChartLegend = RechartsPrimitive.Legend;
 const ChartLegendContent = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div"> & ChartLegendProps
->(({ className, hideIcon = false, payload = [], nameKey, ...props }, ref) => {
+>(({ className, hideicon = false, payload = [], nameKey, ...props }, ref) => {
   const { config } = useChart();
 
   if (!payload || payload.length === 0) {
@@ -341,12 +341,12 @@ const ChartLegendContent = React.forwardRef<
         return (
           <div
             key={item.value}
-            className="flex items-center gap-1.5 [&>svg]:h-3 [&>svg]:w-3 [&>svg]:text-muted-foreground"
+            className="[&>svg]:text-muted-foreground flex items-center gap-1.5 [&>svg]:h-3 [&>svg]:w-3"
           >
-            {itemConfig?.icon && !hideIcon ? (
+            {itemConfig?.icon && !hideicon ? (
               <itemConfig.icon />
             ) : (
-              !hideIcon && (
+              !hideicon && (
                 <div
                   className="h-2 w-2 shrink-0 rounded-[2px]"
                   style={{

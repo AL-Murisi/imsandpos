@@ -49,13 +49,13 @@ export default function ProductClient({
   // Show skeleton during initial load or hydration
 
   return (
-    <div className="w-full bg-accent  rounded-2xl p-2  " dir="rtl">
+    <div className="bg-accent w-full rounded-2xl p-2" dir="rtl">
       {/* <SearchInput
         placeholder={"search"}
         value={globalFilter}
         onSearchChange={(value) => setParam("search", value)}
       /> */}
-      <div className="flex flex-col md:flex-row  gap-2 p-1">
+      <div className="flex flex-col gap-2 p-1 md:flex-row">
         <Calendar22 />
         <SearchInput placeholder={"بحث "} paramKey={"product"} />
         <SelectField

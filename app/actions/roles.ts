@@ -127,7 +127,7 @@ export async function fetchProduct(
   to?: string,
   page: number = 1,
   pageSize: number = 7,
-  sort: SortState = []
+  sort: SortState = [],
 ) {
   // Allow caching (no-store → no-cache)
   // This ensures bfcache can work
@@ -557,7 +557,7 @@ export async function fetechUser(
   from?: string,
   to?: string,
   page: number = 1,
-  pageSize: number = 5
+  pageSize: number = 5,
 ) {
   const combinedWhere: any = {
     // Existing filters (category, warehouse, etc.)
@@ -623,7 +623,10 @@ export async function fetechUser(
 // Schema to validate an array of roles
 const RoleListSchema = z.array(RoleSchema);
 
-export async function fetchRoles() {
+export async function fetchRoles(
+  page: number = 0, // 0-indexed page number
+  pageSize: number = 7,
+) {
   const roles = await prisma.role.findMany({
     select: {
       id: true,
@@ -633,19 +636,14 @@ export async function fetchRoles() {
       createdAt: true,
       updatedAt: true,
     },
-    orderBy: {
-      name: "asc",
-    },
+
+    skip: page * pageSize,
+    take: pageSize,
   });
 
-  const result = RoleListSchema.safeParse(roles);
+  console.log(roles);
 
-  if (!result.success) {
-    console.error("❌ Invalid role data:", result.error.flatten());
-    throw new Error("Role data validation failed");
-  }
-
-  return result.data; // ✅ Fully typed & validated
+  return roles; // ✅ Fully typed & validated
 } // Add these server actions to your existing roles.ts file
 
 // }

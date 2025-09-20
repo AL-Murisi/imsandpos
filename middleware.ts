@@ -15,7 +15,7 @@ const routePermissions: Record<string, string[]> = {
   "/inventory/categories": ["admin", "manager_wh"],
   "/inventory/suppliers": ["admin", "manager_wh"],
   "/inventory/warehouses": ["admin", "manager_wh"],
-
+  "/inventory/dashboardUser": ["manager_wh"],
   // Admin, workers, and customers routes
   //   "/dashboard": ["admin", "worker", "worker"],
   //   "/orders": ["admin", "worker", "worker"],
@@ -30,7 +30,7 @@ const routePermissions: Record<string, string[]> = {
   "/supplier/orders": ["admin", "supplier"],
 
   // Customer specific routes
-  "/customer": ["admin", "customer"],
+  // "/customer": ["admin", "customer"],
   // "/customer": ["admin", "customer"],
 };
 
@@ -83,7 +83,7 @@ export default async function middleware(req: NextRequest) {
 function getDefaultRedirectForRole(roles: string[]): string {
   if (roles.includes("admin")) return "/inventory";
   if (roles.includes("cashier")) return "/sells/cashiercontrol";
-  if (roles.includes("customer")) return "/customer";
+  // if (roles.includes("customer")) return "/customer";
   // if (roles.includes("supplier")) return "/supplier/products";
   return "/dashboard";
 }
@@ -91,7 +91,7 @@ function getDefaultRedirectForRole(roles: string[]): string {
 export const config = {
   matcher: [
     "/inventory/:path*",
-    "/customer/:path*",
+    // "/customer/:path*",
     "/sells/:path*",
     "/users/:path*",
   ],
