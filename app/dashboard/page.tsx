@@ -56,14 +56,11 @@ export default async function Dashboard({
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 
-  const response = await fetch(
-    `${baseUrl}/api/salesSummary?${queryParams.toString()}`,
-    {
-      // ❌ remove "no-store" unless you *really* want no caching
-      cache: "no-store",
-      headers: { "Content-Type": "application/json" },
-    },
-  );
+  const response = await fetch(`/api/salesSummary?${queryParams.toString()}`, {
+    // ❌ remove "no-store" unless you *really* want no caching
+    cache: "no-store",
+    headers: { "Content-Type": "application/json" },
+  });
 
   if (!response.ok) {
     const errorData = await response.json();
