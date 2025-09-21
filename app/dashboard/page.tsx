@@ -5,6 +5,7 @@ import DashboardContent from "./_components/DashboardContent";
 // import { ScrollArea } from "@/components/ui/scroll-area";
 import ClientDashboardContent from "./_components/test";
 import dynamic from "next/dynamic";
+import { ScrollBar } from "@/components/ui/scroll-area";
 
 interface DashboardContentProps {
   searchParams: Promise<{
@@ -79,13 +80,5 @@ export default async function Dashboard({
 
   const result = await response.json();
 
-  return (
-    <ScrollArea className="h-[100vh] rounded-md p-2" dir="rtl">
-      <div className="flex flex-col">
-        {/* <Suspense fallback={<DashboardSkeleton />}> */}
-        <ClientDashboardContent result={result} />
-        {/* </Suspense> */}
-      </div>
-    </ScrollArea>
-  );
+  return <ClientDashboardContent result={result} />;
 }

@@ -15,9 +15,9 @@ const TopSellingChartWrapper = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="h-60  bg-gray-200 animate-pulse rounded-lg" />
+      <div className="h-60 animate-pulse rounded-lg bg-gray-200" />
     ),
-  }
+  },
 );
 export default function Charts({
   //   combinedChartData,
@@ -55,8 +55,8 @@ export default function Charts({
       data={topProducts}
       formData={formData}
       title="Top Sales"
-      width=" w-sm md:w-3xl lg:w-5xl "
-      widthco=" xl:w-2xl 2xl:w-4xl lg:w-5xs  sm:w-md  "
+      width=" sm:w-sm w-2xs md:w-3xl lg:w-5xl "
+      widthco=" xl:w-2xl 2xl:w-4xl lg:w-5xs  sm:w-md md:w-sm w-2xs  "
       dataKey="quantity"
       paramKey="topItems"
     />
