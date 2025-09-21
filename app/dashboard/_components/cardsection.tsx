@@ -142,63 +142,63 @@ export function SectionCards({
   ];
 
   return (
-    <>
+    <div className="flex flex-col items-center">
+      {" "}
       <DashboardHeader sections={sections} chartConfigs={chartConfigs} />
-      <div className="flex flex-col items-center">
-        <div className="grid w-full grid-cols-1 gap-x-4 gap-y-5 p-2 sm:grid-cols-2 xl:grid-cols-4">
-          {sections.map((item, idx) => (
-            <ChartCard
-              key={idx}
-              bg={item.bg}
-              icon={item.icon}
-              title={item.title}
-              label={item.label}
-              description={item.description}
-              link={item.link}
-              loading={loading}
-              chartData={item.chartData}
-              chartConfig={chartConfigs[item.description]}
-            />
-          ))}
+      <div className="grid w-full grid-cols-1 gap-x-4 gap-y-5 p-2 sm:grid-cols-2 xl:grid-cols-4">
+        {sections.map((item, idx) => (
+          <ChartCard
+            key={idx}
+            bg={item.bg}
+            icon={item.icon}
+            title={item.title}
+            label={item.label}
+            description={item.description}
+            link={item.link}
+            loading={loading}
+            chartData={item.chartData}
+            chartConfig={chartConfigs[item.description]}
+          />
+        ))}
 
-          {differentSection.map((item, idx) => (
-            <ChartCard
-              key={idx}
-              icon={item.icon}
-              bg={item.bg}
-              title={item.title}
-              title2={item.title2}
-              label2={item.label2}
-              label={item.label}
-              description={item.description}
-              link={item.link}
-              loading={loading}
-            />
-          ))}
-        </div>
-        <div className="grid w-52 grid-cols-1 justify-end gap-x-4 gap-y-4 py-4 sm:w-sm sm:grid-cols-2 md:w-md md:grid-cols-4 lg:w-full lg:grid-cols-4">
-          <Button aria-label="report" asChild>
-            <Link href="/admin/reports" prefetch={false}>
-              إنشاء التقارير
-            </Link>
-          </Button>
-          <Button aria-label="report" asChild>
-            <Link href="/dashboard/users" prefetch={false}>
-              إدارة المستخدمين
-            </Link>
-          </Button>
-          <Button aria-label="report" asChild>
-            <Link href="/inventory" prefetch={false}>
-              إدارة المخزون
-            </Link>
-          </Button>
-          <Button aria-label="report" asChild>
-            <Link href="/sells/debtSell" prefetch={false}>
-              عرض الديون
-            </Link>
-          </Button>
-        </div>
-        {/*
+        {differentSection.map((item, idx) => (
+          <ChartCard
+            key={idx}
+            icon={item.icon}
+            bg={item.bg}
+            title={item.title}
+            title2={item.title2}
+            label2={item.label2}
+            label={item.label}
+            description={item.description}
+            link={item.link}
+            loading={loading}
+          />
+        ))}
+      </div>
+      <div className="grid w-52 grid-cols-1 justify-end gap-x-4 gap-y-4 py-4 sm:w-sm sm:grid-cols-2 md:w-md md:grid-cols-4 lg:w-full lg:grid-cols-4">
+        <Button aria-label="report" asChild>
+          <Link href="/admin/reports" prefetch={false}>
+            إنشاء التقارير
+          </Link>
+        </Button>
+        <Button aria-label="report" asChild>
+          <Link href="/dashboard/users" prefetch={false}>
+            إدارة المستخدمين
+          </Link>
+        </Button>
+        <Button aria-label="report" asChild>
+          <Link href="/inventory" prefetch={false}>
+            إدارة المخزون
+          </Link>
+        </Button>
+        <Button aria-label="report" asChild>
+          <Link href="/sells/debtSell" prefetch={false}>
+            عرض الديون
+          </Link>
+        </Button>
+      </div>
+      {/*
     <Suspense>
       <ReusableAreaChart
         title="Sales Overview"
@@ -207,8 +207,7 @@ export function SectionCards({
         config={salesChartConfig}
       />
     </Suspense> */}
-      </div>
-    </>
+    </div>
   );
 }
 
