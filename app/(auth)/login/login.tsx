@@ -65,7 +65,7 @@ export default function LoginPage() {
       try {
         const success = await login(cred.email, cred.password);
         if (success) {
-          router.push("/");
+          // router.push("/");
         } else {
           setError("فشل في تسجيل الدخول");
         }
@@ -78,11 +78,11 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4 dark:from-gray-900 dark:to-gray-800">
       <Card className="w-full max-w-md shadow-2xl">
         <CardHeader className="space-y-1 text-center">
-          <div className="flex justify-center mb-4">
-            <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-full">
+          <div className="mb-4 flex justify-center">
+            <div className="rounded-full bg-blue-100 p-3 dark:bg-blue-900">
               <Lock className="h-8 w-8 text-blue-600 dark:text-blue-400" />
             </div>
           </div>
@@ -99,7 +99,7 @@ export default function LoginPage() {
             <div className="space-y-2">
               <Label htmlFor="email">البريد الإلكتروني</Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Mail className="absolute top-3 left-3 h-4 w-4 text-gray-400" />
                 <Input
                   id="email"
                   type="email"
@@ -116,21 +116,21 @@ export default function LoginPage() {
             <div className="space-y-2">
               <Label htmlFor="password">كلمة المرور</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Lock className="absolute top-3 left-3 h-4 w-4 text-gray-400" />
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="********"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10"
+                  className="pr-10 pl-10"
                   required
                   disabled={loading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                  className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
                   disabled={loading}
                 >
                   {showPassword ? (
@@ -144,7 +144,7 @@ export default function LoginPage() {
 
             {/* Quick Login Buttons for Testing */}
             <div className="space-y-2">
-              <p className="text-sm text-gray-500 text-center">
+              <p className="text-center text-sm text-gray-500">
                 تسجيل دخول سريع للاختبار:
               </p>
               <div className="grid grid-cols-2 gap-2">

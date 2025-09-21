@@ -227,8 +227,6 @@ import { Button } from "@/components/ui/button";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTablePrams } from "@/hooks/useTableParams";
 import { useState } from "react";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Scrollbar } from "@radix-ui/react-scroll-area";
 
 type ProductClientProps = {
   data: any[];
@@ -376,7 +374,6 @@ export default function UniversalChart({
             </Bar>
           </BarChart>
         </ChartContainer>
-        <Scrollbar orientation="horizontal" />
       </CardContent>
       {/* </ScrollArea> */}
       <CardFooter className="flex-col items-start gap-2 p-3 text-sm">

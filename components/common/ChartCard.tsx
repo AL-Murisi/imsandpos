@@ -17,9 +17,6 @@ const ResponsiveContainer = dynamic(
   () => import("recharts").then((m) => m.ResponsiveContainer),
   {
     ssr: false,
-    loading: () => (
-      <div className="h-[324px] w-full animate-pulse rounded-xl bg-gray-200" />
-    ),
   },
 );
 
@@ -81,7 +78,7 @@ export function ChartCard({
 }: ChartCardProps) {
   return (
     <div
-      className={`flex flex-col rounded-[10px] p-4 ${bg} shadow-accent-foreground shadow-2xl dark:shadow-2xs`}
+      className={`flex flex-col rounded-[10px] p-4 ${bg} shadow-xl ring-1 shadow-gray-400 dark:shadow-md`}
     >
       {loading ? (
         <Loader2 className="h-8 w-8 animate-spin" />

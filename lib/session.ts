@@ -26,7 +26,7 @@ export async function encrypt(payload: SessionData): Promise<string> {
 }
 
 export async function decrypt(
-  session: string | undefined = ""
+  session: string | undefined = "",
 ): Promise<SessionData | null> {
   try {
     const { payload } = await jwtVerify(session, encodedKey, {
@@ -35,7 +35,7 @@ export async function decrypt(
     return payload as SessionData;
   } catch (error) {
     console.log("Failed to verify session");
-    redirect("/login");
+    return null;
   }
 }
 

@@ -5,7 +5,6 @@ import DashboardContent from "./_components/DashboardContent";
 // import { ScrollArea } from "@/components/ui/scroll-area";
 import ClientDashboardContent from "./_components/test";
 import dynamic from "next/dynamic";
-import { ScrollBar } from "@/components/ui/scroll-area";
 
 interface DashboardContentProps {
   searchParams: Promise<{
@@ -41,10 +40,7 @@ export default async function Dashboard({
   searchParams,
 }: DashboardContentProps) {
   const session = await verifySession();
-  const userRoles = session.userRole as string[];
 
-  if (!userRoles.includes("admin")) redirect("/");
-  if (!session.isAuth) redirect("/login");
   const params = await searchParams;
   // Build query string from searchParams
   const queryParams = new URLSearchParams();

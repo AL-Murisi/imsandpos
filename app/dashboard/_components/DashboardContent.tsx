@@ -7,7 +7,7 @@ import UserActivityTable from "../_components/userActivityTable";
 import Charts from "./overview";
 import { ReusableAreaChart } from "@/components/common/Chart";
 import SearchInput from "@/components/common/searchtest";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface DashboardData {
   summary: any;
@@ -91,7 +91,7 @@ export default function DashboardContent({ result }: any) {
     purchases: { label: "المشتريات", color: "#3b82f6" },
   };
   return (
-    <ScrollArea className="p-2" dir="rtl">
+    <ScrollArea className="max-h-[100vh] p-2" dir="rtl">
       {/* <Suspense
         fallback={
           <>
@@ -173,7 +173,6 @@ export default function DashboardContent({ result }: any) {
           </div>
         </LazySection>
       </div>
-      <ScrollBar orientation="vertical" />
     </ScrollArea>
   );
 }
