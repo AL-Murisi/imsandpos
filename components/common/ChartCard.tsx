@@ -78,7 +78,7 @@ export function ChartCard({
 }: ChartCardProps) {
   return (
     <div
-      className={`flex flex-col rounded-[10px] p-4 ${bg} shadow-xl ring-1 shadow-gray-400 dark:shadow-md`}
+      className={`flex flex-col rounded-xl p-4 ${bg} gap-6 shadow-xl/20 shadow-gray-500`}
     >
       {loading ? (
         <Loader2 className="h-8 w-8 animate-spin" />

@@ -105,7 +105,7 @@ export function ReusableAreaChart({
 
   return (
     <Card
-      className="bg-accent @container/card rounded-2xl shadow-2xl"
+      className="bg-accent @container/card rounded-2xl shadow-xl/20 shadow-gray-500"
       dir="rtl"
     >
       <CardHeader>

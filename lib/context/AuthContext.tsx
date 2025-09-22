@@ -4,6 +4,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { deleteSession, SessionData } from "@/lib/session";
 import { logActivity } from "@/app/actions/activitylogs";
+import { verifySession } from "../dal";
 
 interface AuthContextType {
   user: SessionData | null;
@@ -63,9 +64,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     try {
       deleteSession();
-      await fetch("/api/logout", { method: "POST" });
       setUser(null);
-      window.location.href = "/login";
+      verifySession();
     } catch (error) {
       console.error("Logout failed:", error);
     }

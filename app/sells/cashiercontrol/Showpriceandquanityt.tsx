@@ -73,7 +73,7 @@ export default function CartDisplay({ payment }: CustomDialogProps) {
 
   const totals = useAppSelector(selectCartTotals);
   return (
-    <div className="bg-background rounded-2xl p-2 lg:col-span-1">
+    <div className="bg-background flex flex-col rounded-2xl p-2 shadow-xl/20 shadow-gray-500 lg:col-span-1">
       {/* Header */}
       <div className="flex justify-between">
         <div className="flex justify-between gap-1">
@@ -107,8 +107,8 @@ export default function CartDisplay({ payment }: CustomDialogProps) {
         </div>
       </div>
 
-      <ScrollArea className="w-full flex-wrap py-2" dir="rtl">
-        <div className="flex h-20 w-full flex-wrap gap-2">
+      <ScrollArea className="w-full py-2" dir="rtl">
+        <div className="grid max-h-20 w-full grid-cols-2 gap-5 md:grid-cols-4">
           {carts.map((cart) => (
             <div className="flex flex-row gap-1">
               <Button
@@ -135,7 +135,7 @@ export default function CartDisplay({ payment }: CustomDialogProps) {
         <ScrollBar orientation="vertical" />
       </ScrollArea>
 
-      <Card className="border-0 shadow-2xl">
+      <div className="border-0">
         {/*         
        
         <div className="flex gap-2 items-center px-2 py-2">
@@ -164,9 +164,9 @@ export default function CartDisplay({ payment }: CustomDialogProps) {
 
         {/* Cart Items */}
 
-        <CardContent className="w-full p-4">
+        <CardContent className="w-full">
           {/* Single ScrollArea with proper height and both scrollbars */}
-          <ScrollArea className="h-[49vh] w-full rounded-2xl border border-amber-300 p-2">
+          <ScrollArea className="w-full rounded-2xl border border-amber-300 p-2">
             <Table className="min-w-full">
               <TableHeader className="sticky top-0 z-10">
                 <TableRow className="border-amber-300">
@@ -448,7 +448,7 @@ export default function CartDisplay({ payment }: CustomDialogProps) {
             )}
           </div>
         </CardFooter>
-      </Card>
+      </div>
     </div>
   );
 }

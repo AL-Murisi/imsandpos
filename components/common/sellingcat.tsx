@@ -18,6 +18,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { Label } from "../ui/label";
 
 interface Option {
   id: string;
@@ -96,83 +97,79 @@ export function Selection({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="border-primary rounded-2xl border-2">
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              role="combobox"
-              aria-expanded={open}
-              className="w-full justify-between"
-            >
-              <span className="text-muted-foreground">{placeholder}</span>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className="border-primary w-full justify-between rounded-2xl border-2 dark:border-amber-50"
+          >
+            <span className="text-muted-foreground">{placeholder}</span>
 
-              <ChevronDown
-                color={"white"}
-                className="ml-2 h-4 w-4 shrink-0 opacity-50"
-              />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
-            <Command>
-              <CommandList>
-                <CommandEmpty>No options found.</CommandEmpty>
-                <CommandGroup>
+            <ChevronDown
+              color={"white"}
+              className="ml-2 h-4 w-4 shrink-0 opacity-50"
+            />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+          <Command>
+            <CommandList>
+              <CommandEmpty>No options found.</CommandEmpty>
+              <CommandGroup>
+                <CommandItem
+                  value="All"
+                  key={""}
+                  onSelect={() => updateCategories([])}
+                  className="flex cursor-pointer items-center gap-2"
+                >
+                  <div
+                    className={cn(
+                      "border-primary mr-2 flex h-4 w-4 items-center justify-center rounded-sm border",
+                      value.length === 0
+                        ? "bg-primary text-primary-foreground"
+                        : "opacity-50",
+                    )}
+                  >
+                    <Check className="h-4 w-4" />
+                  </div>
+                  <span>الكل</span>
+                </CommandItem>
+                {options.map((option, idx) => (
                   <CommandItem
-                    value="All"
-                    key={""}
-                    onSelect={() => updateCategories([])}
+                    key={idx}
+                    value={option.id}
+                    onSelect={() => handleToggle(option.id)}
                     className="flex cursor-pointer items-center gap-2"
                   >
                     <div
                       className={cn(
                         "border-primary mr-2 flex h-4 w-4 items-center justify-center rounded-sm border",
-                        value.length === 0
+                        value.includes(option.id)
                           ? "bg-primary text-primary-foreground"
                           : "opacity-50",
                       )}
                     >
                       <Check className="h-4 w-4" />
                     </div>
-                    <span>الكل</span>
+                    <span>{option.name}</span>
                   </CommandItem>
-                  {options.map((option, idx) => (
-                    <CommandItem
-                      key={idx}
-                      value={option.id}
-                      onSelect={() => handleToggle(option.id)}
-                      className="flex cursor-pointer items-center gap-2"
-                    >
-                      <div
-                        className={cn(
-                          "border-primary mr-2 flex h-4 w-4 items-center justify-center rounded-sm border",
-                          value.includes(option.id)
-                            ? "bg-primary text-primary-foreground"
-                            : "opacity-50",
-                        )}
-                      >
-                        <Check className="h-4 w-4" />
-                      </div>
-                      <span>{option.name}</span>
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
-      </div>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+
       <div className="flex flex-wrap gap-1">
         {badgesToRender.length > 0 &&
           badgesToRender.map((option) => (
-            <div
-              key={option.id}
-              className="rounded-[10px] border-2 border-amber-500"
-            >
-              <Badge className="h-8 w-20 cursor-pointer">
-                {option.name}
+            <div key={option.id} className="rounded-[10px]">
+              <Badge className="flex cursor-pointer flex-row">
+                <Label>{option.name}</Label>
                 {value.length > 0 ? ( // Only show the remove button if not in "All" mode
-                  <button
+                  <Button
                     type="button"
                     className="ml-1 text-xs"
                     aria-label={`Remove ${option.name}`}
@@ -182,9 +179,9 @@ export function Selection({
                     }}
                   >
                     ×
-                  </button>
+                  </Button>
                 ) : (
-                  <button
+                  <Button
                     type="button"
                     className="ml-1 text-xs"
                     aria-label={`Remove ${option.name}`}
@@ -193,7 +190,7 @@ export function Selection({
                     }}
                   >
                     +
-                  </button>
+                  </Button>
                 )}
               </Badge>
             </div>

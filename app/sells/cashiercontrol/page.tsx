@@ -64,7 +64,7 @@ export default async function Cart({ searchParams }: Props) {
 
   return (
     <ScrollArea className="grid" dir="rtl">
-      <div className="grid grid-cols-1 gap-4 p-3 py-2 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 py-2 lg:grid-cols-2">
         {/* Right side → Products (take 2/3 on large screens) */}
 
         <ProductListRedux

@@ -131,10 +131,10 @@ export default function ProductsList({
 
   return (
     <div className="rounded-2xl p-2 lg:col-span-1" dir="rtl">
-      <div className="mb-4 flex justify-between bg-transparent px-3">
+      <div className="mb-4 flex justify-between gap-3 bg-transparent px-3">
         <SearchInput placeholder={"بحث "} paramKey="product" />
 
-        <div className="border=0 flex gap-1">
+        <div className="">
           <Selection
             options={formData.categories}
             placeholder={"filter"}
@@ -153,7 +153,7 @@ export default function ProductsList({
           {products.map((products) => (
             <div
               key={products.id}
-              className="border-primary rounded-2xl border-2 shadow-2xl"
+              className="border-primary rounded-2xl border-2 shadow-xl/20 shadow-gray-500"
             >
               {products.availableCartons > 0 && (
                 <Card

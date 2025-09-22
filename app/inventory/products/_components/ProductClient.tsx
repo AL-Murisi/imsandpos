@@ -49,7 +49,10 @@ export default function ProductClient({
   // Show skeleton during initial load or hydration
 
   return (
-    <div className="bg-accent w-full rounded-2xl p-2" dir="rtl">
+    <div
+      className="bg-accent w-full rounded-2xl p-2 shadow-xl/20 shadow-gray-500"
+      dir="rtl"
+    >
       {/* <SearchInput
         placeholder={"search"}
         value={globalFilter}

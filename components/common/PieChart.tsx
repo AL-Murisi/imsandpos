@@ -56,7 +56,7 @@ type Piechart = {
 
 export function ChartPieLegend({ chartData }: Piechart) {
   return (
-    <Card className="bg-accent flex h-full w-full flex-col shadow-2xl">
+    <Card className="bg-accent flex h-full w-full flex-col shadow-xl/20 shadow-gray-500">
       <CardHeader className="items-center pb-0">
         <CardTitle>Pie Chart - Legend</CardTitle>
         <CardDescription>January - June 2024</CardDescription>

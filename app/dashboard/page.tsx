@@ -5,6 +5,7 @@ import DashboardContent from "./_components/DashboardContent";
 // import { ScrollArea } from "@/components/ui/scroll-area";
 import ClientDashboardContent from "./_components/test";
 import dynamic from "next/dynamic";
+import { DashboardSkeleton } from "@/components/DashboardSkeleton";
 
 interface DashboardContentProps {
   searchParams: Promise<{
@@ -57,7 +58,7 @@ export default async function Dashboard({
   const url = `${baseUrl}/api/salesSummary${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
 
   const response = await fetch(url, {
-    cache: "no-store",
+    cache: "no-cache",
     headers: { "Content-Type": "application/json" },
   });
 
@@ -76,5 +77,9 @@ export default async function Dashboard({
 
   const result = await response.json();
 
-  return <ClientDashboardContent result={result} />;
+  return (
+    <Suspense fallback={<DashboardSkeleton />}>
+      <ClientDashboardContent result={result} />
+    </Suspense>
+  );
 }

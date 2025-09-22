@@ -57,7 +57,7 @@ export default function UserActivityTable({
       }
     >
       <div className="flex flex-col gap-x-6 gap-y-6">
-        <div className="bg-accent rounded-2xl p-2 shadow-2xl">
+        <div className="bg-accent rounded-2xl p-2 shadow-xl/20 shadow-gray-500">
           <DataTable
             search={<SearchInput placeholder={"search"} paramKey="selas" />}
             data={logs}
@@ -74,7 +74,7 @@ export default function UserActivityTable({
             highet={"h-100"}
           />
         </div>
-        <div className="bg-accent rounded-2xl p-2 shadow-2xl">
+        <div className="bg-accent rounded-2xl p-2 shadow-xl/20 shadow-gray-500">
           <DataTable
             data={Sales}
             search={<SearchInput placeholder={"search"} paramKey="selas" />}

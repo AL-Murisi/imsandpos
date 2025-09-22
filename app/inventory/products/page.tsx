@@ -70,7 +70,9 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
 
   return (
     <div className="mt-5 p-1">
-      <Suspense fallback={<TableSkeleton columns={columns.length} />}>
+      <Suspense
+        fallback={<div className="flex flex-col bg-gray-400">loadin....</div>}
+      >
         <ProductClient
           products={products}
           total={totalCount}

@@ -295,7 +295,7 @@ export default function UniversalChart({
     { id: "year", name: "year" },
   ];
   return (
-    <Card className="bg-accent h-full w-full rounded-2xl shadow-2xl">
+    <Card className="bg-accent h-full w-full rounded-2xl shadow-xl/20 shadow-gray-500">
       <CardHeader className="space-y-2">
         <CardTitle>{title}</CardTitle>
 
