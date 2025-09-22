@@ -15,10 +15,10 @@ import { debtSale } from "./columns";
 
 interface SellsDashboardClientProps {
   user: {
-    id: string;
-    name: string;
-    email: string;
-    role: string; // "admin" | "cashier"
+    id: string | null;
+    name: string | null;
+    email: string | null;
+    role: string | null; // "admin" | "cashier"
   };
   debtSales: any; // Use proper types from your FetchDebtSales
   salesSummary: any; // Define a type for your sales summary
@@ -41,7 +41,7 @@ export default function SellsDashboardClient({
   };
 
   return (
-    <div className="flex flex-col   overflow-auto h-[100vh] p-6 space-y-8 ">
+    <div className="flex h-[100vh] flex-col space-y-8 overflow-auto p-6">
       <h1 className="text-3xl font-bold text-gray-900">مرحباً، {user.role}!</h1>
 
       {/* Conditional Rendering based on Role */}
@@ -57,13 +57,13 @@ export default function SellsDashboardClient({
                 <CardTitle className="text-sm font-medium">
                   إجمالي المبيعات (اليوم)
                 </CardTitle>
-                <DollarSignIcon className="h-4 w-4 text-muted-foreground" />
+                <DollarSignIcon className="text-muted-foreground h-4 w-4" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
                   {salesSummary.totalSalesToday || "0"} د.ع
                 </div>
-                <p className="text-xs text-muted-foreground">+20.1% من الأمس</p>
+                <p className="text-muted-foreground text-xs">+20.1% من الأمس</p>
               </CardContent>
             </Card>
             <Card>
@@ -71,13 +71,13 @@ export default function SellsDashboardClient({
                 <CardTitle className="text-sm font-medium">
                   عدد العمليات (اليوم)
                 </CardTitle>
-                <ShoppingBagIcon className="h-4 w-4 text-muted-foreground" />
+                <ShoppingBagIcon className="text-muted-foreground h-4 w-4" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
                   {salesSummary.transactionsToday || "0"}
                 </div>
-                <p className="text-xs text-muted-foreground">+5% من الأمس</p>
+                <p className="text-muted-foreground text-xs">+5% من الأمس</p>
               </CardContent>
             </Card>
             <Card>
@@ -85,13 +85,13 @@ export default function SellsDashboardClient({
                 <CardTitle className="text-sm font-medium">
                   إجمالي الديون المستحقة
                 </CardTitle>
-                <WalletIcon className="h-4 w-4 text-muted-foreground" />
+                <WalletIcon className="text-muted-foreground h-4 w-4" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
                   {salesSummary.totalDebtAmount || "0"} د.ع
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   عدد: {debtSales.recentSales}
                 </p>
               </CardContent>
@@ -101,13 +101,13 @@ export default function SellsDashboardClient({
                 <CardTitle className="text-sm font-medium">
                   مدفوعات الديون (اليوم)
                 </CardTitle>
-                <DollarSignIcon className="h-4 w-4 text-muted-foreground" />
+                <DollarSignIcon className="text-muted-foreground h-4 w-4" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
                   {salesSummary.debtPaymentsToday || "0"} د.ع
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   من {salesSummary.debtPaymentsCountToday || "0"} عملية
                 </p>
               </CardContent>
@@ -150,13 +150,13 @@ export default function SellsDashboardClient({
                 <CardTitle className="text-sm font-medium">
                   مبيعاتك اليوم
                 </CardTitle>
-                <DollarSignIcon className="h-4 w-4 text-muted-foreground" />
+                <DollarSignIcon className="text-muted-foreground h-4 w-4" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
                   {salesSummary.cashierSalesToday || "0"} د.ع
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   على {salesSummary.cashierTransactionsToday || "0"} عملية
                 </p>
               </CardContent>
@@ -166,13 +166,13 @@ export default function SellsDashboardClient({
                 <CardTitle className="text-sm font-medium">
                   مدفوعات الديون التي جمعتها (اليوم)
                 </CardTitle>
-                <WalletIcon className="h-4 w-4 text-muted-foreground" />
+                <WalletIcon className="text-muted-foreground h-4 w-4" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
                   {salesSummary.cashierDebtPaymentsToday || "0"} د.ع
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   من {salesSummary.cashierDebtPaymentsCountToday || "0"} عملية
                 </p>
               </CardContent>
@@ -182,14 +182,14 @@ export default function SellsDashboardClient({
                 <CardTitle className="text-sm font-medium">
                   الكمية في المخزون
                 </CardTitle>
-                <ShoppingBagIcon className="h-4 w-4 text-muted-foreground" />
+                <ShoppingBagIcon className="text-muted-foreground h-4 w-4" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
                   {productStats.totalStockQuantity || "N/A"}
                 </div>
                 {productStats.lowStockProducts || 0}
-                <p className="text-xs text-muted-foreground">مخزون المنتجات</p>
+                <p className="text-muted-foreground text-xs">مخزون المنتجات</p>
               </CardContent>
             </Card>
             {/* Add more cashier KPIs */}
@@ -197,7 +197,7 @@ export default function SellsDashboardClient({
 
           {/* Cashier Quick Actions */}
           <h3 className="text-xl font-semibold">إجراءات سريعة للصراف</h3>
-          <div className="flex gap-4 flex-wrap">
+          <div className="flex flex-wrap gap-4">
             <Button asChild size="lg">
               <Link href="/sells/new">بدء عملية بيع جديدة</Link>
             </Button>

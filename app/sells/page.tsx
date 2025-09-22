@@ -10,7 +10,7 @@ import SellsDashboardClient from "./text";
 export default async function SellsDashboard() {
   const { userId, userRole } = await verifySession();
 
-  const role = userRole.includes("admin") ? "admin" : "worker";
+  const role = userRole?.includes("admin") ? "admin" : "worker";
   const filter: Prisma.SaleWhereInput = {
     paymentStatus: {
       in: ["paid"],
