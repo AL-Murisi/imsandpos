@@ -167,11 +167,11 @@ export default async function middleware(req: NextRequest) {
 
   // ➡️ NEW: Handle root (/) path redirection for authenticated users
   if (path === "/" && session?.roles) {
-    // const redirectPath = getDefaultRedirectForRole();
-    // if (redirectPath !== path) {
-    // Avoid unnecessary self-redirects
-    return NextResponse.redirect(new URL("/", req.nextUrl));
-    // }
+    const redirectPath = getDefaultRedirectForRole(userrole);
+    if (redirectPath !== path) {
+      // Avoid unnecessary self-redirects
+      return NextResponse.redirect(new URL(redirectPath, req.nextUrl));
+    }
   }
 
   // (Keep your existing middleware logic for login and role-based permissions)
@@ -183,10 +183,8 @@ export default async function middleware(req: NextRequest) {
 
   // If authenticated worker trying to access auth routes, redirect to their default path
   if (session && isAuthRoute) {
-    const redirectPath = getDefaultRedirectForRole(userrole);
-    return NextResponse.redirect(new URL(redirectPath, req.nextUrl));
+    return NextResponse.redirect(new URL("/", req.nextUrl));
   }
-
   // Check role-based permissions for protected routes
   const requiredRoles = routePermissions[path];
   if (requiredRoles) {
