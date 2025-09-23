@@ -13,7 +13,9 @@ export default function Loading() {
         { value: "userroles", label: "userroles" },
       ]}
     >
-      <TableSkeleton />;
+      <main>
+        <TableSkeleton />
+      </main>
     </DashboardTabs>
   );
 }
