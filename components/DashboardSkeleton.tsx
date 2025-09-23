@@ -1,7 +1,9 @@
+import DashboardHeader from "./common/dashboradheader";
+
 export function DashboardSkeleton() {
   return (
     <div className="space-y-10">
-      <header className="h-32 animate-pulse rounded-lg bg-gray-200" />
+      <DashboardHeader sections={[]} chartConfigs={[]} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {Array(8)

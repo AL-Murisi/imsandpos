@@ -1,12 +1,14 @@
 import { Suspense } from "react";
 import { verifySession } from "@/lib/dal";
-import { redirect } from "next/navigation";
-import DashboardContent from "./_components/DashboardContent";
+// import { redirect } from "next/navigation";
 // import { ScrollArea } from "@/components/ui/scroll-area";
-import ClientDashboardContent from "./_components/test";
+// import ClientDashboardContent from "./_components/test";
 import dynamic from "next/dynamic";
-import { DashboardSkeleton } from "@/components/DashboardSkeleton";
-
+// import { DashboardSkeleton } from "@/components/DashboardSkeleton";
+const DashboardContent = dynamic(
+  () => import("./_components/DashboardContent"),
+  {},
+);
 interface DashboardContentProps {
   searchParams: Promise<{
     from?: string;
@@ -78,8 +80,8 @@ export default async function Dashboard({
   const result = await response.json();
 
   return (
-    <Suspense fallback={<DashboardSkeleton />}>
-      <ClientDashboardContent result={result} />
-    </Suspense>
+    // <Suspense fallback={<DashboardSkeleton />}>
+    <DashboardContent result={result} />
+    // </Suspense>
   );
 }

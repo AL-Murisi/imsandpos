@@ -70,15 +70,11 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
 
   return (
     <div className="mt-5 p-1">
-      <Suspense
-        fallback={<div className="flex flex-col bg-gray-400">loadin....</div>}
-      >
-        <ProductClient
-          products={products}
-          total={totalCount}
-          formData={formData}
-        />
-      </Suspense>
+      <ProductClient
+        products={products}
+        total={totalCount}
+        formData={formData}
+      />
     </div>
   );
 }

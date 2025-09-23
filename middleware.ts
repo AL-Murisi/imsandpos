@@ -182,9 +182,7 @@ export default async function middleware(req: NextRequest) {
   }
 
   // If authenticated worker trying to access auth routes, redirect to their default path
-  if (session && isAuthRoute) {
-    return NextResponse.redirect(new URL("/", req.nextUrl));
-  }
+
   // Check role-based permissions for protected routes
   const requiredRoles = routePermissions[path];
   if (requiredRoles) {

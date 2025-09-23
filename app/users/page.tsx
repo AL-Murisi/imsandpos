@@ -7,6 +7,7 @@ import UserActivityTable from "./_compoent/userActivityLogs";
 import { getActivityLogs } from "../actions/activitylogs";
 import DashboardTabs from "@/components/common/Tabs";
 import RoleTable from "./userRole/roleTable";
+import Loading from "./loading";
 type Users = {
   searchParams: Promise<{
     from?: string;

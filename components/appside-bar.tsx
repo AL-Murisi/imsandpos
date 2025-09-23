@@ -40,7 +40,6 @@ import {
   CollapsibleTrigger,
 } from "./ui/collapsible";
 import { useAuth } from "@/lib/context/AuthContext";
-import { AiFillProduct } from "react-icons/ai";
 import { ModeToggle } from "./toggoletheme";
 import { logActivity } from "@/app/actions/activitylogs";
 import { usePathname } from "next/navigation";

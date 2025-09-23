@@ -25,17 +25,32 @@ const inter = Inter({
 
 // Add to head
 export const metadata: Metadata = {
-  description: "Complete Inventory Management Solution",
+  title: "IMS - Inventory Management System",
+  description: "Complete Inventory Management and POS Solution",
   generator: "Next.js",
   manifest: "/manifest.json",
-  keywords: ["inventory", "management", "system", "pwa"],
-  authors: [
-    { name: "Your Name" },
-    {
-      name: "Your Name",
-      url: "https://yourwebsite.com",
-    },
+  applicationName: "IMS",
+  keywords: [
+    "inventory",
+    "management",
+    "system",
+    "pos",
+    "pwa",
+    "nextjs",
+    "warehouse",
   ],
+
+  themeColor: "#3b82f6",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default", // "black", "black-translucent", or "default"
+    title: "IMS",
+  },
+  formatDetection: {
+    telephone: true, // 📱 Makes phone numbers tappable
+    email: true,
+    address: true,
+  },
   //icons: [
   //   {
   //     rel: "apple-touch-icon",
@@ -47,24 +62,29 @@ export const metadata: Metadata = {
   //   // Favicon for browsers
   //   { rel: "icon", url: "/favicon.ico" },
   // ],
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "IMS",
-  },
 };
 
+// export const viewport: Viewport = {
+//   themeColor: [
+//     { media: "(prefers-color-scheme: light)", color: "#3b82f6" },
+//     { media: "(prefers-color-scheme: dark)", color: "#1e293b" },
+//   ],
+//   minimumScale: 1,
+//   initialScale: 1,
+//   width: "device-width",
+//   viewportFit: "cover",
+// };
 export const viewport: Viewport = {
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#3b82f6" },
     { media: "(prefers-color-scheme: dark)", color: "#1e293b" },
   ],
-  minimumScale: 1,
-  initialScale: 1,
   width: "device-width",
-  viewportFit: "cover",
+  initialScale: 1,
+  minimumScale: 1,
+  maximumScale: 1, // prevents zoom breaking layout
+  viewportFit: "cover", // for notch devices
 };
-
 export default function RootLayout({
   children,
 }: Readonly<{

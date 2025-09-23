@@ -25,16 +25,33 @@ export async function encrypt(payload: SessionData): Promise<string> {
     .sign(encodedKey);
 }
 
+// export async function decrypt(
+//   session: string | undefined = "",
+// ): Promise<SessionData | null> {
+//   try {
+//     const { payload } = await jwtVerify(session, encodedKey, {
+//       algorithms: ["HS256"],
+//     });
+//     return payload as SessionData;
+//   } catch (error) {
+//     console.log("Failed to verify session", error);
+//     return null;
+//   }
+// }
 export async function decrypt(
   session: string | undefined = "",
 ): Promise<SessionData | null> {
+  if (!session || !session.includes(".")) {
+    // Not a valid JWT format
+    return null;
+  }
+
   try {
     const { payload } = await jwtVerify(session, encodedKey, {
       algorithms: ["HS256"],
     });
     return payload as SessionData;
   } catch (error) {
-    console.log("Failed to verify session", error);
     return null;
   }
 }
@@ -60,5 +77,7 @@ export async function deleteSession() {
 export async function getSession(): Promise<SessionData | null> {
   const cookieStore = await cookies();
   const session = cookieStore.get("session")?.value;
+
+  console.log("🔎 session cookie raw:", session);
   return await decrypt(session);
 }
