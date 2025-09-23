@@ -13,19 +13,17 @@ const AreaChart = dynamic(() => import("recharts").then((m) => m.AreaChart), {
     <div className="h-[324px] w-full animate-pulse rounded-xl bg-gray-200" />
   ),
 });
-
 const Area = dynamic(() => import("recharts").then((m) => m.Area), {
   ssr: false,
 });
-
 const CartesianGrid = dynamic(
   () => import("recharts").then((m) => m.CartesianGrid),
   { ssr: false },
 );
-
 const XAxis = dynamic(() => import("recharts").then((m) => m.XAxis), {
   ssr: false,
 });
+
 import {
   Card,
   CardAction,

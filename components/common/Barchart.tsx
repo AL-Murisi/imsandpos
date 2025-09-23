@@ -180,25 +180,11 @@
 //       </CardFooter>
 //     </Card>
 //   );
-// }
-"use client";
+// }"use client";
 
 import dynamic from "next/dynamic";
-const BarChart = dynamic(() => import("recharts").then((m) => m.BarChart), {
-  ssr: false,
-});
-const XAxis = dynamic(() => import("recharts").then((m) => m.XAxis), {
-  ssr: false,
-});
-const YAxis = dynamic(() => import("recharts").then((m) => m.YAxis), {
-  ssr: false,
-});
-const LabelList = dynamic(() => import("recharts").then((m) => m.LabelList), {
-  ssr: false,
-});
-const Bar = dynamic(() => import("recharts").then((m) => m.Bar), {
-  ssr: false,
-});
+import { useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown, TrendingUp } from "lucide-react";
 
 import {
@@ -215,7 +201,6 @@ import {
   ChartConfig,
 } from "@/components/ui/chart";
 import { SelectField } from "@/components/common/selection";
-
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -224,9 +209,24 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTablePrams } from "@/hooks/useTableParams";
-import { useState } from "react";
+
+// Dynamic imports for Recharts components (client-side only)
+const BarChart = dynamic(() => import("recharts").then((m) => m.BarChart), {
+  ssr: false,
+});
+const XAxis = dynamic(() => import("recharts").then((m) => m.XAxis), {
+  ssr: false,
+});
+const YAxis = dynamic(() => import("recharts").then((m) => m.YAxis), {
+  ssr: false,
+});
+const Bar = dynamic(() => import("recharts").then((m) => m.Bar), {
+  ssr: false,
+});
+const LabelList = dynamic(() => import("recharts").then((m) => m.LabelList), {
+  ssr: false,
+});
 
 type ProductClientProps = {
   data: any[];
@@ -234,7 +234,7 @@ type ProductClientProps = {
   paramKey: string;
   width: string;
   widthco?: string;
-  dataKey: "quantity" | "total"; // 👈 choose between sales or revenue
+  dataKey: "quantity" | "total"; // 👈 sales or revenue
   formData?: {
     warehouses: { id: string; name: string }[];
     categories: { id: string; name: string }[];
@@ -255,10 +255,9 @@ export default function UniversalChart({
       label: dataKey === "quantity" ? "Top Selling" : "Revenue",
       color: "var(--chart-5)",
     },
-    label: {
-      color: "var(--background)",
-    },
+    label: { color: "var(--background)" },
   };
+
   const [date, setData] = useState("");
   const { setParam } = useTablePrams();
   const searchParams = useSearchParams();
@@ -270,11 +269,13 @@ export default function UniversalChart({
     params.set(`${paramKey}`, values);
     router.push(`${pathname}?${params.toString()}`);
   };
+
   const Date = (values: string) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set(`${paramKey}Date`, values);
     router.push(`${pathname}?${params.toString()}`);
   };
+
   const formatNumber = (num: number) => {
     if (num >= 1_000_000)
       return (num / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
@@ -282,23 +283,23 @@ export default function UniversalChart({
     return num.toString();
   };
 
-  // Dynamic keys based on chart type
   const xKey = dataKey === "quantity" ? "name" : "date";
   const labelText =
     dataKey === "quantity"
       ? "Showing the top-selling products by quantity"
       : "Showing revenue trends by date";
+
   const dates = [
     { id: "day", name: "day" },
     { id: "week", name: "week" },
     { id: "month", name: "month" },
     { id: "year", name: "year" },
   ];
+
   return (
     <Card className="bg-accent h-full w-full rounded-2xl shadow-xl/20 shadow-gray-500">
       <CardHeader className="space-y-2">
         <CardTitle>{title}</CardTitle>
-
         {formData && (
           <div className="flex justify-start lg:justify-between">
             <div>
@@ -309,8 +310,8 @@ export default function UniversalChart({
               />
               <SelectField
                 options={dates}
-                onValueChange={(value) => Date(value)}
-                placeholder="date"
+                onValueChange={Date}
+                placeholder="Date"
               />
             </div>
             <div>
@@ -339,13 +340,11 @@ export default function UniversalChart({
           </div>
         )}
       </CardHeader>
-      {/* <ScrollArea className={` w-auto p-2 `}> */}
-      <CardContent className={`${width}`}>
-        <ChartContainer config={chartConfig} className={`h-50 ${widthco} `}>
+      <CardContent className={width}>
+        <ChartContainer config={chartConfig} className={`h-50 ${widthco}`}>
           <BarChart data={data} margin={{ right: 5, left: 5 }}>
             <XAxis dataKey={xKey} />
             <YAxis tickFormatter={formatNumber} />
-
             <ChartTooltip
               content={
                 <ChartTooltipContent
@@ -356,7 +355,6 @@ export default function UniversalChart({
               cursor={false}
               defaultIndex={1}
             />
-
             <Bar
               dataKey={dataKey}
               fill="var(--chart-3)"
@@ -368,14 +366,13 @@ export default function UniversalChart({
                 position="top"
                 offset={3}
                 fontSize={13}
-                fontWeight={"bold"}
+                fontWeight="bold"
                 formatter={(value: any) => formatNumber(Number(value))}
               />
             </Bar>
           </BarChart>
         </ChartContainer>
       </CardContent>
-      {/* </ScrollArea> */}
       <CardFooter className="flex-col items-start gap-2 p-3 text-sm">
         <div className="flex items-center gap-2 leading-none">
           Trending up <TrendingUp className="h-4 w-4" />

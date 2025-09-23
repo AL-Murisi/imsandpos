@@ -40,7 +40,6 @@ export const metadata: Metadata = {
     "warehouse",
   ],
 
-  themeColor: "#3b82f6",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default", // "black", "black-translucent", or "default"

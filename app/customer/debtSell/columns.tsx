@@ -16,10 +16,7 @@ import dynamic from "next/dynamic";
 const CustomDialog = dynamic(() => import("@/components/common/Dailog"), {
   ssr: false,
 });
-// import Debtupdate from "./form";
-const LabelList = dynamic(() => import("recharts").then((m) => m.LabelList), {
-  ssr: false,
-});
+
 interface DebtSaleData {
   id: string;
   totalAmount: string; // As string from FetchDebtSales

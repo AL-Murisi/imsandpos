@@ -1,7 +1,5 @@
 "use client";
 
-import React, { Suspense } from "react";
-
 // Remove these imports from the top of your file
 // import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
 import dynamic from "next/dynamic";
