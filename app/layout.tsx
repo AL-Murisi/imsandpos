@@ -5,6 +5,8 @@ import { ThemeProvider } from "../components/theme-provider";
 import { AuthProvider } from "@/lib/context/AuthContext";
 import ClientLayoutWrapper from "./clientLayoutWrapper";
 import { Analytics } from "@vercel/analytics/next";
+import { Suspense } from "react";
+import TableSkeleton from "@/components/common/TableSkeleton";
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-sans",
@@ -114,6 +116,7 @@ export default function RootLayout({
             <link rel="manifest" href="/manifest.json" />
             <link rel="icon" href="/favicon.ico" sizes="512x512" />
           </header>
+
           <AuthProvider>
             <ClientLayoutWrapper>
               {children} <Analytics />
