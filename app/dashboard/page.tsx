@@ -80,8 +80,8 @@ export default async function Dashboard({
   const result = await response.json();
 
   return (
-    // <Suspense fallback={<DashboardSkeleton />}>
-    <DashboardContent result={result} />
-    // </Suspense>
+    <ScrollArea className="max-h-[100vh] p-2" dir="rtl">
+      <DashboardContent result={result} />
+    </ScrollArea>
   );
 }

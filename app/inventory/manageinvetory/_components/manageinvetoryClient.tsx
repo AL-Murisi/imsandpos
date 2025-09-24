@@ -1,18 +1,16 @@
 "use client";
 
-import { useTablePrams } from "@/hooks/useTableParams";
-import { DataTable } from "@/components/common/test";
-import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import CustomDialog from "@/components/common/Dailog";
 import { Calendar22 } from "@/components/common/DatePicker";
 import { SelectField } from "@/components/common/selection";
+import { DataTable } from "@/components/common/test";
 import { Button } from "@/components/ui/button";
+import { useTablePrams } from "@/hooks/useTableParams";
 import { Plus } from "lucide-react";
-import CustomDialog from "@/components/common/Dailog";
 // import SearchInput from "@/components/common/SearchInput";
-import InvonteryEditFormm from "./form";
 import SearchInput from "@/components/common/searchtest";
-import { inventoryColumns } from "./columns";
+import { inventoryColumns } from "./columnsMovment";
+import InvonteryEditFormm from "./form";
 
 type ProductClientProps = {
   products: any[];
@@ -44,13 +42,13 @@ export default function ManageinvetoryClient({
   } = useTablePrams();
 
   return (
-    <div className="w-full border rounded-2xl p-2 border-amber-500 bg-accent ">
+    <div className="bg-accent w-full rounded-2xl border border-amber-500 p-2">
       {/* <SearchInput
         placeholder={"search"}
         value={globalFilter}
         onSearchChange={(value) => setParam("search", value)}
       /> */}
-      <div className="flex flex-wrap gap-2 p-3 " dir="rtl">
+      <div className="flex flex-wrap gap-2 p-3" dir="rtl">
         <Calendar22 />
         <SearchInput placeholder={"بحث .."} paramKey={"inventorey"} />
         <SelectField

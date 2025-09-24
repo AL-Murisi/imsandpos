@@ -26,7 +26,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import MovemontEditFormm from "./form";
+import MovemontEditFormm from "./formMovement";
+import InvonteryAdjustForm from "./manualadjust";
+import InvonteryEditFormm from "./form";
 
 export const StockMovementColumns: ColumnDef<any>[] = [
   {
@@ -86,10 +88,7 @@ export const StockMovementColumns: ColumnDef<any>[] = [
               <Edit />" منتج"
             </Button>
           </DialogTrigger>
-          <DialogContent
-            className=" overflow-y-auto  text-foreground "
-            dir="rtl"
-          >
+          <DialogContent className="text-foreground overflow-y-auto" dir="rtl">
             <DialogHeader>
               <DialogTitle className="text-center">منتج</DialogTitle>
               {/* {description && (
@@ -99,23 +98,23 @@ export const StockMovementColumns: ColumnDef<any>[] = [
                   )} */}
             </DialogHeader>
 
-            <div className="max-w-4xl mx-auto p-6 relative bg-white text-black shadow rounded-lg">
+            <div className="relative mx-auto max-w-4xl rounded-lg bg-white p-6 text-black shadow">
               {/* Ribbon */}
               <div className="absolute -top-3 -left-3">
-                <div className="bg-blue-500 text-white px-8 py-1 rotate-[-45deg] shadow-md">
+                <div className="rotate-[-45deg] bg-blue-500 px-8 py-1 text-white shadow-md">
                   Adjusted
                 </div>
               </div>
 
               {/* Title */}
-              <h1 className="text-center text-2xl font-bold mb-8">
+              <h1 className="mb-8 text-center text-2xl font-bold">
                 INVENTORY ADJUSTMENT
               </h1>
 
               {/* Details section */}
-              <div className="grid grid-cols-2 mb-6">
-                <div className="text-sm space-y-1">
-                  <div className="flex justify-between ">
+              <div className="mb-6 grid grid-cols-2">
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between">
                     <span>Date</span>
                     <span> {createdAt.toLocaleDateString("ar-EN")}</span>
                   </div>
@@ -221,5 +220,120 @@ export const StockMovementColumns: ColumnDef<any>[] = [
   {
     accessorKey: "warehouse.name",
     header: "اسم المستودع",
+  },
+];
+
+export const inventoryColumns: ColumnDef<any>[] = [
+  {
+    id: "select",
+    header: ({ table }) => (
+      <Checkbox
+        checked={
+          table.getIsAllPageRowsSelected() ||
+          (table.getIsSomePageRowsSelected() && "indeterminate")
+        }
+        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+        aria-label="Select all"
+      />
+    ),
+    cell: ({ row }) => (
+      <Checkbox
+        checked={row.getIsSelected()}
+        onCheckedChange={(value) => row.toggleSelected(!!value)}
+        aria-label="Select row"
+      />
+    ),
+    enableSorting: false,
+    enableHiding: false,
+  },
+  {
+    accessorKey: "#",
+    header: "#",
+    cell: ({ row }) => row.index + 1,
+  },
+  {
+    accessorKey: "product.name",
+    header: "name",
+  },
+  {
+    accessorKey: "warehouse.name",
+    header: "warehouseId",
+  },
+  {
+    accessorKey: "warehouse.location",
+    header: "location",
+  },
+  {
+    accessorKey: "stockQuantity",
+    header: "Stock",
+  },
+  {
+    accessorKey: "reservedQuantity",
+    header: "Reserved",
+  },
+  {
+    accessorKey: "availableQuantity",
+    header: "Available",
+  },
+  {
+    accessorKey: "reorderLevel",
+    header: "Reorder Level",
+  },
+  {
+    accessorKey: "status",
+    header: "status",
+
+    cell: ({ row }) => {
+      let color;
+      if (row.original.stockQuantity > row.original.reorderLevel) {
+        return <Badge className="bg-green-600">{row.original.status}</Badge>;
+      } else if (row.original.stockQuantity >= row.original.reorderLevel) {
+        return <Badge className="bg-yellow-500">{row.original.status}</Badge>;
+      } else {
+        return <Badge className="bg-red-500">{row.original.status}</Badge>;
+      }
+    },
+  },
+  {
+    accessorKey: "createdAt",
+
+    cell: ({ row }) => {
+      const date = row.getValue("createdAt") as Date;
+      return <div>{new Date(date).toLocaleDateString("ar-EG")}</div>;
+    },
+  },
+  {
+    id: "actions",
+    cell: ({ row }) => {
+      const inventory = row.original;
+      return (
+        <div className="flex gap-2 p-2">
+          <CustomDialog
+            trigger={
+              <Button>
+                <Edit />" منتج"
+              </Button>
+            }
+            title=" منتج"
+            description="أدخل تفاصيل المنتج واحفظه"
+          >
+            {/* Pass the formKey to force re-render and reset the form */}
+            <InvonteryEditFormm inventory={inventory} />{" "}
+          </CustomDialog>
+          <CustomDialog
+            trigger={
+              <Button>
+                <Edit />" منتج"
+              </Button>
+            }
+            title=" منتج"
+            description="أدخل تفاصيل المنتج واحفظه"
+          >
+            {/* Pass the formKey to force re-render and reset the form */}
+            <InvonteryAdjustForm inventory={inventory} />{" "}
+          </CustomDialog>
+        </div>
+      );
+    },
   },
 ];

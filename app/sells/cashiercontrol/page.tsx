@@ -58,7 +58,6 @@ export default async function Cart({ searchParams }: Props) {
     // fetchProductStats("admin"),
     // Fetchusers(true),
   ]);
-  console.log(formData);
 
   // Hydrate Redux store
 

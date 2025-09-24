@@ -78,6 +78,5 @@ export async function getSession(): Promise<SessionData | null> {
   const cookieStore = await cookies();
   const session = cookieStore.get("session")?.value;
 
-  console.log("🔎 session cookie raw:", session);
   return await decrypt(session);
 }

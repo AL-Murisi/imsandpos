@@ -1,10 +1,10 @@
-import { DashboardSkeleton } from "@/components/DashboardSkeleton";
+import TableSkeleton from "@/components/common/TableSkeleton";
 import React from "react";
 
 export default function Loading() {
   return (
-    <main>
-      <DashboardSkeleton />
-    </main>
+    <div className="flex flex-col p-3">
+      <TableSkeleton />
+    </div>
   );
 }

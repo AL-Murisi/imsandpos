@@ -1,23 +1,13 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef, useMemo } from "react"; // Added useMemo
-import { Input } from "@/components/ui/input";
-import { fetchAllFormData, fetchProduct } from "@/app/actions/roles";
-import CustomDialog from "@/components/common/Dailog";
-import { Loader2, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
 // import ProductForm from "./form";
 import { Calendar22 } from "@/components/common/DatePicker";
 import { SelectField } from "@/components/common/selection";
-import { useForm } from "react-hook-form";
-import { Prisma } from "@prisma/client";
-import { SortingState } from "@tanstack/react-table";
 import { DataTable } from "@/components/common/test";
 // import InvonteryEditFormm from "./form";
-import { getStockMovements } from "@/app/actions/warehouse";
-import { StockMovementColumns } from "./columns";
 import SearchInput from "@/components/common/searchtest";
 import { useTablePrams } from "@/hooks/useTableParams";
+import { StockMovementColumns } from "./columnsMovment";
 
 type DateRange = {
   from: Date | null;
@@ -66,62 +56,19 @@ export default function ManagemovementClient({
   } = useTablePrams();
 
   return (
-    <div className="w-full   border rounded-2xl p-2 border-amber-500 bg-accent">
-      <div className="flex  flex-col md:flex-row gap-2 p-2 " dir="rtl">
+    <div className="bg-accent w-full rounded-2xl border border-amber-500 p-2">
+      <div className="flex flex-col gap-2 p-2 md:flex-row" dir="rtl">
         <Calendar22 />
         <SearchInput placeholder={"بحث "} paramKey={"movement"} />
 
-        {/* <SelectField
-          options={formData.categories}
-          onValueChange={(value) => setValue("categoryId", value)}
-          value={watchedCategoryId ?? ""}
-          placeholder="Category"
-        /> */}
         <SelectField
           options={formData.warehouses}
           onValueChange={(value) => setParam("warehouseId", value)}
           value={warehouseId ?? ""}
           placeholder="Warehouse"
         />
-        {/* <SelectField
-          options={formData.suppliers}
-          onValueChange={(value) => setValue("supplierId", value)}
-          value={watchedSupplierId ?? ""}
-          placeholder="Supplier"
-        /> */}
-        {/* <SelectField
-          options={statusFilterOptions}
-          onValueChange={(value) => setValue("status", value)}
-          value={watchedStatus ?? ""}
-          placeholder="Status"
-        />
-        <SelectField
-          options={typeFilterOptions}
-          onValueChange={(value) => setValue("type", value)}
-          value={watchedType ?? ""}
-          placeholder="Type"
-        /> */}
-        {/* <div>
-          <CustomDialog
-            trigger={
-              <Button>
-                <Plus />
-                إضافة منتج
-              </Button>
-            }
-            title="إضافة منتج"
-            description="أدخل تفاصيل المنتج واحفظه"
-          >
-            <InvonteryEditFormm />
-          </CustomDialog>
-        </div> */}
-      </div>{" "}
+      </div>
       <div>
-        {/* {loading ? (
-          <div className="flex justify-center items-center h-40">
-            <Loader2 className="h-8 w-8 animate-spin" />
-          </div>
-        ) : products.length > 0 ? ( */}
         <DataTable
           data={products}
           columns={StockMovementColumns}

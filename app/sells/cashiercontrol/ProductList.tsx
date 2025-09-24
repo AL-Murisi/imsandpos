@@ -166,7 +166,7 @@ export default function ProductsList({
                       {/* Carton */}
                       <div className="flex items-center justify-between gap-2 p-1">
                         <span className="w-8 text-left">
-                          {FormatPrice(Number(products.cartons))}
+                          {FormatPrice(Number(products.availableCartons))}
                         </span>
                         <span className="flex-1 text-center">كرتون</span>
                         <span className="w-16 text-right">
@@ -177,7 +177,7 @@ export default function ProductsList({
                       {/* Packet */}
                       <div className="flex items-center justify-between gap-2 p-1">
                         <span className="w-8 text-left">
-                          {FormatPrice(Number(products.packets))}
+                          {FormatPrice(Number(products.availablePackets))}
                         </span>
                         <span className="flex-1 text-center">حزمة</span>
                         <span className="w-16 text-right">
@@ -189,7 +189,7 @@ export default function ProductsList({
                       {products.pricePerUnit !== undefined && (
                         <div className="flex items-center justify-between gap-2 p-1">
                           <span className="w-8 text-left">
-                            {FormatPrice(Number(products.units))}
+                            {FormatPrice(Number(products.availableUnits))}
                           </span>
                           <span className="flex-1 text-center">وحدة</span>
                           <span className="w-16 text-right">

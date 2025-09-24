@@ -1,244 +1,3 @@
-// "use client";
-// import React, { useMemo, useState, useEffect } from "react";
-// import { Button } from "@/components/ui/button";
-// import CustomDialog from "@/components/common/Dailog";
-// import { Separator } from "@/components/ui/separator";
-// import { Input } from "@/components/ui/input";
-// import { Label } from "@/components/ui/label";
-// import { Badge } from "@/components/ui/badge";
-// import { useForm, SubmitHandler } from "react-hook-form"; // Import SubmitHandler
-// import { z } from "zod";
-// import { zodResolver } from "@hookform/resolvers/zod";
-// import { CashierItem, CashierSchema, ProductForSale } from "@/lib/zodType";
-// import { getAllactiveproductsForSale } from "@/app/actions/createProduct";
-// import {
-//   addToCart,
-//   CartItem,
-//   changeSellingUnit,
-//   clearCart,
-//   removeFromCart,
-//   setDiscount,
-//   updateQty,
-// } from "@/lib/slices/cartSlice";
-// import {
-//   Table,
-//   TableBody,
-//   TableCell,
-//   TableHead,
-//   TableHeader,
-//   TableRow,
-// } from "@/components/ui/table";
-// import { updateProductSock } from "@/lib/slices/productsSlice";
-// import { Minus, Package2Icon, Plus, Trash2Icon } from "lucide-react";
-// import { useAppDispatch, useAppSelector } from "@/lib/store";
-// import SearchInput from "@/components/common/searchtest";
-// import { selectCartItems, selectCartTotals } from "@/lib/selectors";
-// import { useTablePrams } from "@/hooks/useTableParams";
-// import { useAuth } from "@/lib/context/AuthContext";
-// // Define the type for the form fields based on CashierSchema
-// type Cashier = z.infer<typeof CashierSchema>;
-// // Payment.tsx
-// export interface PaymentProps {
-//   users: {
-//     id?: string;
-//     name?: string;
-//     phoneNumber?: string | null;
-//     totalDebt?: number;
-//   } | null; // ✅ allow null
-// }
-
-// export default function Payment({
-//   users,
-// }: // onSuccess, // ✅ callback
-
-// PaymentProps) {
-//   // onSuccess?: () => void; // ✅ declare prop
-//   // Define the default values that match CashierFormValues directly.
-//   // Ensure 'paidAt' is initialized as a Date object.
-//   const { user, hasAnyRole, logout } = useAuth();
-
-//   const {
-//     register,
-//     handleSubmit,
-//     watch,
-//     formState: { errors },
-//     reset,
-//     setValue,
-//   } = useForm<Cashier>({
-//     resolver: zodResolver(CashierSchema),
-//   });
-//   const dispatch = useAppDispatch();
-//   const itempayment = useAppSelector((s) => s.cart);
-//   const items = useAppSelector(selectCartItems);
-//   const receivedAmount = watch("receivedAmount");
-//   const totalBeforeDiscount = watch("totalBeforeDiscount");
-
-//   const totals = useAppSelector(selectCartTotals);
-//   const calculatedChange =
-//     receivedAmount >= totals.totalAfter
-//       ? receivedAmount - totals.totalAfter
-//       : 0;
-
-//   const payment: Cashier = {
-//     cart: items,
-
-//     discountValue: itempayment.discountValue,
-//     discountType: itempayment.discountType,
-//     totalBeforeDiscount: totals.totalBefore,
-//     totalDiscount: totals.discount,
-//     totalAfterDiscount: totals.totalAfter,
-//     cashierId: user?.userId ?? "",
-//     customerId: users?.id,
-//     saleNumber: `SALE-${Date.now()}`,
-//     receivedAmount: receivedAmount,
-//     change: calculatedChange,
-//     paidAt: new Date(),
-//   };
-
-//   const {
-//     pagination,
-//     sorting,
-//     globalFilter,
-//     setPagination,
-//     setSorting,
-//     setGlobalFilter,
-//     warehouseId,
-//     supplierId,
-//     categoryId,
-//     setParam,
-//   } = useTablePrams();
-//   // Ensure the onSubmit function matches SubmitHandler<CashierFormValues>
-//   const handelpayment = async () => {
-//     console.log(payment);
-//     try {
-//       const response = await fetch("/api/cashier", {
-//         method: "POST",
-//         headers: { "Content-Type": "application/json" },
-//         body: JSON.stringify(payment),
-//       });
-
-//       if (!response.ok) {
-//         const errorData = await response.json();
-//         throw new Error(errorData.message || "خطأ أثناء المعالجة");
-//       }
-//       setParam("All");
-//       const result = await response.json();
-//       alert("تم الدفع بنجاح!");
-//       console.log("Sale Result:", result);
-//       dispatch(clearCart()),
-//         dispatch(
-//           setDiscount({
-//             type: "fixed",
-//             value: 0,
-//           })
-//         );
-
-//       // onSuccess?.();
-//     } catch (err: any) {
-//       alert(`حدث خطأ: ${err.message}`);
-//       console.error("Error during payment:", err);
-//     }
-//   };
-
-//   const getItemPrice = (item: CashierItem) => {
-//     switch (item.sellingUnit) {
-//       case "unit":
-//         return item.pricePerUnit ?? 0;
-//       case "packet":
-//         return item.pricePerPacket ?? 0;
-//       case "carton":
-//         return item.pricePerCarton ?? 0;
-//       default:
-//         return 0;
-//     }
-//   };
-
-//   function addtoPayment(): any {
-//     throw new Error("Function not implemented.");
-//   }
-
-//   return (
-//     <>
-//       <CustomDialog
-//         trigger={
-//           <Button
-//             variant="outline"
-//             className="flex-1 py-3 rounded-md shadow-md hover:shadow-lg transition-shadow border-amber-500 text-amber-600 hover:bg-amber-50 dark:border-amber-400 dark:text-amber-400 dark:hover:bg-amber-900"
-//           >
-//             ادفع الآن
-//           </Button>
-//         }
-//         title="نظام إدارة المخزون"
-//         description="إيصال بيع"
-//       >
-//         <div className="text-mdfont-mono text-right w-full p-4 rounded-md ">
-//           <SearchInput placeholder={"customer بحث "} paramKey="users" />
-//           {/* <SearchInput placeholder={"بحث "} paramKey="productr" /> */}
-
-//           <div className="text-md font-mono text-right w-full  mx-auto p-4 rounded-md bg-white  text-black border border-gray-300 dark:border-gray-700">
-//             <div className="w-full  overflow-auto border border-amber-300  rounded-2xl pb-2.5">
-//               <div className="flex justify-between items-center text-lg mb-1 px-2">
-//                 {/* اسم المتجر */}
-//                 <div className="flex items-center gap-2">
-//                   {/* <img
-//                     src="/logo.png" // ضع مسار شعار شركتك هنا
-//                     alt="شعار الشركة"
-//                     className="w-10 h-10 object-contain"
-//                   /> */}
-//                   <Package2Icon />
-//                   <span className="font-bold text-lg">اسم الشركة هنا</span>
-//                 </div>
-
-//                 {/* عنوان الإيصال أو المتجر */}
-//                 <Label>اسم المتجر</Label>
-//               </div>
-
-//               <Separator className="my-2 bg-black" />
-//               <div className="flex justify-between mb-1">
-//                 <Label>التاريخ:</Label>
-//                 <Label>{new Date().toLocaleDateString("ar-EG")}</Label>
-//               </div>
-//               <div className="flex justify-between mb-2">
-//                 <Label>الوقت:</Label>
-//                 <Label>
-//                   {new Date().toLocaleTimeString("ar-EG", { hour12: false })}
-//                 </Label>
-//               </div>
-//               <div>
-//                 <Label>
-//                   الكاشير: <Badge>محمد</Badge>
-//                 </Label>
-//               </div>
-
-//               <div className="mt-1">
-//                 <Label>
-//                   رقم الفاتورة: <Badge>{payment.saleNumber}</Badge>
-//                 </Label>
-//               </div>
-
-//               <Separator className="my-2 bg-amber-300" />
-//               {/* Totals */}
-
-//           <Separator className="my-2" />
-
-//           <div className="grid grid-cols-2 gap-4">
-//             <Button
-//               onClick={handelpayment}
-//               className={`bg-popover-foreground text-background ${
-//                 receivedAmount >= totals.totalAfter
-//                   ? "hover:bg-green-600"
-//                   : "opacity-50 cursor-not-allowed"
-//               }`}
-//               type="submit"
-//             >
-//               تأكيد الدفع
-//             </Button>
-//           </div>
-//         </div>
-//       </CustomDialog>
-//     </>
-//   );
-// }
 "use client";
 import CustomDialog from "@/components/common/Dailog";
 import SearchInput from "@/components/common/searchtest";
@@ -323,7 +82,7 @@ export default function Payment({ users }: PaymentProps) {
     }
   };
   const [saleNumber] = React.useState(
-    () => `SALE-${Date.now().toString().slice(-5)}`
+    () => `SALE-${Date.now().toString().slice(-5)}`,
   );
   const {
     pagination,
@@ -428,12 +187,12 @@ export default function Payment({ users }: PaymentProps) {
           })}</div>
           <div>👨‍💼 الكاشير: ${user?.name ?? "غير معروف"}</div>
           <div>🧾 رقم الفاتورة: ${saleNumber}</div>
-          <div>الكاشير: <span class="badge">${
+          <div>customer: <span class="badge">${
             users?.name ?? "غير معروف"
           }</span></div>
         </div>
 
-        <table>
+        <table class="border-radius: 12px">
           <thead>
             <tr>
             <th>م</th>
@@ -450,7 +209,7 @@ export default function Payment({ users }: PaymentProps) {
               .map(
                 (item, index) => `
               <tr>
-  <td>${index + 1}</td>
+                <td>${index + 1}</td>
                 <td>${item.name}</td>
                 <td>${item.warehousename}</td>
                 <td>${item.selectedQty}</td>
@@ -458,7 +217,7 @@ export default function Payment({ users }: PaymentProps) {
                 <td>${getItemPrice(item)}</td>
                 <td>${(getItemPrice(item) * item.selectedQty).toFixed(2)}</td>
               </tr>
-            `
+            `,
               )
               .join("")}
           </tbody>
@@ -471,7 +230,7 @@ export default function Payment({ users }: PaymentProps) {
             <div class="flex gap-4 text-sm my-1">
               <span class="totals-label">الإجمالي:</span>
               <span class="totals-value">${totals.totalBefore.toFixed(
-                2
+                2,
               )} ﷼</span>
             </div>
             <div class="flex gap-4 text-sm my-1">
@@ -481,7 +240,7 @@ export default function Payment({ users }: PaymentProps) {
             <div class="flex gap-4 text-sm my-1">
               <span class="totals-label">المبلغ المستحق:</span>
               <span class="totals-value">${totals.totalAfter.toFixed(
-                2
+                2,
               )} ﷼</span>
             </div>
             <div class="flex gap-4 text-sm my-1">
@@ -541,7 +300,7 @@ export default function Payment({ users }: PaymentProps) {
       trigger={
         <Button
           variant="outline"
-          className="flex-1 py-3 rounded-md shadow-md border-amber-500 text-amber-600 hover:bg-amber-50"
+          className="flex-1 rounded-md border-amber-500 py-3 text-amber-600 shadow-md hover:bg-amber-50"
         >
           ادفع الآن
         </Button>
@@ -551,12 +310,12 @@ export default function Payment({ users }: PaymentProps) {
     >
       {" "}
       <SearchInput placeholder={"customer بحث "} paramKey="users" />
-      <div id="receipt-content" className="bg-white text-black p-4 rounded-md">
+      <div id="receipt-content" className="rounded-md bg-white p-4 text-black">
         {/* HEADER */}
-        <div className="flex justify-between items-center mb-2">
+        <div className="mb-2 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Package2Icon />
-            <span className="font-bold text-lg">اسم الشركة</span>
+            <span className="text-lg font-bold">اسم الشركة</span>
           </div>
           <Label>المتجر الرئيسي</Label>
         </div>
@@ -581,13 +340,13 @@ export default function Payment({ users }: PaymentProps) {
         <Table className="">
           <TableHeader className="border-amber-300 border-l-red-400">
             <TableRow className="border-amber-300">
-              <TableHead className="text-right border-amber-300">
+              <TableHead className="border-amber-300 text-right">
                 منتج
               </TableHead>
-              <TableHead className="text-right border-amber-300">
+              <TableHead className="border-amber-300 text-right">
                 المنتج
               </TableHead>
-              <TableHead className="text-right "> مستودع</TableHead>
+              <TableHead className="text-right"> مستودع</TableHead>
               <TableHead className="text-right"> الكمية </TableHead>
               <TableHead className="text-right"> النوع</TableHead>
               <TableHead className="text-right"> السعر</TableHead>
@@ -622,10 +381,10 @@ export default function Payment({ users }: PaymentProps) {
                             sellingUnit: item.sellingUnit,
                             quantity: 1,
                             action: "mins",
-                          })
+                          }),
                         );
                       }}
-                      className="p-1 rounded bg-primary text-background disabled:bg-gray-400"
+                      className="bg-primary text-background rounded p-1 disabled:bg-gray-400"
                     >
                       <Minus size={16} />
                     </button>
@@ -640,10 +399,10 @@ export default function Payment({ users }: PaymentProps) {
                             sellingUnit: item.sellingUnit,
                             quantity: 1,
                             action: "",
-                          })
+                          }),
                         );
                       }}
-                      className="w-12 px-2 py-1 text-center border rounded text-black dark:text-white bg-white dark:bg-gray-800"
+                      className="w-12 rounded border bg-white px-2 py-1 text-center text-black dark:bg-gray-800 dark:text-white"
                       min={1}
                       // max={maxQty}
                     />
@@ -656,10 +415,10 @@ export default function Payment({ users }: PaymentProps) {
                             sellingUnit: item.sellingUnit,
                             quantity: 1,
                             action: "plus",
-                          })
+                          }),
                         );
                       }}
-                      className="p-1 bg-primary text-background rounded disabled:bg-gray-400"
+                      className="bg-primary text-background rounded p-1 disabled:bg-gray-400"
                     >
                       <Plus size={16} />
                     </button>
@@ -678,7 +437,7 @@ export default function Payment({ users }: PaymentProps) {
                               unitsPerPacket: item.unitsPerPacket,
                             },
                             qty: item.selectedQty,
-                          })
+                          }),
                         )
                       }
                     >
@@ -693,7 +452,7 @@ export default function Payment({ users }: PaymentProps) {
                   <TableCell className="w-16 text-center text-sm whitespace-nowrap">
                     ${(itemPrice * item.selectedQty).toFixed(2)}
                   </TableCell>
-                  <TableCell className="w-12 flex justify-center">
+                  <TableCell className="flex w-12 justify-center">
                     <Button
                       onClick={() => {
                         dispatch(removeFromCart(item.id));
@@ -710,32 +469,32 @@ export default function Payment({ users }: PaymentProps) {
           </TableBody>
         </Table>
         <Separator className="my-2 bg-black" />
-        <div className="flex flex-row justify-between  ">
-          <div className="flex  flex-col justify-end px-3 ">
-            <div className="flex gap-4 text-sm my-1">
+        <div className="flex flex-row justify-between">
+          <div className="flex flex-col justify-end px-3">
+            <div className="my-1 flex gap-4 text-sm">
               <Label className="w-20">الإجمالي:</Label>
-              <Label className="border-2 border-black  h-10 w-40 rounded-2xl  p-2">
+              <Label className="h-10 w-40 rounded-2xl border-2 border-black p-2">
                 {totals.totalBefore.toFixed(2)} ﷼
               </Label>
             </div>
             {/* <Separator className="my-2 w-30 bg-black" /> */}
-            <div className="flex gap-4 text-sm my-1">
+            <div className="my-1 flex gap-4 text-sm">
               <Label className="w-20">الخصم:</Label>
-              <Label className="border-2 border-black  h-10 w-40 rounded-2xl  p-2">
+              <Label className="h-10 w-40 rounded-2xl border-2 border-black p-2">
                 {totals.discount.toFixed(2)} ﷼
               </Label>
             </div>
             {/* <Separator className="my-2 bg-black" /> */}
-            <div className="flex gap-4 text-sm my-1">
+            <div className="my-1 flex gap-4 text-sm">
               <Label className="w-20">المبلغ المستحق:</Label>
-              <Label className="border-2 border-black  h-10 w-40 rounded-2xl  p-2 ">
+              <Label className="h-10 w-40 rounded-2xl border-2 border-black p-2">
                 {totals.totalAfter.toFixed(2)} ﷼
               </Label>
             </div>
             {/* <Separator className="my-2 bg-black" /> */}
-            <div className="flex gap-4 text-sm my-1">
+            <div className="my-1 flex gap-4 text-sm">
               <Label className="w-20">المبلغ المدفوع:</Label>
-              <Label className="border-2 border-black  h-10 w-40 rounded-2xl p-2">
+              <Label className="h-10 w-40 rounded-2xl border-2 border-black p-2">
                 {receivedAmount !== undefined && !isNaN(receivedAmount)
                   ? receivedAmount.toFixed(2)
                   : 0}{" "}
@@ -744,23 +503,23 @@ export default function Payment({ users }: PaymentProps) {
             </div>
             {/* <Separator className="my-2 bg-black" /> */}
             <div
-              className="flex gap-4 text-sm my-1"
+              className="my-1 flex gap-4 text-sm"
               style={{
                 color: calculatedChange > 0 ? "green" : "grey", // dark green or gray
               }}
             >
               <Label className="w-20">المتبقي للعميل:</Label>
-              <Label className="border-2 border-black h-10 w-40 rounded-2xl  p-2">
+              <Label className="h-10 w-40 rounded-2xl border-2 border-black p-2">
                 {calculatedChange.toFixed(2)} ﷼
               </Label>
             </div>
           </div>
 
-          <div className="flex flex-col justify-start ">
+          <div className="flex flex-col justify-start">
             {users && users.totalDebt && users.totalDebt > 0 && (
               <div className="flex gap-2">
                 <Label className="">ديون سابقة:</Label>
-                <Label className="border-2 border-black h-10 w-40 rounded-2xl  p-2">
+                <Label className="h-10 w-40 rounded-2xl border-2 border-black p-2">
                   {users.totalDebt} ﷼
                 </Label>
               </div>
@@ -768,12 +527,12 @@ export default function Payment({ users }: PaymentProps) {
           </div>
         </div>
         <Separator className="my-2 bg-black" />
-        <div className="text-center text-xs mt-4">
+        <div className="mt-4 text-center text-xs">
           <p>شكرًا لتسوقك معنا!</p>
         </div>
       </div>
       <Separator className="my-2 bg-black" />
-      <div className="space-y-2 max-w-md">
+      <div className="max-w-md space-y-2">
         <Label htmlFor="receivedAmount">المبلغ المستلم:</Label>
         <Input
           id="receivedAmount"
@@ -788,17 +547,17 @@ export default function Payment({ users }: PaymentProps) {
           placeholder="أدخل المبلغ المستلم"
         />
         {receivedAmount === totals.totalAfter && (
-          <p className="text-green-600 text-sm font-semibold">
+          <p className="text-sm font-semibold text-green-600">
             ✅ المبلغ مطابق تمامًا
           </p>
         )}
         {receivedAmount !== totals.totalAfter && receivedAmount > 0 && (
-          <p className="text-yellow-600 text-sm">
+          <p className="text-sm text-yellow-600">
             ⚠️ تأكد من أن المبلغ المدفوع يساوي المبلغ المستحق
           </p>
         )}
         {errors.receivedAmount && (
-          <p className="text-red-500 text-sm">
+          <p className="text-sm text-red-500">
             {errors.receivedAmount.message}
           </p>
         )}
@@ -807,10 +566,10 @@ export default function Payment({ users }: PaymentProps) {
         <p className="text-center text-xs">شكرًا لتسوقك معنا!</p>
       </div>
       {/* FOOTER BUTTONS */}
-      <div className="flex gap-3 mt-4 justify-between">
+      <div className="mt-4 flex justify-between gap-3">
         <Button
           onClick={handelpayment}
-          className="bg-green-600 hover:bg-green-700 text-white"
+          className="bg-green-600 text-white hover:bg-green-700"
         >
           تأكيد الدفع
         </Button>

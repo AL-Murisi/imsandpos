@@ -6,7 +6,7 @@ import {
 } from "@/app/actions/debtSells";
 import { verifySession } from "@/lib/dal";
 import { Prisma } from "@prisma/client";
-import SellsDashboardClient from "./text";
+import SellsDashboardClient from "./sellsDasboard";
 export default async function SellsDashboard() {
   const { userId, userRole } = await verifySession();
 
@@ -34,7 +34,6 @@ export default async function SellsDashboard() {
       user={currentUser}
       debtSales={data}
       recentSales={data}
-      // topSales={top}
       salesSummary={salesSummary}
       productStats={productStats}
     />

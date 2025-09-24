@@ -103,7 +103,7 @@ export function Selection({
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="border-primary w-full justify-between rounded-2xl border-2 dark:border-amber-50"
+            className="border-primary w-full justify-between rounded-xl border-2 dark:border-amber-50"
           >
             <span className="text-muted-foreground">{placeholder}</span>
 

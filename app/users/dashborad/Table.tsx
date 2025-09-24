@@ -42,7 +42,7 @@ export default function UserClinet({ users, total, role }: ProductClientProps) {
     <div className="flex flex-col" dir="rtl">
       {" "}
       {/* Add dir="rtl" for proper RTL layout */}
-      <div className="flex flex-1/5 gap-2">
+      <div className="flex flex-wrap gap-2">
         <Calendar22 />
         <SearchInput placeholder={"بحث"} paramKey={"users"} />{" "}
         {/* Translate placeholder */}

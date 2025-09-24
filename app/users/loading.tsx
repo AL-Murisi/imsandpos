@@ -13,9 +13,9 @@ export default function Loading() {
         { value: "userroles", label: "userroles" },
       ]}
     >
-      <main>
+      <div className="flex flex-col p-3">
         <TableSkeleton />
-      </main>
+      </div>
     </DashboardTabs>
   );
 }

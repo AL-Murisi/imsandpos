@@ -11,6 +11,7 @@ import {
 import { AppSidebar } from "@/components/appside-bar";
 import { Provider } from "react-redux";
 import { store } from "@/lib/store";
+import Appheader from "./AppHeader/appheader";
 
 export default function ClientLayoutWrapper({
   children,
@@ -53,20 +54,18 @@ export default function ClientLayoutWrapper({
       }
     >
       <SidebarInset>
-        {/* */}
         <div className="flex flex-col">
           <div className="@container/main flex flex-col">
-            <Provider store={store}>{children}</Provider>
+            <Provider store={store}>
+              {" "}
+              {/* <Appheader /> */}
+              {children}
+            </Provider>
           </div>
         </div>
-      </SidebarInset>
+      </SidebarInset>{" "}
       <SidebarTrigger />
-      <AppSidebar
-        className="text-2xl"
-        side="right"
-        dir="rtl"
-        variant="sidebar"
-      />
+      <AppSidebar className="text-2xl" side="right" dir="rtl" />
     </SidebarProvider>
     // </div>
   );

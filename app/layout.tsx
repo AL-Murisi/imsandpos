@@ -5,8 +5,6 @@ import { ThemeProvider } from "../components/theme-provider";
 import { AuthProvider } from "@/lib/context/AuthContext";
 import ClientLayoutWrapper from "./clientLayoutWrapper";
 import { Analytics } from "@vercel/analytics/next";
-import { Suspense } from "react";
-import TableSkeleton from "@/components/common/TableSkeleton";
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-sans",
@@ -65,27 +63,17 @@ export const metadata: Metadata = {
   // ],
 };
 
-// export const viewport: Viewport = {
-//   themeColor: [
-//     { media: "(prefers-color-scheme: light)", color: "#3b82f6" },
-//     { media: "(prefers-color-scheme: dark)", color: "#1e293b" },
-//   ],
-//   minimumScale: 1,
-//   initialScale: 1,
-//   width: "device-width",
-//   viewportFit: "cover",
-// };
 export const viewport: Viewport = {
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#3b82f6" },
     { media: "(prefers-color-scheme: dark)", color: "#1e293b" },
   ],
-  width: "device-width",
-  initialScale: 1,
   minimumScale: 1,
-  maximumScale: 1, // prevents zoom breaking layout
-  viewportFit: "cover", // for notch devices
+  initialScale: 1,
+  width: "device-width",
+  viewportFit: "cover",
 };
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -107,7 +95,7 @@ export default function RootLayout({
           as="font"
           type="font/woff2"
           crossOrigin="anonymous"
-        /> */}{" "}
+        /> */}
             {/* <link
           rel="stylesheet"
           href="https://tailwindcss.com"

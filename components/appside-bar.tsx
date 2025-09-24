@@ -218,7 +218,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   };
 
   return (
-    <Sidebar collapsible="icon" {...props} className=" ">
+    <Sidebar
+      collapsible="icon"
+      {...props}
+      className="dark:bg-accent dark:text-foreground text-sidebar bg-gray-800"
+    >
       <SidebarContent className="dark:bg-accent dark:text-foreground text-sidebar bg-gray-800">
         <SidebarGroup>
           <div className="flex items-center gap-2 transition-all">

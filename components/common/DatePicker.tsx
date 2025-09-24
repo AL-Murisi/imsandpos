@@ -106,7 +106,7 @@ export function Calendar22() {
     });
   };
   return (
-    <div className="border-primary flex flex-col gap-3 rounded-[10px] border">
+    <div className="flex flex-col gap-3 rounded-[10px]">
       {/* <Label htmlFor="range-date" className="px-1">
         Select date
       </Label> */}
@@ -116,7 +116,7 @@ export function Calendar22() {
             aria-label="time"
             variant="outline"
             id="range-date"
-            className="w-64 justify-end font-normal"
+            className="border-primary w-64 justify-end font-normal"
           >
             <span className="truncate text-right">{formatted}</span>
             {date?.from || date?.to ? (

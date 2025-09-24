@@ -1,16 +1,13 @@
-import { fetchAllFormData, fetchInvontery } from "@/app/actions/roles";
-import CardContainer from "@/components/common/CardContainer";
+import { fetchAllFormData } from "@/app/actions/roles";
 
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { DataTable } from "@/components/common/Table";
-import { getStockMovements, getInventoryById } from "@/app/actions/warehouse";
-import ManageinvetoryClient from "./_components/manageinvetoryClient";
-import ManagemovementClient from "./_components/stockMovement/getMovementhistry";
-import { Prisma } from "@prisma/client";
-import { Calendar22 } from "@/components/common/DatePicker";
+import { getInventoryById, getStockMovements } from "@/app/actions/warehouse";
 import DashboardTabs from "@/components/common/Tabs";
-import { SortingState } from "@tanstack/react-table";
+import { TabsContent } from "@/components/ui/tabs";
 import { ParsedSort } from "@/hooks/sort";
+import { Prisma } from "@prisma/client";
+import { SortingState } from "@tanstack/react-table";
+import ManagemovementClient from "./_components/getMovementhistry";
+import ManageinvetoryClient from "./_components/manageinvetoryClient";
 // import { StockMovementColumns } from "./stockMovement/columns";
 type DashboardProps = {
   searchParams: Promise<{
@@ -68,7 +65,7 @@ export default async function Manageinvetory({ searchParams }: DashboardProps) {
       to,
       pageIndex,
       pageSize,
-      parsedSort
+      parsedSort,
     );
   const input: any = {
     supplierId,
@@ -82,7 +79,7 @@ export default async function Manageinvetory({ searchParams }: DashboardProps) {
       from,
       to,
       pageIndex,
-      pageSize
+      pageSize,
     );
   const data = await fetchAllFormData();
   // const data = await getInventoryById();

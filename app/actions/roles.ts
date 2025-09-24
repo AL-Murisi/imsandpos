@@ -641,8 +641,6 @@ export async function fetchRoles(
     take: pageSize,
   });
 
-  console.log(roles);
-
   return roles; // ✅ Fully typed & validated
 } // Add these server actions to your existing roles.ts file
 

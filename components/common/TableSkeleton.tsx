@@ -3,7 +3,7 @@ import { Skeleton } from "../ui/skeleton";
 
 export default function TableSkeleton() {
   return (
-    <div className="space-y-1">
+    <div className="space-y-1" dir="rtl">
       {/* Top Filters + Actions */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap gap-2">

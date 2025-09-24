@@ -27,7 +27,10 @@ export default function DashboardHeader({
   const searchParams = useSearchParams();
   const card = searchParams.get("card") || "all";
   return (
-    <div className="top-0 z-10 flex items-center justify-between rounded-2xl py-4">
+    <div
+      className="top-0 z-10 flex items-center justify-between rounded-2xl py-4"
+      dir="rtl"
+    >
       {/* Left side: Logo */}
       <div className="flex items-center space-x-2">
         {/* <img
