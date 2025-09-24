@@ -101,6 +101,9 @@ export default function RootLayout({
           href="https://tailwindcss.com"
           data-precedence="next"
         /> */}
+            <link rel="apple-touch-icon" href="/apple-icon.png" />
+            <link rel="icon" type="image/svg+xml" href="/icon0.svg" />
+
             <link rel="manifest" href="/manifest.json" />
             <link rel="icon" href="/favicon.ico" sizes="512x512" />
           </header>
