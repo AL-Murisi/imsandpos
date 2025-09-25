@@ -3,7 +3,7 @@ import {
   FetchDebtSales,
   fetchProductStats,
   fetchSalesSummary,
-} from "@/app/actions/debtSells";
+} from "@/app/actions/sells";
 import { verifySession } from "@/lib/dal";
 import { Prisma } from "@prisma/client";
 import SellsDashboardClient from "./sellsDasboard";

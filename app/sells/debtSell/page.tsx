@@ -1,4 +1,4 @@
-import { FetchDebtSales } from "@/app/actions/debtSells";
+import { FetchDebtSales } from "@/app/actions/sells";
 import { ParsedSort } from "@/hooks/sort";
 import { Prisma } from "@prisma/client";
 import { SortingState } from "@tanstack/react-table";
@@ -66,7 +66,7 @@ export default async function DebtSell({ searchParams }: DashboardProps) {
     to,
     pageIndex,
     pageSize,
-    parsedSort
+    parsedSort,
   );
   return (
     <div dir="rtl">

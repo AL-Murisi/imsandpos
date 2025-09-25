@@ -5,7 +5,7 @@ import {
   fetchProductStats,
   fetchSalesSummary,
   Fetchusers,
-} from "./debtSells";
+} from "./sells";
 import { fetchAllFormData } from "./roles";
 import { getTopSellingProducts } from "./sells";
 
@@ -32,7 +32,7 @@ export async function getDashboardData(params: any) {
       params.to,
       params.pageIndex,
       params.pageSize,
-      params.parsedSort
+      params.parsedSort,
     ),
     getTopSellingProducts(10, params.from, params.to, params.categoryId),
     getActivityLogs(),

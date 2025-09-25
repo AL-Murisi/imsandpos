@@ -1,34 +1,85 @@
-import { Button } from "@/components/ui/button";
+import { ChartCard } from "@/components/common/ChartCard";
+import DashboardHeader from "@/components/common/dashboradheader";
 import { IconBox, IconCash, IconTruckDelivery } from "@tabler/icons-react";
 import { DollarSign, Users } from "lucide-react";
-
-import { ChartCard } from "@/components/common/ChartCard";
 import Link from "next/link";
 
-import DashboardHeader from "@/components/common/dashboradheader";
+// Import your server actions
+import {
+  fetchSalesSummary,
+  fetchProductStats,
+  Fetchusers,
+  FetchDebtSales,
+  getTopSellingProducts,
+  fetchrevnu,
+} from "@/app/actions/sells";
+import { ParsedSort } from "@/hooks/sort";
+import { Prisma } from "@prisma/client";
 
 interface SectionCardsProps {
-  salesSummary: any;
-  productStats: any;
-
-  loading: boolean;
-  totalusers: number;
-  charts: {
-    salesChart: { date: string; value: number }[];
-    purchasesChart: { date: string; value: number }[];
-    revenueChart: { date: string; value: number }[];
-    debtChart: { date: string; value: number }[];
-  };
+  searchParams: Promise<{
+    from?: string;
+    to?: string;
+    revnueDate?: string;
+    categoryId?: string;
+    query?: string;
+    page?: string;
+    limit?: string;
+    allFrom?: string;
+    allTo?: string;
+    salesFrom?: string;
+    salesTo?: string;
+    purchasesFrom?: string;
+    purchasesTo?: string;
+    revenueFrom?: string;
+    revenueTo?: string;
+    debtFrom?: string;
+    debtTo?: string;
+    chartTo?: string;
+    chartFrom?: string;
+    sort?: string;
+  }>;
 }
 
-export function SectionCards({
+export default async function SectionCards({
+  searchParams,
   salesSummary,
-  productStats,
-  loading,
+}: any) {
+  // Extract search params with defaults
+  const params = await searchParams;
 
-  totalusers,
-  charts,
-}: SectionCardsProps) {
+  const filters = {
+    salesFrom: params?.salesFrom,
+    salesTo: params?.salesTo,
+    purchasesFrom: params?.purchasesFrom,
+    purchasesTo: params?.purchasesTo,
+    revenueFrom: params?.revenueFrom,
+    revenueTo: params?.revenueTo,
+    debtFrom: params?.debtFrom,
+    debtTo: params?.debtTo,
+    chartFrom: params?.chartFrom,
+    chartTo: params?.chartTo,
+    allFrom: params?.allFrom,
+    allTo: params?.allTo,
+    revnueDate: params?.revnueDate,
+  };
+
+  const debtFilter: Prisma.SaleWhereInput = {
+    // Add your filter logic if needed
+  };
+
+  // Fetch all data in parallel
+  const [productStats, users] = await Promise.all([
+    // fetchSalesSummary("admin", filters),
+    fetchProductStats("admin"),
+    Fetchusers(true),
+    // FetchDebtSales(debtFilter, query, from, to, pageIndex, limit, parsedSort),
+    // getTopSellingProducts(Number(searchParams?.topItems || 5), from, to, categoryId),
+    fetchrevnu(filters.allFrom, filters.allTo, params?.revnueDate),
+  ]);
+
+  // Combine chart data
+
   const chartConfigs: Record<
     string,
     { label: string; stroke: string; fill: string; dateFormat?: string }
@@ -68,38 +119,38 @@ export function SectionCards({
   const sections = [
     {
       icon: <DollarSign size={40} className="text-blue-500" />,
-      title: `${salesSummary.totalRevenu}:﷼,`,
+      title: `${salesSummary.revenue.total}:﷼,`,
       description: "revenue",
       label: "مبيعات ",
       link: "",
-      chartData: charts.revenueChart,
+      chartData: salesSummary.revenue.chart,
       bg: "bg-gradient-to-r dark:from-blue-500 dark:to-indigo-700 from-chart-2 to-chart-3",
     },
     {
       icon: <IconCash size={40} className="text-green-600" />,
-      title: ` ${salesSummary.totalPurchces?.toFixed(0)}﷼ `,
+      title: ` ${salesSummary.purchases.total?.toFixed(0)}﷼ `,
       description: "purchases",
       label: "الإيراد",
       link: "",
-      chartData: charts.purchasesChart,
+      chartData: salesSummary.purchases.chart,
       bg: "bg-gradient-to-r dark:from-green-500 dark:to-emerald-700 from-chart-3 to-chart-4",
     },
     {
       icon: <IconTruckDelivery size={40} className="text-red-600" />,
-      title: ` ${salesSummary.totalDebtAmount}:﷼`,
+      title: ` ${salesSummary.debt.totalDebt}:﷼`,
       description: "debt",
       label: "الديون المستحقة",
       link: "/sells/debtSell",
-      chartData: charts.debtChart,
+      chartData: salesSummary.debt.chart,
       bg: "bg-gradient-to-r dark:from-red-500 dark:to-orange-700 from-chart-4 to-chart-1",
     },
     {
       icon: <IconTruckDelivery size={40} className="text-red-600" />,
-      title: `${salesSummary.recivedDebtAmount}:﷼`,
+      title: `${salesSummary.debt.received}:﷼`,
       description: "ss",
       label: "الديون المست",
       link: "/sells/debtSell",
-      chartData: charts.debtChart,
+      chartData: salesSummary.debt.chart,
       bg: "bg-gradient-to-r dark:from-pink-500 dark:to-rose-700 from-chart-1 to-chart-3",
     },
   ];
@@ -125,7 +176,7 @@ export function SectionCards({
     },
     {
       icon: <Users size={40} className="text-red-600" />,
-      title: totalusers,
+      title: users.users,
       description: "users",
       label: " users",
       link: "/users",
@@ -133,109 +184,47 @@ export function SectionCards({
     },
     {
       icon: <IconBox size={40} className="text-blue-500" />,
-      title: ` ${salesSummary.transactionsToday}`,
+      title: ` ${salesSummary.sales.total}`,
       description: "sales",
       label: "مبيعات ",
       link: "",
       bg: "bg-gradient-to-r from-blue-500 to-blue-700",
     },
   ];
-
   return (
-    <>
+    <div className="flex flex-col items-center">
       <DashboardHeader sections={sections} chartConfigs={chartConfigs} />
-      <div className="flex flex-col items-center">
-        <div className="grid w-full grid-cols-1 gap-x-6 gap-y-6 p-2 sm:grid-cols-2 xl:grid-cols-4">
-          {sections.map((item, idx) => (
-            <ChartCard
-              key={idx}
-              bg={item.bg}
-              icon={item.icon}
-              title={item.title}
-              label={item.label}
-              description={item.description}
-              link={item.link}
-              loading={loading}
-              chartData={item.chartData}
-              chartConfig={chartConfigs[item.description]}
-            />
-          ))}
+      <div className="grid w-full grid-cols-1 gap-6 p-2 sm:grid-cols-2 xl:grid-cols-4">
+        {sections.map((item, idx) => (
+          <ChartCard
+            key={idx}
+            bg={item.bg}
+            icon={item.icon}
+            title={item.title}
+            label={item.label}
+            description={item.description}
+            link={item.link}
+            loading={false}
+            chartData={item.chartData}
+            chartConfig={chartConfigs[item.description]}
+          />
+        ))}
 
-          {differentSection.map((item, idx) => (
-            <ChartCard
-              key={idx}
-              icon={item.icon}
-              bg={item.bg}
-              title={item.title}
-              title2={item.title2}
-              label2={item.label2}
-              label={item.label}
-              description={item.description}
-              link={item.link}
-              loading={loading}
-            />
-          ))}
-        </div>
-        <div className="grid w-80 grid-cols-2 justify-end gap-x-4 gap-y-4 py-4 sm:w-sm sm:grid-cols-2 md:w-md md:grid-cols-4 lg:w-full lg:grid-cols-4">
-          <Button aria-label="report" asChild>
-            <Link href="/admin/reports" prefetch={false}>
-              إنشاء التقارير
-            </Link>
-          </Button>
-          <Button aria-label="report" asChild>
-            <Link href="/dashboard/users" prefetch={false}>
-              إدارة المستخدمين
-            </Link>
-          </Button>
-          <Button aria-label="report" asChild>
-            <Link href="/inventory" prefetch={false}>
-              إدارة المخزون
-            </Link>
-          </Button>
-          <Button aria-label="report" asChild>
-            <Link href="/sells/debtSell" prefetch={false}>
-              عرض الديون
-            </Link>
-          </Button>
-        </div>
-        {/*
-    <Suspense>
-      <ReusableAreaChart
-        title="Sales Overview"
-        description="Sales trends over selected period"
-        data={result}
-        config={salesChartConfig}
-      />
-    </Suspense> */}
+        {differentSection.map((item, idx) => (
+          <ChartCard
+            key={idx}
+            icon={item.icon}
+            bg={item.bg}
+            title={item.title ?? 2}
+            title2={item.title2}
+            label2={item.label2}
+            label={item.label}
+            description={item.description}
+            link={item.link}
+            loading={false}
+          />
+        ))}
       </div>
-    </>
-  );
-}
-
-interface CustomTooltipProps {
-  active?: boolean;
-  payload?: { payload: { date: string; value: number } }[];
-  label?: string;
-  labelName?: string;
-}
-
-export function CustomTooltip({
-  active,
-  payload,
-  label,
-  labelName,
-}: CustomTooltipProps) {
-  if (!active || !payload || payload.length === 0) return null;
-
-  const data = payload[0].payload;
-
-  return (
-    <div className="rounded border border-gray-300 bg-white p-2 text-sm text-gray-900 shadow-lg">
-      <div>
-        <strong>{labelName}</strong>
-      </div>
-      <div>{new Date(data.date).toLocaleDateString("ar-EG")}</div>
-      <div>Value: {data.value.toLocaleString()}</div>
     </div>
   );
 }

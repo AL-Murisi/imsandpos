@@ -1,9 +1,11 @@
-import { Suspense } from "react";
 import { verifySession } from "@/lib/dal";
 // import { redirect } from "next/navigation";
 // import { ScrollArea } from "@/components/ui/scroll-area";
 // import ClientDashboardContent from "./_components/test";
+import { fetchSalesSummary } from "@/app/actions/sells";
+
 import dynamic from "next/dynamic";
+import SectionCards from "./_components/cardsection";
 // import { DashboardSkeleton } from "@/components/DashboardSkeleton";
 const DashboardContent = dynamic(
   () => import("./_components/DashboardContent"),
@@ -43,7 +45,25 @@ export default async function Dashboard({
   searchParams,
 }: DashboardContentProps) {
   const session = await verifySession();
-
+  // const [
+  //   salesSummary,
+  //   productStats,
+  //   users,
+  //   recentSales,
+  //   topProducts,
+  //   activityLogs,
+  //   formData,
+  //   revenue,
+  // ] = await Promise.all([
+  //   fetchSalesSummary("admin", filters),
+  //   fetchProductStats("admin"),
+  //   Fetchusers(true),
+  //   FetchDebtSales(filter, query, from, to, pageIndex, pageSize, parsedSort),
+  //   getTopSellingProducts(Number(topItems), from, to, categoryId),
+  //   getActivityLogs(pageIndex, pageSize, parsedSort),
+  //   fetchAllFormData(),
+  //   fetchrevnu(allFrom, allTo, revnue),
+  // ]);
   const params = await searchParams;
   // Build query string from searchParams
   const queryParams = new URLSearchParams();
@@ -56,21 +76,27 @@ export default async function Dashboard({
   const baseUrl =
     process.env.NEXT_PUBLIC_BASE_URL ||
     `http://localhost:${process.env.PORT ?? 3000}`;
+  const filters = {
+    salesFrom: params?.salesFrom,
+    salesTo: params?.salesTo,
+    purchasesFrom: params?.purchasesFrom,
+    purchasesTo: params?.purchasesTo,
+    revenueFrom: params?.revenueFrom,
+    revenueTo: params?.revenueTo,
+    debtFrom: params?.debtFrom,
+    debtTo: params?.debtTo,
+    chartFrom: params?.chartFrom,
+    chartTo: params?.chartTo,
+    allFrom: params?.allFrom,
+    allTo: params?.allTo,
+  };
 
   const url = `${baseUrl}/api/salesSummary${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
-
+  const salesSummary = await fetchSalesSummary("admin", filters);
   const response = await fetch(url, {
     cache: "no-cache",
     headers: { "Content-Type": "application/json" },
   });
-
-  // const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-
-  // const response = await fetch(`/api/salesSummary?${queryParams.toString()}`, {
-  //   // ❌ remove "no-store" unless you *really* want no caching
-  //   cache: "no-store",
-
-  // });
 
   if (!response.ok) {
     const errorData = await response.json();
@@ -79,5 +105,10 @@ export default async function Dashboard({
 
   const result = await response.json();
 
-  return <DashboardContent result={result} />;
+  return (
+    <ScrollArea className="max-h-[95vh] p-2" dir="rtl">
+      <SectionCards searchParams={params} salesSummary={salesSummary} />
+      <DashboardContent result={result} salesSummary={salesSummary} />{" "}
+    </ScrollArea>
+  );
 }

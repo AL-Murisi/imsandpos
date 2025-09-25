@@ -4,7 +4,7 @@ import React from "react";
 const CardContainer = dynamic(
   () => import("@/components/common/CardContainer"),
 );
-import { FetchDebtSales } from "@/app/actions/debtSells";
+import { FetchDebtSales } from "@/app/actions/sells";
 import { debtSaleColumns } from "./debtSell/columns";
 import { Prisma } from "@prisma/client";
 import { useAuth } from "@/lib/context/AuthContext";

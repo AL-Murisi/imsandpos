@@ -1,7 +1,7 @@
 import { fetchAllFormData, fetchProduct } from "@/app/actions/roles";
 import { Prisma } from "@prisma/client";
 import ProductClient from "./_components/ProductClient";
-import { fetchProductStats, Fetchusers } from "@/app/actions/debtSells";
+import { fetchProductStats, Fetchusers } from "@/app/actions/sells";
 import { Suspense } from "react";
 import { TableSkeleton } from "@/components/skeloten";
 import { columns } from "./_components/column";
