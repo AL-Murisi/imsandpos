@@ -12,6 +12,7 @@ import { AppSidebar } from "@/components/appside-bar";
 import { Provider } from "react-redux";
 import { store } from "@/lib/store";
 import Appheader from "./AppHeader/appheader";
+import { ScrollArea } from "@radix-ui/react-scroll-area";
 
 export default function ClientLayoutWrapper({
   children,
@@ -28,7 +29,9 @@ export default function ClientLayoutWrapper({
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="h-32 w-32 animate-spin rounded-full border-b-2 border-gray-900 bg-gray-500"></div>
+        <div className="h-full w-32 animate-spin border-b-2 border-gray-900 bg-gray-500">
+          weclome to ims
+        </div>
       </div>
     );
   }
@@ -55,10 +58,10 @@ export default function ClientLayoutWrapper({
     >
       <SidebarInset>
         <div className="flex flex-col">
-          <div className="@container/main flex min-h-screen flex-col">
+          <ScrollArea className="@container/main flex flex-col" dir="rtl">
             <Appheader />
             <Provider store={store}> {children}</Provider>
-          </div>
+          </ScrollArea>
         </div>
       </SidebarInset>
       {/* {" "}

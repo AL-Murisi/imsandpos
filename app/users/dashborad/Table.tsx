@@ -40,7 +40,6 @@ export default function UserClinet({ users, total, role }: ProductClientProps) {
 
   return (
     <div className="flex flex-col" dir="rtl">
-      {" "}
       {/* Add dir="rtl" for proper RTL layout */}
       <div className="flex flex-wrap gap-2">
         <Calendar22 />

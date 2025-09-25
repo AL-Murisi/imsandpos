@@ -99,7 +99,7 @@ export default function ProductClient({
         globalFilter={globalFilter}
         sorting={sorting}
         pagination={pagination}
-        highet="h-[74vh]"
+        highet="h-[70vh]"
         totalCount={total}
       />
     </div>

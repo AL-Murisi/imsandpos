@@ -43,6 +43,7 @@ import { useAuth } from "@/lib/context/AuthContext";
 import { ModeToggle } from "./toggoletheme";
 import { logActivity } from "@/app/actions/activitylogs";
 import { usePathname } from "next/navigation";
+import { LanguageSelector } from "./common/lanSelect";
 
 const IMSLogoIcon = ({ className = "", size = 24, color = "currentColor" }) => {
   return (
@@ -336,7 +337,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               })}
             </SidebarMenu>
           </SidebarGroupContent>
+          <LanguageSelector />
         </SidebarGroup>
+
         <SidebarFooter>
           <SidebarMenu>
             <SidebarMenuItem>
