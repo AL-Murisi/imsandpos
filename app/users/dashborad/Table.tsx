@@ -112,7 +112,7 @@ export default function UserClinet({ users, total, role }: ProductClientProps) {
           sorting={sorting}
           pagination={pagination}
           totalCount={total}
-          highet="h-[70vh]"
+          highet="h-[68vh]"
         />
       </Suspense>
     </div>

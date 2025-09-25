@@ -6,7 +6,7 @@ import React from "react";
 export default function Loading() {
   return (
     // <div className="flex flex-col p-3">
-    <ScrollArea className="max-h-[100vh] p-2" dir="rtl">
+    <ScrollArea className="max-h-[94vh] p-2" dir="rtl">
       <DashboardHeader sections={[]} chartConfigs={[]} />
       <DashboardSkeleton />
     </ScrollArea>
