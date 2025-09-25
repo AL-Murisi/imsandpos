@@ -73,10 +73,6 @@ export default function Appheader() {
     const findTitle = (items: MenuItem[], path: string): string | null => {
       for (const item of items) {
         if (item.url === path) return item.title;
-        if (item.subItems) {
-          const found = findTitle(item.subItems as MenuItem[], path);
-          if (found) return found;
-        }
       }
       return null;
     };
