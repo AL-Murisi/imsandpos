@@ -390,13 +390,13 @@ model Sale {
   saleItems     SaleItem[]
   payments      Payment[]
   
-  @@map("sales")@@index([paymentStatus])
+  @@map("sales")
+  @@index([paymentStatus])
   @@index([saleDate])
   @@index([customerId, paymentStatus])   // composite index for common queries
   @@index([customerId, saleDate]) 
   @@index([customerId])
 @@index([cashierId])
-@@index([saleDate])
 @@index([status])
 
 }
