@@ -48,34 +48,6 @@ interface DashboardContentProps {
   };
 }
 
-// const ReusableAreaChart = dynamic(
-//   () => import("@/components/common/Chart").then((m) => m.ReusableAreaChart),
-//   {
-//     ssr: false,
-//     loading: () => (
-//       <div className="h-64 w-full animate-pulse rounded-lg bg-gray-200" />
-//     ),
-//   },
-// );
-
-// const TopSellingChartWrapper = dynamic(
-//   () => import("@/components/common/Barchart"),
-//   {
-//     ssr: false,
-//     loading: () => (
-//       <div className="h-64 animate-pulse rounded-lg bg-gray-200" />
-//     ),
-//   },
-// );
-// const ChartPieLegend = dynamic(
-//   () => import("@/components/common/PieChart").then((p) => p.ChartPieLegend),
-//   {
-//     ssr: false,
-//     loading: () => (
-//       <div className="h-[320px] w-full animate-pulse rounded-lg bg-gray-200" />
-//     ),
-//   },
-// );
 export default function DashboardContent({ result, salesSummary }: any) {
   const combinedChartData = salesSummary.sales.chart.map((sale: any) => {
     const purchase = salesSummary.purchases.chart.find(
