@@ -33,7 +33,7 @@ model User {
   activityLogs ActivityLogs[]
   stockMovements StockMovement[]
   
-  @@map("users")
+  @@map("users") 
   @@index([isActive])
 @@index([createdAt])
 
