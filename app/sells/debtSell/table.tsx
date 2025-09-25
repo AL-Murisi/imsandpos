@@ -39,7 +39,7 @@ export default function DebtSells({
   } = useTablePrams();
 
   return (
-    <CardContainer title="Supplier">
+    <div className="rounded-2xl p-2 lg:col-span-1" dir="rtl">
       {/* <>
         <CustomDialog
           trigger={
@@ -67,10 +67,11 @@ export default function DebtSells({
           onGlobalFilterChange={setGlobalFilter}
           globalFilter={globalFilter}
           sorting={sort}
+          height={"h-[70vh]"}
           pagination={pagination}
           totalCount={data.length}
         />
       </>
-    </CardContainer>
+    </div>
   );
 }

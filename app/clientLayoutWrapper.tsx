@@ -28,7 +28,7 @@ export default function ClientLayoutWrapper({
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="h-32 w-32 animate-spin rounded-full border-b-2 border-gray-900"></div>
+        <div className="h-32 w-32 animate-spin rounded-full border-b-2 border-gray-900 bg-gray-500"></div>
       </div>
     );
   }
@@ -55,17 +55,15 @@ export default function ClientLayoutWrapper({
     >
       <SidebarInset>
         <div className="flex flex-col">
-          <div className="@container/main flex flex-col">
-            <Provider store={store}>
-              {" "}
-              {/* <Appheader /> */}
-              {children}
-            </Provider>
+          <div className="@container/main flex min-h-screen flex-col">
+            <Appheader />
+            <Provider store={store}> {children}</Provider>
           </div>
         </div>
-      </SidebarInset>{" "}
-      <SidebarTrigger />
-      <AppSidebar className="text-2xl" side="right" dir="rtl" />
+      </SidebarInset>
+      {/* {" "}
+      <SidebarTrigger /> */}
+      <AppSidebar variant="inset" className="text-2xl" side="right" dir="rtl" />
     </SidebarProvider>
     // </div>
   );

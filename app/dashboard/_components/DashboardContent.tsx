@@ -91,7 +91,7 @@ export default function DashboardContent({ result }: any) {
     purchases: { label: "المشتريات", color: "#3b82f6" },
   };
   return (
-    <>
+    <ScrollArea className="max-h-[95vh] p-2" dir="rtl">
       {/* <Suspense
         fallback={
           <>
@@ -173,6 +173,6 @@ export default function DashboardContent({ result }: any) {
           </div>
         </LazySection>
       </div>
-    </>
+    </ScrollArea>
   );
 }

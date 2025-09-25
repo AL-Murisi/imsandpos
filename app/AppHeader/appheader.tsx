@@ -1,14 +1,95 @@
+"use client";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "../../components/toggoletheme";
-import { Input } from "../../components/ui/input";
+import { usePathname } from "next/navigation";
 import { SidebarTrigger } from "../../components/ui/sidebar";
 import React from "react";
 import { AiFillProduct } from "react-icons/ai";
 import { Separator } from "@/components/ui/separator";
+
 export default function Appheader() {
+  const menuItems = [
+    {
+      title: "الرئيسية",
+      url: "/dashboard",
+    },
+    {
+      title: "الرئيسية",
+      url: "/inventory/dashboardUser",
+    },
+    {
+      title: "المستخدمون",
+      url: "/users",
+    },
+    {
+      title: "اداره المخازن",
+      url: "/inventory/manageinvetory",
+    },
+    {
+      title: "المنتجات",
+      url: "/inventory/products",
+    },
+    {
+      title: "الفئات", // Categories
+      url: "/inventory/categories",
+    },
+    {
+      title: "المبيعات",
+      url: "/sells",
+    },
+    {
+      title: "المستودعات", // Warehouses
+      url: "/inventory/warehouses",
+    },
+    {
+      title: "الموردون", // Suppliers
+      url: "/inventory/suppliers",
+    },
+    {
+      title: "الكاشير",
+      url: "/sells/cashiercontrol",
+    },
+    {
+      title: "المحجوزة",
+      url: "/sells/reservation",
+    },
+    {
+      title: "الدين",
+      url: "/sells/debtSell",
+    },
+    {
+      title: "الملف الشخصي",
+      url: "/profile",
+    },
+    {
+      title: "الإعدادات",
+      url: "/settings",
+    },
+  ];
+  type MenuItem = (typeof menuItems)[number];
+  const pathname = usePathname();
+  function usePageTitle() {
+    // Recursively find title by url
+    const findTitle = (items: MenuItem[], path: string): string | null => {
+      for (const item of items) {
+        if (item.url === path) return item.title;
+        if (item.subItems) {
+          const found = findTitle(item.subItems as MenuItem[], path);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    const title = findTitle(menuItems, pathname) ?? "";
+
+    return title;
+  }
+  const pageTitle = usePageTitle();
+
   return (
-    <div
-      className="dark:bg-accent dark:text-foreground text-sidebar flex h-15 shrink-0 items-center gap-2 border-b bg-gray-800 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)"
+    <header
+      className="dark:bg-accent dark:text-foreground text-sidebar flex h-10 shrink-0 items-center gap-2 border-b bg-gray-800 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)"
       dir="rtl"
     >
       <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
@@ -17,7 +98,7 @@ export default function Appheader() {
           orientation="vertical"
           className="mx-2 data-[orientation=vertical]:h-4"
         />
-        <h1 className="text-base font-medium">Documents</h1>
+        <h1 className="text-base font-medium">{pageTitle}</h1>
         <div className="ml-auto flex items-center gap-2">
           <Button variant="ghost" asChild size="sm" className="hidden sm:flex">
             {/* <a
@@ -31,10 +112,9 @@ export default function Appheader() {
           </Button>
         </div>
       </div>
-    </div>
+    </header>
   );
 }
-
 function AppLogo() {
   return (
     <div className="flex items-center gap-2 transition-all">

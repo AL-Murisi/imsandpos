@@ -6,13 +6,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DollarSignIcon, ShoppingBagIcon, WalletIcon } from "lucide-react"; // Example icons
 import Link from "next/link";
 import { useRouter } from "next/navigation"; // For refreshing data or navigation
-
+import dynamic from "next/dynamic";
 import { DataTable } from "@/components/common/Table";
 import { debtSale } from "./columns";
-// Import your UI components for charts, tables, etc.
-// import SalesChart from "./components/SalesChart"; // Create these
-// import DebtSalesTable from './components/DebtSalesTable'; // Use your existing columns here
-
+const ScrollArea = dynamic(
+  () => import("@/components/ui/scroll-area").then((m) => m.ScrollArea),
+  {
+    ssr: false,
+    // ensures it only loads on the client
+    // optional fallback
+  },
+);
 interface SellsDashboardClientProps {
   user: {
     id: string | null;
@@ -41,7 +45,7 @@ export default function SellsDashboardClient({
   };
 
   return (
-    <div className="flex h-[100vh] flex-col space-y-8 overflow-auto p-6">
+    <ScrollArea className="flex h-[90vh] flex-col space-y-8 overflow-auto p-6">
       <h1 className="text-3xl font-bold text-gray-900">مرحباً، {user.role}!</h1>
 
       {/* Conditional Rendering based on Role */}
@@ -232,6 +236,6 @@ export default function SellsDashboardClient({
           </CardContent>
         </Card>
       </div>
-    </div>
+    </ScrollArea>
   );
 }
