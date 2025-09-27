@@ -38,6 +38,7 @@ import {
   setRowSelection,
 } from "@/lib/slices/table";
 import { ReactNode } from "react";
+import { useTranslations } from "next-intl";
 
 interface DataTableProps<T> {
   data: T[];
@@ -86,7 +87,7 @@ export function DataTable<T>({
   highet,
 }: DataTableProps<T>) {
   const dispatch = useAppDispatch();
-
+  const t = useTranslations("table");
   const { columnFilters, columnVisibility, rowSelection } = useAppSelector(
     (state) => state.table,
   );
@@ -142,13 +143,12 @@ export function DataTable<T>({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="mr-auto">
-              {" "}
               {/* Use mr-auto for right alignment in RTL */}
-              الأعمدة <ChevronDown />
+              {t("columns")}
+              <ChevronDown />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
-            {" "}
             {/* Align to the start (right) for RTL */}
             {table
               .getAllColumns()
@@ -169,8 +169,12 @@ export function DataTable<T>({
 
         <div className="text-muted-foreground min-w-[150px] flex-1 text-right text-sm">
           {/* Align text to the right */}
-          تم اختيار {table.getFilteredSelectedRowModel().rows.length} من{" "}
-          {table.getFilteredRowModel().rows.length} صف.
+          <p>
+            {t("selected", {
+              count: table.getFilteredSelectedRowModel().rows.length,
+              total: table.getFilteredRowModel().rows.length,
+            })}
+          </p>
         </div>
         {search}
         <DropdownMenu>
@@ -179,7 +183,7 @@ export function DataTable<T>({
               variant="secondary"
               className="border-primary mr-auto border-2" // Use mr-auto for right alignment
             >
-              {initialPageSize} صفوف لكل صفحة{" "}
+              {initialPageSize} {t("rowsPerPage")}
               <ChevronDown className="mr-2 h-4 w-4" />{" "}
               {/* Move the icon to the left */}
             </Button>
@@ -191,12 +195,12 @@ export function DataTable<T>({
                 key={size}
                 onClick={() => table.setPageSize(size)}
               >
-                {size} صفوف
+                {size} {t("rows")}
               </DropdownMenuItem>
             ))}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => table.setPageSize(5)}>
-              إعادة ضبط
+              {t("reset")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -208,13 +212,13 @@ export function DataTable<T>({
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
-            السابق
+            {t("prev")}
           </Button>
           <Button
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >
-            التالي
+            {t("prev")}
           </Button>
         </div>
       </div>
@@ -264,7 +268,7 @@ export function DataTable<T>({
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No results.
+                  {t("noResults")}
                 </TableCell>
               </TableRow>
             )}

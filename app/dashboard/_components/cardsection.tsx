@@ -227,6 +227,7 @@ export default async function SectionCards({
             />
           ))}
         </div>
+        <div className="grid w-80 grid-cols-2 justify-end gap-x-4 gap-y-4 py-4 sm:w-sm sm:grid-cols-2 md:w-md md:grid-cols-4 lg:w-full lg:grid-cols-4"> <Button aria-label="report" asChild> <Link href="/admin/reports" prefetch={false}> إنشاء التقارير </Link> </Button> <Button aria-label="report" asChild> <Link href="/dashboard/users" prefetch={false}> إدارة المستخدمين </Link> </Button> <Button aria-label="report" asChild> <Link href="/inventory" prefetch={false}> إدارة المخزون </Link> </Button> <Button aria-label="report" asChild> <Link href="/sells/debtSell" prefetch={false}> عرض الديون </Link> </Button> </div>
       </div>
     </>
   );

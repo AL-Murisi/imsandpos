@@ -45,7 +45,7 @@ export default function DashboardHeader({
           <NotificationBell />
         </Button>
 
-        <DropdownMenu>
+        {/* <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Avatar className="cursor-pointer">
               <AvatarImage src="" alt="User" />
@@ -65,7 +65,7 @@ export default function DashboardHeader({
               Logout
             </DropdownMenuItem>
           </DropdownMenuContent>
-        </DropdownMenu>
+        </DropdownMenu> */}
       </div>
     </div>
   );

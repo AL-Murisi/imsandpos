@@ -263,6 +263,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       roles: ["admin", "manager_wh"],
     },
     {
+      title: t("debt"),
+      url: "/debt",
+      icon: () => <Receipt className="h-4 w-4 text-green-600" />,
+      roles: ["admin", "manager_wh"],
+    },
+
+    {
       title: t("sales"),
       icon: () => <ShoppingCart className="text-green-600" />,
       roles: ["admin", "cashier"],
