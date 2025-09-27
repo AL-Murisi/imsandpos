@@ -1,11 +1,11 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import CustomDialog from "../../../components/common/Dailog";
-import { Button } from "../../../components/ui/button";
+import CustomDialog from "@/components/common/Dailog";
+import { Button } from "@/components/ui/button";
 
 import { Separator } from "@/components/ui/separator";
-import SearchInput from "../../../components/common/SearchInput";
+import SearchInput from "@/components/common/SearchInput";
 
 export default function Addtouserrecod({}: {}) {
   const [search, setSearch] = useState();
@@ -24,7 +24,7 @@ export default function Addtouserrecod({}: {}) {
         trigger={
           <Button
             onClick={() => setShowDialog(true)}
-            className="flex-1 py-3 rounded-md shadow-md hover:shadow-lg transition-shadow"
+            className="flex-1 rounded-md py-3 shadow-md transition-shadow hover:shadow-lg"
           >
             دين
           </Button>
