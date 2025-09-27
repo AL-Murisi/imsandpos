@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { decrypt } from "@/lib/session";
 import { cookies } from "next/headers";
+import createMiddleware from "next-intl/middleware";
 
 // Define role-based route access
 const routePermissions: Record<string, string[]> = {
@@ -40,123 +41,8 @@ const publicRoutes = ["/login", "/signup", "/loading", "/manifest.json"];
 // Routes that authenticated workers should be redirected from
 const authRoutes = ["/login", "/signup"];
 
-// export default async function middleware(req: NextRequest) {
-//   const path = req.nextUrl.pathname;
-
-//   // Check if it's a public route
-//   const isPublicRoute = publicRoutes.includes(path);
-//   const isAuthRoute = authRoutes.includes(path);
-
-//   // Get session
-//   const cookieStore = await cookies();
-//   const cookie = cookieStore.get("session")?.value;
-//   const session = await decrypt(cookie);
-//   const userrole = (session?.roles as string[]) || [];
-//   // If no session and trying to access protected route
-//   if (!session?.roles && !isPublicRoute) {
-//     return NextResponse.redirect(new URL("/login", req.nextUrl));
-//   }
-
-//   // If authenticated worker trying to access auth routes, redirect to dashboard
-//   if (session && isAuthRoute) {
-//     return NextResponse.redirect(new URL("/", req.nextUrl));
-//   }
-
-//   // Check role-based permissions for protected routes
-
-//   const requiredRoles = routePermissions[path];
-//   routePermissions[path as keyof typeof routePermissions];
-
-//   if (requiredRoles) {
-//     const hasPermission = requiredRoles.some((role) => userrole.includes(role));
-
-//     if (!hasPermission) {
-//       // Redirect to appropriate default page based on worker role
-//       const redirectPath = getDefaultRedirectForRole(userrole);
-//       return NextResponse.redirect(new URL(redirectPath, req.nextUrl));
-//     }
-//   }
-
-//   return NextResponse.next();
-// }
-
-// function getDefaultRedirectForRole(roles: string[]): string {
-//   if (roles.includes("admin")) return "/inventory";
-//   if (roles.includes("cashier")) return "/sells/cashiercontrol";
-//   // if (roles.includes("customer")) return "/customer";
-//   // if (roles.includes("supplier")) return "/supplier/products";
-//   return "/dashboard";
-// }
-
-// export const config = {
-//   matcher: [
-//     "/inventory/:path*",
-//     // "/customer/:path*",
-//     "/sells/:path*",
-//     "/users/:path*",
-//   ],
-// };
-// middleware.ts
-// export default async function middleware(req: NextRequest) {
-//   const path = req.nextUrl.pathname;
-
-//   // Check if it's a public route
-//   const isPublicRoute = publicRoutes.includes(path);
-//   const isAuthRoute = authRoutes.includes(path);
-
-//   // Get session
-//   const cookieStore = await cookies();
-//   const cookie = cookieStore.get("session")?.value;
-//   const session = await decrypt(cookie);
-//   const userrole = (session?.roles as string[]) || [];
-//   // If no session and trying to access protected route
-//   if (!session?.roles && !isPublicRoute) {
-//     return NextResponse.redirect(new URL("/login", req.nextUrl));
-//   }
-
-//   // If authenticated worker trying to access auth routes, redirect to dashboard
-//   if (session && isAuthRoute) {
-//     return NextResponse.redirect(new URL("/", req.nextUrl));
-//   }
-
-//   // Check role-based permissions for protected routes
-
-//   const requiredRoles = routePermissions[path];
-//   routePermissions[path as keyof typeof routePermissions];
-
-//   if (requiredRoles) {
-//     const hasPermission = requiredRoles.some((role) => userrole.includes(role));
-
-//     if (!hasPermission) {
-//       // Redirect to appropriate default page based on worker role
-//       const redirectPath = getDefaultRedirectForRole(userrole);
-//       return NextResponse.redirect(new URL(redirectPath, req.nextUrl));
-//     }
-//   }
-
-//   return NextResponse.next();
-// }
-
-// function getDefaultRedirectForRole(roles: string[]): string {
-//   if (roles.includes("admin")) return "/inventory";
-//   if (roles.includes("cashier")) return "/sells/cashiercontrol";
-//   // if (roles.includes("customer")) return "/customer";
-//   // if (roles.includes("supplier")) return "/supplier/products";
-//   return "/dashboard";
-// }
-
-// export const config = {
-//   matcher: [
-//     "/inventory/:path*",
-//     // "/customer/:path*",
-//     "/sells/:path*",
-//     "/users/:path*",
-//   ],
-// };
-
 export default async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
-
   const isPublicRoute = publicRoutes.includes(path);
   const isAuthRoute = authRoutes.includes(path);
 

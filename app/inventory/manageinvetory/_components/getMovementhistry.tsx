@@ -81,7 +81,7 @@ export default function ManagemovementClient({
           sorting={sorting}
           pagination={pagination}
           totalCount={total}
-          highet="h-[70vh]"
+          highet="h-[65vh]"
         />
       </div>
     </div>

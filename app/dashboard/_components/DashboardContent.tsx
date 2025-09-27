@@ -7,6 +7,7 @@ import { ReusableAreaChart } from "@/components/common/Chart";
 import SearchInput from "@/components/common/searchtest";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import SectionCards from "./cardsection";
+import { getTranslations } from "next-intl/server";
 
 interface DashboardData {
   summary: any;
@@ -48,7 +49,7 @@ interface DashboardContentProps {
   };
 }
 
-export default function DashboardContent({ result, salesSummary }: any) {
+export default async function DashboardContent({ result, salesSummary }: any) {
   const combinedChartData = salesSummary.sales.chart.map((sale: any) => {
     const purchase = salesSummary.purchases.chart.find(
       (p: any) => p.date === sale.date,
@@ -67,9 +68,10 @@ export default function DashboardContent({ result, salesSummary }: any) {
     { id: 5, browser: "other", visitors: 90, fill: "var(--chart-5)" },
   ];
   if (!result) return <div>No data available</div>;
+  const t = await getTranslations("cards");
   const salesChartConfig = {
-    revenue: { label: "الإيرادات", color: "#dc2626" },
-    purchases: { label: "المشتريات", color: "#3b82f6" },
+    revenue: { label: t("revenue"), color: "#dc2626" },
+    purchases: { label: t("purchases"), color: "#3b82f6" },
   };
   return (
     <div className="grid grid-cols-1 gap-x-6 gap-y-6 bg-transparent lg:grid-cols-3">

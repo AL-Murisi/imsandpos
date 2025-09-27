@@ -27,23 +27,12 @@ export default function DashboardHeader({
   const searchParams = useSearchParams();
   const card = searchParams.get("card") || "all";
   return (
-    <div
-      className="top-0 z-10 flex items-center justify-between rounded-2xl py-4"
-      dir="rtl"
-    >
+    <div className="top-0 z-10 flex justify-between rounded-2xl py-4" dir="rtl">
       {/* Left side: Logo */}
-      <div className="flex items-center space-x-2">
-        {/* <img
-          src="/icons/ims.png" // replace with your logo path
-          alt="Company Logo"
-          className="h-8 w-auto"
-        /> */}
-        <span className="text-xl font-bold">MyCompany</span>
-      </div>
 
       {/* Middle (optional search) */}
-      <div className="hidden flex-1 justify-center px-4 md:flex">
-        <div className="mb-4 flex items-center gap-4">
+      <div className="flex-1 justify-center px-4 md:flex">
+        <div className="mb-4 flex-1/2 items-center gap-6 md:flex md:gap-4">
           <DateRangeFilter fromKey={`${card}From`} toKey={`${card}To`} />
 
           <CardSelector sections={sections} chartConfigs={chartConfigs} />
@@ -51,7 +40,7 @@ export default function DashboardHeader({
       </div>
 
       {/* Right side: Profile + Notifications */}
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-4" dir="ltr">
         <Button variant="ghost" size="icon">
           <NotificationBell />
         </Button>

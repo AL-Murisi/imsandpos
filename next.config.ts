@@ -1,5 +1,8 @@
 // next.config.js or next.config.mjs
 import type { NextConfig } from "next";
+import createNextIntlPlugin from "next-intl/plugin";
+
+const withNextIntl = createNextIntlPlugin();
 const withPWA = require("next-pwa")({
   dest: "public",
   register: true,
@@ -13,6 +16,10 @@ const withBundleAnalyzer = require("@next/bundle-analyzer")({
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // i18n: {
+  //   locales: ["en", "ar"],
+  //   defaultLocale: "ar",
+  // },
   experimental: {
     // optimizeCss: true,
 
@@ -24,4 +31,4 @@ const nextConfig: NextConfig = {
 };
 
 // Combine both plugins
-module.exports = withBundleAnalyzer(withPWA(nextConfig));
+export default withBundleAnalyzer(withPWA(withNextIntl(nextConfig)));

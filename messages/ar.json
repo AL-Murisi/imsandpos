@@ -1,0 +1,87 @@
+{
+  "cards": {
+    "revenue": "الإيرادات",
+    "purchases": "المشتريات",
+    "debt": "الديون المستحقة",
+    "receivedDebt": "الديون المستلمة",
+    "totalStock": "المخزون الكلي",
+    "lowStock": "منتجات منخفضة",
+    "finishedStock": "منتجات منتهية",
+    "users": "المستخدمون",
+    "sales": "المبيعات"
+  },
+  "LocaleSwitcher": {
+    "ar": "Ar",
+    "en": "En",
+    "label": "Sprache"
+  },
+  "menu": {
+    "home": "الرئيسية",
+    "users": "المستخدمون",
+    "inventory": "إدارة المخازن",
+    "manageInventory": "إدارة المخزون",
+    "categories": "الفئات",
+    "suppliers": "الموردون",
+    "warehouses": "المستودعات",
+    "products": "المنتجات",
+    "sales": "المبيعات",
+    "cashierMain": "الرئيسية الكاشير",
+    "cashier": "الكاشير",
+    "reservedOrders": "المحجوزة",
+    "debt": "الدين",
+    "profile": "الملف الشخصي",
+    "settings": "الإعدادات",
+    "logout": "تسجيل الخروج",
+    "welcome": "مرحباً ",
+    "role": "  الأدوار"
+  },
+  "selection": {
+    "all": "الكل"
+  },
+  "datePicker": {
+    "label": "اختر تاريخًا ",
+    "today": "  اليوم",
+    "thismonth": "هذا الشهر",
+    "threemonths": " 90 يوم",
+    "delete": "   مسح"
+  },
+
+  "cashier": {
+    "search": "بحث",
+    "filter": "تصفية",
+    "carton": "كرتون",
+    "packet": "حزمة",
+    "unit": "وحدة",
+    "newCart": "+ جديد",
+    "deleteAll": "حذف الكل",
+    "hello": "مرحباً {name}",
+    "noProducts": "لا توجد منتجات في السلة",
+    "product": "المنتج",
+    "sku": "كود المنتج",
+    "warehouse": "المستودع",
+    "quantity": "الكمية",
+    "type": "النوع",
+    "price": "السعر",
+    "total": "الإجمالي",
+    "actions": "الإجراء",
+    "discount": "الخصم",
+    "fixed": "ثابت",
+    "percentage": "نسبة",
+    "beforeDiscount": "الإجمالي قبل الخصم:",
+    "discountValue": "قيمة الخصم:",
+    "afterDiscount": "الإجمالي بعد الخصم:",
+    "cancel": "إلغاء",
+    "chooseProduct": "اختر المنتج"
+  },
+
+  "table": {
+    "columns": "الأعمدة",
+    "rows": "صفوف",
+    "rowsPerPage": "صفوف لكل صفحة",
+    "reset": "إعادة ضبط",
+    "prev": "السابق",
+    "next": "التالي",
+    "noResults": "لا توجد نتائج.",
+    "selected": "تم اختيار {count} من {total} صف."
+  }
+}

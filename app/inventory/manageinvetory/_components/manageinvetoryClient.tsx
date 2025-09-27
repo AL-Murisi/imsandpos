@@ -91,7 +91,7 @@ export default function ManageinvetoryClient({
         onGlobalFilterChange={setGlobalFilter}
         globalFilter={globalFilter}
         sorting={sorting}
-        highet="h-[69vh]"
+        highet="h-[65vh]"
         pagination={pagination}
         totalCount={total}
       />

@@ -37,6 +37,7 @@ import {
 import { ReactNode, useState } from "react";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { FormatPrice } from "@/hooks/usePrice";
+import { useTranslations } from "next-intl";
 export type SellingUnit = "carton" | "packet" | "unit";
 export type discountType = "fixed" | "percentage";
 type CartItem = CashierItem & {
@@ -71,6 +72,7 @@ export default function CartDisplay({ payment }: CustomDialogProps) {
   const carts = useAppSelector((state) => state.cart.carts);
   const activeCartId = useAppSelector((state) => state.cart.activeCartId);
   const items = useAppSelector(selectActiveCartItems);
+  const t = useTranslations("cashier");
 
   const totals = useAppSelector(selectCartTotals);
   return (
@@ -89,14 +91,14 @@ export default function CartDisplay({ payment }: CustomDialogProps) {
               )
             }
           >
-            + جديد
+            {t("newCart")}
           </Button>
           {carts.length > 1 && (
             <Button
               className="bg-red-500"
               onClick={() => dispatch(clearAllCart())}
             >
-              Delete All
+              {t("deleteAll")}
             </Button>
           )}
         </div>
@@ -142,21 +144,15 @@ export default function CartDisplay({ payment }: CustomDialogProps) {
           <Table className="w-full">
             <TableHeader className="sticky top-0 z-10">
               <TableRow className="border-amber-300">
-                <TableHead className="border-amber-300 text-right">
-                  منتج
-                </TableHead>
-                <TableHead className="border-amber-300 text-right">
-                  sku
-                </TableHead>
-                <TableHead className="border-amber-300 text-right">
-                  المنتج
-                </TableHead>
-                <TableHead className="text-right"> مستودع</TableHead>
-                <TableHead className="text-right"> الكمية </TableHead>
-                <TableHead className="text-right"> النوع</TableHead>
-                <TableHead className="text-right"> السعر</TableHead>
-                <TableHead className="text-right"> الإجمالي </TableHead>
-                <TableHead className="text-right"> إجراء </TableHead>
+                <TableHead>{t("product")}</TableHead>
+                <TableHead>{t("sku")}</TableHead>
+                <TableHead>{t("product")}</TableHead>
+                <TableHead>{t("warehouse")}</TableHead>
+                <TableHead>{t("quantity")}</TableHead>
+                <TableHead>{t("type")}</TableHead>
+                <TableHead>{t("price")}</TableHead>
+                <TableHead>{t("total")}</TableHead>
+                <TableHead>{t("actions")}</TableHead>{" "}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -298,7 +294,7 @@ export default function CartDisplay({ payment }: CustomDialogProps) {
                     colSpan={9}
                     className="h-140 py-6 text-center text-gray-500"
                   >
-                    لا توجد منتجات في السلة
+                    {t("noProducts")}
                   </TableCell>
                 </TableRow>
               )}
@@ -320,7 +316,7 @@ export default function CartDisplay({ payment }: CustomDialogProps) {
                 htmlFor="discount"
                 className="text-sm font-semibold text-gray-700 dark:text-gray-300"
               >
-                الخصم
+                {t("discount")}
               </label>
               <div className="flex gap-2">
                 <select
@@ -335,8 +331,8 @@ export default function CartDisplay({ payment }: CustomDialogProps) {
                     setDiscountType(e.target.value as "fixed" | "percentage");
                   }}
                 >
-                  <option value="fixed">ثابت</option>
-                  <option value="percentage">نسبة</option>
+                  <option value="fixed">{t("fixed")}</option>
+                  <option value="percentage">{t("percentage")}</option>
                 </select>
 
                 <input
@@ -363,7 +359,7 @@ export default function CartDisplay({ payment }: CustomDialogProps) {
             <div className="flex flex-col gap-1 text-right">
               <div className="flex justify-between gap-4">
                 <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                  الإجمالي قبل الخصم:
+                  {t("beforeDiscount")}:
                 </Label>
                 <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
                   ${FormatPrice(totals.totalBefore)}
@@ -371,7 +367,7 @@ export default function CartDisplay({ payment }: CustomDialogProps) {
               </div>
               <div className="flex justify-between gap-4">
                 <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                  قيمة الخصم:
+                  {t("discountValue")}:
                 </Label>
                 <span className="text-sm font-semibold text-red-600 dark:text-red-400">
                   ${FormatPrice(totals.discount)}
@@ -379,7 +375,7 @@ export default function CartDisplay({ payment }: CustomDialogProps) {
               </div>
               <div className="flex justify-between gap-4 border-t border-gray-200 pt-1 dark:border-gray-700">
                 <Label className="text-lg font-bold text-gray-800 dark:text-gray-200">
-                  الإجمالي بعد الخصم:
+                  {t("afterDiscount")}:
                 </Label>
                 <span className="text-lg font-bold text-amber-600 dark:text-amber-400">
                   Total: ${FormatPrice(totals.totalAfter)}

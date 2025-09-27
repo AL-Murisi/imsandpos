@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/command";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { Label } from "../ui/label";
+import { useTranslations } from "next-intl";
 
 interface Option {
   id: string;
@@ -40,7 +41,7 @@ export function Selection({
   const router = useRouter();
   const pathname = usePathname();
   const [open, setOpen] = React.useState(false);
-
+  const t = useTranslations("selection");
   // selected values come from URL params
   const value = searchParams.getAll(`${selectkey}`);
 
@@ -134,7 +135,7 @@ export function Selection({
                   >
                     <Check className="h-4 w-4" />
                   </div>
-                  <span>الكل</span>
+                  <span>{t("all")}</span>
                 </CommandItem>
                 {options.map((option, idx) => (
                   <CommandItem

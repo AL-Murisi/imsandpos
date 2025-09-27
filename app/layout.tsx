@@ -6,6 +6,8 @@ import { AuthProvider } from "@/lib/context/AuthContext";
 import ClientLayoutWrapper from "./clientLayoutWrapper";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale } from "next-intl/server";
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-sans",
@@ -74,14 +76,14 @@ export const viewport: Viewport = {
   width: "device-width",
   viewportFit: "cover",
 };
-
-export default function RootLayout({
-  children,
-}: Readonly<{
+interface Main {
   children: React.ReactNode;
-}>) {
+}
+
+export default async function RootLayout({ children }: Main) {
+  const locale = await getLocale();
   return (
-    <html lang="en" className={`${inter.className} `}>
+    <html lang={locale} className={`${inter.className} `}>
       <body className="font-sans">
         <ThemeProvider
           attribute="class"
@@ -110,9 +112,11 @@ export default function RootLayout({
           </header>
 
           <AuthProvider>
-            <ClientLayoutWrapper>
-              {children} <Analytics /> <SpeedInsights />
-            </ClientLayoutWrapper>
+            <NextIntlClientProvider>
+              <ClientLayoutWrapper>
+                {children} <Analytics /> <SpeedInsights />
+              </ClientLayoutWrapper>
+            </NextIntlClientProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

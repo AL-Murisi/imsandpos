@@ -23,6 +23,7 @@ import {
 } from "date-fns";
 
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 interface DateRangeFilterProps {
   fromKey: string;
@@ -33,7 +34,7 @@ export function DateRangeFilter({ fromKey, toKey }: DateRangeFilterProps) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const { replace } = useRouter();
-
+  const t = useTranslations("datePicker");
   const [open, setOpen] = React.useState(false);
   const [date, setDate] = React.useState<DateRange | undefined>({
     from: undefined,
@@ -81,10 +82,10 @@ export function DateRangeFilter({ fromKey, toKey }: DateRangeFilterProps) {
     ? date.to
       ? `from ${format(date.from, "yyyy-MM-dd")} to ${format(
           date.to,
-          "yyyy-MM-dd"
+          "yyyy-MM-dd",
         )}`
       : `from ${format(date.from, "yyyy-MM-dd")}`
-    : " اختر تاريخًا ";
+    : t("label");
 
   const clearSelection = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -116,58 +117,56 @@ export function DateRangeFilter({ fromKey, toKey }: DateRangeFilterProps) {
   };
 
   return (
-    <div className="flex flex-col gap-3 ">
-      <div className="border-2 border-primary rounded-2xl p-1">
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
+    <div className="flex flex-col gap-3">
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            id={`${fromKey}-range-date`}
+            className="border-primary w-64 justify-between rounded-2xl border-2 font-normal dark:border-amber-50"
+          >
+            <span className="truncate">{formatted}</span>
+            {date?.from || date?.to ? (
+              <X
+                className="text-muted-foreground ml-2 h-4 w-4 hover:text-red-500"
+                onClick={clearSelection}
+              />
+            ) : (
+              <ChevronDownIcon className="ml-2 h-4 w-4" />
+            )}
+          </Button>
+        </PopoverTrigger>
+
+        <PopoverContent className="w-auto overflow-hidden p-0" align="start">
+          <Calendar
+            mode="range"
+            selected={date}
+            onSelect={setDate}
+            numberOfMonths={1}
+          />
+          <div className="flex justify-end gap-2 border-t p-2">
+            <Button variant="ghost" size="sm" onClick={setToday}>
+              {t("today")}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={setThisMonth}>
+              {t("thismonth")}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={setThreeMonths}>
+              {t("threemonths")}
+            </Button>
             <Button
               variant="outline"
-              id={`${fromKey}-range-date`}
-              className="w-64 justify-between font-normal border-0"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                clearSelection(e);
+              }}
             >
-              <span className="truncate">{formatted}</span>
-              {date?.from || date?.to ? (
-                <X
-                  className="ml-2 h-4 w-4 text-muted-foreground hover:text-red-500"
-                  onClick={clearSelection}
-                />
-              ) : (
-                <ChevronDownIcon className="ml-2 h-4 w-4" />
-              )}
+              {t("delete")}
             </Button>
-          </PopoverTrigger>
-
-          <PopoverContent className="w-auto overflow-hidden p-0" align="start">
-            <Calendar
-              mode="range"
-              selected={date}
-              onSelect={setDate}
-              numberOfMonths={1}
-            />
-            <div className="flex justify-end gap-2 p-2 border-t">
-              <Button variant="ghost" size="sm" onClick={setToday}>
-                اليوم
-              </Button>
-              <Button variant="ghost" size="sm" onClick={setThisMonth}>
-                هذا الشهر
-              </Button>
-              <Button variant="ghost" size="sm" onClick={setThreeMonths}>
-                90 يوم
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  clearSelection(e);
-                }}
-              >
-                مسح
-              </Button>
-            </div>
-          </PopoverContent>
-        </Popover>
-      </div>
+          </div>
+        </PopoverContent>
+      </Popover>
     </div>
   );
 }

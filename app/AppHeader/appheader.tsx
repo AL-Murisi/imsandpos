@@ -6,63 +6,65 @@ import { SidebarTrigger } from "../../components/ui/sidebar";
 import React from "react";
 import { AiFillProduct } from "react-icons/ai";
 import { Separator } from "@/components/ui/separator";
+import { useTranslations } from "next-intl";
 
 export default function Appheader() {
+  const t = useTranslations("menu");
   const menuItems = [
     {
-      title: "الرئيسية",
+      title: t("home"),
       url: "/dashboard",
     },
     {
-      title: "الرئيسية",
+      title: t("home"),
       url: "/inventory/dashboardUser",
     },
     {
-      title: "المستخدمون",
+      title: t("users"),
       url: "/users",
     },
     {
-      title: "اداره المخازن",
+      title: t("inventory"),
       url: "/inventory/manageinvetory",
     },
     {
-      title: "المنتجات",
+      title: t("products"),
       url: "/inventory/products",
     },
     {
-      title: "الفئات", // Categories
+      title: t("categories"), // Categories
       url: "/inventory/categories",
     },
     {
-      title: "المبيعات",
+      title: t("sales"),
       url: "/sells",
     },
     {
-      title: "المستودعات", // Warehouses
+      title: t("warehouses"), // Warehouses
       url: "/inventory/warehouses",
     },
     {
-      title: "الموردون", // Suppliers
+      title: t("suppliers"), // Suppliers
       url: "/inventory/suppliers",
     },
     {
-      title: "الكاشير",
+      title: t("sales"),
       url: "/sells/cashiercontrol",
     },
     {
-      title: "المحجوزة",
+      title: t("reservedOrders"),
       url: "/sells/reservation",
     },
     {
-      title: "الدين",
+      title: t("debt"),
       url: "/sells/debtSell",
     },
     {
-      title: "الملف الشخصي",
+      title: t("profile"),
       url: "/profile",
     },
     {
-      title: "الإعدادات",
+      title: t("settings"),
       url: "/settings",
     },
   ];

@@ -12,6 +12,7 @@ import { Card } from "../../../components/ui/card";
 import { FormatPrice } from "@/hooks/usePrice";
 import { Label } from "@/components/ui/label";
 import dynamic from "next/dynamic";
+import { useTranslations } from "next-intl";
 const ScrollArea = dynamic(
   () => import("@/components/ui/scroll-area").then((m) => m.ScrollArea),
   {
@@ -69,6 +70,7 @@ export default function ProductsList({
   searchParams,
   queryr,
 }: prop) {
+  const t = useTranslations("cashier");
   // const {
   //   pagination,
   //   sorting,
@@ -132,12 +134,12 @@ export default function ProductsList({
   return (
     <div className="rounded-2xl p-2 lg:col-span-1" dir="rtl">
       <div className="mb-4 flex justify-between gap-3 bg-transparent px-3">
-        <SearchInput placeholder={"بحث "} paramKey="product" />
+        <SearchInput placeholder={t("search")} paramKey="product" />
 
         <div className="">
           <Selection
             options={formData.categories}
-            placeholder={"filter"}
+            placeholder={t("filter")}
             selectkey="categoryId"
           />
         </div>
@@ -168,7 +170,9 @@ export default function ProductsList({
                         <span className="w-8 text-left">
                           {FormatPrice(Number(products.availableCartons))}
                         </span>
-                        <span className="flex-1 text-center">كرتون</span>
+                        <span className="flex-1 text-center">
+                          {t("carton")}
+                        </span>
                         <span className="w-16 text-right">
                           ${FormatPrice(Number(products.pricePerCarton))}
                         </span>
@@ -179,7 +183,9 @@ export default function ProductsList({
                         <span className="w-8 text-left">
                           {FormatPrice(Number(products.availablePackets))}
                         </span>
-                        <span className="flex-1 text-center">حزمة</span>
+                        <span className="flex-1 text-center">
+                          {t("packet")}
+                        </span>
                         <span className="w-16 text-right">
                           ${FormatPrice(Number(products.pricePerPacket))}
                         </span>
@@ -191,7 +197,9 @@ export default function ProductsList({
                           <span className="w-8 text-left">
                             {FormatPrice(Number(products.availableUnits))}
                           </span>
-                          <span className="flex-1 text-center">وحدة</span>
+                          <span className="flex-1 text-center">
+                            {t("unit")}
+                          </span>
                           <span className="w-16 text-right">
                             ${FormatPrice(Number(products.pricePerUnit))}
                           </span>

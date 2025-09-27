@@ -10,6 +10,7 @@ import {
   SelectGroup,
   SelectItem,
 } from "@/components/ui/select";
+import { useTranslations } from "next-intl";
 
 // Define your sections and chartConfigs types more precisely if you want
 type Section = {
@@ -40,6 +41,7 @@ export default function CardSelector({
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
+  const t = useTranslations("selection");
   const params = new URLSearchParams(searchParams.toString());
 
   // Controlled selected card state synced with URL
@@ -81,7 +83,7 @@ export default function CardSelector({
       </SelectTrigger>
       <SelectContent>
         <SelectGroup>
-          <SelectItem value="all">الكل</SelectItem>
+          <SelectItem value="all">{t("all")}</SelectItem>
           {sections
             .filter((s) => s.chartData)
             .map((s) => (

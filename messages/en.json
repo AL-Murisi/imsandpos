@@ -1,0 +1,86 @@
+{
+  "cards": {
+    "revenue": "Revenue",
+    "purchases": "Purchases",
+    "debt": "Outstanding Debts",
+    "receivedDebt": "Received Debts",
+    "totalStock": "Total Stock",
+    "lowStock": "Low Stock",
+    "finishedStock": "Finished Products",
+    "users": "Users",
+    "sales": "Sales"
+  },
+  "LocaleSwitcher": {
+    " ar": "Ar",
+    "en": "En",
+    "label": "Sprache"
+  },
+  "menu": {
+    "home": "dashboard",
+    "users": "Users",
+    "inventory": "Inventory",
+    "manageInventory": " Inventory",
+    "categories": "Categories",
+    "suppliers": "Suppliers",
+    "warehouses": "Warehouses",
+    "products": "Products",
+    "sales": "Sales",
+    "cashierMain": "Cashier Home",
+    "cashier": "Cashier",
+    "reservedOrders": "Reserved Orders",
+    "debt": "Credit Sales",
+    "profile": "Profile",
+    "settings": "Settings",
+    "logout": "logout",
+    "welcome": "Hello",
+    "role": "role"
+  },
+  "selection": {
+    "all": "All"
+  },
+  "datePicker": {
+    "label": "chose a date",
+    "today": "  today",
+    "thismonth": " this month",
+    "threemonths": " 90 days",
+    "delete": "   delete"
+  },
+  "cashier": {
+    "search": "Search",
+    "filter": "Filter",
+    "carton": "Carton",
+    "packet": "Packet",
+    "unit": "Unit",
+    "newCart": "+ New",
+    "deleteAll": "Delete All",
+    "hello": "Hello {name}",
+    "noProducts": "No products in cart",
+    "product": "Product",
+    "sku": "SKU",
+    "warehouse": "Warehouse",
+    "quantity": "Quantity",
+    "type": "Type",
+    "price": "Price",
+    "total": "Total",
+    "actions": "Actions",
+    "discount": "Discount",
+    "fixed": "Fixed",
+    "percentage": "Percentage",
+    "beforeDiscount": "Total before discount:",
+    "discountValue": "Discount value:",
+    "afterDiscount": "Total after discount:",
+    "cancel": "Cancel",
+    "chooseProduct": "Choose a product"
+  },
+
+  "table": {
+    "columns": "Columns",
+    "rows": "Rows",
+    "rowsPerPage": "Rows per page",
+    "reset": "Reset",
+    "prev": "Previous",
+    "next": "Next",
+    "noResults": "No results.",
+    "selected": "{count} of {total} rows selected."
+  }
+}
