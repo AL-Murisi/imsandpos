@@ -82,6 +82,8 @@ interface Main {
 
 export default async function RootLayout({ children }: Main) {
   const locale = await getLocale();
+  const messages = (await import(`@/messages/${locale}.json`)).default;
+
   return (
     <html lang={locale} className={`${inter.className} `}>
       <body className="font-sans">
@@ -112,7 +114,7 @@ export default async function RootLayout({ children }: Main) {
           </header>
 
           <AuthProvider>
-            <NextIntlClientProvider>
+            <NextIntlClientProvider locale={locale} messages={messages[locale]}>
               <ClientLayoutWrapper>
                 {children} <Analytics /> <SpeedInsights />
               </ClientLayoutWrapper>

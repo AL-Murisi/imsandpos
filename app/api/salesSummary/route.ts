@@ -93,31 +93,29 @@ export async function GET(req: NextRequest) {
 
   try {
     // Single comprehensive data fetch
-    const [
-      productStats,
-      users,
-      recentSales,
-      topProducts,
-      activityLogs,
-      formData,
-      revenue,
-    ] = await Promise.all([
-      fetchProductStats("admin"),
-      Fetchusers(true),
-      FetchDebtSales(filter, query, from, to, pageIndex, pageSize, parsedSort),
-      getTopSellingProducts(Number(topItems), from, to, categoryId),
-      getActivityLogs(pageIndex, pageSize, parsedSort),
-      fetchAllFormData(),
-      fetchrevnu(allFrom, allTo, revnue),
-    ]);
+    const [recentSales, topProducts, activityLogs, formData, revenue] =
+      await Promise.all([
+        FetchDebtSales(
+          filter,
+          query,
+          from,
+          to,
+          pageIndex,
+          pageSize,
+          parsedSort,
+        ),
+        getTopSellingProducts(Number(topItems), from, to, categoryId),
+        getActivityLogs(pageIndex, pageSize, parsedSort),
+        fetchAllFormData(),
+        fetchrevnu(allFrom, allTo, revnue),
+      ]);
 
     // Combine chart data here to avoid duplication
 
     // Serialize all data to handle BigInt
     const responseData = serializeBigInt({
-      productStats,
       revenue,
-      users,
+
       recentSales,
       topProducts,
       activityLogs,

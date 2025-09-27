@@ -28,8 +28,8 @@ export default function ClientLayoutWrapper({
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="h-full w-32 animate-spin border-b-2 border-gray-900 bg-gray-500">
+      <div className="flex items-center justify-center">
+        <div className="text-accent min-h-screen w-full animate-pulse border-b-2 bg-gray-500">
           weclome to ims
         </div>
       </div>
