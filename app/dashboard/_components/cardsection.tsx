@@ -8,7 +8,7 @@ import HandCoins from "lucide-react/dist/esm/icons/hand-coins";
 import ShoppingBag from "lucide-react/dist/esm/icons/shopping-bag";
 import ShoppingCart from "lucide-react/dist/esm/icons/shopping-cart";
 import Users from "lucide-react/dist/esm/icons/users";
-
+import { ReactElement } from "react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
@@ -52,7 +52,7 @@ export default async function SectionCards({
   const t = await getTranslations("cards");
 
   /** 🖼 Icon map */
-  const iconMap: Record<string, JSX.Element> = {
+  const iconMap: Record<string, ReactElement> = {
     revenue: <DollarSign size={40} className="text-blue-500" />, // revenue 💵
     purchases: <ShoppingCart size={40} className="text-green-600" />, // purchases 🛒
     debt: <HandCoins size={40} className="text-red-600" />, // unpaid debt 🪙
