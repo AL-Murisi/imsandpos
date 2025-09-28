@@ -1,20 +1,18 @@
 "use client";
 
-import { Bell, LogOut, User } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { DateRangeFilter } from "./testting";
+
 import CardSelector from "./cardslex";
 import NotificationBell from "../NotificationBell";
 import { useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic";
+const DateRangeFilter = dynamic(
+  () => import("./testting").then((mod) => mod.DateRangeFilter),
+  {
+    ssr: false, // Don't render on the server
+    loading: () => <input type="date" />, // Fallback while loading
+  },
+);
 
 export default function DashboardHeader({
   sections,

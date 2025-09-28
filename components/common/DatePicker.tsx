@@ -5,7 +5,15 @@ import { ChevronDownIcon, X } from "lucide-react";
 import { DateRange } from "react-day-picker";
 
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
+
+import dynamic from "next/dynamic";
+const Calendar = dynamic(
+  () => import("@/components/ui/calendar").then((m) => m.Calendar),
+  {
+    ssr: false,
+    loading: () => <input type="date" className="..." />,
+  },
+);
 import { Label } from "@/components/ui/label";
 import {
   Popover,

@@ -159,8 +159,6 @@ export async function fetchProduct(
   }));
 
   try {
-    const totalCount = await prisma.product.count({ where: combinedWhere });
-
     const products = await prisma.product.findMany({
       select: {
         id: true,
@@ -209,7 +207,10 @@ export async function fetchProduct(
       weight: product.weight ? Number(product.weight) : null,
     }));
 
-    return { products: formattedProducts, totalCount };
+    return {
+      products: formattedProducts,
+      totalCount: formattedProducts.length,
+    };
   } catch (error) {
     console.error("Error fetching products:", error);
     return { products: [], totalCount: 0 };

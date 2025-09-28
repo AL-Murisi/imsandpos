@@ -1,13 +1,20 @@
 "use client";
 
 // import ProductForm from "./form";
-import { Calendar22 } from "@/components/common/DatePicker";
+
 import { SelectField } from "@/components/common/selection";
 import { DataTable } from "@/components/common/test";
-// import InvonteryEditFormm from "./form";
+const Calendar22 = dynamic(
+  () => import("@/components/common/DatePicker").then((m) => m.Calendar22),
+  {
+    ssr: false,
+    loading: () => <input type="date" className="..." />,
+  },
+);
 import SearchInput from "@/components/common/searchtest";
 import { useTablePrams } from "@/hooks/useTableParams";
 import { StockMovementColumns } from "./columnsMovment";
+import dynamic from "next/dynamic";
 
 type DateRange = {
   from: Date | null;

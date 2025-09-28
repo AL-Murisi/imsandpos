@@ -1,7 +1,14 @@
 "use client";
 
 import CustomDialog from "@/components/common/Dailog";
-import { Calendar22 } from "@/components/common/DatePicker";
+import dynamic from "next/dynamic";
+const Calendar22 = dynamic(
+  () => import("@/components/common/DatePicker").then((m) => m.Calendar22),
+  {
+    ssr: false,
+    loading: () => <input type="date" className="..." />,
+  },
+);
 import { SelectField } from "@/components/common/selection";
 import { DataTable } from "@/components/common/test";
 import { Button } from "@/components/ui/button";

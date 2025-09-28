@@ -38,8 +38,8 @@ const SortableHeader: React.FC<SortableHeaderProps> = ({ column, label }) => {
     isSorted === "asc"
       ? ArrowUp
       : isSorted === "desc"
-      ? ArrowDown
-      : ArrowUpDown;
+        ? ArrowDown
+        : ArrowUpDown;
 
   return (
     <DropdownMenu>
@@ -104,18 +104,18 @@ export const columns: ColumnDef<User>[] = [
         case true:
           color = "bg-green-100 text-green-800";
           label = "Active";
-          icon = <CheckCircle className="w-4 h-4 mr-1" />;
+          icon = <CheckCircle className="mr-1 h-4 w-4" />;
           break;
         default:
           color = "bg-yellow-100 text-yellow-800";
           label = "Not Active";
-          icon = <Clock className="w-4 h-4 mr-1" />;
+          icon = <Clock className="mr-1 h-4 w-4" />;
           break;
       }
 
       return (
         <div
-          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${color}`}
+          className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${color}`}
         >
           {icon}
           {label}
@@ -144,7 +144,7 @@ export const columns: ColumnDef<User>[] = [
 
     header: ({ column }) => <SortableHeader column={column} label="parentid" />,
     cell: ({ row }) => (
-      <div className=" font-medium">{row.getValue("parentId")}</div>
+      <div className="font-medium">{row.getValue("parentId")}</div>
     ),
   },
 

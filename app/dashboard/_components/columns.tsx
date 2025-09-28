@@ -1,14 +1,20 @@
+// columns.tsx - OPTIMIZED
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ColumnDef } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, ArrowUpDown, EditIcon } from "lucide-react";
+
+// ✅ CRITICAL: Individual icon imports (saves ~180KB)
+import ArrowDown from "lucide-react/dist/esm/icons/arrow-down";
+import ArrowUp from "lucide-react/dist/esm/icons/arrow-up";
+import ArrowUpDown from "lucide-react/dist/esm/icons/arrow-up-down";
+import Edit from "lucide-react/dist/esm/icons/edit";
 
 import CustomDialog from "@/components/common/Dailog";
 
 interface DebtSaleData {
   id: string;
-  totalAmount: string; // As string from FetchDebtSales
+  totalAmount: string;
   amountPaid: string;
   amountDue: string;
   saleDate: string;
@@ -20,8 +26,8 @@ interface DebtSaleData {
     phoneNumber: string | null;
     customerType: string;
   };
-  // Add any other properties from your Prisma `Sale` select
 }
+
 type SortableHeaderProps = {
   column: any;
   label: string;
@@ -33,8 +39,8 @@ const SortableHeader: React.FC<SortableHeaderProps> = ({ column, label }) => {
     isSorted === "asc"
       ? ArrowUp
       : isSorted === "desc"
-      ? ArrowDown
-      : ArrowUpDown;
+        ? ArrowDown
+        : ArrowUpDown;
 
   return (
     <Button
@@ -72,7 +78,7 @@ export const RecentSale: ColumnDef<DebtSaleData>[] = [
   },
   {
     accessorKey: "u",
-    header: "u",
+    header: "#",
     cell: ({ row }) => row.index + 1,
   },
   {
@@ -127,15 +133,15 @@ export const RecentSale: ColumnDef<DebtSaleData>[] = [
         status === "paid"
           ? "bg-green-100 text-green-800"
           : status === "partial"
-          ? "bg-yellow-100 text-yellow-800"
-          : "bg-red-100 text-red-800";
+            ? "bg-yellow-100 text-yellow-800"
+            : "bg-red-100 text-red-800";
 
       const label =
         status === "paid"
           ? "مدفوع"
           : status === "partial"
-          ? "جزئي"
-          : "غير مدفوع";
+            ? "جزئي"
+            : "غير مدفوع";
 
       return <Badge className={color}>{label}</Badge>;
     },
@@ -149,7 +155,7 @@ export const RecentSale: ColumnDef<DebtSaleData>[] = [
         <CustomDialog
           trigger={
             <Button variant="outline">
-              <EditIcon />
+              <Edit className="h-4 w-4" />
             </Button>
           }
           title="إضافة منتج"
@@ -234,13 +240,13 @@ export const userActivity: ColumnDef<any>[] = [
         <CustomDialog
           trigger={
             <Button variant="outline">
-              <EditIcon />
+              <Edit className="h-4 w-4" />
             </Button>
           }
           title="تفاصيل النشاط"
           description="عرض تفاصيل النشاط بالكامل"
         >
-          <div className="p-4">
+          <div className="space-y-2 p-4">
             <p>
               <strong>المستخدم:</strong> {log.user.name}
             </p>

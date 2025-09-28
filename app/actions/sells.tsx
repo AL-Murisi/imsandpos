@@ -33,16 +33,17 @@ export async function FetchDebtSales(
   const fromatDate = from ? new Date(from).toISOString() : undefined;
   const toDate = to ? new Date(to).toISOString() : undefined;
   if (searchQuery) {
-    ((combinedWhere.customer = {
-      name: { contains: searchQuery, mode: "insensitive" },
-    }),
+    combinedWhere.OR = [
+      { customer: { name: { contains: searchQuery, mode: "insensitive" } } },
       {
         customer: {
           phoneNumber: { contains: searchQuery, mode: "insensitive" },
         },
       },
-      { paymentStatus: { contains: searchQuery, mode: "insensitive" } });
+      { paymentStatus: { contains: searchQuery, mode: "insensitive" } },
+    ];
   }
+
   if (fromatDate || toDate) {
     combinedWhere.createdAt = {
       ...(fromatDate && {
@@ -88,6 +89,160 @@ export async function FetchDebtSales(
 
   return serializedDebts; // Return the transformed data
 }
+// export async function fetchSalesSummary(
+//   role: string,
+//   filters?: {
+//     salesFrom?: string;
+//     salesTo?: string;
+//     purchasesFrom?: string;
+//     purchasesTo?: string;
+//     revenueFrom?: string;
+//     revenueTo?: string;
+//     debtFrom?: string;
+//     debtTo?: string;
+//     chartTo?: string;
+//     chartFrom?: string;
+//     allFrom?: string;
+//     allTo?: string;
+//   },
+// ) {
+//   const formatRange = (from?: string, to?: string) => ({
+//     ...(from ? { gte: new Date(from) } : {}),
+//     ...(to ? { lte: new Date(to) } : {}),
+//   });
+
+//   const salesRange = formatRange(
+//     filters?.salesFrom || filters?.allFrom,
+//     filters?.salesTo || filters?.allTo,
+//   );
+//   const purchasesRange = formatRange(
+//     filters?.purchasesFrom || filters?.allFrom,
+//     filters?.purchasesTo || filters?.allTo,
+//   );
+//   const revenueRange = formatRange(
+//     filters?.revenueFrom || filters?.allFrom,
+//     filters?.revenueTo || filters?.allTo,
+//   );
+//   const debtRange = formatRange(
+//     filters?.debtFrom || filters?.allFrom,
+//     filters?.debtTo || filters?.allTo,
+//   );
+
+//   // Reduced from 9 queries to 4 queries by combining aggregate + groupBy
+//   const [salesOverTime, purchasesOverTime, revenueOverTime, debtData] =
+//     await Promise.all([
+//       // Query 1: Sales (combines count + groupBy)
+//       prisma.sale.groupBy({
+//         by: ["saleDate"],
+//         _sum: { totalAmount: true },
+//         _count: { id: true },
+//         where: { saleDate: salesRange, status: "completed" },
+//         orderBy: { saleDate: "asc" },
+//       }),
+
+//       // Query 2: Purchases (groupBy includes sum)
+//       prisma.product.groupBy({
+//         by: ["createdAt"],
+//         _sum: { costPrice: true },
+//         where: { createdAt: purchasesRange },
+//         orderBy: { createdAt: "asc" },
+//       }),
+
+//       // Query 3: Revenue (groupBy includes sum)
+//       prisma.payment.groupBy({
+//         by: ["createdAt"],
+//         _sum: { amount: true },
+//         where: { createdAt: revenueRange, status: "completed" },
+//         orderBy: { createdAt: "asc" },
+//       }),
+
+//       // Query 4: Debt data (combined into single query)
+//       prisma.$transaction([
+//         // Total debt
+//         prisma.sale.aggregate({
+//           _sum: { amountDue: true },
+//           where: { saleDate: debtRange },
+//         }),
+//         // Debt payments over time (includes total)
+//         prisma.payment.groupBy({
+//           by: ["createdAt"],
+//           _sum: { amount: true },
+//           _count: { id: true },
+//           where: {
+//             createdAt: debtRange,
+//             paymentType: { in: ["outstanding_payment"] },
+//             status: "completed",
+//           },
+//           orderBy: { createdAt: "asc" },
+//         }),
+//       ]),
+//     ]);
+
+//   // Extract debt data from transaction
+//   const [totalDebtAgg, debtPaymentsOverTime] = debtData;
+
+//   // Calculate totals from grouped data (avoiding redundant aggregate queries)
+//   const totalSales = salesOverTime.reduce(
+//     (sum, s) => sum + (s._count.id || 0),
+//     0,
+//   );
+//   const totalPurchases = purchasesOverTime.reduce(
+//     (sum, p) => sum + (p._sum?.costPrice?.toNumber() || 0),
+//     0,
+//   );
+//   const totalRevenue = revenueOverTime.reduce(
+//     (sum, r) => sum + (r._sum?.amount?.toNumber() || 0),
+//     0,
+//   );
+//   const totalDebtReceived = debtPaymentsOverTime.reduce(
+//     (sum, d) => sum + (d._sum?.amount?.toNumber() || 0),
+//     0,
+//   );
+
+//   // Format chart data - group by day to reduce data points
+//   const groupByDay = (data: any[], dateField: string, valueField: string) => {
+//     const grouped = new Map<string, number>();
+
+//     data.forEach((item) => {
+//       const date = item[dateField].toISOString().split("T")[0];
+//       const value = item._sum?.[valueField]?.toNumber() || 0;
+//       grouped.set(date, (grouped.get(date) || 0) + value);
+//     });
+
+//     return Array.from(grouped.entries())
+//       .map(([date, value]) => ({ date, value }))
+//       .sort((a, b) => a.date.localeCompare(b.date));
+//   };
+
+//   const salesChart = groupByDay(salesOverTime, "saleDate", "totalAmount");
+//   const purchasesChart = groupByDay(
+//     purchasesOverTime,
+//     "createdAt",
+//     "costPrice",
+//   );
+//   const revenueChart = groupByDay(revenueOverTime, "createdAt", "amount");
+//   const debtChart = groupByDay(debtPaymentsOverTime, "createdAt", "amount");
+
+//   return {
+//     sales: {
+//       total: totalSales,
+//       chart: salesChart,
+//     },
+//     purchases: {
+//       total: totalPurchases,
+//       chart: purchasesChart,
+//     },
+//     revenue: {
+//       total: totalRevenue,
+//       chart: revenueChart,
+//     },
+//     debt: {
+//       totalDebt: totalDebtAgg._sum.amountDue?.toNumber() || 0,
+//       received: totalDebtReceived,
+//       chart: debtChart,
+//     },
+//   };
+// }
 export async function fetchSalesSummary(
   role: string,
   filters?: {
@@ -109,6 +264,7 @@ export async function fetchSalesSummary(
     ...(from ? { gte: new Date(from) } : {}),
     ...(to ? { lte: new Date(to) } : {}),
   });
+
   const salesRange = formatRange(
     filters?.salesFrom || filters?.allFrom,
     filters?.salesTo || filters?.allTo,
@@ -126,104 +282,149 @@ export async function fetchSalesSummary(
     filters?.debtTo || filters?.allTo,
   );
 
-  // Run queries in parallel
+  const [salesOverTime, purchasesOverTime, revenueOverTime, debtData] =
+    await Promise.all([
+      prisma.sale.groupBy({
+        by: ["saleDate"],
+        _sum: { totalAmount: true },
+        _count: { id: true },
+        where: { saleDate: salesRange, status: "completed" },
+        orderBy: { saleDate: "asc" },
+      }),
+
+      prisma.product.groupBy({
+        by: ["createdAt"],
+        _sum: { costPrice: true },
+        where: { createdAt: purchasesRange },
+        orderBy: { createdAt: "asc" },
+      }),
+
+      prisma.payment.groupBy({
+        by: ["createdAt"],
+        _sum: { amount: true },
+        where: { createdAt: revenueRange, status: "completed" },
+        orderBy: { createdAt: "asc" },
+      }),
+
+      prisma.$transaction([
+        // 🔹 Outstanding debt (from sales still unpaid/partially paid)
+        prisma.sale.aggregate({
+          _sum: { amountDue: true },
+          where: {
+            saleDate: debtRange,
+            paymentStatus: { in: ["partial", "pending"] },
+          },
+        }),
+        // 🔹 Received debt payments
+        prisma.payment.aggregate({
+          _sum: { amount: true },
+          where: {
+            createdAt: debtRange,
+            paymentType: "outstanding_payment",
+            status: "completed",
+          },
+        }),
+        // Group outstanding (unreceived) by month
+        prisma.sale.groupBy({
+          by: ["saleDate"],
+          _sum: { amountDue: true },
+          where: {
+            saleDate: debtRange,
+            paymentStatus: { in: ["partial", "pending"] },
+          },
+          orderBy: { saleDate: "asc" },
+        }),
+        // Group received debt by month
+        prisma.payment.groupBy({
+          by: ["createdAt"],
+          _sum: { amount: true },
+          where: {
+            createdAt: debtRange,
+            paymentType: "outstanding_payment",
+            status: "completed",
+          },
+          orderBy: { createdAt: "asc" },
+        }),
+      ]),
+    ]);
+
   const [
-    totalSalesAgg,
-    salesOverTime,
-    totalPurchasesAgg,
-    purchasesOverTime,
-    totalRevenueAgg,
-    revenueOverTime,
-    totalDebtAgg,
-    debtPaymentsAgg,
-    debtOverTime,
-  ] = await Promise.all([
-    prisma.sale.aggregate({
-      _count: { id: true },
-      where: { saleDate: salesRange, status: "completed" },
-    }),
-    prisma.sale.groupBy({
-      by: ["saleDate"],
-      _sum: { totalAmount: true },
-      where: { saleDate: salesRange, status: "completed" },
-      orderBy: { saleDate: "asc" },
-    }),
-    prisma.product.aggregate({
-      _sum: { costPrice: true },
-      where: { createdAt: purchasesRange },
-    }),
-    prisma.product.groupBy({
-      by: ["createdAt"],
-      _sum: { costPrice: true },
-      where: { createdAt: purchasesRange },
-      orderBy: { createdAt: "asc" },
-    }),
-    prisma.payment.aggregate({
-      _sum: { amount: true },
-      where: { createdAt: revenueRange, status: "completed" },
-    }),
-    prisma.payment.groupBy({
-      by: ["createdAt"],
-      _sum: { amount: true },
-      where: { createdAt: revenueRange, status: "completed" },
-      orderBy: { createdAt: "asc" },
-    }),
-    prisma.sale.aggregate({
-      _sum: { amountDue: true },
-      where: { saleDate: debtRange },
-    }),
-    prisma.payment.aggregate({
-      _sum: { amount: true },
-      _count: { id: true },
-      where: {
-        createdAt: debtRange,
-        paymentType: { in: ["outstanding_payment"] },
-        status: "completed",
-      },
-    }),
-    prisma.payment.groupBy({
-      by: ["createdAt"],
-      _sum: { amount: true },
-      where: {
-        createdAt: debtRange,
-        paymentType: { in: ["outstanding_payment"] },
-        status: "completed",
-      },
-      orderBy: { createdAt: "asc" },
-    }),
-  ]);
+    totalUnreceivedAgg,
+    totalReceivedAgg,
+    unreceivedOverTime,
+    receivedOverTime,
+  ] = debtData;
+
+  const totalSales = salesOverTime.reduce(
+    (sum, s) => sum + (s._count.id || 0),
+    0,
+  );
+  const totalPurchases = purchasesOverTime.reduce(
+    (sum, p) => sum + (p._sum?.costPrice?.toNumber() || 0),
+    0,
+  );
+  const totalRevenue = revenueOverTime.reduce(
+    (sum, r) => sum + (r._sum?.amount?.toNumber() || 0),
+    0,
+  );
+
+  const totalUnreceived = totalUnreceivedAgg._sum.amountDue?.toNumber() || 0;
+  const totalReceived = totalReceivedAgg._sum.amount?.toNumber() || 0;
+
+  // Group by month
+  const groupByMonth = (data: any[], dateField: string, valueField: string) => {
+    const grouped = new Map<string, number>();
+    data.forEach((item) => {
+      const dateObj = item[dateField];
+      const monthKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, "0")}`;
+      const value = item._sum?.[valueField]?.toNumber() || 0;
+      grouped.set(monthKey, (grouped.get(monthKey) || 0) + value);
+    });
+    return Array.from(grouped.entries())
+      .map(([date, value]) => ({ date, value }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  };
 
   const salesChart = salesOverTime.map((s) => ({
     date: s.saleDate.toISOString().split("T")[0],
     value: s._sum.totalAmount?.toNumber() || 0,
   }));
+
   const purchasesChart = purchasesOverTime.map((p) => ({
     date: p.createdAt.toISOString().split("T")[0],
     value: p._sum.costPrice?.toNumber() || 0,
   }));
+
   const revenueChart = revenueOverTime.map((r) => ({
     date: r.createdAt.toISOString().split("T")[0],
     value: r._sum.amount?.toNumber() || 0,
   }));
-  const debtChart = debtOverTime.map((d) => ({
-    date: d.createdAt.toISOString().split("T")[0],
-    value: d._sum.amount?.toNumber() || 0,
-  }));
+
+  const unreceivedChart = groupByMonth(
+    unreceivedOverTime,
+    "saleDate",
+    "amountDue",
+  );
+  const receivedChart = groupByMonth(receivedOverTime, "createdAt", "amount");
 
   return {
-    sales: { total: totalSalesAgg._count.id, chart: salesChart },
+    sales: {
+      total: totalSales,
+      chart: salesChart,
+    },
     purchases: {
-      total: totalPurchasesAgg._sum.costPrice?.toNumber() || 0,
+      total: totalPurchases,
       chart: purchasesChart,
     },
     revenue: {
-      total: totalRevenueAgg._sum.amount?.toNumber() || 0,
+      total: totalRevenue,
       chart: revenueChart,
     },
     debt: {
-      totalDebt: totalDebtAgg._sum.amountDue?.toNumber() || 0,
-      received: debtPaymentsAgg._sum.amount?.toNumber() || 0,
-      chart: debtChart,
+      unreceived: totalUnreceived, // 💡 From Sale.amountDue
+      received: totalReceived, // 💡 From Payment.amount
+      unreceivedChart, // monthly chart from Sale
+      receivedChart, // monthly chart from Payment
     },
   };
 }
@@ -355,57 +556,48 @@ export async function getTopSellingProducts(
   return sorted;
 }
 
-export async function fetchrevnu(from?: string, to?: string, groupBy?: string) {
-  let dateFilter: any = {};
+export async function fetchrevnu(
+  from?: string,
+  to?: string,
 
-  if (from) {
-    dateFilter.gte = startOfDay(new Date(from));
-  }
+  groupBy: "day" | "month" = "day",
+  limit = 5,
+) {
+  const dateFilter: any = {};
+  if (from) dateFilter.gte = startOfDay(new Date(from));
+  if (to) dateFilter.lte = endOfDay(new Date(to));
 
-  if (to) {
-    dateFilter.lte = endOfDay(new Date(to));
-  }
-
-  // Fetch payments
-  const payments = await prisma.payment.findMany({
-    where: {
-      createdAt: {
-        ...dateFilter,
-      },
-    },
-    select: {
-      amount: true, // Prisma.Decimal
-      createdAt: true,
-    },
+  // Use Prisma groupBy to let DB do aggregation
+  const paymentsGrouped = await prisma.payment.groupBy({
+    by: ["createdAt"],
+    _sum: { amount: true },
+    where: { createdAt: dateFilter },
+    orderBy: { createdAt: "asc" },
+    take: limit,
   });
 
-  // Group by day or month
-  const grouped = payments.reduce<
-    Record<string, { date: string; total: number }>
-  >((acc, payment) => {
+  // Map results to your formatted structure
+  const formatted = paymentsGrouped.map((p) => {
     const key =
       groupBy === "month"
-        ? format(payment.createdAt, "MM").toLocaleString()
-        : format(payment.createdAt, "yyyy-MM");
-    const formattedDate = new Date(key).toLocaleDateString("ar-EG", {
+        ? format(p.createdAt, "yyyy-MM") // Group by month
+        : format(p.createdAt, "yyyy-MM-dd"); // Group by day
+
+    const formattedDate = new Date(p.createdAt).toLocaleDateString("ar-EG", {
       day: "numeric",
       month: "short",
       year: "numeric",
     });
-    if (!acc[key]) {
-      acc[key] = { date: formattedDate, total: 0 };
-    }
 
-    // Convert Prisma.Decimal → number
-    acc[key].total += Number(payment.amount);
+    return {
+      date: formattedDate,
+      total: p._sum.amount?.toNumber() || 0,
+      key,
+    };
+  });
 
-    return acc;
-  }, {});
-
-  // Instead of returning the object
-  const sort = Object.values(grouped).sort(
+  // Sort by date (optional, should already be sorted)
+  return formatted.sort(
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
   );
-
-  return sort;
 }

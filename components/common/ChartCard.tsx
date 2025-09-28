@@ -46,7 +46,7 @@ interface ChartCardProps {
   icon: React.ReactNode;
   title: string | number;
   label: string;
-  title2?: string;
+  title2?: any;
   label2?: string;
   bg?: string;
   description: string;

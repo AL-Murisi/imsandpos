@@ -1,55 +1,36 @@
 import { ChartCard } from "@/components/common/ChartCard";
 import DashboardHeader from "@/components/common/dashboradheader";
-import { IconBox, IconCash, IconTruckDelivery } from "@tabler/icons-react";
-import { DollarSign, Users } from "lucide-react";
+import AlertTriangle from "lucide-react/dist/esm/icons/alert-triangle";
+import Banknote from "lucide-react/dist/esm/icons/banknote";
+import Boxes from "lucide-react/dist/esm/icons/boxes";
+import DollarSign from "lucide-react/dist/esm/icons/dollar-sign";
+import HandCoins from "lucide-react/dist/esm/icons/hand-coins";
+import ShoppingBag from "lucide-react/dist/esm/icons/shopping-bag";
+import ShoppingCart from "lucide-react/dist/esm/icons/shopping-cart";
+import Users from "lucide-react/dist/esm/icons/users";
+
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-// Import your server actions
-import {
-  fetchSalesSummary,
-  fetchProductStats,
-  Fetchusers,
-  FetchDebtSales,
-  getTopSellingProducts,
-  fetchrevnu,
-} from "@/app/actions/sells";
-import { ParsedSort } from "@/hooks/sort";
-import { Prisma } from "@prisma/client";
+
+// Server actions
+import { fetchProductStats, Fetchusers, fetchrevnu } from "@/app/actions/sells";
 import { getTranslations } from "next-intl/server";
 
 interface SectionCardsProps {
-  searchParams: Promise<{
-    from?: string;
-    to?: string;
-    revnueDate?: string;
-    categoryId?: string;
-    query?: string;
-    page?: string;
-    limit?: string;
-    allFrom?: string;
-    allTo?: string;
-    salesFrom?: string;
-    salesTo?: string;
-    purchasesFrom?: string;
-    purchasesTo?: string;
-    revenueFrom?: string;
-    revenueTo?: string;
-    debtFrom?: string;
-    debtTo?: string;
-    chartTo?: string;
-    chartFrom?: string;
-    sort?: string;
-  }>;
+  searchParams: any;
+  salesSummary: any;
 }
 
 export default async function SectionCards({
   searchParams,
   salesSummary,
-}: any) {
-  // Extract search params with defaults
+}: SectionCardsProps) {
   const params = await searchParams;
 
   const filters = {
+    allFrom: params?.allFrom,
+    allTo: params?.allTo,
+    revnueDate: params?.revnueDate,
     salesFrom: params?.salesFrom,
     salesTo: params?.salesTo,
     purchasesFrom: params?.purchasesFrom,
@@ -60,133 +41,129 @@ export default async function SectionCards({
     debtTo: params?.debtTo,
     chartFrom: params?.chartFrom,
     chartTo: params?.chartTo,
-    allFrom: params?.allFrom,
-    allTo: params?.allTo,
-    revnueDate: params?.revnueDate,
   };
 
-  const debtFilter: Prisma.SaleWhereInput = {
-    // Add your filter logic if needed
-  };
-
-  // Fetch all data in parallel
+  // fetch in parallel
   const [productStats, users] = await Promise.all([
-    // fetchSalesSummary("admin", filters),
     fetchProductStats("admin"),
     Fetchusers(true),
-    // FetchDebtSales(debtFilter, query, from, to, pageIndex, limit, parsedSort),
-    // getTopSellingProducts(Number(searchParams?.topItems || 5), from, to, categoryId),
-    fetchrevnu(filters.allFrom, filters.allTo, params?.revnueDate),
   ]);
 
-  // Combine chart data
   const t = await getTranslations("cards");
+
+  /** 🖼 Icon map */
+  const iconMap: Record<string, JSX.Element> = {
+    revenue: <DollarSign size={40} className="text-blue-500" />, // revenue 💵
+    purchases: <ShoppingCart size={40} className="text-green-600" />, // purchases 🛒
+    debt: <HandCoins size={40} className="text-red-600" />, // unpaid debt 🪙
+    receivedDebt: <Banknote size={40} className="text-green-600" />, // received debt 💵
+    product: <Boxes size={40} className="text-cyan-600" />, // total stock 📦
+    lowStock: <AlertTriangle size={40} className="text-red-600" />, // low/zero stock ⚠️
+    users: <Users size={40} className="text-purple-600" />, // users 👥
+    sales: <ShoppingBag size={40} className="text-blue-500" />, // sales 🛍️
+  };
+
+  /** 📊 Chart configs */
   const chartConfigs: Record<
     string,
     { label: string; stroke: string; fill: string; dateFormat?: string }
   > = {
     revenue: {
       label: t("revenue"),
-      stroke: "#22c55e", // green line
-      fill: "#16a34a", // green fill
+      stroke: "#22c55e",
+      fill: "#16a34a",
       dateFormat: "MMM dd",
     },
     purchases: {
       label: t("purchases"),
-      stroke: "#10b981", // teal line
-      fill: "#059669", // teal fill
+      stroke: "#10b981",
+      fill: "#059669",
       dateFormat: "MMM dd",
     },
     sales: {
       label: t("sales"),
-      stroke: "#2563eb", // blue line
-      fill: "#3b82f6", // blue fill
+      stroke: "#2563eb",
+      fill: "#3b82f6",
       dateFormat: "MMM dd",
     },
     debt: {
       label: t("debt"),
-      stroke: "#dc2626", // red line
-      fill: "#b91c1c", // red fill
+      stroke: "#dc2626",
+      fill: "#b91c1c",
       dateFormat: "MMM dd",
     },
-    ss: {
-      label: t("debt"),
-      stroke: "#9333ea", // purple line
-      fill: "#7e22ce", // purple fill
+    receivedDebt: {
+      label: t("receivedDebt"),
+      stroke: "#9333ea",
+      fill: "#7e22ce",
       dateFormat: "MMM dd",
     },
   };
 
+  /** 💰 Main sections */
   const sections = [
     {
-      icon: <DollarSign size={40} className="text-blue-500" />,
-      title: `${salesSummary.revenue.total}:﷼,`,
       description: "revenue",
-      label: t("sales"),
+      title: `${salesSummary.revenue.total} ﷼`,
+      label: t("revenue"),
       link: "",
       chartData: salesSummary.revenue.chart,
       bg: "bg-gradient-to-r dark:from-blue-500 dark:to-indigo-700 from-chart-2 to-chart-3",
     },
     {
-      icon: <IconCash size={40} className="text-green-600" />,
-      title: ` ${salesSummary.purchases.total?.toFixed(0)}﷼ `,
       description: "purchases",
+      title: `${salesSummary.purchases.total?.toFixed(0)} ﷼`,
       label: t("purchases"),
       link: "",
       chartData: salesSummary.purchases.chart,
       bg: "bg-gradient-to-r dark:from-green-500 dark:to-emerald-700 from-chart-3 to-chart-4",
     },
     {
-      icon: <IconTruckDelivery size={40} className="text-red-600" />,
-      title: ` ${salesSummary.debt.totalDebt}:﷼`,
       description: "debt",
+      title: `${salesSummary.debt.unreceived} ﷼`,
       label: t("debt"),
       link: "/sells/debtSell",
-      chartData: salesSummary.debt.chart,
+      chartData: salesSummary.debt.unreceivedChart,
       bg: "bg-gradient-to-r dark:from-red-500 dark:to-orange-700 from-chart-4 to-chart-1",
     },
     {
-      icon: <IconTruckDelivery size={40} className="text-red-600" />,
-      title: `${salesSummary.debt.received}:﷼`,
-      description: "ss",
+      description: "receivedDebt",
+      title: `${salesSummary.debt.received} ﷼`,
       label: t("receivedDebt"),
       link: "/sells/debtSell",
-      chartData: salesSummary.debt.chart,
+      chartData: salesSummary.debt.receivedChart,
       bg: "bg-gradient-to-r dark:from-pink-500 dark:to-rose-700 from-chart-1 to-chart-3",
     },
   ];
 
+  /** 📦 Product / users / sales sections */
   const differentSection = [
     {
-      icon: <IconBox size={40} className="text-cyan-600" />,
-      title: productStats.totalStockQuantity,
       description: "product",
+      title: productStats.totalStockQuantity,
       label: t("totalStock"),
       link: "/inventory/manageinvetory",
       bg: "bg-gradient-to-r from-cyan-500 to-cyan-700",
     },
     {
-      icon: <IconBox size={40} className="text-red-600" />,
-      title: ` ${productStats.lowStockProducts}`,
-      title2: ` ${productStats.zeroProducts}`,
-      description: "product",
+      description: "lowStock",
+      title: productStats.lowStockProducts,
+      title2: productStats.zeroProducts,
       label: t("lowStock"),
       label2: t("finishedStock"),
       link: "/inventory/manageinvetory",
       bg: "bg-gradient-to-r from-red-500 to-red-700",
     },
     {
-      icon: <Users size={40} className="text-red-600" />,
-      title: users.users,
       description: "users",
+      title: users.users,
       label: t("users"),
       link: "/users",
       bg: "bg-gradient-to-r from-purple-500 to-purple-700",
     },
     {
-      icon: <IconBox size={40} className="text-blue-500" />,
-      title: ` ${salesSummary.sales.total}`,
       description: "sales",
+      title: salesSummary.sales.total,
       label: t("sales"),
       link: "",
       bg: "bg-gradient-to-r from-blue-500 to-blue-700",
@@ -196,13 +173,15 @@ export default async function SectionCards({
   return (
     <>
       <DashboardHeader sections={sections} chartConfigs={chartConfigs} />
+
       <div className="flex flex-col items-center">
+        {/* 🟦 Stats cards */}
         <div className="grid w-full grid-cols-1 gap-6 p-2 sm:grid-cols-2 xl:grid-cols-4">
           {sections.map((item, idx) => (
             <ChartCard
               key={idx}
               bg={item.bg}
-              icon={item.icon}
+              icon={iconMap[item.description]}
               title={item.title}
               label={item.label}
               description={item.description}
@@ -216,35 +195,37 @@ export default async function SectionCards({
           {differentSection.map((item, idx) => (
             <ChartCard
               key={idx}
-              icon={item.icon}
               bg={item.bg}
-              title={item.title ?? 2}
+              icon={iconMap[item.description]}
+              title={item.title}
               title2={item.title2}
-              label2={item.label2}
               label={item.label}
+              label2={item.label2}
               description={item.description}
               link={item.link}
               loading={false}
             />
           ))}
         </div>
+
+        {/* ⚡ Quick Actions */}
         <div className="grid w-80 grid-cols-2 justify-end gap-x-4 gap-y-4 py-4 sm:w-sm sm:grid-cols-2 md:w-md md:grid-cols-4 lg:w-full lg:grid-cols-4">
-          <Button aria-label="report" asChild>
+          <Button asChild>
             <Link href="/admin/reports" prefetch={false}>
               إنشاء التقارير
             </Link>
           </Button>
-          <Button aria-label="report" asChild>
+          <Button asChild>
             <Link href="/dashboard/users" prefetch={false}>
               إدارة المستخدمين
             </Link>
           </Button>
-          <Button aria-label="report" asChild>
+          <Button asChild>
             <Link href="/inventory" prefetch={false}>
               إدارة المخزون
             </Link>
           </Button>
-          <Button aria-label="report" asChild>
+          <Button asChild>
             <Link href="/sells/debtSell" prefetch={false}>
               عرض الديون
             </Link>

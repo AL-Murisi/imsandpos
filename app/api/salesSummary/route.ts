@@ -107,7 +107,7 @@ export async function GET(req: NextRequest) {
         getTopSellingProducts(Number(topItems), from, to, categoryId),
         getActivityLogs(pageIndex, pageSize, parsedSort),
         fetchAllFormData(),
-        fetchrevnu(allFrom, allTo, revnue),
+        fetchrevnu(allFrom, allTo, "day", Number(topItems)),
       ]);
 
     // Combine chart data here to avoid duplication

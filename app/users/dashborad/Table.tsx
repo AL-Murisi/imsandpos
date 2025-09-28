@@ -4,7 +4,15 @@ import { useTablePrams } from "@/hooks/useTableParams";
 import { DataTable } from "@/components/common/test";
 import { Suspense, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
-import { Calendar22 } from "@/components/common/DatePicker";
+
+import dynamic from "next/dynamic";
+const Calendar22 = dynamic(
+  () => import("@/components/common/DatePicker").then((m) => m.Calendar22),
+  {
+    ssr: false,
+    loading: () => <input type="date" className="..." />,
+  },
+);
 import { SelectField } from "@/components/common/selection";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";

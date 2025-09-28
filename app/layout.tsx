@@ -85,7 +85,11 @@ export default async function RootLayout({ children }: Main) {
   const messages = (await import(`@/messages/${locale}.json`)).default;
 
   return (
-    <html lang={locale} className={`${inter.className} `}>
+    <html
+      lang={locale}
+      className={`${inter.className} `}
+      suppressHydrationWarning
+    >
       <body className="font-sans">
         <ThemeProvider
           attribute="class"
@@ -94,6 +98,9 @@ export default async function RootLayout({ children }: Main) {
           disableTransitionOnChange
         >
           <header>
+            <link rel="preconnect" href="https://va.vercel-scripts.com" />
+            <link rel="dns-prefetch" href="https://va.vercel-scripts.com" />
+
             {/* <link
           rel="preload"
           href="/_next/static/fonts/inter-latin.woff2"
@@ -107,7 +114,7 @@ export default async function RootLayout({ children }: Main) {
           data-precedence="next"
         /> */}
             <link rel="apple-touch-icon" href="/apple-icon.png" />
-            <link rel="icon" type="image/svg+xml" href="/icon0.svg" />
+            <link rel="icon" type="image/svg+xml" href="/icon0.optimized.svg" />
 
             <link rel="manifest" href="/manifest.json" />
             <link rel="icon" href="/favicon.ico" sizes="512x512" />
