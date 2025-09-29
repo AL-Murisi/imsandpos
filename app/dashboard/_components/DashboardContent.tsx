@@ -1,34 +1,11 @@
-// app/dashboard/_components/DashboardContentClient.tsx
-"use client";
-
+import { ReusableAreaChart } from "@/components/common/Chart";
 import { useMemo, lazy, Suspense } from "react";
-
+import Charts from "./overview";
+import TopSellingChartWrapper from "@/components/common/Barchart";
+import { ChartPieLegend } from "@/components/common/PieChart";
+import { LazySection } from "@/components/common/LazySection";
+import UserActivityTable from "./userActivityTable";
 // Lazy load heavy chart components
-const ReusableAreaChart = lazy(() =>
-  import("@/components/common/Chart").then((m) => ({
-    default: m.ReusableAreaChart,
-  })),
-);
-
-const Charts = lazy(() => import("./overview"));
-
-const TopSellingChartWrapper = lazy(
-  () => import("@/components/common/Barchart"),
-);
-
-const ChartPieLegend = lazy(() =>
-  import("@/components/common/PieChart").then((m) => ({
-    default: m.ChartPieLegend,
-  })),
-);
-
-const UserActivityTable = lazy(() => import("./userActivityTable"));
-
-const LazySection = lazy(() =>
-  import("@/components/common/LazySection").then((m) => ({
-    default: m.LazySection,
-  })),
-);
 
 // Lightweight skeletons
 const ChartSkeleton = () => (
@@ -44,11 +21,29 @@ const TableSkeleton = () => (
 );
 
 interface DashboardContentClientProps {
-  result: any;
-  salesSummary: any;
+  result: {
+    topProducts: Array<{ name: string; quantity: number }>;
+    recentSales: any[];
+    activityLogs: any[];
+    revenue: Array<{ date: string; value: number }>; // This should match your revenue chart data
+    pagination: { page: number; limit: number; total: number };
+    sort: any[];
+    formData?: any; // Make optional since it might not be needed
+  };
+  salesSummary: {
+    sales: { total: number; chart: Array<{ date: string; value: number }> };
+    purchases: { total: number; chart: Array<{ date: string; value: number }> };
+    revenue: { total: number; chart: Array<{ date: string; value: number }> };
+    debt: {
+      unreceived: number;
+      received: number;
+      unreceivedChart: Array<{ date: string; value: number }>;
+      receivedChart: Array<{ date: string; value: number }>;
+    };
+  };
 }
 
-export default function DashboardContent({
+export default function DashboardContentClient({
   result,
   salesSummary,
 }: DashboardContentClientProps) {
@@ -88,6 +83,15 @@ export default function DashboardContent({
     [],
   );
 
+  // Transform revenue data for the TopSellingChartWrapper
+  const revenueChartData = useMemo(() => {
+    return salesSummary.revenue.chart.map((item, index) => ({
+      date: item.date,
+      total: item.value, // Map 'value' to 'total' expected by the chart
+      key: item.date,
+    }));
+  }, [salesSummary.revenue.chart]);
+
   if (!result) {
     return (
       <div className="p-8 text-center">
@@ -110,7 +114,17 @@ export default function DashboardContent({
         </Suspense>
 
         <Suspense fallback={<ChartSkeleton />}>
-          <Charts topProducts={result.topProducts} formData={result.formData} />
+          <Charts
+            topProducts={result.topProducts}
+            formData={
+              result.formData || {
+                warehouses: [],
+                categories: [],
+                brands: [],
+                suppliers: [],
+              }
+            }
+          />
         </Suspense>
       </div>
 
@@ -118,13 +132,20 @@ export default function DashboardContent({
       <div className="flex flex-col gap-6 lg:col-span-1">
         <Suspense fallback={<ChartSkeleton />}>
           <TopSellingChartWrapper
-            data={result.revenue}
-            formData={result.formData}
-            title="Sales"
+            data={revenueChartData} // Use transformed revenue data
+            formData={
+              result.formData || {
+                warehouses: [],
+                categories: [],
+                brands: [],
+                suppliers: [],
+              }
+            }
+            title="Revenue"
             width="w-full"
             widthco="w-full"
             dataKey="total"
-            paramKey="revnue"
+            paramKey="revenue"
           />
         </Suspense>
 
@@ -143,10 +164,10 @@ export default function DashboardContent({
           <LazySection>
             <UserActivityTable
               Sales={result.recentSales}
-              total={result.pagination.total}
-              logs={result.activityLogs}
-              totals={result.activityLogs.length}
-              sort={result.sort}
+              total={result.pagination?.total || 0}
+              logs={result.activityLogs || []}
+              totals={result.activityLogs?.length || 0}
+              sort={result.sort || []}
             />
           </LazySection>
         </Suspense>

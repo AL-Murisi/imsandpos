@@ -1,7 +1,10 @@
 "use client";
 
-import { Pie, PieChart } from "recharts";
+// import { Pie, PieChart } from "recharts";
 
+const Pie = dynamic(() => import("recharts").then((m) => m.Pie));
+
+const PieChart = dynamic(() => import("recharts").then((m) => m.PieChart));
 import {
   Card,
   CardContent,
@@ -9,12 +12,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  ChartConfig,
-  ChartContainer,
-  ChartLegend,
-  ChartLegendContent,
-} from "@/components/ui/chart";
+import { ChartConfig, ChartContainer } from "@/components/ui/chart";
+import dynamic from "next/dynamic";
 
 export const description = "A pie chart with a legend";
 const chartData = [

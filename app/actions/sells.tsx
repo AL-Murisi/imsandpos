@@ -601,3 +601,319 @@ export async function fetchrevnu(
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
   );
 }
+// app/actions/dashboard.ts - OPTIMIZED
+
+// 🚀 SINGLE OPTIMIZED FUNCTION - replaces all separate calls
+export const fetchDashboardData = unstable_cache(
+  async (
+    role: string,
+    filters?: {
+      allFrom?: string;
+      allTo?: string;
+      salesFrom?: string;
+      salesTo?: string;
+      purchasesFrom?: string;
+      purchasesTo?: string;
+      revenueFrom?: string;
+      revenueTo?: string;
+      debtFrom?: string;
+      debtTo?: string;
+    },
+    pagination?: {
+      page?: number;
+      pageSize?: number;
+      query?: string;
+      sort?: string;
+    },
+  ) => {
+    const formatRange = (from?: string, to?: string) => ({
+      ...(from ? { gte: new Date(from) } : {}),
+      ...(to ? { lte: new Date(to) } : {}),
+    });
+
+    const salesRange = formatRange(
+      filters?.salesFrom || filters?.allFrom,
+      filters?.salesTo || filters?.allTo,
+    );
+    const purchasesRange = formatRange(
+      filters?.purchasesFrom || filters?.allFrom,
+      filters?.purchasesTo || filters?.allTo,
+    );
+    const revenueRange = formatRange(
+      filters?.revenueFrom || filters?.allFrom,
+      filters?.revenueTo || filters?.allTo,
+    );
+    const debtRange = formatRange(
+      filters?.debtFrom || filters?.allFrom,
+      filters?.debtTo || filters?.allTo,
+    );
+
+    // 🔥 SINGLE DATABASE TRANSACTION - All queries in parallel
+    const [
+      salesData,
+      purchasesData,
+      revenueData,
+      debtData,
+      productStats,
+      userCount,
+      topProducts,
+      recentSales,
+    ] = await Promise.all([
+      // Sales summary + chart
+      prisma.$transaction([
+        prisma.sale.aggregate({
+          _sum: { totalAmount: true },
+          _count: { id: true },
+          where: { saleDate: salesRange, status: "completed" },
+        }),
+        prisma.$queryRaw<Array<{ date: string; value: number }>>`
+          SELECT 
+            DATE("saleDate") as date,
+            SUM("totalAmount")::float as value
+          FROM "Sale"
+          WHERE "status" = 'completed'
+            ${salesRange.gte ? Prisma.sql`AND "saleDate" >= ${salesRange.gte}` : Prisma.empty}
+            ${salesRange.lte ? Prisma.sql`AND "saleDate" <= ${salesRange.lte}` : Prisma.empty}
+          GROUP BY DATE("saleDate")
+          ORDER BY date ASC
+          LIMIT 30
+        `,
+      ]),
+
+      // Purchases summary + chart
+      prisma.$transaction([
+        prisma.product.aggregate({
+          _sum: { costPrice: true },
+          where: { createdAt: purchasesRange },
+        }),
+        prisma.$queryRaw<Array<{ date: string; value: number }>>`
+          SELECT 
+            DATE("createdAt") as date,
+            SUM("costPrice")::float as value
+          FROM "Product"
+          WHERE 1=1
+            ${purchasesRange.gte ? Prisma.sql`AND "createdAt" >= ${purchasesRange.gte}` : Prisma.empty}
+            ${purchasesRange.lte ? Prisma.sql`AND "createdAt" <= ${purchasesRange.lte}` : Prisma.empty}
+          GROUP BY DATE("createdAt")
+          ORDER BY date ASC
+          LIMIT 30
+        `,
+      ]),
+
+      // Revenue summary + chart
+      prisma.$transaction([
+        prisma.payment.aggregate({
+          _sum: { amount: true },
+          where: { createdAt: revenueRange, status: "completed" },
+        }),
+        prisma.$queryRaw<Array<{ date: string; value: number }>>`
+          SELECT 
+            DATE("createdAt") as date,
+            SUM("amount")::float as value
+          FROM "Payment"
+          WHERE "status" = 'completed'
+            ${revenueRange.gte ? Prisma.sql`AND "createdAt" >= ${revenueRange.gte}` : Prisma.empty}
+            ${revenueRange.lte ? Prisma.sql`AND "createdAt" <= ${revenueRange.lte}` : Prisma.empty}
+          GROUP BY DATE("createdAt")
+          ORDER BY date ASC
+          LIMIT 30
+        `,
+      ]),
+
+      // Debt data (all in one transaction)
+      prisma.$transaction([
+        // Outstanding debt
+        prisma.sale.aggregate({
+          _sum: { amountDue: true },
+          where: {
+            saleDate: debtRange,
+            paymentStatus: { in: ["partial", "pending"] },
+          },
+        }),
+        // Received debt
+        prisma.payment.aggregate({
+          _sum: { amount: true },
+          where: {
+            createdAt: debtRange,
+            paymentType: "outstanding_payment",
+            status: "completed",
+          },
+        }),
+        // Unreceived chart (monthly)
+        prisma.$queryRaw<Array<{ date: string; value: number }>>`
+          SELECT 
+            TO_CHAR("saleDate", 'YYYY-MM') as date,
+            SUM("amountDue")::float as value
+          FROM "Sale"
+          WHERE "paymentStatus" IN ('partial', 'pending')
+            ${debtRange.gte ? Prisma.sql`AND "saleDate" >= ${debtRange.gte}` : Prisma.empty}
+            ${debtRange.lte ? Prisma.sql`AND "saleDate" <= ${debtRange.lte}` : Prisma.empty}
+          GROUP BY TO_CHAR("saleDate", 'YYYY-MM')
+          ORDER BY date ASC
+        `,
+        // Received chart (monthly)
+        prisma.$queryRaw<Array<{ date: string; value: number }>>`
+          SELECT 
+            TO_CHAR("createdAt", 'YYYY-MM') as date,
+            SUM("amount")::float as value
+          FROM "Payment"
+          WHERE "paymentType" = 'outstanding_payment' AND "status" = 'completed'
+            ${debtRange.gte ? Prisma.sql`AND "createdAt" >= ${debtRange.gte}` : Prisma.empty}
+            ${debtRange.lte ? Prisma.sql`AND "createdAt" <= ${debtRange.lte}` : Prisma.empty}
+          GROUP BY TO_CHAR("createdAt", 'YYYY-MM')
+          ORDER BY date ASC
+        `,
+      ]),
+
+      // Product stats (optimized with single query)
+      role === "admin"
+        ? prisma.$queryRaw<
+            Array<{
+              totalStock: number;
+              lowStock: number;
+              zeroStock: number;
+            }>
+          >`
+        SELECT 
+          SUM("stock_quantity")::int as "totalStock",
+          COUNT(CASE WHEN "reorder_level" >= "stock_quantity" THEN 1 END)::int as "lowStock",
+          COUNT(CASE WHEN "stock_quantity" = 0 THEN 1 END)::int as "zeroStock"
+        FROM "inventory"
+      `
+        : Promise.resolve([{ totalStock: 0, lowStock: 0, zeroStock: 0 }]),
+
+      // User count
+      prisma.user.count({ where: { isActive: true } }),
+
+      // Top selling products (optimized)
+      prisma.$queryRaw<
+        Array<{
+          name: string;
+          quantity: number;
+        }>
+      >`
+        SELECT 
+          p."name",
+          SUM(si."quantity")::int as quantity
+        FROM "SaleItem" si
+        JOIN "Product" p ON si."productId" = p."id"
+        WHERE si."createdAt" >= CURRENT_DATE - INTERVAL '30 days'
+        GROUP BY p."id", p."name"
+        ORDER BY quantity DESC
+        LIMIT 5
+      `,
+
+      // Recent sales (paginated)
+      pagination
+        ? prisma.sale.findMany({
+            select: {
+              id: true,
+              totalAmount: true,
+              amountPaid: true,
+              amountDue: true,
+              saleDate: true,
+              createdAt: true,
+              paymentStatus: true,
+              customerId: true,
+              customer: {
+                select: {
+                  name: true,
+                  phoneNumber: true,
+                  customerType: true,
+                },
+              },
+            },
+            where: pagination.query
+              ? {
+                  OR: [
+                    {
+                      customer: {
+                        name: {
+                          contains: pagination.query,
+                          mode: "insensitive",
+                        },
+                      },
+                    },
+                    {
+                      customer: {
+                        phoneNumber: {
+                          contains: pagination.query,
+                          mode: "insensitive",
+                        },
+                      },
+                    },
+                    {
+                      paymentStatus: {
+                        contains: pagination.query,
+                        mode: "insensitive",
+                      },
+                    },
+                  ],
+                }
+              : {},
+            skip: (pagination.page || 0) * (pagination.pageSize || 5),
+            take: pagination.pageSize || 5,
+            orderBy: { createdAt: "desc" },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    // Extract and format data
+    const [salesAgg, salesChart] = salesData;
+    const [purchasesAgg, purchasesChart] = purchasesData;
+    const [revenueAgg, revenueChart] = revenueData;
+    const [debtUnreceivedAgg, debtReceivedAgg, unreceivedChart, receivedChart] =
+      debtData;
+    const productStatsResult = Array.isArray(productStats)
+      ? productStats[0]
+      : productStats;
+
+    // Format chart data
+    const formatChartData = (data: Array<{ date: string; value: number }>) =>
+      data.map((item) => ({
+        date: item.date,
+        value: item.value || 0,
+      }));
+
+    return {
+      sales: {
+        total: salesAgg._count.id || 0,
+        chart: formatChartData(salesChart),
+      },
+      purchases: {
+        total: purchasesAgg._sum.costPrice?.toNumber() || 0,
+        chart: formatChartData(purchasesChart),
+      },
+      revenue: {
+        total: revenueAgg._sum.amount?.toNumber() || 0,
+        chart: formatChartData(revenueChart),
+      },
+      debt: {
+        unreceived: debtUnreceivedAgg._sum.amountDue?.toNumber() || 0,
+        received: debtReceivedAgg._sum.amount?.toNumber() || 0,
+        unreceivedChart: formatChartData(unreceivedChart),
+        receivedChart: formatChartData(receivedChart),
+      },
+      productStats: {
+        totalStockQuantity: productStatsResult?.totalStock || 0,
+        lowStockProducts: productStatsResult?.lowStock || 0,
+        zeroProducts: productStatsResult?.zeroStock || 0,
+      },
+      users: { users: userCount },
+      topProducts,
+      recentSales: recentSales.map((sale) => ({
+        ...sale,
+        totalAmount: sale.totalAmount.toString(),
+        amountPaid: sale.amountPaid.toString(),
+        amountDue: sale.amountDue.toString(),
+        saleDate: sale.saleDate.toISOString(),
+        createdAt: sale.createdAt.toISOString(),
+      })),
+    };
+  },
+  ["dashboard-data"],
+  {
+    revalidate: 300, // Cache for 5 minutes
+    tags: ["dashboard"],
+  },
+);

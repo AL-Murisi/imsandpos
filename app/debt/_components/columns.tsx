@@ -34,8 +34,8 @@ const SortableHeader: React.FC<SortableHeaderProps> = ({ column, label }) => {
     isSorted === "asc"
       ? ArrowUp
       : isSorted === "desc"
-      ? ArrowDown
-      : ArrowUpDown;
+        ? ArrowDown
+        : ArrowUpDown;
 
   return (
     <Button
@@ -124,15 +124,15 @@ export const debtSaleColumns: ColumnDef<DebtSaleData>[] = [
         status === "paid"
           ? "bg-green-100 text-green-800"
           : status === "partial"
-          ? "bg-yellow-100 text-yellow-800"
-          : "bg-red-100 text-red-800";
+            ? "bg-yellow-100 text-yellow-800"
+            : "bg-red-100 text-red-800";
 
       const label =
         status === "paid"
           ? "مدفوع"
           : status === "partial"
-          ? "جزئي"
-          : "غير مدفوع";
+            ? "جزئي"
+            : "غير مدفوع";
 
       return <Badge className={color}>{label}</Badge>;
     },

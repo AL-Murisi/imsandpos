@@ -9,9 +9,6 @@ import dynamic from "next/dynamic";
 // Dynamic imports with better performance
 const AreaChart = dynamic(() => import("recharts").then((m) => m.AreaChart), {
   ssr: false,
-  loading: () => (
-    <div className="h-[324px] w-full animate-pulse rounded-xl bg-gray-200" />
-  ),
 });
 const Area = dynamic(() => import("recharts").then((m) => m.Area), {
   ssr: false,

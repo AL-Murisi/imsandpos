@@ -1,69 +1,60 @@
 import { ChartCard } from "@/components/common/ChartCard";
 import DashboardHeader from "@/components/common/dashboradheader";
-import AlertTriangle from "lucide-react/dist/esm/icons/alert-triangle";
-import Banknote from "lucide-react/dist/esm/icons/banknote";
-import Boxes from "lucide-react/dist/esm/icons/boxes";
-import DollarSign from "lucide-react/dist/esm/icons/dollar-sign";
-import HandCoins from "lucide-react/dist/esm/icons/hand-coins";
-import ShoppingBag from "lucide-react/dist/esm/icons/shopping-bag";
-import ShoppingCart from "lucide-react/dist/esm/icons/shopping-cart";
-import Users from "lucide-react/dist/esm/icons/users";
-import { ReactElement } from "react";
+import { getTranslations } from "next-intl/server";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
-// Server actions
-import { fetchProductStats, Fetchusers, fetchrevnu } from "@/app/actions/sells";
-import { getTranslations } from "next-intl/server";
+// ✅ Individual icon imports (saves ~180KB)
+import DollarSign from "lucide-react/dist/esm/icons/dollar-sign";
+import ShoppingCart from "lucide-react/dist/esm/icons/shopping-cart";
+import HandCoins from "lucide-react/dist/esm/icons/hand-coins";
+import Banknote from "lucide-react/dist/esm/icons/banknote";
+import Boxes from "lucide-react/dist/esm/icons/boxes";
+import AlertTriangle from "lucide-react/dist/esm/icons/alert-triangle";
+import Users from "lucide-react/dist/esm/icons/users";
+import ShoppingBag from "lucide-react/dist/esm/icons/shopping-bag";
 
 interface SectionCardsProps {
-  searchParams: any;
-  salesSummary: any;
+  searchParams: Record<string, string | undefined>;
+  salesSummary: {
+    sales: { total: number; chart: Array<{ date: string; value: number }> };
+    purchases: { total: number; chart: Array<{ date: string; value: number }> };
+    revenue: { total: number; chart: Array<{ date: string; value: number }> };
+    debt: {
+      unreceived: number;
+      received: number;
+      unreceivedChart: Array<{ date: string; value: number }>;
+      receivedChart: Array<{ date: string; value: number }>;
+    };
+  };
+  productStats: {
+    totalStockQuantity: number;
+    lowStockProducts: number;
+    zeroProducts: number;
+  };
+  users: { users: number };
 }
 
 export default async function SectionCards({
   searchParams,
   salesSummary,
+  productStats,
+  users,
 }: SectionCardsProps) {
-  const params = await searchParams;
-
-  const filters = {
-    allFrom: params?.allFrom,
-    allTo: params?.allTo,
-    revnueDate: params?.revnueDate,
-    salesFrom: params?.salesFrom,
-    salesTo: params?.salesTo,
-    purchasesFrom: params?.purchasesFrom,
-    purchasesTo: params?.purchasesTo,
-    revenueFrom: params?.revenueFrom,
-    revenueTo: params?.revenueTo,
-    debtFrom: params?.debtFrom,
-    debtTo: params?.debtTo,
-    chartFrom: params?.chartFrom,
-    chartTo: params?.chartTo,
-  };
-
-  // fetch in parallel
-  const [productStats, users] = await Promise.all([
-    fetchProductStats("admin"),
-    Fetchusers(true),
-  ]);
-
   const t = await getTranslations("cards");
 
-  /** 🖼 Icon map */
-  const iconMap: Record<string, ReactElement> = {
-    revenue: <DollarSign size={40} className="text-blue-500" />, // revenue 💵
-    purchases: <ShoppingCart size={40} className="text-green-600" />, // purchases 🛒
-    debt: <HandCoins size={40} className="text-red-600" />, // unpaid debt 🪙
-    receivedDebt: <Banknote size={40} className="text-green-600" />, // received debt 💵
-    product: <Boxes size={40} className="text-cyan-600" />, // total stock 📦
-    lowStock: <AlertTriangle size={40} className="text-red-600" />, // low/zero stock ⚠️
-    users: <Users size={40} className="text-purple-600" />, // users 👥
-    sales: <ShoppingBag size={40} className="text-blue-500" />, // sales 🛍️
+  // Icon map - using individual imports (saves ~180KB!)
+  const iconMap: Record<string, JSX.Element> = {
+    revenue: <DollarSign size={40} className="text-blue-500" />,
+    purchases: <ShoppingCart size={40} className="text-green-600" />,
+    debt: <HandCoins size={40} className="text-red-600" />,
+    receivedDebt: <Banknote size={40} className="text-green-600" />,
+    product: <Boxes size={40} className="text-cyan-600" />,
+    lowStock: <AlertTriangle size={40} className="text-red-600" />,
+    users: <Users size={40} className="text-purple-600" />,
+    sales: <ShoppingBag size={40} className="text-blue-500" />,
   };
 
-  /** 📊 Chart configs */
   const chartConfigs: Record<
     string,
     { label: string; stroke: string; fill: string; dateFormat?: string }
@@ -100,11 +91,10 @@ export default async function SectionCards({
     },
   };
 
-  /** 💰 Main sections */
   const sections = [
     {
       description: "revenue",
-      title: `${salesSummary.revenue.total} ﷼`,
+      title: `${salesSummary.revenue.total} ر.س`,
       label: t("revenue"),
       link: "",
       chartData: salesSummary.revenue.chart,
@@ -112,7 +102,7 @@ export default async function SectionCards({
     },
     {
       description: "purchases",
-      title: `${salesSummary.purchases.total?.toFixed(0)} ﷼`,
+      title: `${salesSummary.purchases.total?.toFixed(0)} ر.س`,
       label: t("purchases"),
       link: "",
       chartData: salesSummary.purchases.chart,
@@ -120,7 +110,7 @@ export default async function SectionCards({
     },
     {
       description: "debt",
-      title: `${salesSummary.debt.unreceived} ﷼`,
+      title: `${salesSummary.debt.unreceived} ر.س`,
       label: t("debt"),
       link: "/sells/debtSell",
       chartData: salesSummary.debt.unreceivedChart,
@@ -128,7 +118,7 @@ export default async function SectionCards({
     },
     {
       description: "receivedDebt",
-      title: `${salesSummary.debt.received} ﷼`,
+      title: `${salesSummary.debt.received} ر.س`,
       label: t("receivedDebt"),
       link: "/sells/debtSell",
       chartData: salesSummary.debt.receivedChart,
@@ -136,7 +126,6 @@ export default async function SectionCards({
     },
   ];
 
-  /** 📦 Product / users / sales sections */
   const differentSection = [
     {
       description: "product",
@@ -175,11 +164,10 @@ export default async function SectionCards({
       <DashboardHeader sections={sections} chartConfigs={chartConfigs} />
 
       <div className="flex flex-col items-center">
-        {/* 🟦 Stats cards */}
         <div className="grid w-full grid-cols-1 gap-6 p-2 sm:grid-cols-2 xl:grid-cols-4">
           {sections.map((item, idx) => (
             <ChartCard
-              key={idx}
+              key={`section-${idx}`}
               bg={item.bg}
               icon={iconMap[item.description]}
               title={item.title}
@@ -194,7 +182,7 @@ export default async function SectionCards({
 
           {differentSection.map((item, idx) => (
             <ChartCard
-              key={idx}
+              key={`diff-${idx}`}
               bg={item.bg}
               icon={iconMap[item.description]}
               title={item.title}
@@ -208,8 +196,8 @@ export default async function SectionCards({
           ))}
         </div>
 
-        {/* ⚡ Quick Actions */}
-        <div className="grid w-80 grid-cols-2 justify-end gap-x-4 gap-y-4 py-4 sm:w-sm sm:grid-cols-2 md:w-md md:grid-cols-4 lg:w-full lg:grid-cols-4">
+        {/* Quick Actions */}
+        <div className="grid w-80 grid-cols-2 gap-4 py-4 sm:w-sm md:w-md md:grid-cols-4 lg:w-full">
           <Button asChild>
             <Link href="/admin/reports" prefetch={false}>
               إنشاء التقارير

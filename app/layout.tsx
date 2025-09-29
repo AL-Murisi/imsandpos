@@ -80,7 +80,11 @@ interface Main {
   children: React.ReactNode;
 }
 
-export default async function RootLayout({ children }: Main) {
+export default async function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   const locale = await getLocale();
   const messages = (await import(`@/messages/${locale}.json`)).default;
 
@@ -114,7 +118,7 @@ export default async function RootLayout({ children }: Main) {
           data-precedence="next"
         /> */}
             <link rel="apple-touch-icon" href="/apple-icon.png" />
-            <link rel="icon" type="image/svg+xml" href="/icon0.optimized.svg" />
+            {/* <link rel="icon" type="image/svg+xml" href="/icon0.optimized.svg" /> */}
 
             <link rel="manifest" href="/manifest.json" />
             <link rel="icon" href="/favicon.ico" sizes="512x512" />
