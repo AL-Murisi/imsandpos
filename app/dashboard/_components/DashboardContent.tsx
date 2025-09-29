@@ -128,7 +128,6 @@ export default function DashboardContentClient({
         </Suspense>
       </div>
 
-      {/* Right column - Secondary charts */}
       <div className="flex flex-col gap-6 lg:col-span-1">
         <Suspense fallback={<ChartSkeleton />}>
           <TopSellingChartWrapper
