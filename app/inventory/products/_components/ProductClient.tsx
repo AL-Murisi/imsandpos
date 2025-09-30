@@ -56,7 +56,7 @@ export default function ProductClient({
 
   return (
     <div
-      className="bg-accent w-full rounded-2xl p-2 shadow-xl/20 shadow-gray-500"
+      className="bg-accent w-full rounded-2xl p-2 shadow-xl/20 shadow-gray-500 group-data-[[state=pending]]:animate-pulse"
       dir="rtl"
     >
       {/* <SearchInput
@@ -64,27 +64,27 @@ export default function ProductClient({
         value={globalFilter}
         onSearchChange={(value) => setParam("search", value)}
       /> */}
-      <div className="flex flex-col gap-2 p-1 md:flex-row">
+      <div className="flex flex-wrap gap-2 p-1 md:flex-row lg:flex-row">
         <Calendar22 />
         <SearchInput placeholder={"بحث "} paramKey={"product"} />
         <SelectField
           options={formData.warehouses}
-          onValueChange={(value) => setParam("warehouseId", value)}
-          value={warehouseId}
-          placeholder="Warehouse"
+          paramKey="warehouseId"
+          placeholder="warehouseId"
         />
+
         <SelectField
           options={formData.categories}
-          onValueChange={(value) => setParam("categoryId", value)}
-          value={supplierId}
+          paramKey="categoryId"
           placeholder="الفئة"
         />
+
         <SelectField
           options={formData.suppliers}
-          onValueChange={(value) => setParam("supplierId", value)}
-          value={supplierId}
+          paramKey={"supplierId"}
           placeholder="Supplier"
         />
+
         <CustomDialog
           trigger={<Button>Add Product</Button>}
           title="Add Product"

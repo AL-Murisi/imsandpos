@@ -48,21 +48,39 @@ export default function DashboardContentClient({
   salesSummary,
 }: DashboardContentClientProps) {
   // Memoize expensive data transformations
-  const combinedChartData = useMemo(() => {
-    if (!salesSummary?.sales?.chart || !salesSummary?.purchases?.chart)
-      return [];
 
-    return salesSummary.sales.chart.map((sale: any) => {
-      const purchase = salesSummary.purchases.chart.find(
-        (p: any) => p.date === sale.date,
-      );
-      return {
-        date: sale.date,
-        revenue: sale.value,
-        purchases: purchase?.value || 0,
-      };
-    });
-  }, [salesSummary]);
+  // const combinedChartData = useMemo(() => {
+  //   if (!salesSummary?.sales?.chart || !salesSummary?.purchases?.chart)
+  //     return [];
+
+  //   return salesSummary.sales.chart.map((sale: any) => {
+  //     const purchase = salesSummary.purchases.chart.find(
+  //       (p: any) => p.date === sale.date,
+  //     );
+  //     return {
+  //       date: sale.date,
+  //       revenue: sale.value,
+  //       purchases: purchase?.value || 0,
+  //     };
+  //   });
+  // }, [salesSummary]);
+
+  const revMap = new Map(
+    salesSummary.revenue.chart.map((pt) => [pt.date, pt.value]),
+  );
+  const purMap = new Map(
+    salesSummary.purchases.chart.map((pt) => [pt.date, pt.value]),
+  );
+
+  const allDates = Array.from(
+    new Set([...revMap.keys(), ...purMap.keys()]),
+  ).sort();
+
+  const combined = allDates.map((date) => ({
+    date,
+    revenue: revMap.get(date) ?? 0,
+    purchases: purMap.get(date) ?? 0,
+  }));
 
   const salesChartConfig = useMemo(
     () => ({
@@ -108,7 +126,7 @@ export default function DashboardContentClient({
           <ReusableAreaChart
             title="Sales Overview"
             description="Sales trends over selected period"
-            data={combinedChartData}
+            data={combined}
             config={salesChartConfig}
           />
         </Suspense>

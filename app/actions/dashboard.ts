@@ -122,11 +122,10 @@ export const fetchDashboardData = unstable_cache(
         where: {
           createdAt: {
             ...purchasesRange,
-            gte: purchasesRange.gte || subDays(new Date(), 30),
           },
         },
         orderBy: { createdAt: "asc" },
-        take: 30,
+        take: 50,
       }),
 
       // Revenue aggregate
@@ -142,12 +141,10 @@ export const fetchDashboardData = unstable_cache(
         where: {
           createdAt: {
             ...revenueRange,
-            gte: revenueRange.gte || subDays(new Date(), 90),
           },
           status: "completed",
         },
         orderBy: { createdAt: "asc" },
-        take: 30,
       }),
 
       // Outstanding debt aggregate
@@ -157,6 +154,7 @@ export const fetchDashboardData = unstable_cache(
           saleDate: debtRange,
           paymentStatus: { in: ["partial", "pending"] },
         },
+        orderBy: { createdAt: "asc" },
       }),
 
       // Received debt aggregate
@@ -167,6 +165,7 @@ export const fetchDashboardData = unstable_cache(
           paymentType: "outstanding_payment",
           status: "completed",
         },
+        orderBy: { createdAt: "asc" },
       }),
 
       // Outstanding debt grouped (monthly for performance)
@@ -365,7 +364,8 @@ export const fetchDashboardData = unstable_cache(
         .map(([date, value]) => ({ date, value }))
         .sort((a, b) => a.date.localeCompare(b.date));
     };
-    return serializeBigInt({
+
+    return {
       sales: {
         total: salesAgg._count.id || 0,
         chart: groupByDay(salesGrouped, "saleDate"),
@@ -396,7 +396,7 @@ export const fetchDashboardData = unstable_cache(
         createdAt: sale.createdAt.toISOString(),
       })),
       activityLogs,
-    });
+    };
   },
   ["dashboard-data"],
   { revalidate: 300, tags: ["dashboard"] },

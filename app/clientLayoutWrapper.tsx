@@ -7,7 +7,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "../components/ui/sidebar";
-
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { AppSidebar } from "@/components/appside-bar";
 import { Provider } from "react-redux";
 import { store } from "@/lib/store";
@@ -60,7 +60,9 @@ export default function ClientLayoutWrapper({
         <div className="flex flex-col">
           <ScrollArea className="@container/main flex flex-col" dir="rtl">
             <Appheader />
-            <Provider store={store}> {children}</Provider>
+            <NuqsAdapter>
+              <Provider store={store}> {children}</Provider>
+            </NuqsAdapter>
           </ScrollArea>
         </div>
       </SidebarInset>

@@ -91,7 +91,7 @@ export default function ProductEditFormm({ sku }: { sku: string }) {
         await logActivity(
           user.userId,
           "edit Product",
-          "worker created a product"
+          "worker created a product",
         );
 
         reset();
@@ -104,20 +104,20 @@ export default function ProductEditFormm({ sku }: { sku: string }) {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">Loading...</div>
+      <div className="flex h-64 items-center justify-center">Loading...</div>
     );
   }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" dir="rtl">
       <div className="grid gap-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {/* Name */}
           <div className="grid gap-2">
             <Label htmlFor="name">اسم المنتج</Label>
             <Input id="name" {...register("name")} />
             {errors.name && (
-              <p className="text-red-500 text-xs text-right">
+              <p className="text-right text-xs text-red-500">
                 {errors.name.message}
               </p>
             )}
@@ -127,20 +127,20 @@ export default function ProductEditFormm({ sku }: { sku: string }) {
             <Label htmlFor="sku">رمز التخزين التعريفي (SKU)</Label>
             <Input id="sku" type="text" {...register("sku")} />
             {errors.sku && (
-              <p className="text-red-500 text-xs text-right">
+              <p className="text-right text-xs text-red-500">
                 {errors.sku.message}
               </p>
             )}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {/* Barcode */}
           <div className="grid gap-2">
             <Label htmlFor="barcode">الباركود</Label>
             <Input id="barcode" type="text" {...register("barcode")} />
             {errors.barcode && (
-              <p className="text-red-500 text-xs text-right">
+              <p className="text-right text-xs text-red-500">
                 {errors.barcode.message}
               </p>
             )}
@@ -148,14 +148,15 @@ export default function ProductEditFormm({ sku }: { sku: string }) {
           {/* Category ID */}
           <div className="grid gap-2">
             <Label htmlFor="categoryId">معرّف الفئة</Label>
+
             <SelectField
               options={formData.categories}
-              value={watchedCategoryId || ""}
-              onValueChange={(value) => setValue("categoryId", value)}
-              placeholder="اختر فئة"
+              paramKey="categoryId"
+              placeholder="الفئة"
             />
+
             {errors.categoryId && (
-              <p className="text-red-500 text-xs text-right">
+              <p className="text-right text-xs text-red-500">
                 {errors.categoryId.message}
               </p>
             )}
@@ -167,24 +168,24 @@ export default function ProductEditFormm({ sku }: { sku: string }) {
           <Label htmlFor="description">الوصف</Label>
           <Input id="description" type="text" {...register("description")} />
           {errors.description && (
-            <p className="text-red-500 text-xs text-right">
+            <p className="text-right text-xs text-red-500">
               {errors.description.message}
             </p>
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {/* Brand ID */}
           <div className="grid gap-2">
             <Label htmlFor="brandId">معرّف العلامة التجارية</Label>
             <SelectField
-              options={formData.brands}
-              value={watchedBrandId || ""}
-              onValueChange={(value) => setValue("brandId", value)}
+              options={formData.warehouses}
+              paramKey="brandId"
               placeholder="اختر علامة تجارية"
             />
+
             {errors.brandId && (
-              <p className="text-red-500 text-xs text-right">
+              <p className="text-right text-xs text-red-500">
                 {errors.brandId.message}
               </p>
             )}
@@ -198,21 +199,18 @@ export default function ProductEditFormm({ sku }: { sku: string }) {
                 { id: "bundle", name: "حزمة" },
                 { id: "variant", name: "متغير" },
               ]}
-              value={watchedType || ""}
-              onValueChange={(value) =>
-                setValue("type", value as "single" | "bundle" | "variant")
-              }
+              paramKey="type"
               placeholder="اختر النوع"
             />
             {errors.type && (
-              <p className="text-red-500 text-xs text-right">
+              <p className="text-right text-xs text-red-500">
                 {errors.type.message}
               </p>
             )}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {/* Units Per Packet */}
           <div className="grid gap-2">
             <Label htmlFor="unitsPerPacket">عدد الوحدات في العبوة</Label>
@@ -222,7 +220,7 @@ export default function ProductEditFormm({ sku }: { sku: string }) {
               {...register("unitsPerPacket", { valueAsNumber: true })}
             />
             {errors.unitsPerPacket && (
-              <p className="text-red-500 text-xs text-right">
+              <p className="text-right text-xs text-red-500">
                 {errors.unitsPerPacket.message}
               </p>
             )}
@@ -236,14 +234,14 @@ export default function ProductEditFormm({ sku }: { sku: string }) {
               {...register("packetsPerCarton", { valueAsNumber: true })}
             />
             {errors.packetsPerCarton && (
-              <p className="text-red-500 text-xs text-right">
+              <p className="text-right text-xs text-red-500">
                 {errors.packetsPerCarton.message}
               </p>
             )}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {/* Cost Price */}
           <div className="grid gap-2">
             <Label htmlFor="costPrice">سعر التكلفة</Label>
@@ -254,7 +252,7 @@ export default function ProductEditFormm({ sku }: { sku: string }) {
               {...register("costPrice", { valueAsNumber: true })}
             />
             {errors.costPrice && (
-              <p className="text-red-500 text-xs text-right">
+              <p className="text-right text-xs text-red-500">
                 {errors.costPrice.message}
               </p>
             )}
@@ -269,7 +267,7 @@ export default function ProductEditFormm({ sku }: { sku: string }) {
               {...register("pricePerUnit", { valueAsNumber: true })}
             />
             {errors.pricePerUnit && (
-              <p className="text-red-500 text-xs text-right">
+              <p className="text-right text-xs text-red-500">
                 {errors.pricePerUnit.message}
               </p>
             )}
@@ -286,13 +284,13 @@ export default function ProductEditFormm({ sku }: { sku: string }) {
             {...register("pricePerPacket", { valueAsNumber: true })}
           />
           {errors.pricePerPacket && (
-            <p className="text-red-500 text-xs text-right">
+            <p className="text-right text-xs text-red-500">
               {errors.pricePerPacket.message}
             </p>
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {/* Price Per Carton */}
           <div className="grid gap-2">
             <Label htmlFor="pricePerCarton">سعر الكرتون</Label>
@@ -303,7 +301,7 @@ export default function ProductEditFormm({ sku }: { sku: string }) {
               {...register("pricePerCarton", { valueAsNumber: true })}
             />
             {errors.pricePerCarton && (
-              <p className="text-red-500 text-xs text-right">
+              <p className="text-right text-xs text-red-500">
                 {errors.pricePerCarton.message}
               </p>
             )}
@@ -318,14 +316,14 @@ export default function ProductEditFormm({ sku }: { sku: string }) {
               {...register("wholesalePrice", { valueAsNumber: true })}
             />
             {errors.wholesalePrice && (
-              <p className="text-red-500 text-xs text-right">
+              <p className="text-right text-xs text-red-500">
                 {errors.wholesalePrice.message}
               </p>
             )}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {/* Min Wholesale Quantity */}
           <div className="grid gap-2">
             <Label htmlFor="minWholesaleQty">الحد الأدنى لكمية الجملة</Label>
@@ -335,7 +333,7 @@ export default function ProductEditFormm({ sku }: { sku: string }) {
               {...register("minWholesaleQty", { valueAsNumber: true })}
             />
             {errors.minWholesaleQty && (
-              <p className="text-red-500 text-xs text-right">
+              <p className="text-right text-xs text-red-500">
                 {errors.minWholesaleQty.message}
               </p>
             )}
@@ -350,20 +348,20 @@ export default function ProductEditFormm({ sku }: { sku: string }) {
               {...register("weight", { valueAsNumber: true })}
             />
             {errors.weight && (
-              <p className="text-red-500 text-xs text-right">
+              <p className="text-right text-xs text-red-500">
                 {errors.weight.message}
               </p>
             )}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {/* Dimensions */}
           <div className="grid gap-2">
             <Label htmlFor="dimensions">الأبعاد</Label>
             <Input id="dimensions" type="text" {...register("dimensions")} />
             {errors.dimensions && (
-              <p className="text-red-500 text-xs text-right">
+              <p className="text-right text-xs text-red-500">
                 {errors.dimensions.message}
               </p>
             )}
@@ -373,30 +371,29 @@ export default function ProductEditFormm({ sku }: { sku: string }) {
             <Label htmlFor="supplierId">معرّف المورد</Label>
             <SelectField
               options={formData.suppliers}
-              value={watchedSupplierId || ""}
-              onValueChange={(value) => setValue("supplierId", value)}
-              placeholder="اختر موردًا"
+              paramKey={"supplierId"}
+              placeholder="Supplier"
             />
             {errors.supplierId && (
-              <p className="text-red-500 text-xs text-right">
+              <p className="text-right text-xs text-red-500">
                 {errors.supplierId.message}
               </p>
             )}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {/* Warehouse ID */}
           <div className="grid gap-2">
             <Label htmlFor="warehouseId">معرّف المستودع</Label>
             <SelectField
               options={formData.warehouses}
-              value={watchedWarehouseId || ""}
-              onValueChange={(value) => setValue("warehouseId", value)}
+              paramKey="warehouseId"
               placeholder="اختر المستودع"
             />
+
             {errors.warehouseId && (
-              <p className="text-red-500 text-xs text-right">
+              <p className="text-right text-xs text-red-500">
                 {errors.warehouseId.message}
               </p>
             )}
@@ -410,17 +407,11 @@ export default function ProductEditFormm({ sku }: { sku: string }) {
                 { id: "inactive", name: "غير نشط" },
                 { id: "discontinued", name: "متوقف" },
               ]}
-              value={watchedStatus || ""}
-              onValueChange={(value) =>
-                setValue(
-                  "status",
-                  value as "active" | "inactive" | "discontinued"
-                )
-              }
+              paramKey="status"
               placeholder="اختر الحالة"
             />
             {errors.status && (
-              <p className="text-red-500 text-xs text-right">
+              <p className="text-right text-xs text-red-500">
                 {errors.status.message}
               </p>
             )}

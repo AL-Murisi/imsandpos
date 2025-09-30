@@ -69,7 +69,7 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
   );
 
   return (
-    <div className="mt-5 p-1">
+    <div className="group: mt-5 p-1">
       <ProductClient
         products={products}
         total={totalCount}

@@ -71,7 +71,8 @@
     "discountValue": "قيمة الخصم:",
     "afterDiscount": "الإجمالي بعد الخصم:",
     "cancel": "إلغاء",
-    "chooseProduct": "اختر المنتج"
+    "chooseProduct": "اختر المنتج",
+    "noProductFound": "لم يتم العثور على منتج لـ: {query}"
   },
 
   "table": {

@@ -87,7 +87,7 @@ export default function ProductsList({
   const products = useAppSelector(selectAvailableStock);
   const categories = useAppSelector((s) => s.products.categories);
   const status = useAppSelector((s) => s.products.status);
-  const [search, setSearch] = useState("");
+
   const items = useAppSelector((s) => s.cart);
 
   useEffect(() => {
@@ -132,94 +132,104 @@ export default function ProductsList({
   };
 
   return (
-    <div className="rounded-2xl p-2 lg:col-span-1" dir="rtl">
-      <div className="mb-4 flex justify-between gap-3 bg-transparent px-3">
-        <SearchInput placeholder={t("search")} paramKey="product" />
-
-        <div className="">
-          <Selection
-            options={formData.categories}
-            placeholder={t("filter")}
-            selectkey="categoryId"
-          />
+    <div className="rounded-2xl p-2 lg:col-span-1">
+      <div className="mb-4 flex gap-3 bg-transparent px-3">
+        <div className="h-10">
+          {" "}
+          <SearchInput placeholder={t("search")} paramKey="product" />
         </div>
+
+        <Selection
+          options={formData.categories}
+          placeholder={t("filter")}
+          selectkey="categoryId"
+        />
+
         {/* <div className="flex gap-2">
             <ShoppingCart />
             <ShoppingCart />
             <ShoppingCart />
           </div> */}
       </div>
-
-      <ScrollArea className="overflow-y-auto">
-        <div className="grid auto-rows-fr grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-x-5 gap-y-4">
-          {products.map((products) => (
-            <div
-              key={products.id}
-              className="border-primary rounded-2xl border-2 shadow-xl/20 shadow-gray-500"
-            >
-              {products.availableCartons > 0 && (
-                <Card
-                  onClick={() => handleAdd(products, false)}
-                  className="group relative h-40 cursor-pointer overflow-hidden p-2"
-                >
-                  {/* Header (qty / label / price) */}
-                  <div className="bg-primary text-background absolute top-0 right-0 left-0 flex text-xs font-bold">
-                    <div className="flex w-full flex-col px-4">
-                      {/* Carton */}
-                      <div className="flex items-center justify-between gap-2 p-1">
-                        <span className="w-8 text-left">
-                          {FormatPrice(Number(products.availableCartons))}
-                        </span>
-                        <span className="flex-1 text-center">
-                          {t("carton")}
-                        </span>
-                        <span className="w-16 text-right">
-                          ${FormatPrice(Number(products.pricePerCarton))}
-                        </span>
-                      </div>
-
-                      {/* Packet */}
-                      <div className="flex items-center justify-between gap-2 p-1">
-                        <span className="w-8 text-left">
-                          {FormatPrice(Number(products.availablePackets))}
-                        </span>
-                        <span className="flex-1 text-center">
-                          {t("packet")}
-                        </span>
-                        <span className="w-16 text-right">
-                          ${FormatPrice(Number(products.pricePerPacket))}
-                        </span>
-                      </div>
-
-                      {/* Unit */}
-                      {products.pricePerUnit !== undefined && (
-                        <div className="flex items-center justify-between gap-2 p-1">
-                          <span className="w-8 text-left">
-                            {FormatPrice(Number(products.availableUnits))}
-                          </span>
-                          <span className="flex-1 text-center">
-                            {t("unit")}
-                          </span>
-                          <span className="w-16 text-right">
-                            ${FormatPrice(Number(products.pricePerUnit))}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Product Name */}
-                  <div className="bg-primary-foreground absolute right-0 bottom-0 left-0 flex h-[86px] items-center justify-center">
-                    <div className="text-foreground mt-2 mb-3 line-clamp-2 px-2 text-center text-sm font-medium sm:pb-6">
-                      <Label>{products.name}</Label>
-                    </div>
-                  </div>
-                </Card>
-              )}
-            </div>
-          ))}
+      {queryr && product.length === 0 && (
+        <div className="text-muted-foreground mt-4 px-4 text-center text-sm">
+          <p>{t("noProductFound", { query: queryr })}</p>
         </div>
-      </ScrollArea>
+      )}
+      {(product.length > 0 || !queryr) && (
+        <ScrollArea className="overflow-y-auto">
+          <div className="text-muted-foreground mt-4 px-4 text-center text-sm">
+            <div className="grid auto-rows-fr grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-x-5 gap-y-4">
+              {products.map((products) => (
+                <div
+                  key={products.id}
+                  className="border-primary rounded-2xl border-2 shadow-xl/20 shadow-gray-500"
+                >
+                  {products.availableCartons > 0 && (
+                    <Card
+                      onClick={() => handleAdd(products, false)}
+                      className="group relative h-40 cursor-pointer overflow-hidden p-2"
+                    >
+                      {/* Header (qty / label / price) */}
+                      <div className="bg-primary text-background absolute top-0 right-0 left-0 flex text-xs font-bold">
+                        <div className="flex w-full flex-col px-4">
+                          {/* Carton */}
+                          <div className="flex items-center justify-between gap-2 p-1">
+                            <span className="w-8 text-left">
+                              {FormatPrice(Number(products.availableCartons))}
+                            </span>
+                            <span className="flex-1 text-center">
+                              {t("carton")}
+                            </span>
+                            <span className="w-16 text-right">
+                              ${FormatPrice(Number(products.pricePerCarton))}
+                            </span>
+                          </div>
+
+                          {/* Packet */}
+                          <div className="flex items-center justify-between gap-2 p-1">
+                            <span className="w-8 text-left">
+                              {FormatPrice(Number(products.availablePackets))}
+                            </span>
+                            <span className="flex-1 text-center">
+                              {t("packet")}
+                            </span>
+                            <span className="w-16 text-right">
+                              ${FormatPrice(Number(products.pricePerPacket))}
+                            </span>
+                          </div>
+
+                          {/* Unit */}
+                          {products.pricePerUnit !== undefined && (
+                            <div className="flex items-center justify-between gap-2 p-1">
+                              <span className="w-8 text-left">
+                                {FormatPrice(Number(products.availableUnits))}
+                              </span>
+                              <span className="flex-1 text-center">
+                                {t("unit")}
+                              </span>
+                              <span className="w-16 text-right">
+                                ${FormatPrice(Number(products.pricePerUnit))}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Product Name */}
+                      <div className="bg-primary-foreground absolute right-0 bottom-0 left-0 flex h-[86px] items-center justify-center">
+                        <div className="text-foreground mt-2 mb-3 line-clamp-2 px-2 text-center text-sm font-medium sm:pb-6">
+                          <Label>{products.name}</Label>
+                        </div>
+                      </div>
+                    </Card>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </ScrollArea>
+      )}
     </div>
   );
 }

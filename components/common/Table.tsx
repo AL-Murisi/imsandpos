@@ -40,7 +40,6 @@ import {
   TableRow,
 } from "../ui/table";
 import { Badge } from "../ui/badge";
-import SearchInput from "./SearchInput";
 
 interface DataTableProps<T> {
   data: T[];
@@ -64,7 +63,7 @@ export function DataTable<T>({
 DataTableProps<T>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
+    [],
   );
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
@@ -98,14 +97,9 @@ DataTableProps<T>) {
   });
 
   return (
-    <div className="  w-full   ">
-      <div className="flex justify-between py-4 flex-wrap gap-3">
-        {/* <SearchInput
-          placeholder={"Search all..."}
-          value={globalFilter}
-          onSearchChange={(event) => setGlobalFilter(event.target.value)}
-        /> */}
-        <div className="flex gap-3 flex-wrap">
+    <div className="w-full">
+      <div className="flex flex-wrap justify-between gap-3 py-4">
+        <div className="flex flex-wrap gap-3">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="ml-auto">
@@ -168,7 +162,7 @@ DataTableProps<T>) {
         </div>
       </div>
 
-      <Table className="w-full overflow-auto rounded-md border px-2 py-2 ">
+      <Table className="w-full overflow-auto rounded-md border px-2 py-2">
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id}>
@@ -176,13 +170,13 @@ DataTableProps<T>) {
                 <TableHead
                   key={header.id}
                   style={{ width: header.getSize() }}
-                  className="relative group"
+                  className="group relative"
                 >
                   {header.isPlaceholder
                     ? null
                     : flexRender(
                         header.column.columnDef.header,
-                        header.getContext()
+                        header.getContext(),
                       )}
 
                   {header.column.getCanResize() && (
@@ -221,8 +215,8 @@ DataTableProps<T>) {
           )}
         </TableBody>
       </Table>
-      <div className="flex items-center justify-end space-x-2 py-4 flex-wrap gap-2">
-        <div className="text-muted-foreground flex-1 text-sm min-w-[150px]">
+      <div className="flex flex-wrap items-center justify-end gap-2 space-x-2 py-4">
+        <div className="text-muted-foreground min-w-[150px] flex-1 text-sm">
           {table.getFilteredSelectedRowModel().rows.length} of{" "}
           {table.getFilteredRowModel().rows.length} row(s) selected.
         </div>
@@ -231,7 +225,7 @@ DataTableProps<T>) {
           <DropdownMenuTrigger asChild>
             <Button
               variant="secondary"
-              className="ml-auto border-2 border-primary"
+              className="border-primary ml-auto border-2"
             >
               row per page <ChevronDown className="ml-2 h-4 w-4" />
             </Button>

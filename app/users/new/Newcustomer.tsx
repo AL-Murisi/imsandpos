@@ -75,14 +75,14 @@ export default function CustomerForm() {
             <Label htmlFor="name">الاسم الكامل</Label>
             <Input id="name" {...register("name")} />
             {errors.name && (
-              <p className="text-red-500 text-xs">{errors.name.message}</p>
+              <p className="text-xs text-red-500">{errors.name.message}</p>
             )}
           </div>
           <div className="grid gap-2">
             <Label htmlFor="email">البريد الإلكتروني</Label>
             <Input id="email" type="email" {...register("email")} />
             {errors.email && (
-              <p className="text-red-500 text-xs">{errors.email.message}</p>
+              <p className="text-xs text-red-500">{errors.email.message}</p>
             )}
           </div>
 
@@ -101,28 +101,28 @@ export default function CustomerForm() {
             <Label htmlFor="address">كلمة address</Label>
             <Input id="address" type="address" {...register("address")} />
             {errors.address && (
-              <p className="text-red-500 text-xs">{errors.address.message}</p>
+              <p className="text-xs text-red-500">{errors.address.message}</p>
             )}
           </div>
           <div className="grid gap-2">
             <Label htmlFor="city">city المرور</Label>
             <Input id="city" type="address" {...register("city")} />
             {errors.city && (
-              <p className="text-red-500 text-xs">{errors.city.message}</p>
+              <p className="text-xs text-red-500">{errors.city.message}</p>
             )}
           </div>
           <div className="grid gap-2">
             <Label htmlFor="state">كلمة state</Label>
             <Input id="state" type="address" {...register("state")} />
             {errors.state && (
-              <p className="text-red-500 text-xs">{errors.state.message}</p>
+              <p className="text-xs text-red-500">{errors.state.message}</p>
             )}
           </div>
           <div className="grid gap-2">
             <Label htmlFor="country">country المرور</Label>
             <Input id="country" type="address" {...register("country")} />
             {errors.country && (
-              <p className="text-red-500 text-xs">{errors.country.message}</p>
+              <p className="text-xs text-red-500">{errors.country.message}</p>
             )}
           </div>
         </div>
@@ -141,14 +141,11 @@ export default function CustomerForm() {
                 { id: "individual", name: " فردي" },
                 { id: "business", name: "business" },
               ]}
-              value={customertype}
-              onValueChange={(value) =>
-                setValue("customerType", value as "individual" | "business")
-              }
+              paramKey="customerType"
               placeholder="اختر النوع"
             />
             {errors.customerType && (
-              <p className="text-red-500 text-xs text-right">
+              <p className="text-right text-xs text-red-500">
                 {errors.customerType.message}
               </p>
             )}
@@ -158,7 +155,7 @@ export default function CustomerForm() {
           <Label htmlFor="taxId">taxId </Label>
           <Input id="taxId" {...register("taxId")} />
           {errors.taxId && (
-            <p className="text-red-500 text-xs">{errors.taxId.message}</p>
+            <p className="text-xs text-red-500">{errors.taxId.message}</p>
           )}
         </div>
         {/* <div className="grid gap-2">

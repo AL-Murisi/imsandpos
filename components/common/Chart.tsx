@@ -76,7 +76,25 @@ export function ReusableAreaChart({
   const isMobile = useIsMobile();
 
   const [timeRange, setTimeRange] = useState("30d");
+  const groupByMonth = (data: any[], dateField: string) => {
+    const grouped = new Map<string, number>();
 
+    data.forEach((item) => {
+      const dateObj = item[dateField];
+      const monthKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, "0")}`;
+
+      // 🔥 FIX: Explicitly convert the BigInt value using Number()
+      const rawValue = item._sum ? Object.values(item._sum)[0] : 0;
+      const value = rawValue !== undefined ? Number(rawValue) : 0; // Use Number() for BigInt conversion
+
+      grouped.set(monthKey, (grouped.get(monthKey) || 0) + (value || 0));
+    });
+
+    // ... rest of the function remains the same ...
+    return Array.from(grouped.entries())
+      .map(([date, value]) => ({ date, value }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  };
   // لو موبايل، حدد الفترة الزمنية تلقائياً على 7 أيام بدل 90
   useEffect(() => {
     if (isMobile && timeRange === "90d") {
@@ -210,7 +228,7 @@ export function ReusableAreaChart({
                 type="natural"
                 fill={`url(#fill${key.charAt(0).toUpperCase() + key.slice(1)})`}
                 stroke={conf.color}
-                stackId="a"
+                stackId={key} // different stackId per line disables stacking between them
               />
             ))}
           </AreaChart>

@@ -5,7 +5,7 @@ import CustomDialog from "../../../components/common/Dailog";
 import { Button } from "../../../components/ui/button";
 
 import { Separator } from "@/components/ui/separator";
-import SearchInput from "../../../components/common/SearchInput";
+import SearchInput from "@/components/common/searchtest";
 
 export default function Addtouserrecod({}: {}) {
   const [search, setSearch] = useState();
@@ -24,7 +24,7 @@ export default function Addtouserrecod({}: {}) {
         trigger={
           <Button
             onClick={() => setShowDialog(true)}
-            className="flex-1 py-3 rounded-md shadow-md hover:shadow-lg transition-shadow"
+            className="flex-1 rounded-md py-3 shadow-md transition-shadow hover:shadow-lg"
           >
             دين
           </Button>
@@ -34,11 +34,7 @@ export default function Addtouserrecod({}: {}) {
         submitText="حفظ"
         cancelText="إلغاء"
       >
-        <SearchInput
-          placeholder={"رقم الهاتف أو اسم العميل"}
-          value={search}
-          onSearchChange={onSearchChange}
-        />{" "}
+        <SearchInput placeholder={"رقم الهاتف أو اسم العميل"} paramKey="" />{" "}
         <Separator className="my-2" />
         <div className="grid grid-cols-2 justify-between">
           <Button variant="outline">إلغاء</Button>

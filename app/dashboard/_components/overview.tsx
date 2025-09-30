@@ -24,32 +24,6 @@ export default function Charts({
   formData,
 }: chart) {
   return (
-    //     // <div className="grid grid-cols-1 lg:grid-cols-3 md:grid-cols-2 gap-4 pb-2">
-    //     //   <div className="lg:col-span-2  shadow-2xl border-primary rounded-2xl">
-    //     //     <Chart combinedChartData={combinedChartData} />
-    //     //   </div>
-
-    //     //   <div className="lg:row-span-1 border-primary bg-accent rounded-2xl">
-    //     //     <TopSellingChartWrapper
-    //     //       data={topProducts}
-    //     //       formData={formData}
-    //     //       title="Top Sales"
-    //     //       width="min-w-3xl md:max-w-sm"
-    //     //       dataKey="quantity"
-    //     //       paramKey="topItems"
-    //     //     />
-    //     //   </div>
-    //     // </div>
-    //     // <div className="grid grid-cols-1 lg:grid-cols-3 md:grid-cols-2 gap-4 pb-2">
-
-    //       <TopSellingChartWrapper
-    //         data={topProducts}
-    //         formData={formData}
-    //         title="Top Sales"
-    //         width=" md:min-w-5xl max-w-2xl"
-    //         dataKey="quantity"
-    //         paramKey="topItems"
-    //       />
     <TopSellingChartWrapper
       data={topProducts}
       formData={formData}

@@ -306,12 +306,12 @@ export default function UniversalChart({
             <div>
               <SelectField
                 options={formData.categories}
-                onValueChange={(value) => setParam("categoryId", value)}
+                paramKey="categoryId"
                 placeholder="Category"
               />
               <SelectField
                 options={dates}
-                onValueChange={Date}
+                paramKey="categoryId"
                 placeholder="Date"
               />
             </div>

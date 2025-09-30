@@ -53,12 +53,7 @@ export default function UserClinet({ users, total, role }: ProductClientProps) {
         <Calendar22 />
         <SearchInput placeholder={"بحث"} paramKey={"users"} />{" "}
         {/* Translate placeholder */}
-        <SelectField
-          options={role}
-          onValueChange={(value) => setParam("role", value)}
-          value={roles}
-          placeholder="الفئة"
-        />
+        <SelectField options={role} paramKey="role" placeholder="الفئة" />
         <CustomDialog
           trigger={
             <Button>

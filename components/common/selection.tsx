@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Select,
   SelectContent,
@@ -6,6 +8,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { parseAsString } from "nuqs";
+import { useQueryState } from "nuqs";
+import { useTransition } from "react";
 
 interface Option {
   id: string;
@@ -14,28 +19,36 @@ interface Option {
 
 interface SelectFieldProps {
   options: Option[];
-  value?: string;
-  onValueChange: (value: string) => void;
+  paramKey: string; // e.g., "category"
   placeholder: string;
 }
 
 export function SelectField({
   options,
-  value,
-  onValueChange,
+  paramKey,
   placeholder,
 }: SelectFieldProps) {
-  //  const removeBadge = (val: string) => {
-  //   onValueChange(value.filter((v) => v !== val));
-  // };
+  const [isPending, startTransition] = useTransition();
+
+  const [value, setValue] = useQueryState(
+    paramKey,
+    parseAsString.withDefault("").withOptions({
+      shallow: false,
+      startTransition,
+    }),
+  );
+
   return (
-    <Select onValueChange={onValueChange}>
-      <SelectTrigger className="border-primary rounded-md border-2">
+    <Select value={value} onValueChange={setValue}>
+      <SelectTrigger
+        className="border-primary rounded-md border-2"
+        disabled={isPending}
+      >
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
         <SelectGroup>
-          <SelectItem value="All">الكل</SelectItem>
+          <SelectItem value="all">الكل</SelectItem>
           {options.map((option) => (
             <SelectItem key={option.id} value={option.id}>
               {option.name}

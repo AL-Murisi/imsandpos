@@ -70,7 +70,8 @@
     "discountValue": "Discount value:",
     "afterDiscount": "Total after discount:",
     "cancel": "Cancel",
-    "chooseProduct": "Choose a product"
+    "chooseProduct": "Choose a product",
+    "noProductFound": "No product found for: {query}"
   },
 
   "table": {

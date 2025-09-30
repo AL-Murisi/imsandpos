@@ -67,13 +67,17 @@ export default function ManagemovementClient({
       <div className="flex flex-col gap-2 p-2 md:flex-row" dir="rtl">
         <Calendar22 />
         <SearchInput placeholder={"بحث "} paramKey={"movement"} />
-
         <SelectField
+          options={formData.warehouses}
+          paramKey="category"
+          placeholder="warehouseId"
+        />
+        {/* <SelectField
           options={formData.warehouses}
           onValueChange={(value) => setParam("warehouseId", value)}
           value={warehouseId ?? ""}
-          placeholder="Warehouse"
-        />
+         
+        /> */}
       </div>
       <div>
         <DataTable

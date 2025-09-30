@@ -60,19 +60,19 @@ export default function ManageinvetoryClient({
         <SearchInput placeholder={"بحث .."} paramKey={"inventorey"} />
         <SelectField
           options={formData.warehouses}
-          onValueChange={(value) => setParam("warehouseId", value)}
-          value={warehouseId}
-          placeholder="Warehouse"
+          paramKey="warehouseId"
+          placeholder="warehouseId"
         />
+
         <SelectField
           options={formData.categories}
-          onValueChange={(value) => setParam("categoryId", value)}
+          paramKey="categoryId"
           placeholder="الفئة"
         />
+
         <SelectField
           options={formData.suppliers}
-          onValueChange={(value) => setParam("supplierId", value)}
-          value={supplierId}
+          paramKey={"supplierId"}
           placeholder="Supplier"
         />
         <CustomDialog
