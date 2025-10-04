@@ -1,14 +1,16 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
-
+import withSerwistInit from "@serwist/next";
 const withNextIntl = createNextIntlPlugin();
-const withPWA = require("next-pwa")({
-  dest: "public",
-  register: true,
-  skipWaiting: true,
+const withPWA = withSerwistInit({
+  swSrc: "app/sw.ts",
+  swDest: "public/sw.js",
+  cacheOnNavigation: true,
+  // dest: "public",
+  // register: true,
+  // skipWaiting: true,
   disable: process.env.NODE_ENV === "development",
 });
-
 const withBundleAnalyzer = require("@next/bundle-analyzer")({
   enabled: process.env.ANALYZE === "true",
 });

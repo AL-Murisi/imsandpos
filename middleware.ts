@@ -86,7 +86,7 @@ function getDefaultRedirectForRole(roles: string[]): string {
   if (roles.includes("admin")) return "/dashboard"; // Note: Changed from /inventory to /dashboard to match your current code
   if (roles.includes("cashier")) return "/sells"; // Note: Changed from /sells/cashiercontrol to /sells to match your current code
   if (roles.includes("manager_wh")) return "/inventory/dashboardUser";
-  return "/"; // Default redirect if no role matches
+  return "/login"; // Default redirect if no role matches
 }
 
 export const config = {

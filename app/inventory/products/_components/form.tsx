@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 
 import { CreateProduct } from "@/app/actions/createProduct";
 import { fetchAllFormData } from "@/app/actions/roles";
-import { SelectField } from "@/components/common/selection";
+import { SelectField } from "./selectproduct";
 import { useAuth } from "@/lib/context/AuthContext";
 import { CreateProductSchema } from "@/lib/zodType";
 
@@ -133,10 +133,10 @@ export default function ProductForm() {
           {/* Category ID */}
           <div className="grid gap-2">
             <Label htmlFor="categoryId">معرّف الفئة</Label>
-
             <SelectField
               options={formData.categories}
-              paramKey="categoryId"
+              value={watchedCategoryId}
+              action={(val) => setValue("categoryId", val)}
               placeholder="الفئة"
             />
 
@@ -164,11 +164,11 @@ export default function ProductForm() {
           <div className="grid gap-2">
             <Label htmlFor="brandId">معرّف العلامة التجارية</Label>
             <SelectField
-              options={formData.warehouses}
-              paramKey="brandId"
+              options={formData.brands}
+              value={watchedBrandId}
+              action={(val) => setValue("brandId", val)}
               placeholder="اختر علامة تجارية"
             />
-
             {errors.brandId && (
               <p className="text-right text-xs text-red-500">
                 {errors.brandId.message}
@@ -180,13 +180,15 @@ export default function ProductForm() {
             <Label htmlFor="type">النوع</Label>
             <SelectField
               options={[
-                { id: "single", name: "منتج فردي" },
-                { id: "bundle", name: "حزمة" },
-                { id: "variant", name: "متغير" },
+                { id: "active", name: "نشط" },
+                { id: "inactive", name: "غير نشط" },
+                { id: "discontinued", name: "متوقف" },
               ]}
-              paramKey="type"
-              placeholder="اختر النوع"
+              value={watchedStatus}
+              action={(val) => setValue("status", val as FormValues["status"])} // <-- cast
+              placeholder="اختر الحالة"
             />
+
             {errors.type && (
               <p className="text-right text-xs text-red-500">
                 {errors.type.message}
@@ -356,9 +358,11 @@ export default function ProductForm() {
             <Label htmlFor="supplierId">معرّف المورد</Label>
             <SelectField
               options={formData.suppliers}
-              paramKey={"supplierId"}
-              placeholder="Supplier"
+              value={watchedSupplierId}
+              action={(val) => setValue("supplierId", val)}
+              placeholder="اختر المورد"
             />
+
             {errors.supplierId && (
               <p className="text-right text-xs text-red-500">
                 {errors.supplierId.message}
@@ -373,7 +377,8 @@ export default function ProductForm() {
             <Label htmlFor="warehouseId">معرّف المستودع</Label>
             <SelectField
               options={formData.warehouses}
-              paramKey="warehouseId"
+              value={watchedWarehouseId}
+              action={(val) => setValue("warehouseId", val)}
               placeholder="اختر المستودع"
             />
 
@@ -386,15 +391,18 @@ export default function ProductForm() {
           {/* Status */}
           <div className="grid gap-2">
             <Label htmlFor="status">الحالة</Label>
+
             <SelectField
               options={[
-                { id: "active", name: "نشط" },
-                { id: "inactive", name: "غير نشط" },
-                { id: "discontinued", name: "متوقف" },
+                { id: "single", name: "منتج فردي" },
+                { id: "bundle", name: "حزمة" },
+                { id: "variant", name: "متغير" },
               ]}
-              paramKey="status"
-              placeholder="اختر الحالة"
+              value={watchedType}
+              action={(val) => setValue("type", val as FormValues["type"])} // <-- cast
+              placeholder="اختر النوع"
             />
+
             {errors.status && (
               <p className="text-right text-xs text-red-500">
                 {errors.status.message}

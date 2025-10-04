@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ColumnDef } from "@tanstack/react-table";
 import { ArrowDown, ArrowUp, ArrowUpDown, EditIcon } from "lucide-react";
 import Debtupdate from "./form";
+import DebtReport from "./DebtReport";
 interface DebtSaleData {
   id: string;
   totalAmount: string; // As string from FetchDebtSales
@@ -143,17 +144,33 @@ export const debtSaleColumns: ColumnDef<DebtSaleData>[] = [
     cell: ({ row }) => {
       const debt = row.original;
       return (
-        <CustomDialog
-          trigger={
-            <Button variant="outline">
-              <EditIcon />
-            </Button>
-          }
-          title="إضافة منتج"
-          description="أدخل تفاصيل المنتج واحفظه"
-        >
-          <Debtupdate debt={debt} />
-        </CustomDialog>
+        <>
+          <CustomDialog
+            trigger={
+              <Button variant="outline">
+                <EditIcon />
+              </Button>
+            }
+            title="إضافة منتج"
+            description="أدخل تفاصيل المنتج واحفظه"
+          >
+            <Debtupdate debt={debt} />
+          </CustomDialog>
+          <CustomDialog
+            trigger={
+              <Button variant="outline">
+                <EditIcon />
+              </Button>
+            }
+            title="إضافة منتج"
+            description="أدخل تفاصيل المنتج واحفظه"
+          >
+            <DebtReport
+              customerName={debt.customer?.name}
+              customerID={debt.customerId}
+            />
+          </CustomDialog>
+        </>
       );
     },
   },

@@ -1,3 +1,4 @@
+"use server";
 import prisma from "@/lib/prisma";
 import { SortingState } from "@tanstack/react-table";
 
@@ -6,7 +7,7 @@ export async function logActivity(
   action: string,
   details?: string,
   ip?: string,
-  userAgent?: string
+  userAgent?: string,
 ) {
   await prisma.activityLogs.create({
     data: {
@@ -22,7 +23,7 @@ export async function logActivity(
 export async function getActivityLogs(
   page: number = 0, // 0-indexed page number
   pageSize: number = 7,
-  sort?: SortingState
+  sort?: SortingState,
 ) {
   const logs = await prisma.activityLogs.findMany({
     include: {

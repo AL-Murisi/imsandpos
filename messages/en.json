@@ -83,5 +83,20 @@
     "next": "Next",
     "noResults": "No results.",
     "selected": "{count} of {total} rows selected."
+  },
+  "debt": {
+    "debtReport": "Debt Report",
+    "shopName": "My Shop / Business Name",
+    "date": "Date",
+    "customer": "Customer",
+    "contact": "Contact",
+    "loading": "Loading debts...",
+    "invoiceNo": "Invoice #",
+    "items": "Items",
+    "total": "Total",
+    "paid": "Paid",
+    "remaining": "Remaining",
+    "totalOutstanding": "Total Outstanding",
+    "issuedBy": "Issued By"
   }
 }

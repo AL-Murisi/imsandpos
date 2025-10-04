@@ -89,6 +89,48 @@ export async function FetchDebtSales(
 
   return serializedDebts; // Return the transformed data
 }
+export async function FetchCustomerDebtReport(customerId: string) {
+  const sales = await prisma.sale.findMany({
+    where: {
+      customerId,
+      paymentStatus: { in: ["pending", "partial"] },
+    },
+    select: {
+      id: true,
+      saleNumber: true,
+      totalAmount: true,
+      amountPaid: true,
+      amountDue: true,
+      saleDate: true,
+      paymentStatus: true,
+      saleItems: {
+        select: {
+          id: true,
+          product: { select: { name: true, sku: true } },
+          quantity: true,
+          sellingUnit: true,
+          unitPrice: true,
+          totalPrice: true,
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return sales.map((sale) => ({
+    ...sale,
+    totalAmount: sale.totalAmount.toString(),
+    amountPaid: sale.amountPaid.toString(),
+    amountDue: sale.amountDue.toString(),
+    saleDate: sale.saleDate.toISOString(),
+    saleItems: sale.saleItems.map((item) => ({
+      ...item,
+      unitPrice: item.unitPrice.toString(),
+      totalPrice: item.totalPrice.toString(),
+    })),
+  }));
+}
+
 // export async function fetchSalesSummary(
 //   role: string,
 //   filters?: {

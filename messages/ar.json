@@ -84,5 +84,20 @@
     "next": "التالي",
     "noResults": "لا توجد نتائج.",
     "selected": "تم اختيار {count} من {total} صف."
+  },
+  "debt": {
+    "debtReport": "تقرير الديون",
+    "shopName": "اسم المتجر / النشاط",
+    "date": "التاريخ",
+    "customer": "العميل",
+    "contact": "التواصل",
+    "loading": "جاري تحميل الديون...",
+    "invoiceNo": "رقم الفاتورة",
+    "items": "العناصر",
+    "total": "الإجمالي",
+    "paid": "المدفوع",
+    "remaining": "المتبقي",
+    "totalOutstanding": "إجمالي المتبقي",
+    "issuedBy": "صادر عن"
   }
 }

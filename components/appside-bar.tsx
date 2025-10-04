@@ -42,7 +42,7 @@ import {
 import { useAuth } from "@/lib/context/AuthContext";
 import { ModeToggle } from "./toggoletheme";
 import { logActivity } from "@/app/actions/activitylogs";
-import { usePathname } from "next/navigation";
+import { redirect, usePathname } from "next/navigation";
 import LanguageSelector from "./common/lanSelect";
 import LocaleSwitcher from "./common/LocaleSwitcher";
 import { useTranslations } from "next-intl";
@@ -195,11 +195,12 @@ const IMSLogoIcon = ({ className = "", size = 24, color = "currentColor" }) => {
 //     roles: ["admin"],
 //   },
 // ];
-
+import { useRouter } from "next/navigation";
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { user, hasAnyRole, logout } = useAuth();
+  const { user, hasAnyRole, logoutAndRedirect } = useAuth();
   const pathname = usePathname();
   const t = useTranslations("menu");
+
   // If no user, don't render sidebar
   if (!user) {
     return null;
@@ -321,9 +322,29 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   // const visibleMenuItems = menuItems.filter((item) => {
   //   return item.roles.includes("admin"); // Hardcoded
   // });
-  const handelLogout = async () => {
-    await logActivity(user.userId, "logout", "user out");
-  };
+  const router = useRouter();
+  // const handelLogout = async () => {
+  //   if (!user) return;
+
+  //   try {
+  //     await fetch("/api/log-activity", {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({
+  //         userId: user.userId,
+  //         action: "logout",
+  //         details: "User logged out",
+  //         ip: "",
+  //         userAgent: navigator.userAgent,
+  //       }),
+  //     });
+
+  //     await logout();
+  //     router.push("/login"); // <--- redirect to login
+  //   } catch (err) {
+  //     console.error("Failed to log logout activity:", err);
+  //   }
+  // };
   const filterSubItems = (subItems: any[]) => {
     return subItems.filter((subItem) => hasAnyRole(subItem.roles));
   };
@@ -455,7 +476,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarMenuItem>
               <SidebarMenuButton
                 onClick={() => {
-                  (logout(), handelLogout());
+                  logoutAndRedirect();
                 }}
                 className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950"
               >

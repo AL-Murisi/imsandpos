@@ -112,7 +112,7 @@ export default function ProductsList({
         warehousename: products.warehousename,
         sellingUnit: "carton",
         warehouseId: products.warehouseId,
-        selectedQty: 0,
+        selectedQty: 1,
         originalStockQuantity: products.availableCartons,
         packetsPerCarton: products.packetsPerCarton,
         unitsPerPacket: products.unitsPerPacket,

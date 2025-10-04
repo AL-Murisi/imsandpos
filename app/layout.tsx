@@ -67,18 +67,12 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#1f2937" },
-    { media: "(prefers-color-scheme: dark)", color: "#0b142a" },
-  ],
+  themeColor: "#0b142a",
   minimumScale: 1,
   initialScale: 1,
   width: "device-width",
   viewportFit: "cover",
 };
-interface Main {
-  children: React.ReactNode;
-}
 
 export default async function RootLayout({
   children,

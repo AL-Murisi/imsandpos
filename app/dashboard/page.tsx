@@ -3,6 +3,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { revalidateTag } from "next/cache";
 import SectionCards from "./_components/cardsection";
 import DashboardContentClient from "./_components/DashboardContent";
+import { verifySession } from "@/lib/dal";
+import { redirect } from "next/navigation";
 
 interface DashboardProps {
   searchParams: Promise<Record<string, string | undefined>>;
@@ -25,7 +27,10 @@ function extractFilters(params: Record<string, string | undefined>) {
 
 export default async function Dashboard({ searchParams }: DashboardProps) {
   // Verify session first
-
+  const session = verifySession();
+  if (!session) {
+    redirect("/login");
+  }
   const params = await searchParams;
   const filters = extractFilters(params);
 

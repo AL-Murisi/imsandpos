@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/lib/context/AuthContext";
-import { usePathname } from "next/navigation";
+import { redirect, usePathname } from "next/navigation";
 import {
   SidebarInset,
   SidebarProvider,
@@ -13,6 +13,7 @@ import { Provider } from "react-redux";
 import { store } from "@/lib/store";
 import Appheader from "./AppHeader/appheader";
 import { ScrollArea } from "@radix-ui/react-scroll-area";
+import { verifySession } from "@/lib/dal";
 
 export default function ClientLayoutWrapper({
   children,
