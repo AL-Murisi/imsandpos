@@ -35,18 +35,24 @@ export default function SearchInput({ placeholder, paramKey }: InputProps) {
   return (
     <form
       action=""
-      className="bg-amber- relative flex w-60 flex-col gap-5 md:w-full lg:w-md"
-      dir="ltr"
+      className="bg-amber- relative flex w-60 flex-col gap-2 md:w-full lg:w-md"
+      dir="rtl"
     >
-      <Input
-        placeholder={placeholder}
-        autoComplete="off"
-        type="search"
-        onChange={handleChange}
-        className="border-primary text-foreground w-full border-2 py-4 text-right"
-        defaultValue={query}
-      />
-      <SearchStatus searching={isPending} />
+      <div className="relative w-full">
+        <Input
+          placeholder={placeholder}
+          autoComplete="off"
+          type="search"
+          onChange={handleChange}
+          className="border-primary text-foreground w-full border-2 py-4 pr-12 text-right"
+          defaultValue={query}
+        />
+
+        {/* SearchStatus positioned inside input container */}
+        <div className="absolute top-1/2 right-10 -translate-y-1/2">
+          <SearchStatus searching={isPending} />
+        </div>
+      </div>
     </form>
   );
 }
