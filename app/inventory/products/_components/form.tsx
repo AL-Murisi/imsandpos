@@ -394,13 +394,13 @@ export default function ProductForm() {
 
             <SelectField
               options={[
-                { id: "single", name: "منتج فردي" },
-                { id: "bundle", name: "حزمة" },
-                { id: "variant", name: "متغير" },
+                { id: "active", name: "نشط" },
+                { id: "inactive", name: "غير نشط" },
+                { id: "discontinued", name: "متوقف" },
               ]}
-              value={watchedType}
-              action={(val) => setValue("type", val as FormValues["type"])} // <-- cast
-              placeholder="اختر النوع"
+              value={watchedStatus}
+              action={(val) => setValue("status", val as FormValues["status"])} // <-- cast
+              placeholder="اختر الحالة"
             />
 
             {errors.status && (

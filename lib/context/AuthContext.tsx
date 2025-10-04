@@ -99,14 +99,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Clear session
       await logout();
-
-      // Get current locale from pathname
-      const locale = pathname.split("/")[1];
-      const validLocales = ["en", "ar"]; // Your supported locales
-      const currentLocale = validLocales.includes(locale) ? locale : "ar";
-
+      await deleteSession();
       // Force redirect to login with full page reload
-      window.location.href = `/${currentLocale}/login`;
+      window.location.href = `/login`;
     } catch (err) {
       console.error("Logout and redirect failed:", err);
       // Fallback: force redirect anyway

@@ -178,7 +178,7 @@ export const UserSchema = z.object({
       role: z.object({
         name: z.string(),
       }),
-    })
+    }),
   ),
 });
 export const Reservation = z.object({
@@ -363,6 +363,6 @@ export const CreateOrderSchema = z.object({
     z.object({
       productId: z.string().cuid(),
       quantity: z.number().int().positive("الكمية مطلوبة ويجب أن تكون موجبة"),
-    })
+    }),
   ),
 });
