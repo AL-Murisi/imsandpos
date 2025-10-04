@@ -1,11 +1,23 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 import withSerwistInit from "@serwist/next";
+import { execSync } from "child_process";
+
+// Use git commit hash as cache version
+const revision = execSync("git rev-parse HEAD", { encoding: "utf8" })
+  .trim()
+  .slice(0, 7);
+
 const withNextIntl = createNextIntlPlugin();
 const withPWA = withSerwistInit({
   swSrc: "app/sw.ts",
   swDest: "public/sw.js",
   cacheOnNavigation: true,
+  additionalPrecacheEntries: [
+    { url: "/", revision },
+    // Optional
+    { url: "/offline", revision },
+  ],
   // dest: "public",
   // register: true,
   // skipWaiting: true,
