@@ -178,16 +178,16 @@ export default function ProductForm() {
           {/* Type */}
           <div className="grid gap-2">
             <Label htmlFor="type">النوع</Label>
-            {/* <SelectField
+            <SelectField
               options={[
-                { id: "active", name: "نشط" },
-                { id: "inactive", name: "غير نشط" },
-                { id: "discontinued", name: "متوقف" },
+                { id: "single", name: "منتج فردي" },
+                { id: "bundle", name: "حزمة" },
+                { id: "variant", name: "متغير" },
               ]}
-              value={watchedStatus}
-              action={(val) => setValue("status", val as FormValues["status"])} // <-- cast
-              placeholder="اختر الحالة"
-            /> */}
+              value={watchedType}
+              action={(val) => setValue("type", val as FormValues["type"])} // <-- cast
+              placeholder="اختر النوع"
+            />
 
             {errors.type && (
               <p className="text-right text-xs text-red-500">
