@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import localFont from "next/font/local";
 import "./global.css";
 import { ThemeProvider } from "../components/theme-provider";
 import { AuthProvider } from "@/lib/context/AuthContext";
@@ -8,14 +8,19 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale } from "next-intl/server";
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-sans",
-  display: "swap", // ✅ Already implemented
-  weight: ["400", "700"],
+// const inter = Inter({
+//   subsets: ["latin"],
+//   variable: "--font-sans",
+//   display: "swap", // ✅ Already implemented
+//   weight: ["400", "700"],
 
-  // fallback: ["system-ui", "arial"], // Add fallback
-});
+//   // fallback: ["system-ui", "arial"], // Add fallback
+// });
+// const myFont = localFont({
+//   src: "/fonts/Inter-Italic.woff2",
+
+//   display: "swap",
+// });
 // const roboto = Roboto({
 //   subsets: ["latin"],
 //   variable: "--font-roboto-mono",
@@ -83,11 +88,7 @@ export default async function RootLayout({
   const messages = (await import(`@/messages/${locale}.json`)).default;
 
   return (
-    <html
-      lang={locale}
-      className={`${inter.className} `}
-      suppressHydrationWarning
-    >
+    <html lang={locale} className={``} suppressHydrationWarning>
       <body className="font-sans">
         <ThemeProvider
           attribute="class"

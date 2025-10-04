@@ -17,7 +17,9 @@ import { useTablePrams } from "@/hooks/useTableParams";
 
 import SearchInput from "@/components/common/searchtest";
 import { columns } from "./column";
-import ProductForm from "./form";
+import ProductForm from "../new/form";
+import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 type ProductClientProps = {
   products: any[];
@@ -49,7 +51,7 @@ export default function ProductClient({
     categoryId,
     setParam,
   } = useTablePrams();
-
+  const t = useTranslations("productForm");
   // Memoize expensive computations
 
   // Show skeleton during initial load or hydration
@@ -84,14 +86,16 @@ export default function ProductClient({
           paramKey={"supplierId"}
           placeholder="Supplier"
         />
-
-        <CustomDialog
-          trigger={<Button>Add Product</Button>}
+        <Link href={"/inventory/products/new"}>
+          <Button>{t("new")}</Button>
+        </Link>
+        {/* <CustomDialog
+          trigger={}
           title="Add Product"
           description="Enter product details below."
         >
           <ProductForm />
-        </CustomDialog>
+        </CustomDialog> */}
       </div>
 
       <DataTable

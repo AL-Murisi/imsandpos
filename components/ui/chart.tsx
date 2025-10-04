@@ -163,6 +163,30 @@ interface ChartTooltipProps {
     entry?: any,
     index?: number,
   ) => [React.ReactNode, string?];
+
+  // Add missing props from ChartTooltipContent destructuring
+  cursor?: any;
+  defaultIndex?: number;
+  allowEscapeViewBox?: boolean;
+  animationDuration?: number;
+  animationEasing?: string;
+  axisId?: string | number;
+  contentStyle?: React.CSSProperties;
+  filterNull?: boolean;
+  isAnimationActive?: boolean;
+  itemSorter?: (itemA: any, itemB: any) => number;
+  itemStyle?: React.CSSProperties;
+  labelStyle?: React.CSSProperties;
+  reverseDirection?: boolean;
+  useTranslate3d?: boolean;
+  wrapperStyle?: React.CSSProperties;
+  accessibilityLayer?: boolean;
+  coordinate?: { x: number; y: number };
+  viewBox?: { x: number; y: number; width: number; height: number };
+  offset?: number;
+  chartType?: string;
+  activePayload?: any[];
+  activeLabel?: string | number;
 }
 
 const ChartTooltip = RechartsPrimitive.Tooltip;
@@ -184,6 +208,23 @@ const ChartTooltipContent = React.forwardRef<
       labelkey,
       labelFormatter,
       formatter,
+      // Recharts props that should NOT be passed to DOM
+      cursor,
+      defaultIndex,
+      allowEscapeViewBox,
+      animationDuration,
+      animationEasing,
+      axisId,
+      contentStyle,
+      filterNull,
+      isAnimationActive,
+      itemSorter,
+      itemStyle,
+      labelStyle,
+      reverseDirection,
+      useTranslate3d,
+      wrapperStyle,
+      accessibilityLayer,
       ...props
     },
     ref,

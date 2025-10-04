@@ -44,6 +44,7 @@ import {
 } from "../../components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "../../components/ui/toggle-group";
 import { useIsMobile } from "../../hooks/use-mobile";
+import { CustomTooltipContent } from "./cuatomtool";
 
 type ChartDataPoint = { date: string; [key: string]: number | string };
 type TimeRangeOption = { label: string; value: string; days: number };
@@ -207,10 +208,8 @@ export function ReusableAreaChart({
               reversed={true} // لتكون التواريخ من اليمين لليسار في المحور X
             />
             <ChartTooltip
-              cursor={false}
-              defaultIndex={isMobile ? -1 : 10}
               content={
-                <ChartTooltipContent
+                <CustomTooltipContent
                   labelFormatter={(value) =>
                     new Date(value).toLocaleDateString("ar-EG", {
                       month: "short",

@@ -32,6 +32,10 @@ export default function Appheader() {
       url: "/inventory/products",
     },
     {
+      title: `${t("products")}/${t("new")}`,
+      url: "/inventory/products/new",
+    },
+    {
       title: t("categories"), // Categories
       url: "/inventory/categories",
     },
