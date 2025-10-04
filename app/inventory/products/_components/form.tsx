@@ -178,7 +178,7 @@ export default function ProductForm() {
           {/* Type */}
           <div className="grid gap-2">
             <Label htmlFor="type">النوع</Label>
-            <SelectField
+            {/* <SelectField
               options={[
                 { id: "active", name: "نشط" },
                 { id: "inactive", name: "غير نشط" },
@@ -187,7 +187,7 @@ export default function ProductForm() {
               value={watchedStatus}
               action={(val) => setValue("status", val as FormValues["status"])} // <-- cast
               placeholder="اختر الحالة"
-            />
+            /> */}
 
             {errors.type && (
               <p className="text-right text-xs text-red-500">

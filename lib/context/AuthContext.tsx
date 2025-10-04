@@ -1,16 +1,15 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { useRouter } from "next/navigation"; // <-- added
+import { useRouter, usePathname } from "next/navigation";
 import { deleteSession, SessionData } from "@/lib/session";
-import { logActivity } from "@/app/actions/activitylogs";
 import { verifySession } from "../dal";
 
 interface AuthContextType {
   user: SessionData | null;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
-  logoutAndRedirect: () => Promise<void>; // <-- new
+  logoutAndRedirect: () => Promise<void>;
   loading: boolean;
   hasRole: (role: string) => boolean;
   hasAnyRole: (roles: string[]) => boolean;
@@ -21,9 +20,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<SessionData | null>(null);
   const [loading, setLoading] = useState(true);
-  const router = useRouter(); // <-- router instance
+  const router = useRouter();
+  const pathname = usePathname();
 
-  // Check if user is authenticated on mount
   useEffect(() => {
     checkAuth();
   }, []);
@@ -34,9 +33,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (response.ok) {
         const userData = await response.json();
         setUser(userData);
+      } else {
+        setUser(null);
       }
     } catch (error) {
       console.error("Auth check failed:", error);
+      setUser(null);
     } finally {
       setLoading(false);
     }
@@ -53,7 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (response.ok) {
-        await checkAuth(); // Refresh user data
+        await checkAuth();
         return true;
       }
       return false;
@@ -65,20 +67,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      deleteSession();
+      // Call API to clear session server-side
+      await fetch("/api/auth/logout", {
+        method: "POST",
+      });
+
       setUser(null);
-      verifySession();
     } catch (error) {
       console.error("Logout failed:", error);
+      // Still set user to null even if API call fails
+      setUser(null);
     }
   };
 
-  // NEW: logout with activity logging + immediate redirect
   const logoutAndRedirect = async () => {
     try {
-      // Log the activity but don’t block the redirect if it fails
+      // Log activity if user exists
       if (user) {
-        await fetch("/api/log-activity", {
+        fetch("/api/log-activity", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -86,20 +92,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             action: "logout",
             details: "User logged out",
             ip: "",
-            userAgent: navigator.userAgent,
+            userAgent: typeof window !== "undefined" ? navigator.userAgent : "",
           }),
-        }).catch(console.error);
+        }).catch(console.error); // Don't await - fire and forget
       }
 
-      // Clear session & user state
+      // Clear session
       await logout();
 
-      // Redirect immediately
-      router.replace("/login");
+      // Get current locale from pathname
+      const locale = pathname.split("/")[1];
+      const validLocales = ["en", "ar"]; // Your supported locales
+      const currentLocale = validLocales.includes(locale) ? locale : "ar";
+
+      // Force redirect to login with full page reload
+      window.location.href = `/${currentLocale}/login`;
     } catch (err) {
       console.error("Logout and redirect failed:", err);
-      await logout();
-      router.replace("/login");
+      // Fallback: force redirect anyway
+      window.location.href = "/login";
     }
   };
 
@@ -117,7 +128,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         login,
         logout,
-        logoutAndRedirect, // <-- new
+        logoutAndRedirect,
         loading,
         hasRole,
         hasAnyRole,
