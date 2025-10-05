@@ -1,3 +1,4 @@
+// app/api/export-debt-sales/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { generateDebtSalesPDF } from "@/lib/debtSalesPdfExport";
 import { FetchDebtSales } from "@/app/actions/sells";
@@ -11,26 +12,75 @@ export async function POST(request: NextRequest) {
 
     console.log("Fetching debt sales data...");
 
+    // Build filter
     const filter: Prisma.SaleWhereInput = {
-      paymentStatus: { in: ["partial"] },
+      paymentStatus: {
+        in: ["partial"],
+      },
     };
 
-    // Fetch all matching debt sales
-    const sales = await FetchDebtSales(filter, usersquery, from, to, 0, 10000);
+    // Parse sort
+
+    // Fetch all debt sales (no pagination for export)
+    const sales = await FetchDebtSales(
+      filter,
+      usersquery,
+      from,
+      to,
+      0, // pageIndex
+      10000, // Large page size to get all records
+    );
 
     console.log(`Found ${sales.length} debt sales`);
 
-    // Generate PDF directly from sales array
-    const pdfBuffer = await generateDebtSalesPDF(sales);
+    // Calculate summary
+    const summary = {
+      totalDebt: sales.reduce((sum, sale) => sum + Number(sale.amountDue), 0),
+      totalSales: sales.reduce(
+        (sum, sale) => sum + Number(sale.totalAmount),
+        0,
+      ),
+      totalPaid: sales.reduce((sum, sale) => sum + Number(sale.amountPaid), 0),
+      customerCount: new Set(sales.map((sale) => sale.customerId)).size,
+    };
+
+    // Prepare data for PDF
+    const pdfData = {
+      sales: sales.map((sale) => ({
+        id: sale.id,
+        saleDate: sale.saleDate,
+        totalAmount: Number(sale.totalAmount),
+        amountPaid: Number(sale.amountPaid),
+        amountDue: Number(sale.amountDue),
+        paymentStatus: sale.paymentStatus,
+        customer: sale.customer
+          ? {
+              name: sale.customer.name,
+              phoneNumber: sale.customer.phoneNumber || undefined,
+              customerType: sale.customer.customerType || undefined,
+            }
+          : undefined,
+        createdAt: sale.createdAt,
+      })),
+      summary,
+      dateRange: {
+        from: from || undefined,
+        to: to || undefined,
+      },
+    };
+
+    console.log("Generating PDF...");
+
+    // Generate PDF
+    const pdfBuffer = await generateDebtSalesPDF(pdfData);
 
     console.log("PDF generated successfully");
 
+    // Return PDF
     return new NextResponse(new Uint8Array(pdfBuffer), {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="debt-sales-report-${
-          new Date().toISOString().split("T")[0]
-        }.pdf"`,
+        "Content-Disposition": `attachment; filename="debt-sales-report-${new Date().toISOString().split("T")[0]}.pdf"`,
         "Cache-Control": "no-cache, no-store, must-revalidate",
       },
     });
@@ -47,9 +97,11 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// Optional: GET method
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
+
     const from = searchParams.get("from") || undefined;
     const to = searchParams.get("to") || undefined;
     const usersquery = searchParams.get("usersquery") || "";
@@ -58,10 +110,13 @@ export async function GET(request: NextRequest) {
     console.log("Fetching debt sales data...");
 
     const filter: Prisma.SaleWhereInput = {
-      paymentStatus: { in: ["partial"] },
+      paymentStatus: {
+        in: ["partial"],
+      },
     };
 
     const parsedSort = ParsedSort(sort);
+
     const sales = await FetchDebtSales(
       filter,
       usersquery,
@@ -72,19 +127,50 @@ export async function GET(request: NextRequest) {
       parsedSort,
     );
 
-    console.log(`Found ${sales.length} debt sales`);
+    const summary = {
+      totalDebt: sales.reduce((sum, sale) => sum + Number(sale.amountDue), 0),
+      totalSales: sales.reduce(
+        (sum, sale) => sum + Number(sale.totalAmount),
+        0,
+      ),
+      totalPaid: sales.reduce((sum, sale) => sum + Number(sale.amountPaid), 0),
+      customerCount: new Set(sales.map((sale) => sale.customerId)).size,
+    };
 
-    // Generate PDF (same function)
-    const pdfBuffer = await generateDebtSalesPDF(sales);
+    const pdfData = {
+      sales: sales.map((sale) => ({
+        id: sale.id,
+        saleDate: sale.saleDate,
+        totalAmount: Number(sale.totalAmount),
+        amountPaid: Number(sale.amountPaid),
+        amountDue: Number(sale.amountDue),
+        paymentStatus: sale.paymentStatus,
+        customer: sale.customer
+          ? {
+              name: sale.customer.name,
+              phoneNumber: sale.customer.phoneNumber || undefined,
+              customerType: sale.customer.customerType || undefined,
+            }
+          : undefined,
+        createdAt: sale.createdAt,
+      })),
+      summary,
+      dateRange: {
+        from,
+        to,
+      },
+    };
+
+    console.log("Generating PDF...");
+
+    const pdfBuffer = await generateDebtSalesPDF(pdfData);
 
     console.log("PDF generated successfully");
 
     return new NextResponse(new Uint8Array(pdfBuffer), {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="debt-sales-report-${
-          new Date().toISOString().split("T")[0]
-        }.pdf"`,
+        "Content-Disposition": `attachment; filename="debt-sales-report-${new Date().toISOString().split("T")[0]}.pdf"`,
         "Cache-Control": "no-cache, no-store, must-revalidate",
       },
     });
@@ -100,6 +186,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-
-export const runtime = "nodejs"; // ensure Puppeteer runs in Node runtime
-export const maxDuration = 60;
