@@ -43,8 +43,7 @@ const nextConfig: NextConfig = {
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
 
-  swcMinify: true,
-  // If you use images, add this:
+  serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core"],
 
   // If you use experimental app directory, add this:
 

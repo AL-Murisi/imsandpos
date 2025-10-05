@@ -505,36 +505,22 @@ function generateHTMLReport(data: DashboardData): string {
   `;
 }
 
+import { getBrowser, closeBrowser } from "./puppeteerInstance";
+
 export async function generatePDFFromData(
   data: DashboardData,
 ): Promise<Buffer> {
-  // Generate HTML
   const html = generateHTMLReport(data);
-
-  // Launch browser
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
-      "--disable-accelerated-2d-canvas",
-      "--no-first-run",
-      "--no-zygote",
-      "--disable-gpu",
-    ],
-  });
+  const browser = await getBrowser();
 
   try {
     const page = await browser.newPage();
 
-    // Set content and wait for everything to load
     await page.setContent(html, {
       waitUntil: "networkidle0",
       timeout: 30000,
     });
 
-    // Generate PDF with optimized settings
     const pdf = await page.pdf({
       format: "A4",
       printBackground: true,
@@ -547,8 +533,12 @@ export async function generatePDFFromData(
       preferCSSPageSize: true,
     });
 
+    await page.close();
     return Buffer.from(pdf);
   } finally {
-    await browser.close();
+    // Close browser only in production to prevent hanging
+    if (process.env.NODE_ENV === "production") {
+      await closeBrowser();
+    }
   }
 }
