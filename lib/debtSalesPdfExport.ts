@@ -1,23 +1,25 @@
-// lib/debtSalesPdfExport.ts
 import puppeteer from "puppeteer";
-import puppeteerCore from "puppeteer-core";
-interface DebtSale {
+import { getBrowser, closeBrowser } from "./puppeteerInstance";
+
+interface Customer {
+  name: string;
+  phoneNumber?: string;
+  customerType?: string;
+}
+
+interface Sale {
   id: string;
   saleDate: string | Date;
   totalAmount: number;
   amountPaid: number;
   amountDue: number;
   paymentStatus: string;
-  customer?: {
-    name: string;
-    phoneNumber?: string;
-    customerType?: string;
-  };
+  customer?: Customer;
   createdAt?: string | Date;
 }
 
 interface DebtSalesData {
-  sales: DebtSale[];
+  sales: Sale[];
   summary: {
     totalDebt: number;
     totalSales: number;
@@ -28,6 +30,18 @@ interface DebtSalesData {
     from?: string;
     to?: string;
   };
+}
+
+function buildDebtSalesData(sales: Sale[]): DebtSalesData {
+  const summary = {
+    totalDebt: sales.reduce((sum, s) => sum + Number(s.amountDue || 0), 0),
+    totalSales: sales.reduce((sum, s) => sum + Number(s.totalAmount || 0), 0),
+    totalPaid: sales.reduce((sum, s) => sum + Number(s.amountPaid || 0), 0),
+    customerCount: new Set(sales.map((s) => s.customer?.name || s?.customer))
+      .size,
+  };
+
+  return { sales, summary };
 }
 
 function generateDebtSalesHTML(data: DebtSalesData): string {
@@ -464,12 +478,10 @@ function generateDebtSalesHTML(data: DebtSalesData): string {
   `;
 }
 
-import { getBrowser, closeBrowser } from "./puppeteerInstance";
-
-export async function generateDebtSalesPDF(
-  data: DebtSalesData,
-): Promise<Buffer> {
+export async function generateDebtSalesPDF(sales: Sale[]): Promise<Buffer> {
+  const data = buildDebtSalesData(sales);
   const html = generateDebtSalesHTML(data);
+
   const browser = await getBrowser();
 
   try {
@@ -482,21 +494,13 @@ export async function generateDebtSalesPDF(
     const pdf = await page.pdf({
       format: "A4",
       printBackground: true,
-      margin: {
-        top: "15mm",
-        right: "10mm",
-        bottom: "15mm",
-        left: "10mm",
-      },
+      margin: { top: "15mm", right: "10mm", bottom: "15mm", left: "10mm" },
       preferCSSPageSize: true,
     });
 
     await page.close();
     return Buffer.from(pdf);
   } finally {
-    // Close browser only in production to prevent hanging
-    if (process.env.NODE_ENV === "production") {
-      await closeBrowser();
-    }
+    if (process.env.NODE_ENV === "production") await closeBrowser();
   }
 }
