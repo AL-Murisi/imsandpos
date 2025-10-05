@@ -517,8 +517,7 @@ export async function generatePDFFromData(
     const page = await browser.newPage();
 
     await page.setContent(html, {
-      waitUntil: "networkidle0",
-      timeout: 30000,
+      waitUntil: ["load", "networkidle0", "domcontentloaded"],
     });
 
     const pdf = await page.pdf({
