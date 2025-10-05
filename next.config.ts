@@ -18,6 +18,7 @@ const withPWA = withSerwistInit({
     // Optional
     { url: "/offline", revision },
   ],
+
   // dest: "public",
   // register: true,
   // skipWaiting: true,
@@ -41,6 +42,11 @@ const nextConfig: NextConfig = {
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
+
+  swcMinify: true,
+  // If you use images, add this:
+
+  // If you use experimental app directory, add this:
 
   experimental: {
     inlineCss: true,

@@ -35,7 +35,7 @@ export default async function DebtSell({ searchParams }: DashboardProps) {
 
     usersquery = "",
     page = "1",
-    limit = "5",
+    limit = "13",
     salesFrom,
     salesTo,
     purchasesFrom,
@@ -71,7 +71,16 @@ export default async function DebtSell({ searchParams }: DashboardProps) {
   return (
     <div dir="rtl">
       {" "}
-      <DebtSells data={data} total={data.length} sort={parsedSort} />
+      <DebtSells
+        data={data}
+        total={data.length}
+        sort={parsedSort}
+        from={from ?? ""}
+        to={to ?? ""}
+        usersquery={usersquery ?? ""}
+        pagesize={pageIndex}
+        limit={pageSize}
+      />
     </div>
   );
 }

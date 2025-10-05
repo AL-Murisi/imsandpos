@@ -72,7 +72,13 @@ export const debtSaleColumns: ColumnDef<DebtSaleData>[] = [
     enableSorting: false,
     enableHiding: false,
   },
-
+  {
+    id: "index",
+    header: "#",
+    cell: ({ row }) => row.index + 1,
+    enableSorting: false,
+    enableHiding: false,
+  },
   {
     accessorKey: "customer.name",
     header: ({ column }) => (
@@ -111,10 +117,6 @@ export const debtSaleColumns: ColumnDef<DebtSaleData>[] = [
     header: ({ column }) => (
       <SortableHeader column={column} label="تاريخ البيع" />
     ),
-    cell: ({ row }) => {
-      const date = new Date(row.getValue("createdAt"));
-      return <div>{date.toLocaleDateString("ar-EG")}</div>;
-    },
   },
   {
     accessorKey: "paymentStatus",

@@ -14,6 +14,7 @@ import AlertTriangle from "lucide-react/dist/esm/icons/alert-triangle";
 import Users from "lucide-react/dist/esm/icons/users";
 import ShoppingBag from "lucide-react/dist/esm/icons/shopping-bag";
 import { ReactNode } from "react";
+import { ExportDashboardButtonAPI } from "@/components/ExportDashboardButton";
 
 interface SectionCardsProps {
   searchParams: Record<string, string | undefined>;
@@ -199,11 +200,7 @@ export default async function SectionCards({
 
         {/* Quick Actions */}
         <div className="grid w-80 grid-cols-2 gap-4 py-4 sm:w-sm md:w-md md:grid-cols-4 lg:w-full">
-          <Button asChild>
-            <Link href="/admin/reports" prefetch={false}>
-              إنشاء التقارير
-            </Link>
-          </Button>
+          <ExportDashboardButtonAPI role={"admin"} filters={searchParams} />
           <Button asChild>
             <Link href="/dashboard/users" prefetch={false}>
               إدارة المستخدمين

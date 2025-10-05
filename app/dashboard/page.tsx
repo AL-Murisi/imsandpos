@@ -82,7 +82,7 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
     return (
       <ScrollArea className="max-h-[95vh] p-2" dir="rtl">
         <SectionCards
-          searchParams={params}
+          searchParams={filters}
           salesSummary={salesSummary}
           productStats={dashboardData.productStats}
           users={dashboardData.users}

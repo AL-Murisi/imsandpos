@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import {
   Table,
@@ -308,278 +309,284 @@ export default function Payment({ users }: PaymentProps) {
       title="إيصال البيع"
       description="ملخص الفاتورة"
     >
-      {" "}
-      <SearchInput placeholder={"customer بحث "} paramKey="users" />
-      <div id="receipt-content" className="rounded-md bg-white p-4 text-black">
-        {/* HEADER */}
-        <div className="mb-2 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Package2Icon />
-            <span className="text-lg font-bold">اسم الشركة</span>
+      <ScrollArea>
+        <SearchInput placeholder={"customer بحث "} paramKey="users" />
+        <div
+          id="receipt-content"
+          className="rounded-md bg-white p-4 text-black"
+        >
+          {/* HEADER */}
+          <div className="mb-2 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Package2Icon />
+              <span className="text-lg font-bold">اسم الشركة</span>
+            </div>
+            <Label>المتجر الرئيسي</Label>
           </div>
-          <Label>المتجر الرئيسي</Label>
-        </div>
-        <Separator className="my-2 bg-black" />
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          <Label>📅 التاريخ: {new Date().toLocaleDateString("ar-EG")}</Label>
-          <Label>
-            ⏰ الوقت:{" "}
-            {new Date().toLocaleTimeString("ar-EG", { hour12: false })}
-          </Label>
-          <Label>👨‍💼 الكاشير: {user?.name ?? "غير معروف"}</Label>
-          <Label>🧾 رقم الفاتورة: {saleNumber}</Label>
-          <Label>🧾 رقم الفاتورة: {paymentType}</Label>
-          <div>
+          <Separator className="my-2 bg-black" />
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <Label>📅 التاريخ: {new Date().toLocaleDateString("ar-EG")}</Label>
             <Label>
-              customer: <Badge>{users?.name ?? "غير معروف"}</Badge>
+              ⏰ الوقت:{" "}
+              {new Date().toLocaleTimeString("ar-EG", { hour12: false })}
             </Label>
-          </div>
-        </div>
-
-        {/* ITEMS TABLE */}
-        <Table className="">
-          <TableHeader className="border-amber-300 border-l-red-400">
-            <TableRow className="border-amber-300">
-              <TableHead className="border-amber-300 text-right">
-                منتج
-              </TableHead>
-              <TableHead className="border-amber-300 text-right">
-                المنتج
-              </TableHead>
-              <TableHead className="text-right"> مستودع</TableHead>
-              <TableHead className="text-right"> الكمية </TableHead>
-              <TableHead className="text-right"> النوع</TableHead>
-              <TableHead className="text-right"> السعر</TableHead>
-              <TableHead className="text-right"> الإجمالي </TableHead>
-              <TableHead className="text-right"> إجراء </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {items.map((item, index) => {
-              const itemPrice = getItemPrice(item);
-
-              return (
-                <TableRow
-                  key={`${item.id}-${item.sellingUnit}`}
-                  className="border-amber-300 border-r-amber-300"
-                >
-                  <TableCell className="border-l-red-400">
-                    {index + 1}
-                  </TableCell>
-                  <TableCell className="border-l-red-400">
-                    {item.name}
-                  </TableCell>
-                  <TableCell> {item.warehousename}</TableCell>
-                  <TableCell>
-                    {" "}
-                    <button
-                      disabled={item.selectedQty <= 1}
-                      onClick={() => {
-                        dispatch(
-                          updateQty({
-                            id: item.id,
-                            sellingUnit: item.sellingUnit,
-                            quantity: 1,
-                            action: "mins",
-                          }),
-                        );
-                      }}
-                      className="bg-primary text-background rounded p-1 disabled:bg-gray-400"
-                    >
-                      <Minus size={16} />
-                    </button>
-                    <input
-                      type="number"
-                      value={item.selectedQty}
-                      onChange={(e) => {
-                        const qty = Math.max(1, Number(e.target.value) || 1);
-                        dispatch(
-                          updateQty({
-                            id: item.id,
-                            sellingUnit: item.sellingUnit,
-                            quantity: 1,
-                            action: "",
-                          }),
-                        );
-                      }}
-                      className="w-12 rounded border bg-white px-2 py-1 text-center text-black dark:bg-gray-800 dark:text-white"
-                      min={1}
-                      // max={maxQty}
-                    />
-                    <button
-                      disabled={item.selectedQty >= item.originalStockQuantity}
-                      onClick={() => {
-                        dispatch(
-                          updateQty({
-                            id: item.id,
-                            sellingUnit: item.sellingUnit,
-                            quantity: 1,
-                            action: "plus",
-                          }),
-                        );
-                      }}
-                      className="bg-primary text-background rounded p-1 disabled:bg-gray-400"
-                    >
-                      <Plus size={16} />
-                    </button>
-                  </TableCell>
-                  <TableCell>
-                    <select
-                      value={item.sellingUnit}
-                      onChange={(e) =>
-                        dispatch(
-                          changeSellingUnit({
-                            id: item.id,
-                            from: item.sellingUnit,
-                            to: e.target.value as any,
-                            product: {
-                              packetsPerCarton: item.packetsPerCarton,
-                              unitsPerPacket: item.unitsPerPacket,
-                            },
-                            qty: item.selectedQty,
-                          }),
-                        )
-                      }
-                    >
-                      <option value="carton">كرتون</option>
-                      <option value="packet">حزمة</option>
-                      <option value="unit">وحدة</option>
-                    </select>
-                  </TableCell>
-                  <TableCell className="w-16 text-center text-sm whitespace-nowrap">
-                    ${itemPrice}
-                  </TableCell>
-                  <TableCell className="w-16 text-center text-sm whitespace-nowrap">
-                    ${(itemPrice * item.selectedQty).toFixed(2)}
-                  </TableCell>
-                  <TableCell className="flex w-12 justify-center">
-                    <Button
-                      onClick={() => {
-                        dispatch(removeFromCart(item.id));
-                      }}
-                      variant="ghost"
-                      size="icon"
-                    >
-                      <Trash2Icon color="red" size={18} />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-        <Separator className="my-2 bg-black" />
-        <div className="flex flex-row justify-between">
-          <div className="flex flex-col justify-end px-3">
-            <div className="my-1 flex gap-4 text-sm">
-              <Label className="w-20">الإجمالي:</Label>
-              <Label className="h-10 w-40 rounded-2xl border-2 border-black p-2">
-                {totals.totalBefore.toFixed(2)} ﷼
-              </Label>
-            </div>
-            {/* <Separator className="my-2 w-30 bg-black" /> */}
-            <div className="my-1 flex gap-4 text-sm">
-              <Label className="w-20">الخصم:</Label>
-              <Label className="h-10 w-40 rounded-2xl border-2 border-black p-2">
-                {totals.discount.toFixed(2)} ﷼
-              </Label>
-            </div>
-            {/* <Separator className="my-2 bg-black" /> */}
-            <div className="my-1 flex gap-4 text-sm">
-              <Label className="w-20">المبلغ المستحق:</Label>
-              <Label className="h-10 w-40 rounded-2xl border-2 border-black p-2">
-                {totals.totalAfter.toFixed(2)} ﷼
-              </Label>
-            </div>
-            {/* <Separator className="my-2 bg-black" /> */}
-            <div className="my-1 flex gap-4 text-sm">
-              <Label className="w-20">المبلغ المدفوع:</Label>
-              <Label className="h-10 w-40 rounded-2xl border-2 border-black p-2">
-                {receivedAmount !== undefined && !isNaN(receivedAmount)
-                  ? receivedAmount.toFixed(2)
-                  : 0}{" "}
-                ﷼
-              </Label>
-            </div>
-            {/* <Separator className="my-2 bg-black" /> */}
-            <div
-              className="my-1 flex gap-4 text-sm"
-              style={{
-                color: calculatedChange > 0 ? "green" : "grey", // dark green or gray
-              }}
-            >
-              <Label className="w-20">المتبقي للعميل:</Label>
-              <Label className="h-10 w-40 rounded-2xl border-2 border-black p-2">
-                {calculatedChange.toFixed(2)} ﷼
+            <Label>👨‍💼 الكاشير: {user?.name ?? "غير معروف"}</Label>
+            <Label>🧾 رقم الفاتورة: {saleNumber}</Label>
+            <Label>🧾 رقم الفاتورة: {paymentType}</Label>
+            <div>
+              <Label>
+                customer: <Badge>{users?.name ?? "غير معروف"}</Badge>
               </Label>
             </div>
           </div>
 
-          <div className="flex flex-col justify-start">
-            {users && users.totalDebt && users.totalDebt > 0 && (
-              <div className="flex gap-2">
-                <Label className="">ديون سابقة:</Label>
+          {/* ITEMS TABLE */}
+          <Table className="">
+            <TableHeader className="border-amber-300 border-l-red-400">
+              <TableRow className="border-amber-300">
+                <TableHead className="border-amber-300 text-right">
+                  منتج
+                </TableHead>
+                <TableHead className="border-amber-300 text-right">
+                  المنتج
+                </TableHead>
+                <TableHead className="text-right"> مستودع</TableHead>
+                <TableHead className="text-right"> الكمية </TableHead>
+                <TableHead className="text-right"> النوع</TableHead>
+                <TableHead className="text-right"> السعر</TableHead>
+                <TableHead className="text-right"> الإجمالي </TableHead>
+                <TableHead className="text-right"> إجراء </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {items.map((item, index) => {
+                const itemPrice = getItemPrice(item);
+
+                return (
+                  <TableRow
+                    key={`${item.id}-${item.sellingUnit}`}
+                    className="border-amber-300 border-r-amber-300"
+                  >
+                    <TableCell className="border-l-red-400">
+                      {index + 1}
+                    </TableCell>
+                    <TableCell className="border-l-red-400">
+                      {item.name}
+                    </TableCell>
+                    <TableCell> {item.warehousename}</TableCell>
+                    <TableCell>
+                      {" "}
+                      <button
+                        disabled={item.selectedQty <= 1}
+                        onClick={() => {
+                          dispatch(
+                            updateQty({
+                              id: item.id,
+                              sellingUnit: item.sellingUnit,
+                              quantity: 1,
+                              action: "mins",
+                            }),
+                          );
+                        }}
+                        className="bg-primary text-background rounded p-1 disabled:bg-gray-400"
+                      >
+                        <Minus size={16} />
+                      </button>
+                      <input
+                        type="number"
+                        value={item.selectedQty}
+                        onChange={(e) => {
+                          const qty = Math.max(1, Number(e.target.value) || 1);
+                          dispatch(
+                            updateQty({
+                              id: item.id,
+                              sellingUnit: item.sellingUnit,
+                              quantity: 1,
+                              action: "",
+                            }),
+                          );
+                        }}
+                        className="w-12 rounded border bg-white px-2 py-1 text-center text-black dark:bg-gray-800 dark:text-white"
+                        min={1}
+                        // max={maxQty}
+                      />
+                      <button
+                        disabled={
+                          item.selectedQty >= item.originalStockQuantity
+                        }
+                        onClick={() => {
+                          dispatch(
+                            updateQty({
+                              id: item.id,
+                              sellingUnit: item.sellingUnit,
+                              quantity: 1,
+                              action: "plus",
+                            }),
+                          );
+                        }}
+                        className="bg-primary text-background rounded p-1 disabled:bg-gray-400"
+                      >
+                        <Plus size={16} />
+                      </button>
+                    </TableCell>
+                    <TableCell>
+                      <select
+                        value={item.sellingUnit}
+                        onChange={(e) =>
+                          dispatch(
+                            changeSellingUnit({
+                              id: item.id,
+                              from: item.sellingUnit,
+                              to: e.target.value as any,
+                              product: {
+                                packetsPerCarton: item.packetsPerCarton,
+                                unitsPerPacket: item.unitsPerPacket,
+                              },
+                              qty: item.selectedQty,
+                            }),
+                          )
+                        }
+                      >
+                        <option value="carton">كرتون</option>
+                        <option value="packet">حزمة</option>
+                        <option value="unit">وحدة</option>
+                      </select>
+                    </TableCell>
+                    <TableCell className="w-16 text-center text-sm whitespace-nowrap">
+                      ${itemPrice}
+                    </TableCell>
+                    <TableCell className="w-16 text-center text-sm whitespace-nowrap">
+                      ${(itemPrice * item.selectedQty).toFixed(2)}
+                    </TableCell>
+                    <TableCell className="flex w-12 justify-center">
+                      <Button
+                        onClick={() => {
+                          dispatch(removeFromCart(item.id));
+                        }}
+                        variant="ghost"
+                        size="icon"
+                      >
+                        <Trash2Icon color="red" size={18} />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+          <Separator className="my-2 bg-black" />
+          <div className="flex flex-row justify-between">
+            <div className="flex flex-col justify-end px-3">
+              <div className="my-1 flex gap-4 text-sm">
+                <Label className="w-20">الإجمالي:</Label>
                 <Label className="h-10 w-40 rounded-2xl border-2 border-black p-2">
-                  {users.totalDebt} ﷼
+                  {totals.totalBefore.toFixed(2)} ﷼
                 </Label>
               </div>
-            )}{" "}
+              {/* <Separator className="my-2 w-30 bg-black" /> */}
+              <div className="my-1 flex gap-4 text-sm">
+                <Label className="w-20">الخصم:</Label>
+                <Label className="h-10 w-40 rounded-2xl border-2 border-black p-2">
+                  {totals.discount.toFixed(2)} ﷼
+                </Label>
+              </div>
+              {/* <Separator className="my-2 bg-black" /> */}
+              <div className="my-1 flex gap-4 text-sm">
+                <Label className="w-20">المبلغ المستحق:</Label>
+                <Label className="h-10 w-40 rounded-2xl border-2 border-black p-2">
+                  {totals.totalAfter.toFixed(2)} ﷼
+                </Label>
+              </div>
+              {/* <Separator className="my-2 bg-black" /> */}
+              <div className="my-1 flex gap-4 text-sm">
+                <Label className="w-20">المبلغ المدفوع:</Label>
+                <Label className="h-10 w-40 rounded-2xl border-2 border-black p-2">
+                  {receivedAmount !== undefined && !isNaN(receivedAmount)
+                    ? receivedAmount.toFixed(2)
+                    : 0}{" "}
+                  ﷼
+                </Label>
+              </div>
+              {/* <Separator className="my-2 bg-black" /> */}
+              <div
+                className="my-1 flex gap-4 text-sm"
+                style={{
+                  color: calculatedChange > 0 ? "green" : "grey", // dark green or gray
+                }}
+              >
+                <Label className="w-20">المتبقي للعميل:</Label>
+                <Label className="h-10 w-40 rounded-2xl border-2 border-black p-2">
+                  {calculatedChange.toFixed(2)} ﷼
+                </Label>
+              </div>
+            </div>
+
+            <div className="flex flex-col justify-start">
+              {users && users.totalDebt && users.totalDebt > 0 && (
+                <div className="flex gap-2">
+                  <Label className="">ديون سابقة:</Label>
+                  <Label className="h-10 w-40 rounded-2xl border-2 border-black p-2">
+                    {users.totalDebt} ﷼
+                  </Label>
+                </div>
+              )}{" "}
+            </div>
+          </div>
+          <Separator className="my-2 bg-black" />
+          <div className="mt-4 text-center text-xs">
+            <p>شكرًا لتسوقك معنا!</p>
           </div>
         </div>
         <Separator className="my-2 bg-black" />
-        <div className="mt-4 text-center text-xs">
-          <p>شكرًا لتسوقك معنا!</p>
-        </div>
-      </div>
-      <Separator className="my-2 bg-black" />
-      <div className="max-w-md space-y-2">
-        <Label htmlFor="receivedAmount">المبلغ المستلم:</Label>
-        <Input
-          id="receivedAmount"
-          type="number"
-          step="0.01"
-          {...register("receivedAmount", { valueAsNumber: true })}
-          className={`border-2 ${
-            receivedAmount === totals.totalAfter
-              ? "border-green-500"
-              : "border-gray-300"
-          }`}
-          placeholder="أدخل المبلغ المستلم"
-        />
-        {receivedAmount === totals.totalAfter && (
-          <p className="text-sm font-semibold text-green-600">
-            ✅ المبلغ مطابق تمامًا
-          </p>
-        )}
-        {receivedAmount !== totals.totalAfter && receivedAmount > 0 && (
-          <p className="text-sm text-yellow-600">
-            ⚠️ تأكد من أن المبلغ المدفوع يساوي المبلغ المستحق
-          </p>
-        )}
-        {errors.receivedAmount && (
-          <p className="text-sm text-red-500">
-            {errors.receivedAmount.message}
-          </p>
-        )}
+        <div className="max-w-md space-y-2">
+          <Label htmlFor="receivedAmount">المبلغ المستلم:</Label>
+          <Input
+            id="receivedAmount"
+            type="number"
+            step="0.01"
+            {...register("receivedAmount", { valueAsNumber: true })}
+            className={`border-2 ${
+              receivedAmount === totals.totalAfter
+                ? "border-green-500"
+                : "border-gray-300"
+            }`}
+            placeholder="أدخل المبلغ المستلم"
+          />
+          {receivedAmount === totals.totalAfter && (
+            <p className="text-sm font-semibold text-green-600">
+              ✅ المبلغ مطابق تمامًا
+            </p>
+          )}
+          {receivedAmount !== totals.totalAfter && receivedAmount > 0 && (
+            <p className="text-sm text-yellow-600">
+              ⚠️ تأكد من أن المبلغ المدفوع يساوي المبلغ المستحق
+            </p>
+          )}
+          {errors.receivedAmount && (
+            <p className="text-sm text-red-500">
+              {errors.receivedAmount.message}
+            </p>
+          )}
 
-        <Separator className="my-2 bg-black" />
-        <p className="text-center text-xs">شكرًا لتسوقك معنا!</p>
-      </div>
-      {/* FOOTER BUTTONS */}
-      <div className="mt-4 flex justify-between gap-3">
-        <Button
-          onClick={handelpayment}
-          className="bg-green-600 text-white hover:bg-green-700"
-        >
-          تأكيد الدفع
-        </Button>
-        <Button onClick={handlePrint} variant="outline">
-          <Printer size={16} className="mr-2" /> طباعة
-        </Button>
-        {/* <Button onClick={handleDownloadPDF} variant="outline">
+          <Separator className="my-2 bg-black" />
+          <p className="text-center text-xs">شكرًا لتسوقك معنا!</p>
+        </div>
+        {/* FOOTER BUTTONS */}
+        <div className="mt-4 flex justify-between gap-3">
+          <Button
+            onClick={handelpayment}
+            className="bg-green-600 text-white hover:bg-green-700"
+          >
+            تأكيد الدفع
+          </Button>
+          <Button onClick={handlePrint} variant="outline">
+            <Printer size={16} className="mr-2" /> طباعة
+          </Button>
+          {/* <Button onClick={handleDownloadPDF} variant="outline">
           <FileDown size={16} className="mr-2" /> PDF
         </Button> */}
-      </div>
+        </div>
+      </ScrollArea>
     </CustomDialog>
   );
 }

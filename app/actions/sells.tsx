@@ -17,8 +17,8 @@ export async function FetchDebtSales(
   searchQuery: string = "",
   from?: string,
   to?: string,
-  page: number = 0, // 0-indexed page number
-  pageSize: number = 5,
+  page: number = 1, // 0-indexed page number
+  pageSize: number = 7,
   sort?: SortingState,
 ) {
   console.log(pageSize);

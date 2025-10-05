@@ -7,6 +7,8 @@ import SearchInput from "@/components/common/searchtest";
 import { useTablePrams } from "@/hooks/useTableParams";
 import { SortingState } from "@tanstack/react-table";
 import { debtSaleColumns } from "./columns";
+import { ExportDebtSalesButton } from "@/components/ExportDebtSalesButton";
+import { Calendar22 } from "@/components/common/DatePicker";
 type ProductClientProps = {
   data: any[];
   total: number;
@@ -17,12 +19,22 @@ type ProductClientProps = {
     suppliers: { id: string; name: string }[];
   };
   sort: SortingState;
+  from: string;
+  to: string;
+  usersquery: string;
+  pagesize: number;
+  limit: number;
 };
 
 export default function DebtSells({
   data,
   total,
   formData,
+  from,
+  to,
+  pagesize,
+  limit,
+  usersquery,
   sort,
 }: ProductClientProps) {
   const {
@@ -55,9 +67,20 @@ export default function DebtSells({
       </> */}
 
       <>
-        <SearchInput placeholder={"customer بحث "} paramKey="users" />
-
         <DataTable
+          search={
+            <div className="flex flex-col gap-3 md:flex-row">
+              <Calendar22 />
+              <SearchInput placeholder={"customer بحث "} paramKey="users" />
+              <ExportDebtSalesButton
+                from={from}
+                to={to}
+                usersquery={usersquery}
+                pagesize={pagesize}
+                limit={limit}
+              />
+            </div>
+          }
           data={data}
           columns={debtSaleColumns}
           initialPageSize={pagination.pageSize}
