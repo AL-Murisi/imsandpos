@@ -220,9 +220,6 @@ export async function generateDebtSalesPDF(
     // Wait for fonts to load
     await page.evaluateHandle("document.fonts.ready");
 
-    // Small delay to ensure fonts are rendered
-    await page.waitForTimeout(500);
-
     const pdf = await page.pdf({
       format: "A4",
       printBackground: true,
