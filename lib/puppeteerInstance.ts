@@ -12,11 +12,12 @@ export async function getBrowser() {
   if (_browser) return _browser;
 
   const isProduction = process.env.NODE_ENV === "production";
+
   if (isProduction) {
     _browser = await puppeteerCore.launch({
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      args: chromium.args,
       executablePath: await chromium.executablePath(remoteChromiumURL),
-      headless: true,
+      headless: chromium.headless,
       ignoreHTTPSErrors: true,
       defaultViewport: chromium.defaultViewport,
     });
