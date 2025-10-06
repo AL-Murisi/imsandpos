@@ -210,7 +210,7 @@ export default function CartDisplay({ payment }: CustomDialogProps) {
                               }),
                             );
                           }}
-                          className="w-12 rounded border bg-white px-2 py-1 text-center text-black dark:bg-gray-800 dark:text-white"
+                          className="w-16 rounded border bg-white px-2 py-1 text-center text-black dark:bg-gray-800 dark:text-white"
                           min={1}
                           // max={maxQty}
                         />

@@ -218,7 +218,7 @@ export function DataTable<T>({
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >
-            {t("prev")}
+            {t("next")}
           </Button>
         </div>
       </div>

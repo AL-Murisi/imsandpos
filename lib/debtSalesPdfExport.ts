@@ -46,7 +46,7 @@ export function generateDebtSalesHTML(data: DebtSalesData) {
 
   return `
 <!DOCTYPE html>
-<html lang="en">
+<html >
 <head>
   <meta charset="UTF-8" />
   <style>
@@ -116,8 +116,8 @@ export function generateDebtSalesHTML(data: DebtSalesData) {
 </head>
 <body>
   <div class="header">
-    <h1>📋 Debt Sales Report</h1>
-    <p class="subtitle">Generated on ${createdAt}</p>
+    <h1>📋 تقرير المبيعات المدينة</h1>
+    <p class="subtitle">تاريخ الإنشاء ${createdAt}</p>
   </div>
 
   <div class="cards">

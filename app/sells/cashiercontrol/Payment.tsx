@@ -188,9 +188,7 @@ export default function Payment({ users }: PaymentProps) {
           })}</div>
           <div>👨‍💼 الكاشير: ${user?.name ?? "غير معروف"}</div>
           <div>🧾 رقم الفاتورة: ${saleNumber}</div>
-          <div>customer: <span class="badge">${
-            users?.name ?? "غير معروف"
-          }</span></div>
+          <div>customer: <span class="badge">${users?.name ?? ""}</span></div>
         </div>
 
         <table class="border-radius: 12px">
@@ -335,7 +333,7 @@ export default function Payment({ users }: PaymentProps) {
             <Label>🧾 رقم الفاتورة: {paymentType}</Label>
             <div>
               <Label>
-                customer: <Badge>{users?.name ?? "غير معروف"}</Badge>
+                customer: <Badge>{users?.name ?? ""}</Badge>
               </Label>
             </div>
           </div>
@@ -406,7 +404,7 @@ export default function Payment({ users }: PaymentProps) {
                             }),
                           );
                         }}
-                        className="w-12 rounded border bg-white px-2 py-1 text-center text-black dark:bg-gray-800 dark:text-white"
+                        className="w-16 rounded border bg-white px-2 py-1 text-center text-black dark:bg-gray-800 dark:text-white"
                         min={1}
                         // max={maxQty}
                       />
