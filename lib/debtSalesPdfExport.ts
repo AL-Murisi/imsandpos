@@ -49,22 +49,11 @@ export function generateDebtSalesHTML(data: DebtSalesData) {
 <html >
 <head>
   <meta charset="UTF-8" />
+  <meta charset="UTF-8" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
   <style>
-    /* Cairo Arabic font */
-    @font-face {
-      font-family: 'Cairo';
-      src: 
-           url('/fonts/cairo/Cairo-Regular.ttf') format('truetype');
-      font-weight: 400;
-      font-style: normal;
-    }
-    @font-face {
-      font-family: 'Cairo';
-      src: 
-           url('/fonts/cairo/Cairo-Bold.ttf') format('truetype');
-      font-weight: 700;
-      font-style: normal;
-    }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -214,7 +203,6 @@ export function generateDebtSalesHTML(data: DebtSalesData) {
 
 import { getBrowser, closeBrowser } from "./puppeteerInstance";
 import { time } from "console";
-
 export async function generateDebtSalesPDF(
   data: DebtSalesData,
 ): Promise<Buffer> {
@@ -225,12 +213,15 @@ export async function generateDebtSalesPDF(
     const page = await browser.newPage();
 
     await page.setContent(html, {
-      waitUntil: ["load", "networkidle0", "domcontentloaded"],
+      waitUntil: ["load", "networkidle0"],
       timeout: 60000,
     });
-    await page.addStyleTag({
-      content: `@font-face { font-family: 'Cairo'; src: url('file:///path/to/Cairo-Regular.ttf') format('truetype'); } body { font-family: 'Cairo'; }`,
-    });
+
+    // Wait for fonts to load
+    await page.evaluateHandle("document.fonts.ready");
+
+    // Small delay to ensure fonts are rendered
+    await page.waitForTimeout(500);
 
     const pdf = await page.pdf({
       format: "A4",
@@ -247,7 +238,6 @@ export async function generateDebtSalesPDF(
     await page.close();
     return Buffer.from(pdf);
   } finally {
-    // Close browser only in production to prevent hanging
     if (process.env.NODE_ENV === "production") {
       await closeBrowser();
     }
