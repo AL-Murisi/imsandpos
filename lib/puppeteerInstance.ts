@@ -1,6 +1,10 @@
+// lib/puppeteerInstance.ts
 const chromium = require("@sparticuz/chromium-min");
 const puppeteer = require("puppeteer");
 const puppeteerCore = require("puppeteer-core");
+
+const remoteChromiumURL =
+  "https://github.com/Sparticuz/chromium/releases/download/v121.0.0/chromium-v121.0.0-pack.tar";
 
 let _browser: Awaited<ReturnType<typeof puppeteer.launch>> | null = null;
 
@@ -9,22 +13,10 @@ export async function getBrowser() {
 
   const isProduction = process.env.NODE_ENV === "production";
   if (isProduction) {
-    // Add font support
-    await chromium.font(
-      "https://raw.githack.com/googlei18n/noto-emoji/master/fonts/NotoColorEmoji.ttf",
-    );
-
     _browser = await puppeteerCore.launch({
-      args: [
-        ...chromium.args,
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--font-render-hinting=none",
-      ],
-      executablePath: await chromium.executablePath(
-        "https://github.com/Sparticuz/chromium/releases/download/v123.0.1/chromium-v123.0.1-pack.tar",
-      ),
-      headless: chromium.headless,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      executablePath: await chromium.executablePath(remoteChromiumURL),
+      headless: true,
       ignoreHTTPSErrors: true,
       defaultViewport: chromium.defaultViewport,
     });
