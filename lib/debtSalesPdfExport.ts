@@ -48,7 +48,7 @@ export function generateDebtSalesHTML(data: DebtSalesData) {
 <!DOCTYPE html>
 <html >
 <head>
-  <meta charset="UTF-8" />
+  
   <meta charset="UTF-8" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -126,15 +126,15 @@ export function generateDebtSalesHTML(data: DebtSalesData) {
   <div class="cards">
     <div class="card red">
       <div>إجمالي الدين</div>
-      <div>${summary.totalDebt.toLocaleString("ar-EG")} ر.س</div>
+      <div>${summary.totalDebt.toLocaleString("us-EG")} ر.س</div>
     </div>
     <div class="card yellow">
       <div>إجمالي المبيعات</div>
-      <div>${summary.totalSales.toLocaleString("ar-EG")} ر.س</div>
+      <div>${summary.totalSales.toLocaleString("us-EG")} ر.س</div>
     </div>
     <div class="card green">
       <div>المبالغ المدفوعة</div>
-      <div>${summary.totalPaid.toLocaleString("ar-EG")} ر.س</div>
+      <div>${summary.totalPaid.toLocaleString("us-EG")} ر.س</div>
     </div>
     <div class="card blue">
       <div>عدد العملاء</div>
@@ -179,13 +179,14 @@ export function generateDebtSalesHTML(data: DebtSalesData) {
           const customerName = sale.customer?.name ?? "غير معروف";
           return `
         <tr>
-          <td>${i + 1}</td>
-          <td>${date}</td>
-          <td>${customerName}</td>
-          <td>${Number(sale.totalAmount).toLocaleString("ar-EG", { minimumFractionDigits: 2 })}</td>
-          <td>${Number(sale.amountPaid).toLocaleString("ar-EG", { minimumFractionDigits: 2 })}</td>
-          <td>${Number(sale.amountDue).toLocaleString("ar-EG", { minimumFractionDigits: 2 })}</td>
-          <td>${sale.paymentStatus}</td>
+     <td>${i + 1}</td>
+<td>${date}</td>
+<td>${customerName}</td>
+<td>${Number(sale.totalAmount).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+<td>${Number(sale.amountPaid).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+<td>${Number(sale.amountDue).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+<td>${sale.paymentStatus}</td>
+
         </tr>
       `;
         })
