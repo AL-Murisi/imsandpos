@@ -33,7 +33,7 @@ interface DebtSalesData {
 export function generateDebtSalesHTML(data: DebtSalesData) {
   const { sales, summary, dateRange } = data;
 
-  const createdAt = new Date().toLocaleString("en-US", {
+  const createdAt = new Date().toLocaleString("ar-SA", {
     dateStyle: "full",
     timeStyle: "short",
   });
@@ -46,18 +46,33 @@ export function generateDebtSalesHTML(data: DebtSalesData) {
 
   return `
 <!DOCTYPE html>
-<html >
+<html dir="rtl">
 <head>
   <meta charset="UTF-8" />
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    /* Cairo Arabic font */
+    @font-face {
+      font-family: 'Cairo';
+      src: 
+           url('/fonts/cairo/Cairo-Regular.ttf') format('truetype');
+      font-weight: 400;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'Cairo';
+      src: 
+           url('/fonts/cairo/Cairo-Bold.ttf') format('truetype');
+      font-weight: 700;
+      font-style: normal;
+    }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      font-family: 'Inter', sans-serif;
+      font-family: 'Cairo', sans-serif;
       background-color: #fff;
       color: #111827;
       padding: 30px;
+      direction: rtl;
     }
 
     .header { text-align: center; margin-bottom: 30px; border-bottom: 3px solid #dc2626; padding-bottom: 20px; }
@@ -91,7 +106,7 @@ export function generateDebtSalesHTML(data: DebtSalesData) {
       border: 1px solid #e5e7eb;
       margin-top: 25px;
     }
-    .summary-title { font-size: 18px; font-weight: 600; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .summary-title { font-size: 18px; font-weight: 700; margin-bottom: 10px; }
     .summary-stats { display: flex; justify-content: space-around; flex-wrap: wrap; gap: 10px; }
     .stat-box {
       background: #fff;
@@ -106,10 +121,9 @@ export function generateDebtSalesHTML(data: DebtSalesData) {
 
     .footer { text-align: center; font-size: 12px; color: #9ca3af; margin-top: 30px; }
 
-    /* Table (optional but useful) */
     table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
     thead { background: #f3f4f6; }
-    th, td { padding: 10px 12px; text-align: left; font-size: 12px; border-bottom: 1px solid #e5e7eb; }
+    th, td { padding: 10px 12px; text-align: center; font-size: 12px; border-bottom: 1px solid #e5e7eb; }
     th { font-weight: 700; color: #374151; }
     tbody tr:nth-child(even) { background: #fafafa; }
   </style>
@@ -117,86 +131,85 @@ export function generateDebtSalesHTML(data: DebtSalesData) {
 <body>
   <div class="header">
     <h1>📋 تقرير المبيعات المدينة</h1>
-    <p class="subtitle">تاريخ الإنشاء ${createdAt}</p>
+    <p class="subtitle">تاريخ الإنشاء: ${createdAt}</p>
   </div>
 
   <div class="cards">
     <div class="card red">
-      <div>Total Debt</div>
-      <div>${summary.totalDebt.toLocaleString("en-US")} SAR</div>
+      <div>إجمالي الدين</div>
+      <div>${summary.totalDebt.toLocaleString("ar-SA")} ر.س</div>
     </div>
     <div class="card yellow">
-      <div>Total Sales</div>
-      <div>${summary.totalSales.toLocaleString("en-US")} SAR</div>
+      <div>إجمالي المبيعات</div>
+      <div>${summary.totalSales.toLocaleString("ar-SA")} ر.س</div>
     </div>
     <div class="card green">
-      <div>Total Paid</div>
-      <div>${summary.totalPaid.toLocaleString("en-US")} SAR</div>
+      <div>المبالغ المدفوعة</div>
+      <div>${summary.totalPaid.toLocaleString("ar-SA")} ر.س</div>
     </div>
     <div class="card blue">
-      <div>Customers</div>
+      <div>عدد العملاء</div>
       <div>${summary.customerCount}</div>
     </div>
   </div>
 
   <div class="summary">
-    <div class="summary-title">📊 Additional Statistics</div>
+    <div class="summary-title">📊 إحصائيات إضافية</div>
     <div class="summary-stats">
       <div class="stat-box">
-        <div>Transactions</div>
+        <div>عدد العمليات</div>
         <div>${transactionCount}</div>
       </div>
       <div class="stat-box">
-        <div>Payment Ratio</div>
+        <div>نسبة المدفوعات</div>
         <div>${paymentRatio.toFixed(1)}%</div>
       </div>
       <div class="stat-box">
-        <div>Avg Debt per Sale</div>
-        <div>${avgDebtPerSale.toLocaleString("en-US", { maximumFractionDigits: 2 })} SAR</div>
+        <div>متوسط الدين لكل عملية</div>
+        <div>${avgDebtPerSale.toLocaleString("ar-SA", { maximumFractionDigits: 2 })} ر.س</div>
       </div>
     </div>
   </div>
 
-  <!-- Optional: Sale details table -->
   <table>
     <thead>
       <tr>
         <th>#</th>
-        <th>Date</th>
-        <th>Customer</th>
-        <th>Total</th>
-        <th>Paid</th>
-        <th>Due</th>
-        <th>Status</th>
+        <th>التاريخ</th>
+        <th>العميل</th>
+        <th>الإجمالي</th>
+        <th>المدفوع</th>
+        <th>المتبقي</th>
+        <th>الحالة</th>
       </tr>
     </thead>
     <tbody>
       ${sales
         .map((sale, i) => {
-          const date = new Date(sale.saleDate).toLocaleDateString("en-US");
-          const customerName = sale.customer?.name ?? "Unknown";
+          const date = new Date(sale.saleDate).toLocaleDateString("ar-SA");
+          const customerName = sale.customer?.name ?? "غير معروف";
           return `
-          <tr>
-            <td>${i + 1}</td>
-            <td>${date}</td>
-            <td>${customerName}</td>
-            <td>${Number(sale.totalAmount).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-            <td>${Number(sale.amountPaid).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-            <td>${Number(sale.amountDue).toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-            <td>${sale.paymentStatus}</td>
-          </tr>
-        `;
+        <tr>
+          <td>${i + 1}</td>
+          <td>${date}</td>
+          <td>${customerName}</td>
+          <td>${Number(sale.totalAmount).toLocaleString("ar-SA", { minimumFractionDigits: 2 })}</td>
+          <td>${Number(sale.amountPaid).toLocaleString("ar-SA", { minimumFractionDigits: 2 })}</td>
+          <td>${Number(sale.amountDue).toLocaleString("ar-SA", { minimumFractionDigits: 2 })}</td>
+          <td>${sale.paymentStatus}</td>
+        </tr>
+      `;
         })
         .join("")}
     </tbody>
   </table>
 
   <div class="footer">
-    Generated by Inventory Management System © ${new Date().getFullYear()}
+    تم الإنشاء بواسطة نظام إدارة المخزون © ${new Date().getFullYear()}
   </div>
 </body>
 </html>
-`;
+  `;
 }
 
 import { getBrowser, closeBrowser } from "./puppeteerInstance";
