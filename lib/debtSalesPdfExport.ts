@@ -226,6 +226,9 @@ export async function generateDebtSalesPDF(
     await page.setContent(html, {
       waitUntil: ["load", "networkidle0", "domcontentloaded"],
     });
+    await page.addStyleTag({
+      content: `@font-face { font-family: 'Cairo'; src: url('file:///path/to/Cairo-Regular.ttf') format('truetype'); } body { font-family: 'Cairo'; }`,
+    });
 
     const pdf = await page.pdf({
       format: "A4",
