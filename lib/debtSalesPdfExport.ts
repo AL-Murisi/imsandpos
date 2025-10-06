@@ -33,7 +33,7 @@ interface DebtSalesData {
 export function generateDebtSalesHTML(data: DebtSalesData) {
   const { sales, summary, dateRange } = data;
 
-  const createdAt = new Date().toLocaleString("ar-SA", {
+  const createdAt = new Date().toLocaleString("ar-EG", {
     dateStyle: "full",
     timeStyle: "short",
   });
@@ -46,7 +46,7 @@ export function generateDebtSalesHTML(data: DebtSalesData) {
 
   return `
 <!DOCTYPE html>
-<html dir="rtl">
+<html >
 <head>
   <meta charset="UTF-8" />
   <style>
@@ -137,15 +137,15 @@ export function generateDebtSalesHTML(data: DebtSalesData) {
   <div class="cards">
     <div class="card red">
       <div>إجمالي الدين</div>
-      <div>${summary.totalDebt.toLocaleString("ar-SA")} ر.س</div>
+      <div>${summary.totalDebt.toLocaleString("ar-EG")} ر.س</div>
     </div>
     <div class="card yellow">
       <div>إجمالي المبيعات</div>
-      <div>${summary.totalSales.toLocaleString("ar-SA")} ر.س</div>
+      <div>${summary.totalSales.toLocaleString("ar-EG")} ر.س</div>
     </div>
     <div class="card green">
       <div>المبالغ المدفوعة</div>
-      <div>${summary.totalPaid.toLocaleString("ar-SA")} ر.س</div>
+      <div>${summary.totalPaid.toLocaleString("ar-EG")} ر.س</div>
     </div>
     <div class="card blue">
       <div>عدد العملاء</div>
@@ -166,7 +166,7 @@ export function generateDebtSalesHTML(data: DebtSalesData) {
       </div>
       <div class="stat-box">
         <div>متوسط الدين لكل عملية</div>
-        <div>${avgDebtPerSale.toLocaleString("ar-SA", { maximumFractionDigits: 2 })} ر.س</div>
+        <div>${avgDebtPerSale.toLocaleString("ar-EG", { maximumFractionDigits: 2 })} ر.س</div>
       </div>
     </div>
   </div>
@@ -186,16 +186,16 @@ export function generateDebtSalesHTML(data: DebtSalesData) {
     <tbody>
       ${sales
         .map((sale, i) => {
-          const date = new Date(sale.saleDate).toLocaleDateString("ar-SA");
+          const date = new Date(sale.saleDate).toLocaleDateString("ar-EG");
           const customerName = sale.customer?.name ?? "غير معروف";
           return `
         <tr>
           <td>${i + 1}</td>
           <td>${date}</td>
           <td>${customerName}</td>
-          <td>${Number(sale.totalAmount).toLocaleString("ar-SA", { minimumFractionDigits: 2 })}</td>
-          <td>${Number(sale.amountPaid).toLocaleString("ar-SA", { minimumFractionDigits: 2 })}</td>
-          <td>${Number(sale.amountDue).toLocaleString("ar-SA", { minimumFractionDigits: 2 })}</td>
+          <td>${Number(sale.totalAmount).toLocaleString("ar-EG", { minimumFractionDigits: 2 })}</td>
+          <td>${Number(sale.amountPaid).toLocaleString("ar-EG", { minimumFractionDigits: 2 })}</td>
+          <td>${Number(sale.amountDue).toLocaleString("ar-EG", { minimumFractionDigits: 2 })}</td>
           <td>${sale.paymentStatus}</td>
         </tr>
       `;
