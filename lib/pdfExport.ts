@@ -33,11 +33,14 @@ function generateHTMLReport(data: DashboardData): string {
     <html l>
     <head>
       <meta charset="UTF-8">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
+  <style>
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-          padding: 30px;
+      font-family: 'Cairo', sans-serif;          padding: 30px;
           background: white;
           color: #1f2937;
           direction: rtl;
