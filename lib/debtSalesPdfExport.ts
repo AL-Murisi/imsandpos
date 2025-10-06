@@ -213,6 +213,7 @@ export function generateDebtSalesHTML(data: DebtSalesData) {
 }
 
 import { getBrowser, closeBrowser } from "./puppeteerInstance";
+import { time } from "console";
 
 export async function generateDebtSalesPDF(
   data: DebtSalesData,
@@ -225,6 +226,7 @@ export async function generateDebtSalesPDF(
 
     await page.setContent(html, {
       waitUntil: ["load", "networkidle0", "domcontentloaded"],
+      timeout: 60000,
     });
     await page.addStyleTag({
       content: `@font-face { font-family: 'Cairo'; src: url('file:///path/to/Cairo-Regular.ttf') format('truetype'); } body { font-family: 'Cairo'; }`,
