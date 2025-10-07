@@ -15,7 +15,7 @@ import {
 } from "@/app/actions/roles";
 import { SelectField } from "@/components/common/selection";
 import { useAuth } from "@/lib/context/AuthContext";
-import { CreateProductSchema } from "@/lib/zodType";
+import { CreateProductSchema } from "@/lib/zod";
 
 type FormValues = z.infer<typeof CreateProductSchema>;
 

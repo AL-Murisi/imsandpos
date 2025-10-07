@@ -19,7 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { SupplierSchema } from "@/lib/zodType";
+import { SupplierSchema } from "@/lib/zod";
 import { z } from "zod";
 
 // 🔽 Sortable Header Component
@@ -34,8 +34,8 @@ const SortableHeader: React.FC<SortableHeaderProps> = ({ column, label }) => {
     isSorted === "asc"
       ? ArrowUp
       : isSorted === "desc"
-      ? ArrowDown
-      : ArrowUpDown;
+        ? ArrowDown
+        : ArrowUpDown;
 
   return (
     <DropdownMenu>
@@ -101,13 +101,13 @@ export const columns: ColumnDef<Supplier>[] = [
         : "bg-yellow-100 text-yellow-800";
       let label = status ? "نشط" : "غير نشط";
       let icon = status ? (
-        <CheckCircle className="w-4 h-4 mr-1" />
+        <CheckCircle className="mr-1 h-4 w-4" />
       ) : (
-        <Clock className="w-4 h-4 mr-1" />
+        <Clock className="mr-1 h-4 w-4" />
       );
       return (
         <div
-          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${color}`}
+          className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${color}`}
         >
           {icon}
           {label}

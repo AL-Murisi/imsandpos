@@ -5,6 +5,7 @@ import SectionCards from "./_components/cardsection";
 import DashboardContentClient from "./_components/DashboardContent";
 import { verifySession } from "@/lib/dal";
 import { redirect } from "next/navigation";
+import { fetchAllFormData } from "../actions/roles";
 
 interface DashboardProps {
   searchParams: Promise<Record<string, string | undefined>>;
@@ -22,6 +23,8 @@ function extractFilters(params: Record<string, string | undefined>) {
     debtTo: params.debtTo,
     allFrom: params.allFrom,
     allTo: params.allTo,
+
+    revenue: params.revenue,
   };
 }
 
@@ -33,6 +36,8 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
   }
   const params = await searchParams;
   const filters = extractFilters(params);
+  const topItems = Number(params.topItems || "4");
+  const revenue = Number(params.revenue || "5");
 
   // Pagination for tables
   const pagination = {
@@ -43,14 +48,15 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
   };
 
   try {
-    console.time("start");
     // 🚀 SINGLE FUNCTION CALL - replaces 10+ separate database queries
     const dashboardData = await fetchDashboardData(
       "admin", // TODO: Get from session
       filters,
+      topItems,
+      revenue,
       pagination,
     );
-
+    const formateddate = await fetchAllFormData();
     // Split data for components
     const salesSummary = {
       sales: dashboardData.sales,
@@ -70,15 +76,11 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
         total: dashboardData.recentSales.length,
       },
       sort: [],
-      formData: {
+      formData:
         // Mock data for now - add real data later if needed
-        warehouses: [],
-        categories: [],
-        brands: [],
-        suppliers: [],
-      },
+        formateddate,
     };
-    console.timeEnd("start");
+
     return (
       <ScrollArea className="max-h-[95vh] p-2" dir="rtl">
         <SectionCards

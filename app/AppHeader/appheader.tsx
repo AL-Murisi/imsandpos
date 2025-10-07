@@ -91,7 +91,7 @@ export default function Appheader() {
 
   return (
     <header
-      className="dark:bg-accent dark:text-foreground text-sidebar flex h-10 shrink-0 items-center gap-2 border-b bg-gray-800 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)"
+      className="dark:bg-accent dark:text-foreground text-sidebar flex h-10 shrink-0 items-center gap-2 border-b bg-[#0b142a] transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)"
       dir="rtl"
     >
       <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">

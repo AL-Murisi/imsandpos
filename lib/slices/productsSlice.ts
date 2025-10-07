@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import type { CashierItem, ProductForSale } from "@/lib/zodType";
+import type { CashierItem, ProductForSale } from "@/lib/zod";
 import { getAllactiveproductsForSale } from "@/app/actions/createProduct";
 import { fetchCategoriesForSelect } from "@/app/actions/roles";
 import { SellingUnit, updateQty } from "./cartSlice";
@@ -58,7 +58,7 @@ export const fetchCategories = createAsyncThunk(
       value: cat.id,
       checked: false,
     }));
-  }
+  },
 );
 
 const productsSlice = createSlice({
@@ -67,17 +67,17 @@ const productsSlice = createSlice({
   reducers: {
     setCategoryChecked: (
       state,
-      action: PayloadAction<{ value: string; checked: boolean }>
+      action: PayloadAction<{ value: string; checked: boolean }>,
     ) => {
       state.categories = state.categories.map((c) =>
         c.value === action.payload.value
           ? { ...c, checked: action.payload.checked }
-          : c
+          : c,
       );
     },
     clearCategory: (state, action: PayloadAction<string>) => {
       state.categories = state.categories.map((c) =>
-        c.value === action.payload ? { ...c, checked: false } : c
+        c.value === action.payload ? { ...c, checked: false } : c,
       );
     },
     updateProductSock: (
@@ -90,12 +90,12 @@ const productsSlice = createSlice({
         qCartons: number;
         qPackets: number;
         qunit: number;
-      }>
+      }>,
     ) => {
       const { productId, sellingUnit, diff, qCartons, qPackets, qunit } =
         action.payload;
       const item = state.items.find(
-        (p) => p.id === productId && p.sellingUnit === sellingUnit
+        (p) => p.id === productId && p.sellingUnit === sellingUnit,
       );
 
       const product = state.products.find((p) => p.id === productId);
@@ -106,15 +106,15 @@ const productsSlice = createSlice({
         product.availableUnits -= diff * qPackets * qunit;
       } else if (sellingUnit === "packet") {
         product.availablePackets -= diff;
-        (product.availableUnits -= diff * qunit),
+        ((product.availableUnits -= diff * qunit),
           (product.availableCartons = Math.floor(
-            product.availableUnits / qPackets
-          ));
+            product.availableUnits / qPackets,
+          )));
       } else if (sellingUnit === "unit") {
         product.availableUnits -= diff;
         product.availablePackets = Math.floor(product.availableUnits / qunit);
         product.availableCartons = Math.floor(
-          product.availablePackets / qPackets
+          product.availablePackets / qPackets,
         );
       }
       product.availableCartons = Math.max(product.availableCartons, 0);

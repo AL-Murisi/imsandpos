@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import {
   InventoryUpdateWithTrackingSchema,
   UpdateInventorySchema,
-} from "@/lib/zodType";
+} from "@/lib/zod";
 
 import { adjustStock, updateInventory } from "@/app/actions/warehouse";
 const adjust = UpdateInventorySchema.extend({
@@ -48,7 +48,7 @@ export default function InvonteryAdjustForm({ inventory }: { inventory: any }) {
         data.stockQuantity ?? 0,
         inventory.userId ?? "admin", // replace with real user ID if available
         data.reason ?? "Manual adjustment",
-        data.notes
+        data.notes,
       );
 
       if (result.success) {
@@ -65,7 +65,7 @@ export default function InvonteryAdjustForm({ inventory }: { inventory: any }) {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" dir="rtl">
       <div className="grid gap-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="grid gap-2">
             <Label htmlFor="stockQuantity">الكمية في المخزون</Label>
             <Input
@@ -74,7 +74,7 @@ export default function InvonteryAdjustForm({ inventory }: { inventory: any }) {
               {...register("stockQuantity", { valueAsNumber: true })}
             />
             {errors.stockQuantity && (
-              <p className="text-red-500 text-xs">
+              <p className="text-xs text-red-500">
                 {errors.stockQuantity.message}
               </p>
             )}
@@ -87,14 +87,14 @@ export default function InvonteryAdjustForm({ inventory }: { inventory: any }) {
               {...register("reservedQuantity", { valueAsNumber: true })}
             />
             {errors.reservedQuantity && (
-              <p className="text-red-500 text-xs">
+              <p className="text-xs text-red-500">
                 {errors.reservedQuantity.message}
               </p>
             )}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="grid gap-2">
             <Label htmlFor="availableQuantity">الكمية المتاحة</Label>
             <Input
@@ -103,7 +103,7 @@ export default function InvonteryAdjustForm({ inventory }: { inventory: any }) {
               {...register("availableQuantity", { valueAsNumber: true })}
             />
             {errors.availableQuantity && (
-              <p className="text-red-500 text-xs">
+              <p className="text-xs text-red-500">
                 {errors.availableQuantity.message}
               </p>
             )}
@@ -116,14 +116,14 @@ export default function InvonteryAdjustForm({ inventory }: { inventory: any }) {
               {...register("reorderLevel", { valueAsNumber: true })}
             />
             {errors.reorderLevel && (
-              <p className="text-red-500 text-xs">
+              <p className="text-xs text-red-500">
                 {errors.reorderLevel.message}
               </p>
             )}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="grid gap-2">
             <Label htmlFor="maxStockLevel">الحد الأقصى للمخزون</Label>
             <Input
@@ -132,7 +132,7 @@ export default function InvonteryAdjustForm({ inventory }: { inventory: any }) {
               {...register("maxStockLevel", { valueAsNumber: true })}
             />
             {errors.maxStockLevel && (
-              <p className="text-red-500 text-xs">
+              <p className="text-xs text-red-500">
                 {errors.maxStockLevel.message}
               </p>
             )}
@@ -144,16 +144,16 @@ export default function InvonteryAdjustForm({ inventory }: { inventory: any }) {
               <p className="text-red-500 text-xs">{errors.location.message}</p>
             )}
           </div> */}{" "}
-          <div className="grid gap-2 ">
+          <div className="grid gap-2">
             <Label htmlFor="lastStockTake">آخر جرد</Label>
             <Input
               id="lastStockTake"
-              className="text-end "
+              className="text-end"
               type="datetime-local"
               {...register("lastStockTake")}
             />
             {errors.lastStockTake && (
-              <p className="text-red-500 text-xs">
+              <p className="text-xs text-red-500">
                 {errors.lastStockTake.message}
               </p>
             )}
@@ -162,14 +162,14 @@ export default function InvonteryAdjustForm({ inventory }: { inventory: any }) {
             <Label htmlFor="reason">سبب التعديل</Label>
             <Input id="reason" type="text" {...register("reason")} />
             {errors.reason && (
-              <p className="text-red-500 text-xs">{errors.reason.message}</p>
+              <p className="text-xs text-red-500">{errors.reason.message}</p>
             )}
           </div>
           <div className="grid gap-2">
             <Label htmlFor="notes">ملاحظات</Label>
             <Input id="notes" type="text" {...register("notes")} />
             {errors.notes && (
-              <p className="text-red-500 text-xs">{errors.notes.message}</p>
+              <p className="text-xs text-red-500">{errors.notes.message}</p>
             )}
           </div>
         </div>

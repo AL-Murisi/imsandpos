@@ -16,9 +16,8 @@ import {
   CreateWarehouseSchema,
   RoleSchema,
   UpdateInventorySchema,
-  userSchema,
   WarehouseInput,
-} from "@/lib/zodType";
+} from "@/lib/zod";
 import { Prisma } from "@prisma/client";
 import { email, safeParse, z } from "zod";
 import { number } from "zod/v3";
@@ -47,7 +46,7 @@ export async function createRole(input: CreateRoleInput) {
   }
 }
 // app/actions/roles.ts (or any server-side file)
-export async function createUser(form: userSchema) {
+export async function createUser(form: any) {
   const parsed = CreateUserSchema.safeParse(form);
   if (!parsed.success) {
     throw new Error("Invalid user data");

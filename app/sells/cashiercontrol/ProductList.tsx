@@ -6,7 +6,7 @@ import { selectAvailableStock } from "@/lib/selectors";
 import { addItem, updateQty } from "@/lib/slices/cartSlice";
 import { setProductsLocal } from "@/lib/slices/productsSlice";
 import { useAppDispatch, useAppSelector } from "@/lib/store";
-import { CashierItem, ProductForSale } from "@/lib/zodType";
+import { CashierItem, ProductForSale } from "@/lib/zod";
 import { useEffect, useState } from "react";
 import { Card } from "../../../components/ui/card";
 import { FormatPrice } from "@/hooks/usePrice";

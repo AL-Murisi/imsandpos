@@ -1,6 +1,6 @@
 "use client";
 import CustomDialog from "@/components/common/Dailog";
-import { ProductFormValues } from "@/lib/zodType";
+import { ProductFormValues } from "@/lib/zod";
 import { ColumnDef } from "@tanstack/react-table";
 import {
   ArrowDown,
@@ -35,8 +35,8 @@ const SortableHeader: React.FC<SortableHeaderProps> = ({ column, label }) => {
     isSorted === "asc"
       ? ArrowUp
       : isSorted === "desc"
-      ? ArrowDown
-      : ArrowUpDown;
+        ? ArrowDown
+        : ArrowUpDown;
 
   return (
     <DropdownMenu>
@@ -155,15 +155,15 @@ export const createColumns = (): ColumnDef<ProductFormValues>[] => [
       switch (status) {
         case "active":
           color = "bg-green-100 text-green-800";
-          icon = <CheckCircle className="w-4 h-4 mr-1" />;
+          icon = <CheckCircle className="mr-1 h-4 w-4" />;
           break;
         case "inactive":
           color = "bg-yellow-100 text-yellow-800";
-          icon = <Clock className="w-4 h-4 mr-1" />;
+          icon = <Clock className="mr-1 h-4 w-4" />;
           break;
         case "discontinued":
           color = "bg-red-100 text-red-800";
-          icon = <XCircle className="w-4 h-4 mr-1" />;
+          icon = <XCircle className="mr-1 h-4 w-4" />;
           break;
         default:
           color = "bg-gray-100 text-gray-700";
@@ -172,7 +172,7 @@ export const createColumns = (): ColumnDef<ProductFormValues>[] => [
 
       return (
         <div
-          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${color}`}
+          className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${color}`}
         >
           {icon}
           {label}
@@ -278,7 +278,7 @@ export const createColumns = (): ColumnDef<ProductFormValues>[] => [
       const isActive = row.getValue("isActive") as boolean;
       return (
         <div
-          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+          className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
             isActive
               ? "bg-green-100 text-green-800"
               : "bg-gray-100 text-gray-700"

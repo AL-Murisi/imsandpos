@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Download, Loader2, FileText, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 interface ExportDashboardButtonAPIProps {
   role: string;
@@ -86,6 +87,7 @@ export function ExportDashboardButtonAPI({
       window.URL.revokeObjectURL(url);
 
       setProgress(100);
+      toast("✅ creacting dasboard report successed");
 
       // Reset progress after a short delay
       setTimeout(() => {

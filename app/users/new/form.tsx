@@ -16,15 +16,14 @@ import { Input } from "../../../components/ui/input";
 import { Label } from "../../../components/ui/label";
 import { Button } from "../../../components/ui/button";
 
-import { CreateUserSchema } from "@/lib/zodType";
 import { createUser, fetchRolesForSelect } from "@/app/actions/roles";
+import { toast } from "sonner";
+import { CreateUserSchema, UserInput } from "@/lib/zod";
 
 type Role = {
   id: string;
   name: string;
 };
-
-type FormValues = z.infer<typeof CreateUserSchema>;
 
 export default function UserForm() {
   const [roles, setRoles] = useState<Role[]>([]);
@@ -36,7 +35,7 @@ export default function UserForm() {
     reset,
     watch,
     formState: { errors },
-  } = useForm<FormValues>({
+  } = useForm<UserInput>({
     resolver: zodResolver(CreateUserSchema),
     defaultValues: {
       email: "",
@@ -63,10 +62,12 @@ export default function UserForm() {
 
   const selectedRole = watch("roleId");
 
-  const onSubmit = async (data: FormValues) => {
+  const onSubmit = async (data: UserInput) => {
     console.log("Submitted:", data);
 
     await createUser(data);
+    toast("✅ adding user sucessed");
+
     // await createUser(data)
     reset();
   };
@@ -80,7 +81,7 @@ export default function UserForm() {
             <Label htmlFor="email">البريد الإلكتروني</Label>
             <Input id="email" type="email" {...register("email")} />
             {errors.email && (
-              <p className="text-red-500 text-xs">{errors.email.message}</p>
+              <p className="text-xs text-red-500">{errors.email.message}</p>
             )}
           </div>
 
@@ -89,7 +90,7 @@ export default function UserForm() {
             <Label htmlFor="name">الاسم الكامل</Label>
             <Input id="name" {...register("name")} />
             {errors.name && (
-              <p className="text-red-500 text-xs">{errors.name.message}</p>
+              <p className="text-xs text-red-500">{errors.name.message}</p>
             )}
           </div>
         </div>
@@ -106,7 +107,7 @@ export default function UserForm() {
             <Label htmlFor="password">كلمة المرور</Label>
             <Input id="password" type="password" {...register("password")} />
             {errors.password && (
-              <p className="text-red-500 text-xs">{errors.password.message}</p>
+              <p className="text-xs text-red-500">{errors.password.message}</p>
             )}
           </div>
         </div>
@@ -132,7 +133,7 @@ export default function UserForm() {
             </SelectContent>
           </Select>
           {errors.roleId && (
-            <p className="text-red-500 text-xs">{errors.roleId.message}</p>
+            <p className="text-xs text-red-500">{errors.roleId.message}</p>
           )}
         </div>
       </div>

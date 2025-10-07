@@ -4,15 +4,10 @@ import { revalidatePath } from "next/cache";
 
 import prisma from "@/lib/prisma";
 
-import {
-  CashierSchema,
-  InventoryUpdateWithTrackingSchema,
-  Reservation,
-  UpdateInventorySchema,
-} from "@/lib/zodType";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { SortingState } from "@tanstack/react-table";
+import { CashierSchema, InventoryUpdateWithTrackingSchema } from "@/lib/zod";
 
 export type InventoryUpdateWithTrackingInput = z.infer<
   typeof InventoryUpdateWithTrackingSchema
@@ -255,7 +250,7 @@ export async function adjustStock(
   newQuantity: number,
   userId: string,
   reason: string,
-  notes?: string
+  notes?: string,
 ) {
   try {
     return await prisma.$transaction(async (tx) => {
@@ -275,7 +270,7 @@ export async function adjustStock(
       const difference = newQuantity - inventory.stockQuantity;
       const newAvailableQuantity = Math.max(
         0,
-        newQuantity - inventory.reservedQuantity
+        newQuantity - inventory.reservedQuantity,
       );
 
       // Determine status
@@ -443,7 +438,7 @@ export async function getStockMovements(
   to?: string,
   page: number = 0, // 0-indexed page number
   pageSize: number = 5,
-  sort?: SortingState
+  sort?: SortingState,
 ) {
   try {
     const orderBy = sort?.length
@@ -535,7 +530,7 @@ export async function getInventoryById(
   to?: string,
   page: number = 0, // 0-indexed page number
   pageSize: number = 5,
-  sort: SortState = []
+  sort: SortState = [],
 ) {
   try {
     const fromatDate = from ? new Date(from).toISOString() : undefined;

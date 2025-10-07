@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
-import { CreateSupplierSchema } from "@/lib/zodType";
+import { CreateSupplierSchema } from "@/lib/zod";
 import { createSupplier } from "@/app/actions/roles";
 
 type FormValues = z.infer<typeof CreateSupplierSchema>;
@@ -55,7 +55,7 @@ export default function SupplierForm() {
             <Label htmlFor="name">اسم المورد</Label>
             <Input id="name" {...register("name")} />
             {errors.name && (
-              <p className="text-red-500 text-xs">{errors.name.message}</p>
+              <p className="text-xs text-red-500">{errors.name.message}</p>
             )}
           </div>
           {/* Email */}
@@ -63,7 +63,7 @@ export default function SupplierForm() {
             <Label htmlFor="email">البريد الإلكتروني</Label>
             <Input id="email" type="email" {...register("email")} />
             {errors.email && (
-              <p className="text-red-500 text-xs">{errors.email.message}</p>
+              <p className="text-xs text-red-500">{errors.email.message}</p>
             )}
           </div>
         </div>
@@ -78,7 +78,7 @@ export default function SupplierForm() {
               {...register("contactPerson")}
             />
             {errors.contactPerson && (
-              <p className="text-red-500 text-xs">
+              <p className="text-xs text-red-500">
                 {errors.contactPerson.message}
               </p>
             )}
@@ -88,7 +88,7 @@ export default function SupplierForm() {
             <Label htmlFor="phoneNumber">رقم الهاتف</Label>
             <Input id="phoneNumber" type="tel" {...register("phoneNumber")} />
             {errors.phoneNumber && (
-              <p className="text-red-500 text-xs">
+              <p className="text-xs text-red-500">
                 {errors.phoneNumber.message}
               </p>
             )}
@@ -98,7 +98,7 @@ export default function SupplierForm() {
             <Label htmlFor="address">العنوان</Label>
             <Input id="address" type="text" {...register("address")} />
             {errors.address && (
-              <p className="text-red-500 text-xs">{errors.address.message}</p>
+              <p className="text-xs text-red-500">{errors.address.message}</p>
             )}
           </div>
           {/* City */}
@@ -109,7 +109,7 @@ export default function SupplierForm() {
             <Label htmlFor="city">المدينة</Label>
             <Input id="city" type="text" {...register("city")} />
             {errors.city && (
-              <p className="text-red-500 text-xs">{errors.city.message}</p>
+              <p className="text-xs text-red-500">{errors.city.message}</p>
             )}
           </div>
           {/* State */}
@@ -117,7 +117,7 @@ export default function SupplierForm() {
             <Label htmlFor="state">الولاية/المحافظة</Label>
             <Input id="state" type="text" {...register("state")} />
             {errors.state && (
-              <p className="text-red-500 text-xs">{errors.state.message}</p>
+              <p className="text-xs text-red-500">{errors.state.message}</p>
             )}
           </div>
           {/* Country */}
@@ -125,7 +125,7 @@ export default function SupplierForm() {
             <Label htmlFor="country">البلد</Label>
             <Input id="country" type="text" {...register("country")} />
             {errors.country && (
-              <p className="text-red-500 text-xs">{errors.country.message}</p>
+              <p className="text-xs text-red-500">{errors.country.message}</p>
             )}
           </div>
           {/* Postal Code */}
@@ -137,7 +137,7 @@ export default function SupplierForm() {
               {...register("postalCode")}
             />
             {errors.postalCode && (
-              <p className="text-red-500 text-xs">
+              <p className="text-xs text-red-500">
                 {errors.postalCode.message}
               </p>
             )}
@@ -147,7 +147,7 @@ export default function SupplierForm() {
             <Label htmlFor="taxId">الرقم الضريبي</Label>
             <Input id="taxId" type="text" {...register("taxId")} />
             {errors.taxId && (
-              <p className="text-red-500 text-xs">{errors.taxId.message}</p>
+              <p className="text-xs text-red-500">{errors.taxId.message}</p>
             )}
           </div>
           {/* Payment Terms */}
@@ -159,7 +159,7 @@ export default function SupplierForm() {
               {...register("paymentTerms")}
             />
             {errors.paymentTerms && (
-              <p className="text-red-500 text-xs">
+              <p className="text-xs text-red-500">
                 {errors.paymentTerms.message}
               </p>
             )}

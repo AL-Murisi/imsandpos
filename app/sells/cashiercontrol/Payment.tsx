@@ -26,11 +26,12 @@ import {
   updateQty,
 } from "@/lib/slices/cartSlice";
 import { useAppDispatch, useAppSelector } from "@/lib/store";
-import { CashierItem, CashierSchema } from "@/lib/zodType";
+import { CashierItem, CashierSchema } from "@/lib/zod/cashier";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Minus, Package2Icon, Plus, Printer, Trash2Icon } from "lucide-react";
 import React from "react";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { z } from "zod";
 // import html2pdf from "html2pdf.js";
 
@@ -121,8 +122,8 @@ export default function Payment({ users }: PaymentProps) {
       });
       if (!response.ok) throw new Error("خطأ أثناء المعالجة");
       await response.json();
-      alert("✅ تم الدفع بنجاح!");
 
+      toast("✅ تم الدفع بنجاح!");
       setParam("categoryId", "");
       dispatch(clearCart());
       dispatch(setDiscount({ type: "fixed", value: 0 }));

@@ -9,7 +9,7 @@ import { Input } from "../../../components/ui/input";
 import { Label } from "../../../components/ui/label";
 import { Button } from "../../../components/ui/button";
 
-import { CreateCategorySchema } from "@/lib/zodType";
+import { CreateCategorySchema } from "@/lib/zod";
 import { createCategory, getAllCategories } from "@/app/actions/roles"; // assume you have this
 
 type FormValues = z.infer<typeof CreateCategorySchema>;
@@ -64,7 +64,7 @@ export default function CategoryForm() {
             <Label htmlFor="name">الاسم</Label>
             <Input id="name" {...register("name")} />
             {errors.name && (
-              <p className="text-red-500 text-xs">{errors.name.message}</p>
+              <p className="text-xs text-red-500">{errors.name.message}</p>
             )}
           </div>
 
@@ -80,7 +80,7 @@ export default function CategoryForm() {
             <select
               id="parentId"
               {...register("parentId")}
-              className="border rounded px-2 py-1"
+              className="rounded border px-2 py-1"
             >
               <option value="">لا يوجد</option>
               {categories.map((category) => (
@@ -90,7 +90,7 @@ export default function CategoryForm() {
               ))}
             </select>
             {errors.parentId && (
-              <p className="text-red-500 text-xs">{errors.parentId.message}</p>
+              <p className="text-xs text-red-500">{errors.parentId.message}</p>
             )}
           </div>
         </div>

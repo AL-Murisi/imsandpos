@@ -16,6 +16,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Lock, Mail, Eye, EyeOff } from "lucide-react";
+import { toast } from "sonner";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -34,8 +35,10 @@ export default function LoginPage() {
 
     try {
       const success = await login(email, password);
+
       if (success) {
         router.push("/");
+        toast("logging successfully ✅ ");
       } else {
         setError("البريد الإلكتروني أو كلمة المرور غير صحيحة");
       }
@@ -94,8 +97,6 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
-            {/* {error && {error}</alert>} */}
-
             <div className="space-y-2">
               <Label htmlFor="email">البريد الإلكتروني</Label>
               <div className="relative">
@@ -112,7 +113,6 @@ export default function LoginPage() {
                 />
               </div>
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="password">كلمة المرور</Label>
               <div className="relative">
@@ -139,11 +139,10 @@ export default function LoginPage() {
                     <Eye className="h-4 w-4" />
                   )}
                 </button>
+                <Label className="p-3 text-red-600">{error}</Label>
               </div>
             </div>
-
-            {/* Quick Login Buttons for Testing */}
-            <div className="space-y-2">
+            <div className="space-y-2 p-3">
               <p className="text-center text-sm text-gray-500">
                 تسجيل دخول سريع للاختبار:
               </p>
@@ -188,8 +187,12 @@ export default function LoginPage() {
             </div>
           </CardContent>
 
-          <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full" disabled={loading}>
+          <CardFooter className="top-4 flex flex-col space-y-4">
+            <Button
+              type="submit"
+              className="p-x-5 p-y-5 w-full"
+              disabled={loading}
+            >
               {loading ? "جاري تسجيل الدخول..." : "تسجيل الدخول"}
             </Button>
           </CardFooter>

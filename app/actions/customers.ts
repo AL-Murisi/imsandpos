@@ -1,6 +1,6 @@
 "use server";
 import prisma from "@/lib/prisma";
-import { createCusomer, CreateCustomerSchema } from "@/lib/zodType";
+import { createCusomer, CreateCustomerSchema } from "@/lib/zod";
 import { Prisma } from "@prisma/client";
 export async function Fetchcustomerbyname(searchQuery?: string) {
   if (!searchQuery) return null;
@@ -35,7 +35,7 @@ export async function Fetchcustomerbyname(searchQuery?: string) {
 
   const totalDebt = debts.reduce(
     (sum, sale) => sum + sale.amountDue.toNumber(),
-    0
+    0,
   );
 
   return {

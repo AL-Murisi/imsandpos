@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import TasksInput from "./addTask";
 import { createRole } from "@/app/actions/roles";
 import { z } from "zod";
-import { CreateRoleSchema } from "@/lib/zodType";
+import { CreateRoleSchema } from "@/lib/zod";
 
 export default function RoleForm({ close }: any) {
   const [role, setRole] = useState("");
@@ -23,10 +23,13 @@ export default function RoleForm({ close }: any) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const permissions = tasks.reduce((acc, task) => {
-      acc[task] = true;
-      return acc;
-    }, {} as Record<string, boolean>);
+    const permissions = tasks.reduce(
+      (acc, task) => {
+        acc[task] = true;
+        return acc;
+      },
+      {} as Record<string, boolean>,
+    );
 
     const result = CreateRoleSchema.safeParse({
       name: role,
@@ -55,7 +58,7 @@ export default function RoleForm({ close }: any) {
 
   return (
     <form dir="rtl" onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid gap-4 grid-cols-2">
+      <div className="grid grid-cols-2 gap-4">
         {/* Role Name */}
         <div className="grid gap-2">
           <Label htmlFor="role">الدور</Label>
@@ -65,7 +68,7 @@ export default function RoleForm({ close }: any) {
             onChange={(e) => setRole(e.target.value)}
             placeholder="مثال: مدير"
           />
-          {errors.name && <p className="text-red-500 text-xs">{errors.name}</p>}
+          {errors.name && <p className="text-xs text-red-500">{errors.name}</p>}
         </div>
 
         {/* Description */}
@@ -78,7 +81,7 @@ export default function RoleForm({ close }: any) {
             placeholder="الوصف الاختياري"
           />
           {errors.description && (
-            <p className="text-red-500 text-xs">{errors.description}</p>
+            <p className="text-xs text-red-500">{errors.description}</p>
           )}
         </div>
 
@@ -87,12 +90,12 @@ export default function RoleForm({ close }: any) {
           <Label htmlFor="tasks">المهام (الصلاحيات)</Label>
           <TasksInput tasks={tasks} setTasks={setTasks} />
           {errors.permissions && (
-            <p className="text-red-500 text-xs">{errors.permissions}</p>
+            <p className="text-xs text-red-500">{errors.permissions}</p>
           )}
         </div>
       </div>
 
-      <div className="flex gap-4 justify-end">
+      <div className="flex justify-end gap-4">
         <Button
           variant="outline"
           onClick={() => {

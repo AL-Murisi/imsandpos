@@ -18,6 +18,7 @@ import prisma from "@/lib/prisma";
 
 import { unstable_cache } from "next/cache";
 import { startOfDay, endOfDay, format, subDays } from "date-fns";
+import { number } from "zod";
 
 // 🚀 SINGLE OPTIMIZED FUNCTION - uses only Prisma methods
 export const fetchDashboardData = unstable_cache(
@@ -35,6 +36,8 @@ export const fetchDashboardData = unstable_cache(
       debtFrom?: string;
       debtTo?: string;
     },
+    topItems?: number,
+    revenue?: number,
     pagination?: {
       page?: number;
       pageSize?: number;
@@ -235,7 +238,7 @@ export const fetchDashboardData = unstable_cache(
             createdAt: { gte: subDays(new Date(), 30) },
           },
           orderBy: { _sum: { quantity: "desc" } },
-          take: 5,
+          take: topItems,
         })
         .then(async (items) => {
           const productIds = items.map((item) => item.productId);
@@ -376,7 +379,7 @@ export const fetchDashboardData = unstable_cache(
       },
       revenue: {
         total: revenueAgg._sum.amount?.toNumber() || 0,
-        chart: groupByDay(revenueGrouped, "createdAt"),
+        chart: groupByMonth(revenueGrouped, "createdAt"),
       },
       debt: {
         unreceived: debtUnreceivedAgg._sum.amountDue?.toNumber() || 0,

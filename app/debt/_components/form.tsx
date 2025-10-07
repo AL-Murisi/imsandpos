@@ -8,6 +8,7 @@ import { updateSales } from "@/app/actions/debtSells";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
 // This schema needs to be defined for the payment input
 // Example: Create a new schema like PaymentAmountSchema
@@ -52,7 +53,7 @@ export default function Debtupdate({ debt }: DebtSaleProps) {
       reset();
 
       //   }
-      console.log("Payment successfully applied!");
+      toast("Payment successfully applied!");
     } catch (error) {
       console.error("Error updating debt sale:", error);
       // Display an error message to the user (e.g., using a toast notification)
@@ -80,7 +81,7 @@ export default function Debtupdate({ debt }: DebtSaleProps) {
             {...register("paymentAmount", { valueAsNumber: true })}
           />
           {errors.paymentAmount && (
-            <p className="text-red-500 text-xs">
+            <p className="text-xs text-red-500">
               {errors.paymentAmount.message}
             </p>
           )}

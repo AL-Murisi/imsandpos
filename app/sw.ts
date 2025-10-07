@@ -124,3 +124,25 @@ const serwist = new Serwist({
     ],
   },
 });
+serwist.addEventListeners();
+
+// Example of custom event listener
+// self.addEventListener('message', (event) => {
+//   if (event.data && event.data.type === 'SKIP_WAITING') {
+//     self.skipWaiting();
+//   }
+// });
+// self.addEventListener('push', (event) => {
+//   const data = event.data?.json() || {};
+//   const title = data.title || 'Notification';
+//   const options = {
+//     body: data.body || 'You have a new message.',
+//     icon: '/icon-192x192.png',
+//     badge: '/icon-192x192.png',
+//     data: data.url || '/',
+//   };
+
+//   event.waitUntil(self.registration.showNotification(title, options));
+// });
+
+// self.addEventListener('notificationclick', (event) => {

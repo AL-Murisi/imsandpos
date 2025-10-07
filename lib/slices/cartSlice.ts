@@ -1,5 +1,5 @@
 // import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-// import type { CashierItem } from "@/lib/zodType";
+// import type { CashierItem } from "@/lib/zod";
 
 // export type SellingUnit = "carton" | "packet" | "unit";
 // // type CartItem = {
@@ -156,7 +156,7 @@
 // } = cartSlice.actions;
 // export default cartSlice.reducer;
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { CashierItem, ProductForSale } from "@/lib/zodType";
+import { CashierItem } from "@/lib/zod";
 
 export type SellingUnit = "carton" | "packet" | "unit";
 
@@ -269,7 +269,7 @@ const cartSlice = createSlice({
         quantity: number;
         sellingUnit: SellingUnit;
         action: string;
-      }>
+      }>,
     ) {
       const cart = state.carts.find((c) => c.id === state.activeCartId);
       if (!cart) return;
@@ -277,7 +277,7 @@ const cartSlice = createSlice({
       const item = cart.items.find(
         (i) =>
           i.id === action.payload.id &&
-          i.sellingUnit === action.payload.sellingUnit
+          i.sellingUnit === action.payload.sellingUnit,
       );
       if (item) {
         if (action.payload.action === "plus") {
@@ -291,7 +291,7 @@ const cartSlice = createSlice({
     // 🔹 Discounts & Selling Unit
     setDiscount: (
       state,
-      action: PayloadAction<{ type: "fixed" | "percentage"; value: number }>
+      action: PayloadAction<{ type: "fixed" | "percentage"; value: number }>,
     ) => {
       state.discountType = action.payload.type;
       state.discountValue = action.payload.value;
@@ -305,14 +305,14 @@ const cartSlice = createSlice({
         to: SellingUnit;
         product: { packetsPerCarton: number; unitsPerPacket: number };
         qty: number;
-      }>
+      }>,
     ) => {
       const cart = state.carts.find((c) => c.id === state.activeCartId);
       if (!cart) return;
 
       const item = cart.items.find(
         (i) =>
-          i.id === action.payload.id && i.sellingUnit === action.payload.from
+          i.id === action.payload.id && i.sellingUnit === action.payload.from,
       );
 
       if (!item) return;
@@ -330,7 +330,7 @@ const cartSlice = createSlice({
         newQty = Math.floor(qty / product.unitsPerPacket);
       else if (from === "unit" && to === "carton")
         newQty = Math.floor(
-          qty / (product.unitsPerPacket * product.packetsPerCarton)
+          qty / (product.unitsPerPacket * product.packetsPerCarton),
         );
 
       item.sellingUnit = to;

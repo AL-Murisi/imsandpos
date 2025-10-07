@@ -47,24 +47,6 @@ export default function DashboardContentClient({
   result,
   salesSummary,
 }: DashboardContentClientProps) {
-  // Memoize expensive data transformations
-
-  // const combinedChartData = useMemo(() => {
-  //   if (!salesSummary?.sales?.chart || !salesSummary?.purchases?.chart)
-  //     return [];
-
-  //   return salesSummary.sales.chart.map((sale: any) => {
-  //     const purchase = salesSummary.purchases.chart.find(
-  //       (p: any) => p.date === sale.date,
-  //     );
-  //     return {
-  //       date: sale.date,
-  //       revenue: sale.value,
-  //       purchases: purchase?.value || 0,
-  //     };
-  //   });
-  // }, [salesSummary]);
-
   const revMap = new Map(
     salesSummary.revenue.chart.map((pt) => [pt.date, pt.value]),
   );
@@ -132,17 +114,7 @@ export default function DashboardContentClient({
         </Suspense>
 
         <Suspense fallback={<ChartSkeleton />}>
-          <Charts
-            topProducts={result.topProducts}
-            formData={
-              result.formData || {
-                warehouses: [],
-                categories: [],
-                brands: [],
-                suppliers: [],
-              }
-            }
-          />
+          <Charts topProducts={result.topProducts} formData={result.formData} />
         </Suspense>
       </div>
 
@@ -150,14 +122,7 @@ export default function DashboardContentClient({
         <Suspense fallback={<ChartSkeleton />}>
           <TopSellingChartWrapper
             data={revenueChartData} // Use transformed revenue data
-            formData={
-              result.formData || {
-                warehouses: [],
-                categories: [],
-                brands: [],
-                suppliers: [],
-              }
-            }
+            color="var(--chart-5)"
             title="Revenue"
             width="w-full"
             widthco="w-full"

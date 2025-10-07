@@ -16,7 +16,7 @@ import { Input } from "../../../components/ui/input";
 import { Label } from "../../../components/ui/label";
 import { Button } from "../../../components/ui/button";
 
-import { CreateCustomerSchema, CreateUserSchema } from "@/lib/zodType";
+import { CreateCustomerSchema, CreateUserSchema } from "@/lib/zod";
 import { createUser, fetchRolesForSelect } from "@/app/actions/roles";
 import { createCutomer } from "@/app/actions/customers";
 import { SelectField } from "@/components/common/selection";

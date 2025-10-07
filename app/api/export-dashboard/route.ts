@@ -80,16 +80,10 @@ export async function GET(request: NextRequest) {
       debtTo: searchParams.get("debtTo") || undefined,
     };
 
-    const pagination = {
-      page: parseInt(searchParams.get("page") || "0"),
-      pageSize: parseInt(searchParams.get("pageSize") || "10"),
-      query: searchParams.get("query") || undefined,
-    };
-
     console.log("Fetching dashboard data...");
 
     // Fetch dashboard data
-    const dashboardData = await fetchDashboardData(role, filters, pagination);
+    const dashboardData = await fetchDashboardData(role, filters);
 
     console.log("Generating PDF...");
 

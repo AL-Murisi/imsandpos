@@ -9,7 +9,7 @@ import { Input } from "../../../components/ui/input";
 import { Label } from "../../../components/ui/label";
 import { Button } from "../../../components/ui/button";
 
-import { CreateBrandSchema } from "@/lib/zodType";
+import { CreateBrandSchema } from "@/lib/zod";
 import { createBrand } from "@/app/actions/roles";
 
 type FormValues = z.infer<typeof CreateBrandSchema>;
@@ -52,7 +52,7 @@ export default function UserForm() {
             <Label htmlFor="name">الاسم </Label>
             <Input id="name" {...register("name")} />
             {errors.name && (
-              <p className="text-red-500 text-xs">{errors.name.message}</p>
+              <p className="text-xs text-red-500">{errors.name.message}</p>
             )}
           </div>
         </div>
@@ -76,7 +76,7 @@ export default function UserForm() {
               {...register("contactInfo")}
             />
             {errors.contactInfo && (
-              <p className="text-red-500 text-xs">
+              <p className="text-xs text-red-500">
                 {errors.contactInfo.message}
               </p>
             )}

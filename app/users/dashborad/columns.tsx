@@ -23,7 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "../../../components/ui/dropdown-menu";
 import { z } from "zod";
-import { UserSchema } from "@/lib/zodType";
+import { userSchema } from "@/lib/zod";
 import { Badge } from "@/components/ui/badge";
 import { updateUsers } from "@/app/actions/users";
 import { Label } from "@/components/ui/label";
@@ -42,8 +42,8 @@ const SortableHeader: React.FC<SortableHeaderProps> = ({ column, label }) => {
     isSorted === "asc"
       ? ArrowUp
       : isSorted === "desc"
-      ? ArrowDown
-      : ArrowUpDown;
+        ? ArrowDown
+        : ArrowUpDown;
 
   return (
     <DropdownMenu>
@@ -69,7 +69,7 @@ const SortableHeader: React.FC<SortableHeaderProps> = ({ column, label }) => {
 };
 
 // 🔢 User Type
-export type User = z.infer<typeof UserSchema>;
+export type User = z.infer<typeof userSchema>;
 export const columns: ColumnDef<User>[] = [
   {
     id: "select",
@@ -108,18 +108,18 @@ export const columns: ColumnDef<User>[] = [
         case true:
           color = "bg-green-100 text-green-800";
           label = "Active";
-          icon = <CheckCircle className="w-4 h-4 mr-1" />;
+          icon = <CheckCircle className="mr-1 h-4 w-4" />;
           break;
         default:
           color = "bg-yellow-100 text-yellow-800";
           label = "Not Active";
-          icon = <Clock className="w-4 h-4 mr-1" />;
+          icon = <Clock className="mr-1 h-4 w-4" />;
           break;
       }
 
       return (
         <div
-          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${color}`}
+          className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${color}`}
         >
           {icon}
           {label}
@@ -144,7 +144,7 @@ export const columns: ColumnDef<User>[] = [
 
     header: ({ column }) => <SortableHeader column={column} label="Phone" />,
     cell: ({ row }) => (
-      <div className=" font-medium">{row.getValue("phoneNumber")}</div>
+      <div className="font-medium">{row.getValue("phoneNumber")}</div>
     ),
   },
   {
@@ -154,7 +154,7 @@ export const columns: ColumnDef<User>[] = [
       const role = row.original.roles?.[0]?.role?.name ?? "بدون دور";
 
       return (
-        <Badge className="bg-blue-600 text-white text-xs rounded-md">
+        <Badge className="rounded-md bg-blue-600 text-xs text-white">
           {role}
         </Badge>
       );

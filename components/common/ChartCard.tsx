@@ -76,7 +76,7 @@ export function ChartCard({
 }: ChartCardProps) {
   return (
     <div
-      className={`flex flex-col rounded-xl p-4 ${bg} gap-6 shadow-xl/20 shadow-gray-500`}
+      className={`flex flex-col rounded-2xl p-4 ${bg} gap-6 shadow-xl/20 shadow-gray-500`}
     >
       {loading ? (
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -98,7 +98,7 @@ export function ChartCard({
 
               {/* Chart */}
 
-              <div className="mt-2 h-24 w-full flex-1">
+              <div className="mt-2 h-24 w-full flex-1 rounded-3xl">
                 {chartData && chartData.length > 0 ? (
                   // <Suspense
                   //   fallback={

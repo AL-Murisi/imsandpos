@@ -8,8 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { useForm, SubmitHandler } from "react-hook-form"; // Import SubmitHandler
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CashierItem, CashierSchema } from "@/lib/zodType";
+import { CashierItem, CashierSchema } from "@/lib/zod";
 import { reserveStock } from "@/app/actions/warehouse";
+import { toast } from "sonner";
 
 type CashierFormValues = z.infer<typeof CashierSchema>;
 
@@ -74,7 +75,7 @@ export default function Reservation({
     if (data.receivedAmount === 0) {
       await reserveStock(data);
 
-      alert("تم الحجز بنجاح");
+      toast("✅تم الحجز بنجاح");
       onSuccess?.();
       return;
     }
@@ -107,7 +108,7 @@ export default function Reservation({
         trigger={
           <Button
             variant="outline"
-            className="flex-1 py-3 rounded-md shadow-md hover:shadow-lg transition-shadow border-amber-500 text-amber-600 hover:bg-amber-50 dark:border-amber-400 dark:text-amber-400 dark:hover:bg-amber-900"
+            className="flex-1 rounded-md border-amber-500 py-3 text-amber-600 shadow-md transition-shadow hover:bg-amber-50 hover:shadow-lg dark:border-amber-400 dark:text-amber-400 dark:hover:bg-amber-900"
           >
             حجز
           </Button>
@@ -117,14 +118,14 @@ export default function Reservation({
       >
         <form
           onSubmit={handleSubmit(onSubmit)}
-          className="text-mdfont-mono text-right w-full p-4 rounded-md"
+          className="text-mdfont-mono w-full rounded-md p-4 text-right"
         >
-          <div className="text-md font-mono text-right w-full  mx-auto p-4 rounded-md bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700">
-            <div className="flex justify-end font-semibold text-lg mb-1">
+          <div className="text-md mx-auto w-full rounded-md border border-gray-300 bg-white p-4 text-right font-mono dark:border-gray-700 dark:bg-gray-900">
+            <div className="mb-1 flex justify-end text-lg font-semibold">
               اسم المتجر
             </div>
 
-            <div className="text-center text-base font-bold mb-2">
+            <div className="mb-2 text-center text-base font-bold">
               <Label>
                 الكاشير: <Badge>محمد</Badge>
               </Label>
@@ -132,12 +133,12 @@ export default function Reservation({
 
             <Separator className="my-2" />
 
-            <div className="flex justify-between mb-1">
+            <div className="mb-1 flex justify-between">
               <Label>التاريخ:</Label>
               <Label>{new Date().toLocaleDateString("ar-EG")}</Label>
             </div>
 
-            <div className="flex justify-between mb-2">
+            <div className="mb-2 flex justify-between">
               <Label>الوقت:</Label>
               <Label>
                 {new Date().toLocaleTimeString("ar-EG", { hour12: false })}
@@ -147,7 +148,7 @@ export default function Reservation({
             <Separator className="my-2" />
 
             {/* Header row for product list */}
-            <div className="text-xs font-bold bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-t-md grid grid-cols-5 text-gray-700 dark:text-gray-200 border-b">
+            <div className="grid grid-cols-5 rounded-t-md border-b bg-gray-100 px-3 py-2 text-xs font-bold text-gray-700 dark:bg-gray-800 dark:text-gray-200">
               <div className="text-right">اسم المنتج</div>
               <div className="text-right">الكمية</div>
               <div className="text-right"> النوع</div>{" "}
@@ -161,7 +162,7 @@ export default function Reservation({
               return (
                 <div
                   key={item.id}
-                  className="grid grid-cols-5 text-xs px-3 py-2 border-b last:border-none"
+                  className="grid grid-cols-5 border-b px-3 py-2 text-xs last:border-none"
                 >
                   <div className="text-right">{item.name}</div>
                   <div className="text-right">{item.selectedQty} </div>
@@ -169,8 +170,8 @@ export default function Reservation({
                     {item.sellingUnit === "carton"
                       ? "كرتون"
                       : item.sellingUnit === "packet"
-                      ? "حزمة"
-                      : "وحدة"}
+                        ? "حزمة"
+                        : "وحدة"}
                   </div>
                   <div className="text-right">{itemPrice.toFixed(2)}</div>{" "}
                   <div className="text-right">
@@ -183,19 +184,19 @@ export default function Reservation({
             <Separator className="my-2" />
 
             {/* Totals */}
-            <div className="flex justify-between text-sm my-1">
+            <div className="my-1 flex justify-between text-sm">
               <Label>الإجمالي:</Label>
               <Label>{total.toFixed(2)} ﷼</Label>
             </div>
-            <div className="flex justify-between text-sm my-1">
+            <div className="my-1 flex justify-between text-sm">
               <Label>الخصم:</Label>
               <Label>{discount.toFixed(2)} ﷼</Label>
             </div>
-            <div className="flex justify-between text-sm font-semibold my-1">
+            <div className="my-1 flex justify-between text-sm font-semibold">
               <Label>المبلغ المستحق:</Label>
               <Label>{total.toFixed(2)} ﷼</Label>
             </div>
-            <div className="flex justify-between text-sm my-1">
+            <div className="my-1 flex justify-between text-sm">
               <Label>المبلغ المدفوع:</Label>
               <Label>
                 {receivedAmount !== undefined && !isNaN(receivedAmount)
@@ -204,9 +205,9 @@ export default function Reservation({
                 ﷼
               </Label>
             </div>
-            <div className="flex justify-between text-sm font-bold text-green-700 my-1">
+            <div className="my-1 flex justify-between text-sm font-bold text-green-700">
               {receivedAmount >= totalAfterDiscount && (
-                <div className="flex justify-between text-sm font-bold text-green-700 my-1">
+                <div className="my-1 flex justify-between text-sm font-bold text-green-700">
                   <Label>المتبقي للعميل:</Label>
                   <Label>{calculatedChange.toFixed(2)} ﷼</Label>
                 </div>
@@ -215,7 +216,7 @@ export default function Reservation({
 
             <Separator className="my-2" />
 
-            <div className="text-center text-xs mt-4">
+            <div className="mt-4 text-center text-xs">
               <p>شكرًا لتسوقك معنا!</p>
             </div>
           </div>

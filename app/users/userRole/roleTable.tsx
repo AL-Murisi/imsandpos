@@ -30,7 +30,7 @@ export default function RoleTable({ role, total, sort }: ProductClientProps) {
     setParam,
   } = useTablePrams();
   return (
-    <div className="flex flex-col" dir="rtl">
+    <div className="bg-accent flex flex-col" dir="rtl">
       <DataTable
         data={role}
         columns={columns}

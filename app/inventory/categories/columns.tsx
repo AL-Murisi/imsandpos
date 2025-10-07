@@ -23,7 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { z } from "zod";
-import { CategorySchema, UserSchema } from "@/lib/zodType";
+import { CategorySchema } from "@/lib/zod";
 import { Badge } from "@/components/ui/badge";
 
 // 🔽 Sortable Header Component

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SortingState } from "@tanstack/react-table";
+import { toast } from "sonner";
 
 interface ExportDebtSalesButtonProps {
   from?: string;
@@ -65,6 +66,7 @@ export function ExportDebtSalesButton({
       }
 
       setProgress(80);
+      toast("✅ creacting debtsells report successed");
 
       // Create blob from response
       const blob = await response.blob();

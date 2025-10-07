@@ -43,7 +43,7 @@ export default function LocaleSwitcherSelect({
         )}
       >
         <Languages className="text-muted-foreground h-5 w-5" color="red" />
-        <SelectValue placeholder={label} />
+        <SelectValue placeholder={label} className="" />
       </SelectTrigger>
       <SelectContent align="end" className="bg-background rounded-md shadow-md">
         {items.map((item) => (

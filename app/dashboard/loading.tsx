@@ -8,6 +8,7 @@ export default function Loading() {
     // <div className="flex flex-col p-3">
     <ScrollArea className="max-h-[94vh] p-2" dir="rtl">
       <DashboardHeader sections={[]} chartConfigs={[]} />
+
       <DashboardSkeleton />
     </ScrollArea>
     // </div>

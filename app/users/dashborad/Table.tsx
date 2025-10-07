@@ -47,7 +47,7 @@ export default function UserClinet({ users, total, role }: ProductClientProps) {
   } = useTablePrams();
 
   return (
-    <div className="flex flex-col" dir="rtl">
+    <div className="bg-accent flex flex-col p-3" dir="rtl">
       {/* Add dir="rtl" for proper RTL layout */}
       <div className="flex flex-wrap gap-2">
         <Calendar22 />

@@ -2,10 +2,11 @@
 "use server";
 import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
-import { CreateProductInput, CreateProductSchema } from "@/lib/zodType";
+
 import { revalidatePath } from "next/cache";
 import { availableMemory } from "process";
 import { logActivity } from "./activitylogs";
+import { CreateProductSchema } from "@/lib/zod";
 
 // export async function CreateProduct(data: CreateProductInput) {
 //   const parsed = CreateProductSchema.safeParse(data);
@@ -338,7 +339,7 @@ export async function deleteProduct(id: string) {
 }
 export async function getAllactiveproductsForSale(
   where: Prisma.ProductWhereInput,
-  searchQuery?: string
+  searchQuery?: string,
 ) {
   let isActive: boolean;
   isActive = true;

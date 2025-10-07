@@ -9,7 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useAppDispatch, useAppSelector } from "@/lib/store";
-import { CashierItem } from "@/lib/zodType";
+
 import { Minus, Plus, Trash2Icon, User } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 import { Card, CardContent, CardFooter } from "../../../components/ui/card";
@@ -38,6 +38,8 @@ import { ReactNode, useState } from "react";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { FormatPrice } from "@/hooks/usePrice";
 import { useTranslations } from "next-intl";
+import { CashierItem } from "@/lib/zod";
+
 export type SellingUnit = "carton" | "packet" | "unit";
 export type discountType = "fixed" | "percentage";
 type CartItem = CashierItem & {

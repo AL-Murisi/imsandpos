@@ -27,6 +27,7 @@ export default function Charts({
     <TopSellingChartWrapper
       data={topProducts}
       formData={formData}
+      color="var(--chart-3)"
       title="Top Sales"
       width=" sm:w-sm w-2xs md:w-3xl lg:w-5xl "
       widthco=" xl:w-2xl 2xl:w-4xl lg:w-5xs  sm:w-md md:w-sm w-2xs  "

@@ -4,7 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { deleteSession, SessionData } from "@/lib/session";
 import { verifySession } from "../dal";
-
+import { toast } from "sonner";
 interface AuthContextType {
   user: SessionData | null;
   login: (email: string, password: string) => Promise<boolean>;
@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await fetch("/api/auth/logout", {
         method: "POST",
       });
-
+      toast("loggedout successfully");
       setUser(null);
     } catch (error) {
       console.error("Logout failed:", error);

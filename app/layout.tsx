@@ -8,6 +8,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale } from "next-intl/server";
+import { Toaster } from "@/components/ui/sonner";
 // const inter = Inter({
 //   subsets: ["latin"],
 //   variable: "--font-sans",
@@ -123,6 +124,7 @@ export default async function RootLayout({
             <NextIntlClientProvider locale={locale} messages={messages[locale]}>
               <ClientLayoutWrapper>
                 {children} <Analytics /> <SpeedInsights />
+                <Toaster />
               </ClientLayoutWrapper>
             </NextIntlClientProvider>
           </AuthProvider>

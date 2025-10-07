@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
-import { UpdateInventorySchema } from "@/lib/zodType";
 import { fetchProduct, UpdateInventory } from "@/app/actions/roles";
 import { updateInventory } from "@/app/actions/warehouse";
+import { toast } from "sonner";
+import { UpdateInventorySchema } from "@/lib/zod/inventory";
 
 type FormValues = z.infer<typeof UpdateInventorySchema>;
 
@@ -43,6 +44,8 @@ export default function InvonteryEditFormm({ inventory }: { inventory: any }) {
       };
 
       await updateInventory(payload);
+      toast("✅ adding Inventory sucessed");
+
       reset();
     } catch (error) {
       console.error("Error updating inventory:", error);
@@ -52,7 +55,7 @@ export default function InvonteryEditFormm({ inventory }: { inventory: any }) {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" dir="rtl">
       <div className="grid gap-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="grid gap-2">
             <Label htmlFor="stockQuantity">الكمية في المخزون</Label>
             <Input
@@ -61,7 +64,7 @@ export default function InvonteryEditFormm({ inventory }: { inventory: any }) {
               {...register("stockQuantity", { valueAsNumber: true })}
             />
             {errors.stockQuantity && (
-              <p className="text-red-500 text-xs">
+              <p className="text-xs text-red-500">
                 {errors.stockQuantity.message}
               </p>
             )}
@@ -74,14 +77,14 @@ export default function InvonteryEditFormm({ inventory }: { inventory: any }) {
               {...register("reservedQuantity", { valueAsNumber: true })}
             />
             {errors.reservedQuantity && (
-              <p className="text-red-500 text-xs">
+              <p className="text-xs text-red-500">
                 {errors.reservedQuantity.message}
               </p>
             )}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="grid gap-2">
             <Label htmlFor="availableQuantity">الكمية المتاحة</Label>
             <Input
@@ -90,7 +93,7 @@ export default function InvonteryEditFormm({ inventory }: { inventory: any }) {
               {...register("availableQuantity", { valueAsNumber: true })}
             />
             {errors.availableQuantity && (
-              <p className="text-red-500 text-xs">
+              <p className="text-xs text-red-500">
                 {errors.availableQuantity.message}
               </p>
             )}
@@ -103,14 +106,14 @@ export default function InvonteryEditFormm({ inventory }: { inventory: any }) {
               {...register("reorderLevel", { valueAsNumber: true })}
             />
             {errors.reorderLevel && (
-              <p className="text-red-500 text-xs">
+              <p className="text-xs text-red-500">
                 {errors.reorderLevel.message}
               </p>
             )}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="grid gap-2">
             <Label htmlFor="maxStockLevel">الحد الأقصى للمخزون</Label>
             <Input
@@ -119,7 +122,7 @@ export default function InvonteryEditFormm({ inventory }: { inventory: any }) {
               {...register("maxStockLevel", { valueAsNumber: true })}
             />
             {errors.maxStockLevel && (
-              <p className="text-red-500 text-xs">
+              <p className="text-xs text-red-500">
                 {errors.maxStockLevel.message}
               </p>
             )}
@@ -131,17 +134,17 @@ export default function InvonteryEditFormm({ inventory }: { inventory: any }) {
               <p className="text-red-500 text-xs">{errors.location.message}</p>
             )}
           </div> */}{" "}
-          <div className="grid gap-2 ">
+          <div className="grid gap-2">
             <Label htmlFor="lastStockTake">آخر جرد</Label>
             <Input
               id="lastStockTake"
-              className="text-end "
+              className="text-end"
               defaultValue={new Date().toLocaleDateString()}
               type="datetime-local"
               {...register("lastStockTake")}
             />
             {errors.lastStockTake && (
-              <p className="text-red-500 text-xs">
+              <p className="text-xs text-red-500">
                 {errors.lastStockTake.message}
               </p>
             )}

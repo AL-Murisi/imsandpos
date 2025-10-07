@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
-import { CreateWarehouseSchema } from "@/lib/zodType";
+import { CreateWarehouseSchema } from "@/lib/zod";
 import { createWarehouse } from "@/app/actions/roles";
 
 type FormValues = z.infer<typeof CreateWarehouseSchema>;
@@ -52,7 +52,7 @@ export default function WarehouseForm() {
             <Label htmlFor="name">اسم warehoue</Label>
             <Input id="name" {...register("name")} />
             {errors.name && (
-              <p className="text-red-500 text-xs">{errors.name.message}</p>
+              <p className="text-xs text-red-500">{errors.name.message}</p>
             )}
           </div>
           {/* Email */}
@@ -60,7 +60,7 @@ export default function WarehouseForm() {
             <Label htmlFor="email">البريد الإلكتروني</Label>
             <Input id="email" type="email" {...register("email")} />
             {errors.email && (
-              <p className="text-red-500 text-xs">{errors.email.message}</p>
+              <p className="text-xs text-red-500">{errors.email.message}</p>
             )}
           </div>
         </div>
@@ -71,7 +71,7 @@ export default function WarehouseForm() {
             <Label htmlFor="phoneNumber">رقم الهاتف</Label>
             <Input id="phoneNumber" type="tel" {...register("phoneNumber")} />
             {errors.phoneNumber && (
-              <p className="text-red-500 text-xs">
+              <p className="text-xs text-red-500">
                 {errors.phoneNumber.message}
               </p>
             )}
@@ -81,14 +81,14 @@ export default function WarehouseForm() {
             <Label htmlFor="location">الموقع</Label>
             <Input id="location" type="text" {...register("location")} />
             {errors.location && (
-              <p className="text-red-500 text-xs">{errors.location.message}</p>
+              <p className="text-xs text-red-500">{errors.location.message}</p>
             )}
           </div>
           <div className="grid gap-2">
             <Label htmlFor="address">العنوان</Label>
             <Input id="address" type="text" {...register("address")} />
             {errors.address && (
-              <p className="text-red-500 text-xs">{errors.address.message}</p>
+              <p className="text-xs text-red-500">{errors.address.message}</p>
             )}
           </div>
           {/* City */}
@@ -99,7 +99,7 @@ export default function WarehouseForm() {
             <Label htmlFor="city">المدينة</Label>
             <Input id="city" type="text" {...register("city")} />
             {errors.city && (
-              <p className="text-red-500 text-xs">{errors.city.message}</p>
+              <p className="text-xs text-red-500">{errors.city.message}</p>
             )}
           </div>
           {/* State */}
@@ -107,7 +107,7 @@ export default function WarehouseForm() {
             <Label htmlFor="state">الولاية/المحافظة</Label>
             <Input id="state" type="text" {...register("state")} />
             {errors.state && (
-              <p className="text-red-500 text-xs">{errors.state.message}</p>
+              <p className="text-xs text-red-500">{errors.state.message}</p>
             )}
           </div>
           {/* Country */}
@@ -116,7 +116,7 @@ export default function WarehouseForm() {
             <Label htmlFor="country">البلد</Label>
             <Input id="country" type="text" {...register("country")} />
             {errors.country && (
-              <p className="text-red-500 text-xs">{errors.country.message}</p>
+              <p className="text-xs text-red-500">{errors.country.message}</p>
             )}
           </div>
           {/* Postal Code */}
@@ -128,7 +128,7 @@ export default function WarehouseForm() {
               {...register("postalCode")}
             />
             {errors.postalCode && (
-              <p className="text-red-500 text-xs">
+              <p className="text-xs text-red-500">
                 {errors.postalCode.message}
               </p>
             )}

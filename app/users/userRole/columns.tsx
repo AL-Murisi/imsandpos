@@ -16,7 +16,7 @@ import {
 import { Badge } from "../../../components/ui/badge";
 
 import { z } from "zod";
-import { RoleSchema } from "@/lib/zodType";
+import { RoleSchema } from "@/lib/zod";
 
 // Zod type inference
 export type RoleTableRow = z.infer<typeof RoleSchema>;
@@ -33,8 +33,8 @@ const SortableHeader: React.FC<SortableHeaderProps> = ({ column, label }) => {
     isSorted === "asc"
       ? ArrowUp
       : isSorted === "desc"
-      ? ArrowDown
-      : ArrowUpDown;
+        ? ArrowDown
+        : ArrowUpDown;
 
   return (
     <DropdownMenu>
@@ -107,7 +107,7 @@ export const columns: ColumnDef<RoleTableRow>[] = [
         boolean
       >;
       const activeTasks = Object.keys(permissions).filter(
-        (key) => permissions[key]
+        (key) => permissions[key],
       );
 
       return (
@@ -115,7 +115,7 @@ export const columns: ColumnDef<RoleTableRow>[] = [
           {activeTasks.map((task, i) => (
             <Badge
               key={i}
-              className="bg-fuchsia-600 text-xs px-2 py-1 rounded-md"
+              className="rounded-md bg-fuchsia-600 px-2 py-1 text-xs"
             >
               {task}
             </Badge>

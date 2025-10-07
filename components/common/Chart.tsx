@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 // import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
 // Remove these imports from the top of your file
 // import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
@@ -7,9 +7,18 @@ import React, { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 
 // Dynamic imports with better performance
-const AreaChart = dynamic(() => import("recharts").then((m) => m.AreaChart), {
-  ssr: false,
-});
+const AreaChart = dynamic(
+  () => import("recharts").then((m) => m.AreaChart),
+
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full">
+        <div className="h-[324px] animate-ping bg-gray-800" />
+      </div>
+    ),
+  },
+);
 const Area = dynamic(() => import("recharts").then((m) => m.Area), {
   ssr: false,
 });
@@ -162,77 +171,79 @@ export function ReusableAreaChart({
           </Select>
         </CardAction>
       </CardHeader>
-      <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
-        <ChartContainer
-          config={config}
-          className="aspect-auto h-[324px] w-full"
-        >
-          <AreaChart data={filteredData}>
-            <defs>
-              {Object.entries(config).map(([key, conf]) => (
-                <linearGradient
-                  key={`fill-${key}`}
-                  id={`fill${key.charAt(0).toUpperCase() + key.slice(1)}`}
-                  x1="0"
-                  y1="0"
-                  x2="0"
-                  y2="1"
-                >
-                  <stop
-                    offset="5%"
-                    stopColor={"var(--chart-2)"}
-                    stopOpacity={1.0}
-                  />
-                  <stop
-                    offset="95%"
-                    stopColor={"var(--chart-4)"}
-                    stopOpacity={0.1}
-                  />
-                </linearGradient>
-              ))}
-            </defs>
-            <CartesianGrid vertical={false} />
-            <XAxis
-              dataKey="date"
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-              minTickGap={32}
-              tickFormatter={(value) => {
-                const date = new Date(value);
-                return date.toLocaleDateString("ar-EG", {
-                  month: "short",
-                  day: "numeric",
-                });
-              }}
-              reversed={true} // لتكون التواريخ من اليمين لليسار في المحور X
-            />
-            <ChartTooltip
-              content={
-                <CustomTooltipContent
-                  labelFormatter={(value) =>
-                    new Date(value).toLocaleDateString("ar-EG", {
-                      month: "short",
-                      day: "numeric",
-                    })
-                  }
-                  indicator="dot"
-                />
-              }
-            />
-            {Object.entries(config).map(([key, conf]) => (
-              <Area
-                key={key}
-                dataKey={key}
-                type="natural"
-                fill={`url(#fill${key.charAt(0).toUpperCase() + key.slice(1)})`}
-                stroke={conf.color}
-                stackId={key} // different stackId per line disables stacking between them
+      <Suspense>
+        <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
+          <ChartContainer
+            config={config}
+            className="aspect-auto h-[324px] w-full"
+          >
+            <AreaChart data={filteredData}>
+              <defs>
+                {Object.entries(config).map(([key, conf]) => (
+                  <linearGradient
+                    key={`fill-${key}`}
+                    id={`fill${key.charAt(0).toUpperCase() + key.slice(1)}`}
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
+                    <stop
+                      offset="5%"
+                      stopColor={"var(--chart-2)"}
+                      stopOpacity={1.0}
+                    />
+                    <stop
+                      offset="95%"
+                      stopColor={"var(--chart-4)"}
+                      stopOpacity={0.1}
+                    />
+                  </linearGradient>
+                ))}
+              </defs>
+              <CartesianGrid vertical={false} />
+              <XAxis
+                dataKey="date"
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                minTickGap={32}
+                tickFormatter={(value) => {
+                  const date = new Date(value);
+                  return date.toLocaleDateString("ar-EG", {
+                    month: "short",
+                    day: "numeric",
+                  });
+                }}
+                reversed={true} // لتكون التواريخ من اليمين لليسار في المحور X
               />
-            ))}
-          </AreaChart>
-        </ChartContainer>
-      </CardContent>
+              <ChartTooltip
+                content={
+                  <CustomTooltipContent
+                    labelFormatter={(value) =>
+                      new Date(value).toLocaleDateString("ar-EG", {
+                        month: "short",
+                        day: "numeric",
+                      })
+                    }
+                    indicator="dot"
+                  />
+                }
+              />
+              {Object.entries(config).map(([key, conf]) => (
+                <Area
+                  key={key}
+                  dataKey={key}
+                  type="natural"
+                  fill={`url(#fill${key.charAt(0).toUpperCase() + key.slice(1)})`}
+                  stroke={conf.color}
+                  stackId={key} // different stackId per line disables stacking between them
+                />
+              ))}
+            </AreaChart>
+          </ChartContainer>
+        </CardContent>{" "}
+      </Suspense>
     </Card>
   );
 }

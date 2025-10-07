@@ -17,9 +17,11 @@ import { CreateProduct } from "@/app/actions/createProduct";
 import { fetchAllFormData } from "@/app/actions/roles";
 import { SelectField } from "../_components/selectproduct";
 import { useAuth } from "@/lib/context/AuthContext";
-import { CreateProductSchema } from "@/lib/zodType";
+
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
+import { CreateProductSchema } from "@/lib/zod/product";
 
 // Define the shape of the form values
 type FormValues = z.infer<typeof CreateProductSchema>;
@@ -97,10 +99,11 @@ export default function ProductForm() {
         await CreateProduct(data, user.userId);
         // TODO: Add toast/notification for success using t("created")
       }
-
+      toast("✅ adding product sucessed");
       reset();
     } catch (error) {
-      console.error("Error creating product:", error);
+      toast("✅ adding product sucessed", error ?? "");
+
       // TODO: Add toast/notification for error using t("createError")
     }
   };
@@ -123,11 +126,6 @@ export default function ProductForm() {
         <CardTitle className="text-primary text-2xl font-bold">
           {t("new")}
         </CardTitle>
-        <CardDescription>
-          {t("createError")
-            ? t("createError")
-            : "Fill in the details to add a new product."}
-        </CardDescription>
       </CardHeader>
       <CardContent className="p-6">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">

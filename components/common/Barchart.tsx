@@ -1,186 +1,3 @@
-// "use client";
-// import { BarChart, Bar, XAxis, YAxis, LabelList } from "recharts";
-// import { ChevronDown, TrendingUp } from "lucide-react";
-
-// import {
-//   Card,
-//   CardContent,
-//   CardFooter,
-//   CardHeader,
-//   CardTitle,
-// } from "@/components/ui/card";
-// import {
-//   ChartContainer,
-//   ChartTooltip,
-//   ChartTooltipContent,
-//   ChartConfig,
-// } from "@/components/ui/chart";
-// import { SelectField } from "@/components/common/selection";
-
-// import { useTablePrams } from "@/hooks/useTableParams";
-// import {
-//   DropdownMenu,
-//   DropdownMenuContent,
-//   DropdownMenuItem,
-//   DropdownMenuSeparator,
-//   DropdownMenuTrigger,
-// } from "@/components/ui/dropdown-menu";
-// import { Button } from "@/components/ui/button";
-// import { usePathname, useRouter, useSearchParams } from "next/navigation";
-
-// type Option = {
-//   id: string;
-//   name: string;
-// };
-
-// type DateRange = {
-//   from: Date | null;
-//   to: Date | null;
-// };
-// type ProductClientProps = {
-//   products: any[];
-//   tital: string;
-//   dataKey: string; // 👈 new prop to handle both "quantity" and "total"
-
-//   formData: {
-//     warehouses: { id: string; name: string }[];
-//     categories: { id: string; name: string }[];
-//   };
-// };
-
-// export default function TopSellingChartWrapper({
-//   products,
-//   tital,
-//   dataKey,
-//   formData,
-// }: ProductClientProps) {
-//   const chartConfig = {
-//     quantity: {
-//       label: "Top Selling",
-//       color: "var(--chart-5)",
-//     },
-
-//     label: {
-//       color: "var(--background)",
-//     },
-//   } satisfies ChartConfig;
-//   const {
-//     pagination,
-//     sorting,
-//     globalFilter,
-//     setPagination,
-//     setSorting,
-//     setGlobalFilter,
-//     warehouseId,
-//     supplierId,
-//     categoryId,
-//     setParam,
-//   } = useTablePrams();
-//   const searchParams = useSearchParams();
-//   const router = useRouter();
-//   const pathname = usePathname();
-
-//   const updateCategories = (values: string) => {
-//     const params = new URLSearchParams(searchParams.toString());
-
-//     params.set("topnum", values);
-
-//     // add new array values
-
-//     router.push(`${pathname}?${params.toString()}`);
-//   };
-//   return (
-//     <Card className="rounded-2xl bg-accent shadow-2xl ">
-//       <CardHeader className="space-y-2">
-//         <CardTitle>{tital} </CardTitle>
-//         <div className="flex flex-row justify-between">
-//           <SelectField
-//             options={formData.categories}
-//             onValueChange={(value) => setParam("categoryId", value)}
-//             placeholder="Category"
-//           />
-//           <div>
-//             <DropdownMenu>
-//               <DropdownMenuTrigger asChild>
-//                 <Button
-//                   variant="secondary"
-//                   className="mr-auto border-2 border-primary" // Use mr-auto for right alignment
-//                 >
-//                   صفوف لكل صفحة <ChevronDown className="mr-2 h-4 w-4" />{" "}
-//                   {/* Move the icon to the left */}
-//                 </Button>
-//               </DropdownMenuTrigger>
-//               <DropdownMenuContent align="start">
-//                 {" "}
-//                 {/* Align to the start (right) for RTL */}
-//                 {[5, 10, 20, 50].map((size) => (
-//                   <DropdownMenuItem
-//                     key={size}
-//                     onClick={() => updateCategories(size.toString())}
-//                   >
-//                     {size} صفوف
-//                   </DropdownMenuItem>
-//                 ))}
-//                 <DropdownMenuSeparator />
-//                 {/* <DropdownMenuItem onClick={() => table.setPageSize(5)}>
-//                       إعادة ضبط
-//                     </DropdownMenuItem> */}
-//               </DropdownMenuContent>
-//             </DropdownMenu>
-//           </div>
-//         </div>
-//       </CardHeader>
-
-//       <CardContent>
-//         <ChartContainer config={chartConfig} className="h-56 w-full ">
-//           <BarChart
-//             data={products}
-//             margin={{ right: 12, left: 12 }}
-//             width={600}
-//             height={300}
-//           >
-//             <XAxis dataKey="name" />
-//             <YAxis
-//               dataKey="quantity"
-//               tickMargin={12}
-//               fill="red"
-//               className="bg-amber-300 "
-//             />
-//             <ChartTooltip
-//               content={<ChartTooltipContent indicator="dashed" />}
-//               cursor={false}
-//               defaultIndex={1}
-//             />
-
-//             <Bar
-//               dataKey="quantity"
-//               fill="var(--chart-3)"
-//               barSize={30}
-//               radius={[4, 4, 4, 4]}
-//             >
-//               <LabelList
-//                 dataKey="quantity"
-//                 position="top"
-//                 offset={3}
-//                 className="bg-amber-50 "
-//                 fontSize={12}
-//               />
-//             </Bar>
-//           </BarChart>
-//         </ChartContainer>
-//       </CardContent>
-
-//       <CardFooter className="flex-col items-start gap-2 text-sm">
-//         <div className="flex items-center gap-2 font-medium leading-none">
-//           Trending up based on sales <TrendingUp className="h-4 w-4" />
-//         </div>
-//         <div className="text-muted-foreground leading-none">
-//           Showing the top-selling products by quantity
-//         </div>
-//       </CardFooter>
-//     </Card>
-//   );
-// }
 "use client";
 
 import dynamic from "next/dynamic";
@@ -235,6 +52,7 @@ type ProductClientProps = {
   paramKey: string;
   width: string;
   widthco?: string;
+  color: string;
   dataKey: "quantity" | "total"; // 👈 sales or revenue
   formData?: {
     warehouses: { id: string; name: string }[];
@@ -249,6 +67,7 @@ export default function UniversalChart({
   formData,
   width,
   widthco,
+  color,
   paramKey,
 }: ProductClientProps) {
   const chartConfig: ChartConfig = {
@@ -304,16 +123,16 @@ export default function UniversalChart({
         {formData && (
           <div className="flex justify-start lg:justify-between">
             <div>
-              <SelectField
+              {/* <SelectField
                 options={formData.categories}
-                paramKey="categoryId"
+                paramKey={paramKey}
                 placeholder="Category"
               />
               <SelectField
                 options={dates}
-                paramKey="categoryId"
+                paramKey={paramKey}
                 placeholder="Date"
-              />
+              /> */}
             </div>
             <div>
               <DropdownMenu>
@@ -342,7 +161,7 @@ export default function UniversalChart({
         )}
       </CardHeader>
       <CardContent className={width}>
-        <ChartContainer config={chartConfig} className={`h-50 ${widthco}`}>
+        <ChartContainer config={chartConfig} className={`h-60 ${widthco}`}>
           <BarChart data={data} margin={{ right: 5, left: 5 }}>
             <XAxis dataKey={xKey} />
             <YAxis tickFormatter={formatNumber} />
@@ -356,12 +175,7 @@ export default function UniversalChart({
               cursor={false}
               defaultIndex={1}
             />
-            <Bar
-              dataKey={dataKey}
-              fill="var(--chart-3)"
-              barSize={30}
-              radius={[4, 4, 4, 4]}
-            >
+            <Bar dataKey={dataKey} fill={color} radius={[4, 4, 4, 4]}>
               <LabelList
                 dataKey={dataKey}
                 position="top"

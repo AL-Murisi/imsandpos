@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     if (!user) {
       return NextResponse.json(
         { error: "Invalid credentials" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     if (user.password !== password) {
       return NextResponse.json(
         { error: "Invalid credentials" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
       name: user.name,
       email: user.email,
     });
+
     await logActivity(user.id, "loging", "user loging");
     return NextResponse.json({
       success: true,
@@ -51,7 +52,7 @@ export async function POST(req: NextRequest) {
     console.error("Login error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
