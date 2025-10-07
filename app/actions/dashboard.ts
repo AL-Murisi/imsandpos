@@ -234,9 +234,7 @@ export const fetchDashboardData = unstable_cache(
         .groupBy({
           by: ["productId"],
           _sum: { quantity: true },
-          where: {
-            createdAt: { gte: subDays(new Date(), 30) },
-          },
+
           orderBy: { _sum: { quantity: "desc" } },
           take: topItems,
         })

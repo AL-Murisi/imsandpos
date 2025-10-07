@@ -573,6 +573,11 @@ export default function Payment({ users }: PaymentProps) {
         {/* FOOTER BUTTONS */}
         <div className="mt-4 flex justify-between gap-3">
           <Button
+            disabled={
+              (receivedAmount < totals.totalAfter && !users?.name) ||
+              // 2. Or received amount <= 0
+              receivedAmount <= 0
+            }
             onClick={handelpayment}
             className="bg-green-600 text-white hover:bg-green-700"
           >
