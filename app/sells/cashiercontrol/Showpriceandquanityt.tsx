@@ -389,6 +389,7 @@ export default function CartDisplay({ payment }: CustomDialogProps) {
           {items.length !== 0 ? (
             <div className="mt-4 flex flex-1/3 gap-3">
               <Addtouserrecod />
+
               {payment}
               <Reservation
                 cart={items}

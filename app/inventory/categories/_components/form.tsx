@@ -1,16 +1,16 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { Input } from "../../../components/ui/input";
-import { Label } from "../../../components/ui/label";
-import { Button } from "../../../components/ui/button";
+import { Button } from "../../../../components/ui/button";
+import { Input } from "../../../../components/ui/input";
+import { Label } from "../../../../components/ui/label";
 
-import { CreateCategorySchema } from "@/lib/zod";
 import { createCategory, getAllCategories } from "@/app/actions/roles"; // assume you have this
+import { CreateCategorySchema } from "@/lib/zod";
 
 type FormValues = z.infer<typeof CreateCategorySchema>;
 

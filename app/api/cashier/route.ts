@@ -47,11 +47,12 @@ export async function POST(request: NextRequest) {
 
       for (const item of cart) {
         // Convert selling quantity to base units (cartons)
+
         const quantityInCartons = convertToCartons(
           item.selectedQty,
           item.sellingUnit,
           item.unitsPerPacket,
-          item.packetsPerCarton
+          item.packetsPerCarton,
         );
 
         // Get current inventory
@@ -74,7 +75,7 @@ export async function POST(request: NextRequest) {
         // Check if enough stock available
         if (inventory.availableQuantity < quantityInCartons) {
           throw new Error(
-            `Insufficient stock for ${item.name}. Available: ${inventory.availableQuantity}, Required: ${quantityInCartons}`
+            `Insufficient stock for ${item.name}. Available: ${inventory.availableQuantity}, Required: ${quantityInCartons}`,
           );
         }
 
@@ -98,8 +99,8 @@ export async function POST(request: NextRequest) {
               newAvailableQuantity <= inventory.reorderLevel
                 ? "low"
                 : newAvailableQuantity === 0
-                ? "out_of_stock"
-                : "available",
+                  ? "out_of_stock"
+                  : "available",
           },
           include: {
             product: true,
@@ -180,7 +181,7 @@ export async function POST(request: NextRequest) {
     console.error("Sale processing error:", err);
     return NextResponse.json(
       { message: err.message || "Failed to process sale" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -190,7 +191,7 @@ function convertToCartons(
   quantity: number,
   sellingUnit: "unit" | "packet" | "carton",
   unitsPerPacket: number,
-  packetsPerCarton: number
+  packetsPerCarton: number,
 ): number {
   switch (sellingUnit) {
     case "unit":

@@ -188,7 +188,7 @@ export default function ProductsList({
                           {/* Packet */}
                           <div className="flex items-center justify-between gap-2 p-1">
                             <span className="w-8 text-left">
-                              {FormatPrice(Number(products.availablePackets))}
+                              {FormatPrice(products.availablePackets)}
                             </span>
                             <span className="flex-1 text-center">
                               {t("packet")}
@@ -202,7 +202,7 @@ export default function ProductsList({
                           {products.pricePerUnit !== undefined && (
                             <div className="flex items-center justify-between gap-2 p-1">
                               <span className="w-8 text-left">
-                                {FormatPrice(Number(products.availableUnits))}
+                                {FormatPrice(products.availableUnits)}
                               </span>
                               <span className="flex-1 text-center">
                                 {t("unit")}

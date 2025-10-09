@@ -1,6 +1,7 @@
 "use client";
 
 import CustomDialog from "@/components/common/Dailog";
+import Form from "@/components/forms/supplierform";
 
 import dynamic from "next/dynamic";
 const Calendar22 = dynamic(
@@ -16,14 +17,18 @@ import { Button } from "@/components/ui/button";
 import { useTablePrams } from "@/hooks/useTableParams";
 
 import SearchInput from "@/components/common/searchtest";
-import { columns } from "./column";
-import ProductForm from "../new/form";
+import { columns } from "./columns";
+
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import ImportProductsPage from "@/components/uploadItesm";
+import WarehouseForm from "@/components/forms/form";
+import { Plus } from "lucide-react";
+import ImportWarehouse from "@/components/uploadwarehouse";
+import CategoryForm from "./form";
 
 type ProductClientProps = {
-  products: any[];
+  data: any[];
   total: number;
   formData: {
     warehouses: { id: string; name: string }[];
@@ -35,8 +40,8 @@ type ProductClientProps = {
 
 // Loading skeleton for table
 
-export default function ProductClient({
-  products,
+export default function CategoryTable({
+  data,
   total,
   formData,
 }: ProductClientProps) {
@@ -62,47 +67,26 @@ export default function ProductClient({
       className="bg-accent w-full rounded-2xl p-2 shadow-xl/20 shadow-gray-500 group-data-[[state=pending]]:animate-pulse"
       dir="rtl"
     >
-      {/* <SearchInput
-        placeholder={"search"}
-        value={globalFilter}
-        onSearchChange={(value) => setParam("search", value)}
-      /> */}
       <div className="flex flex-wrap gap-2 p-1 md:flex-row lg:flex-row">
         <Calendar22 />
         <SearchInput placeholder={"بحث "} paramKey={"product"} />
-        <SelectField
-          options={formData.warehouses}
-          paramKey="warehouseId"
-          placeholder="warehouseId"
-        />
 
-        <SelectField
-          options={formData.categories}
-          paramKey="categoryId"
-          placeholder="الفئة"
-        />
-
-        <SelectField
-          options={formData.suppliers}
-          paramKey={"supplierId"}
-          placeholder="Supplier"
-        />
-
-        <Link href={"/inventory/products/new"}>
-          <Button>{t("new")}</Button>
-        </Link>
-        {/* <CustomDialog
-          trigger={}
-          title="Add Product"
-          description="Enter product details below."
+        <CustomDialog
+          trigger={
+            <Button>
+              <Plus />
+              add
+            </Button>
+          }
+          title="إضافة فئة جديدة"
         >
-          <ProductForm />
-        </CustomDialog> */}
+          <CategoryForm />
+        </CustomDialog>
       </div>
 
       <DataTable
-        search={<ImportProductsPage />}
-        data={products}
+        search={<ImportWarehouse />}
+        data={data}
         columns={columns}
         initialPageSize={pagination.pageSize}
         pageCount={Math.ceil(total / pagination.pageSize)}

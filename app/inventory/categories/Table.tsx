@@ -1,7 +1,6 @@
 import { DataTable } from "@/components/common/Table";
-import React from "react";
 
-import { columns } from "./columns";
+import { columns } from "./_components/columns";
 
 import { fetchCategory } from "@/app/actions/roles";
 

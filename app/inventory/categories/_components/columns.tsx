@@ -1,30 +1,26 @@
 "use client";
 import { Column, ColumnDef } from "@tanstack/react-table";
 import {
-  ArrowUpDown,
-  ArrowUp,
   ArrowDown,
-  MoreHorizontal,
-  Clock,
-  Loader2,
+  ArrowUp,
+  ArrowUpDown,
   CheckCircle,
-  XCircle,
+  Clock,
+  MoreHorizontal,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { z } from "zod";
 import { CategorySchema } from "@/lib/zod";
-import { Badge } from "@/components/ui/badge";
+import { z } from "zod";
 
 // 🔽 Sortable Header Component
 type SortableHeaderProps = {

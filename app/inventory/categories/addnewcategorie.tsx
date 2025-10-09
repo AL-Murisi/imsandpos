@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import Form from "./form";
+import Form from "./_components/form";
 import { Plus } from "lucide-react";
 
 export default function Addnewcategorie() {

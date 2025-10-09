@@ -28,6 +28,7 @@ import {
   startOfDay,
   endOfDay,
   subDays,
+  addDays,
 } from "date-fns";
 
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
@@ -95,7 +96,7 @@ export function Calendar22() {
     const today = new Date();
     setDate({
       from: startOfDay(today),
-      to: endOfDay(today),
+      to: endOfDay(addDays(today, 1)),
     });
   };
 

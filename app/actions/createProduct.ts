@@ -266,6 +266,7 @@ export async function CreateProduct(data: any, userId: string) {
           details,
         },
       });
+      console.log(product);
       // 2. Create initial inventory
       const inventory = await tx.inventory.create({
         data: {

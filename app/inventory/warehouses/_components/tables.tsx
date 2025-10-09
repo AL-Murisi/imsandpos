@@ -16,11 +16,14 @@ import { Button } from "@/components/ui/button";
 import { useTablePrams } from "@/hooks/useTableParams";
 
 import SearchInput from "@/components/common/searchtest";
-import { columns } from "./column";
-import ProductForm from "../new/form";
+import { columns } from "./columns";
+
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import ImportProductsPage from "@/components/uploadItesm";
+import WarehouseForm from "@/components/forms/form";
+import { Plus } from "lucide-react";
+import ImportWarehouse from "@/components/uploadwarehouse";
 
 type ProductClientProps = {
   products: any[];
@@ -35,7 +38,7 @@ type ProductClientProps = {
 
 // Loading skeleton for table
 
-export default function ProductClient({
+export default function WarehouseTable({
   products,
   total,
   formData,
@@ -70,38 +73,22 @@ export default function ProductClient({
       <div className="flex flex-wrap gap-2 p-1 md:flex-row lg:flex-row">
         <Calendar22 />
         <SearchInput placeholder={"بحث "} paramKey={"product"} />
-        <SelectField
-          options={formData.warehouses}
-          paramKey="warehouseId"
-          placeholder="warehouseId"
-        />
 
-        <SelectField
-          options={formData.categories}
-          paramKey="categoryId"
-          placeholder="الفئة"
-        />
-
-        <SelectField
-          options={formData.suppliers}
-          paramKey={"supplierId"}
-          placeholder="Supplier"
-        />
-
-        <Link href={"/inventory/products/new"}>
-          <Button>{t("new")}</Button>
-        </Link>
-        {/* <CustomDialog
-          trigger={}
-          title="Add Product"
-          description="Enter product details below."
+        <CustomDialog
+          trigger={
+            <Button>
+              <Plus />
+              add warehouses
+            </Button>
+          }
+          title="إضافة مستودع جديدة"
         >
-          <ProductForm />
-        </CustomDialog> */}
+          <WarehouseForm />
+        </CustomDialog>
       </div>
 
       <DataTable
-        search={<ImportProductsPage />}
+        search={<ImportWarehouse />}
         data={products}
         columns={columns}
         initialPageSize={pagination.pageSize}
