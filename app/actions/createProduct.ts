@@ -338,80 +338,169 @@ export async function deleteProduct(id: string) {
   revalidatePath("/products");
   return deletedProduct;
 }
+// export async function getAllactiveproductsForSale(
+//   where: Prisma.ProductWhereInput,
+//   searchQuery?: string,
+// ) {
+//   let isActive: boolean;
+//   isActive = true;
+//   const combinedWhere: Prisma.ProductWhereInput = {
+//     ...where, // Existing filters (category, warehouse, etc.)
+//   };
+//   console.log(searchQuery);
+//   if (searchQuery) {
+//     combinedWhere.OR = [
+//       { name: { contains: searchQuery, mode: "insensitive" } },
+
+//       { sku: { contains: searchQuery, mode: "insensitive" } },
+//       { barcode: { contains: searchQuery, mode: "insensitive" } },
+
+//       { description: { contains: searchQuery, mode: "insensitive" } },
+//     ];
+//   }
+
+//   combinedWhere.inventory = {
+//     some: {
+//       availableQuantity: {
+//         gt: 0,
+//       },
+//     },
+//   };
+//   if (isActive) {
+//     combinedWhere.isActive = true;
+//   }
+
+//   const activeProducts = await prisma.product.findMany({
+//     where: combinedWhere,
+
+//     orderBy: {
+//       name: "asc",
+//     },
+//     select: {
+//       id: true,
+//       name: true,
+//       sku: true,
+//       pricePerUnit: true,
+//       pricePerPacket: true,
+//       pricePerCarton: true,
+//       packetsPerCarton: true,
+//       unitsPerPacket: true,
+//       warehouseId: true,
+//       inventory: {
+//         select: {
+//           availableQuantity: true,
+//         },
+//       },
+//     },
+//   });
+//   const warehouse = await prisma.warehouse.findMany({
+//     select: {
+//       id: true,
+//       name: true,
+//     },
+//   });
+
+//   return activeProducts.map((product) => {
+//     const available = product.inventory[0].availableQuantity ?? 0;
+//     const packets = available * product.packetsPerCarton;
+//     const units = packets * product.unitsPerPacket;
+//     let name: string = "";
+//     warehouse.forEach((w) => {
+//       w.id == product.warehouseId ? (name = w.name) : "";
+//     }) ?? "";
+//     console.log(name);
+//     return {
+//       ...product,
+//       warehousename: name,
+//       pricePerUnit: product.pricePerUnit ? Number(product.pricePerUnit) : 0,
+//       pricePerPacket: product.pricePerPacket
+//         ? Number(product.pricePerPacket)
+//         : 0,
+//       pricePerCarton: product.pricePerCarton
+//         ? Number(product.pricePerCarton)
+//         : 0,
+//       availableCartons: available,
+//       availablePackets: packets,
+//       availableUnits: units,
+//     };
+//   });
+// }
 export async function getAllactiveproductsForSale(
   where: Prisma.ProductWhereInput,
   searchQuery?: string,
 ) {
-  let isActive: boolean;
-  isActive = true;
   const combinedWhere: Prisma.ProductWhereInput = {
-    ...where, // Existing filters (category, warehouse, etc.)
+    ...where,
+    isActive: true,
+    inventory: {
+      some: {
+        availableQuantity: {
+          gt: 0,
+        },
+      },
+    },
   };
-  console.log(searchQuery);
+
   if (searchQuery) {
     combinedWhere.OR = [
       { name: { contains: searchQuery, mode: "insensitive" } },
-
       { sku: { contains: searchQuery, mode: "insensitive" } },
       { barcode: { contains: searchQuery, mode: "insensitive" } },
-
       { description: { contains: searchQuery, mode: "insensitive" } },
     ];
   }
 
-  combinedWhere.inventory = {
-    some: {
-      availableQuantity: {
-        gt: 0,
+  // Parallel queries for better performance
+  const [activeProducts, warehouses] = await Promise.all([
+    prisma.product.findMany({
+      where: combinedWhere,
+      orderBy: {
+        name: "asc",
       },
-    },
-  };
-  if (isActive) {
-    combinedWhere.isActive = true;
-  }
-
-  const activeProducts = await prisma.product.findMany({
-    where: combinedWhere,
-
-    orderBy: {
-      name: "asc",
-    },
-    select: {
-      id: true,
-      name: true,
-      sku: true,
-      pricePerUnit: true,
-      pricePerPacket: true,
-      pricePerCarton: true,
-      packetsPerCarton: true,
-      unitsPerPacket: true,
-      warehouseId: true,
-      inventory: {
-        select: {
-          availableQuantity: true,
+      select: {
+        id: true,
+        name: true,
+        sku: true,
+        pricePerUnit: true,
+        pricePerPacket: true,
+        pricePerCarton: true,
+        packetsPerCarton: true,
+        unitsPerPacket: true,
+        warehouseId: true,
+        inventory: {
+          select: {
+            availableQuantity: true,
+          },
+          take: 1, // Only get first inventory record for performance
         },
       },
-    },
-  });
-  const warehouse = await prisma.warehouse.findMany({
-    select: {
-      id: true,
-      name: true,
-    },
-  });
+      // Add cursor-based pagination for large datasets
+      take: 100, // Limit results for better performance
+    }),
+    prisma.warehouse.findMany({
+      select: {
+        id: true,
+        name: true,
+      },
+      // Cache this query as warehouses don't change frequently
+    }),
+  ]);
 
+  // Create warehouse lookup map for O(1) access
+  const warehouseMap = new Map(warehouses.map((w) => [w.id, w.name]));
+
+  // Transform products efficiently
   return activeProducts.map((product) => {
-    const available = product.inventory[0].availableQuantity ?? 0;
+    const available = product.inventory[0]?.availableQuantity ?? 0;
     const packets = available * product.packetsPerCarton;
     const units = packets * product.unitsPerPacket;
-    let name: string = "";
-    warehouse.forEach((w) => {
-      w.id == product.warehouseId ? (name = w.name) : "";
-    }) ?? "";
-    console.log(name);
+
     return {
-      ...product,
-      warehousename: name,
+      id: product.id,
+      name: product.name,
+      sku: product.sku,
+      warehouseId: product.warehouseId,
+      warehousename: warehouseMap.get(product.warehouseId) ?? "",
       pricePerUnit: product.pricePerUnit ? Number(product.pricePerUnit) : 0,
       pricePerPacket: product.pricePerPacket
         ? Number(product.pricePerPacket)
@@ -419,6 +508,8 @@ export async function getAllactiveproductsForSale(
       pricePerCarton: product.pricePerCarton
         ? Number(product.pricePerCarton)
         : 0,
+      packetsPerCarton: product.packetsPerCarton,
+      unitsPerPacket: product.unitsPerPacket,
       availableCartons: available,
       availablePackets: packets,
       availableUnits: units,

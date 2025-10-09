@@ -361,7 +361,7 @@ export default function CartDisplay({ payment }: CustomDialogProps) {
             <div className="flex flex-col gap-1 text-right">
               <div className="flex justify-between gap-4">
                 <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                  {t("beforeDiscount")}:
+                  {t("beforeDiscount")}
                 </Label>
                 <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
                   ${FormatPrice(totals.totalBefore)}
@@ -369,7 +369,7 @@ export default function CartDisplay({ payment }: CustomDialogProps) {
               </div>
               <div className="flex justify-between gap-4">
                 <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                  {t("discountValue")}:
+                  {t("discountValue")}
                 </Label>
                 <span className="text-sm font-semibold text-red-600 dark:text-red-400">
                   ${FormatPrice(totals.discount)}
@@ -377,7 +377,7 @@ export default function CartDisplay({ payment }: CustomDialogProps) {
               </div>
               <div className="flex justify-between gap-4 border-t border-gray-200 pt-1 dark:border-gray-700">
                 <Label className="text-lg font-bold text-gray-800 dark:text-gray-200">
-                  {t("afterDiscount")}:
+                  {t("afterDiscount")}
                 </Label>
                 <span className="text-lg font-bold text-amber-600 dark:text-amber-400">
                   Total: ${FormatPrice(totals.totalAfter)}
