@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { useTablePrams } from "@/hooks/useTableParams";
 
 import SearchInput from "@/components/common/searchtest";
-import { columns } from "./column";
+import { createColumns } from "./column";
 import ProductForm from "../new/form";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -56,7 +56,8 @@ export default function ProductClient({
   // Memoize expensive computations
 
   // Show skeleton during initial load or hydration
-
+  const tt = useTranslations("productColumns");
+  const columns = createColumns(tt);
   return (
     <div
       className="bg-accent w-full rounded-2xl p-2 shadow-xl/20 shadow-gray-500 group-data-[[state=pending]]:animate-pulse"

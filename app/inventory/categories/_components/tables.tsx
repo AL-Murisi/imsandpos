@@ -11,7 +11,7 @@ const Calendar22 = dynamic(
     loading: () => <input type="date" className="..." />,
   },
 );
-import { SelectField } from "@/components/common/selection";
+
 import { DataTable } from "@/components/common/test";
 import { Button } from "@/components/ui/button";
 import { useTablePrams } from "@/hooks/useTableParams";
@@ -21,8 +21,7 @@ import { columns } from "./columns";
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import ImportProductsPage from "@/components/uploadItesm";
-import WarehouseForm from "@/components/forms/form";
+
 import { Plus } from "lucide-react";
 import ImportWarehouse from "@/components/uploadwarehouse";
 import CategoryForm from "./form";
