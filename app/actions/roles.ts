@@ -437,6 +437,85 @@ export async function CreateProduct(data: CreateProductInput) {
     throw error;
   }
 }
+export async function UpdateProduct(data: CreateProductInput) {
+  const parsed = CreateProductSchema.safeParse(data);
+  if (!parsed.success) {
+    throw new Error("Invalid product data");
+  }
+
+  const {
+    sku, // required to find product
+    name,
+    barcode,
+    description,
+    categoryId,
+    brandId,
+    type,
+    unitsPerPacket,
+    packetsPerCarton,
+    costPrice,
+    pricePerUnit,
+    pricePerPacket,
+    pricePerCarton,
+    wholesalePrice,
+    minWholesaleQty,
+    weight,
+    dimensions,
+    supplierId,
+    warehouseId,
+    status,
+  } = parsed.data;
+
+  try {
+    // ✅ Ensure SKU exists before updating
+    const existing = await prisma.product.findUnique({
+      where: { sku },
+    });
+
+    if (!existing) {
+      throw new Error(`Product with SKU "${sku}" not found`);
+    }
+
+    const updated = await prisma.product.update({
+      where: { sku },
+      data: {
+        name,
+        barcode,
+        description,
+        categoryId,
+        brandId,
+        type,
+        unitsPerPacket,
+        packetsPerCarton,
+        costPrice,
+        pricePerUnit,
+        pricePerPacket,
+        pricePerCarton,
+        wholesalePrice,
+        minWholesaleQty,
+        weight,
+        dimensions,
+        supplierId,
+        warehouseId,
+        status,
+      },
+    });
+
+    // ✅ Convert Decimal fields to numbers
+    return {
+      ...updated,
+      costPrice: Number(updated.costPrice),
+      pricePerUnit: updated.pricePerUnit ? Number(updated.pricePerUnit) : null,
+      pricePerPacket: Number(updated.pricePerPacket),
+      pricePerCarton: Number(updated.pricePerCarton),
+      wholesalePrice: Number(updated.wholesalePrice),
+      weight: updated.weight ? Number(updated.weight) : null,
+    };
+  } catch (error) {
+    console.error("❌ Failed to update product:", error);
+    throw error;
+  }
+}
 
 type FormValues = z.infer<typeof UpdateInventorySchema> & { id: string };
 

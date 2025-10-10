@@ -1,3 +1,5 @@
+"use client";
+
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -9,13 +11,17 @@ import { Label } from "@/components/ui/label";
 
 import { logActivity } from "@/app/actions/activitylogs";
 import {
-  CreateProduct,
+  UpdateProduct,
   fetchAllFormData,
   fetchProductBySku,
 } from "@/app/actions/roles";
-import { SelectField } from "@/components/common/selection";
+import { SelectField } from "../_components/selectproduct";
 import { useAuth } from "@/lib/context/AuthContext";
 import { CreateProductSchema } from "@/lib/zod";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { useTranslations } from "next-intl";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { StatFsOptions } from "fs";
 
 type FormValues = z.infer<typeof CreateProductSchema>;
 
@@ -23,9 +29,13 @@ interface Option {
   id: string;
   name: string;
 }
+const productTypeOptions = [
+  { id: "single", name: "Single Product" }, // Assuming a key like 'type_single' for product type
+  { id: "bundle", name: "Bundle" },
+  { id: "variant", name: "Variant" },
+];
 
 export default function ProductEditFormm({ sku }: { sku: string }) {
-  // State for options data
   const [formData, setFormData] = useState<{
     warehouses: Option[];
     categories: Option[];
@@ -38,7 +48,11 @@ export default function ProductEditFormm({ sku }: { sku: string }) {
     suppliers: [],
   });
   const [loading, setLoading] = useState(true);
-
+  const t = useTranslations("productForm");
+  const statusOptions = [
+    { id: "active", name: "Active" }, // Assuming keys like 'status_active'
+    { id: "inactive", name: "Inactive" },
+  ];
   const {
     register,
     handleSubmit,
@@ -50,26 +64,45 @@ export default function ProductEditFormm({ sku }: { sku: string }) {
     resolver: zodResolver(CreateProductSchema),
   });
 
-  // Watch form values for controlled components
-  const watchedWarehouseId = watch("warehouseId");
-  const watchedCategoryId = watch("categoryId");
-  const watchedBrandId = watch("brandId");
-  const watchedSupplierId = watch("supplierId");
-  const watchedType = watch("type");
-  const watchedStatus = watch("status");
+  const { user } = useAuth();
+  const watchedValues = watch();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fetch all form data with a single server action
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-
         const data = await fetchAllFormData();
         setFormData(data);
+
         if (sku) {
-          const product = await fetchProductBySku(sku);
-          if (product) {
-            // reset(product); // 👈 Pre-fill the form with product values
+          const productData = await fetchProductBySku(sku);
+          if (productData) {
+            const safeStatus = statusOptions.includes(productData.status as any)
+              ? (productData.status as "active" | "inactive" | "discontinued")
+              : "active";
+            // ✅ Fill form fields individually — no reset()
+            setValue("name", productData.name ?? "");
+            setValue("sku", productData.sku ?? "");
+            setValue("categoryId", productData.categoryId ?? "");
+            // setValue("brandId", productData.brandId ?? "");
+            setValue("supplierId", productData.supplierId ?? "");
+            setValue("warehouseId", productData.warehouseId ?? "");
+            setValue("costPrice", productData.costPrice ?? 0);
+            setValue("barcode", productData.barcode ?? "");
+            setValue("pricePerUnit", productData.pricePerUnit ?? 0);
+            setValue("pricePerPacket", productData.pricePerPacket ?? 0);
+            setValue("pricePerCarton", productData.pricePerCarton ?? 0);
+            setValue("minWholesaleQty", productData.minWholesaleQty ?? 0);
+            setValue("weight", productData.weight ?? 0);
+            setValue("description", productData.description ?? "");
+            setValue("unitsPerPacket", productData.unitsPerPacket ?? "");
+            setValue("packetsPerCarton", productData.packetsPerCarton ?? "");
+            setValue("dimensions", productData.dimensions ?? "");
+            setValue("costPrice", productData.costPrice ?? 0);
+            setValue("wholesalePrice", productData.wholesalePrice ?? 0);
+
+            setValue("status", safeStatus);
           }
         }
       } catch (error) {
@@ -78,349 +111,405 @@ export default function ProductEditFormm({ sku }: { sku: string }) {
         setLoading(false);
       }
     };
-
     fetchData();
-  }, [sku]);
-  const { user } = useAuth();
+  }, [sku, setValue]);
 
   const onSubmit = async (data: FormValues) => {
     console.log("Submitted:", data);
-    if (user)
-      try {
-        await CreateProduct(data);
-        await logActivity(
-          user.userId,
-          "edit Product",
-          "worker created a product",
-        );
+    if (!user) return;
 
-        reset();
-        // Optional: Show success message
-      } catch (error) {
-        console.error("Error creating product:", error);
-        // Optional: Show error message
-      }
+    try {
+      await UpdateProduct(data);
+      setIsSubmitting(true);
+      await logActivity(user.userId, "Edit Product", "Worker edited a product");
+      setIsSubmitting(false);
+      reset(); // optional: clears after save
+    } catch (error) {
+      console.error("Error creating product:", error);
+    }
   };
 
-  if (loading) {
+  if (loading)
     return (
       <div className="flex h-64 items-center justify-center">Loading...</div>
     );
-  }
-
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" dir="rtl">
-      <div className="grid gap-4">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {/* Name */}
-          <div className="grid gap-2">
-            <Label htmlFor="name">اسم المنتج</Label>
-            <Input id="name" {...register("name")} />
-            {errors.name && (
-              <p className="text-right text-xs text-red-500">
-                {errors.name.message}
-              </p>
-            )}
-          </div>
-          {/* SKU */}
-          <div className="grid gap-2">
-            <Label htmlFor="sku">رمز التخزين التعريفي (SKU)</Label>
-            <Input id="sku" type="text" {...register("sku")} />
-            {errors.sku && (
-              <p className="text-right text-xs text-red-500">
-                {errors.sku.message}
-              </p>
-            )}
-          </div>
-        </div>
+    <ScrollArea>
+      <Card className="shadow-xl">
+        <CardHeader className="bg-primary/5 border-b p-4 text-right">
+          <CardTitle className="text-primary text-2xl font-bold">
+            {t("new")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-6">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            {/* ScrollArea for better UI on smaller screens/large forms */}
+            <ScrollArea dir="rtl" className="p-4">
+              <div className="grid gap-6">
+                {/* Product Identifiers: Name, SKU, Barcode */}
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                  {/* Name */}
+                  <div className="grid gap-2">
+                    <Label htmlFor="name">{t("name")}</Label>
+                    <Input
+                      id="name"
+                      {...register("name")}
+                      className="text-right"
+                    />
+                    {errors.name && (
+                      <p className="text-right text-xs text-red-500">
+                        {errors.name.message}
+                      </p>
+                    )}
+                  </div>
+                  {/* SKU */}
+                  {/* <div className="grid gap-2">
+                  <Label htmlFor="sku">{t("sku")}</Label>
+                  {/* <Input
+                    id="sku"
+                    type="text"
+                    {...register("sku")}
+                    className="text-right"
+                  /> 
+                  {errors.sku && (
+                    <p className="text-right text-xs text-red-500">
+                      {errors.sku.message}
+                    </p>
+                  )}
+                </div> 
+                {/* Barcode 
+                <div className="grid gap-2">
+                  <Label htmlFor="barcode">{t("barcode")}</Label>
+                  <Input
+                    id="barcode"
+                    type="text"
+                    {...register("barcode")}
+                    className="text-right"
+                  />
+                  {errors.barcode && (
+                    <p className="text-right text-xs text-red-500">
+                      {errors.barcode.message}
+                    </p>
+                  )}
+                </div>*/}
+                </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {/* Barcode */}
-          <div className="grid gap-2">
-            <Label htmlFor="barcode">الباركود</Label>
-            <Input id="barcode" type="text" {...register("barcode")} />
-            {errors.barcode && (
-              <p className="text-right text-xs text-red-500">
-                {errors.barcode.message}
-              </p>
-            )}
-          </div>
-          {/* Category ID */}
-          <div className="grid gap-2">
-            <Label htmlFor="categoryId">معرّف الفئة</Label>
+                {/* Categorization: Category, Description, Brand */}
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                  {/* Category ID */}
+                  <div className="grid gap-2">
+                    <Label htmlFor="categoryId">{t("categoryId")}</Label>
+                    <SelectField
+                      options={formData.categories}
+                      value={watchedValues.categoryId}
+                      action={(val) => setValue("categoryId", val)}
+                      placeholder={t("categoryId") || "Select Category"}
+                    />
+                    {errors.categoryId && (
+                      <p className="text-right text-xs text-red-500">
+                        {errors.categoryId.message}
+                      </p>
+                    )}
+                  </div>
+                  {/* Description */}
+                  <div className="grid gap-2">
+                    <Label htmlFor="description">{t("description")}</Label>
+                    <Input
+                      id="description"
+                      type="text"
+                      {...register("description")}
+                      className="text-right"
+                    />
+                    {errors.description && (
+                      <p className="text-right text-xs text-red-500">
+                        {errors.description.message}
+                      </p>
+                    )}
+                  </div>
+                  {/* Brand ID */}
+                  <div className="grid gap-2">
+                    <Label htmlFor="brandId">{t("brandId")}</Label>
+                    <SelectField
+                      options={formData.brands}
+                      value={watchedValues.brandId}
+                      action={(val) => setValue("brandId", val)}
+                      placeholder={t("brandId") || "Select Brand"}
+                    />
+                    {errors.brandId && (
+                      <p className="text-right text-xs text-red-500">
+                        {errors.brandId.message}
+                      </p>
+                    )}
+                  </div>
+                </div>
 
-            <SelectField
-              options={formData.categories}
-              paramKey="categoryId"
-              placeholder="الفئة"
-            />
+                {/* Packaging: Type, Units per Packet, Packets per Carton */}
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                  {/* Type */}
+                  <div className="grid gap-2">
+                    <Label htmlFor="type">{t("type")}</Label>
+                    <SelectField
+                      options={productTypeOptions}
+                      value={watchedValues.type}
+                      action={(val) =>
+                        setValue("type", val as FormValues["type"])
+                      }
+                      placeholder={t("type") || "Select Type"}
+                    />
+                    {errors.type && (
+                      <p className="text-right text-xs text-red-500">
+                        {errors.type.message}
+                      </p>
+                    )}
+                  </div>
+                  {/* Units Per Packet */}
+                  <div className="grid gap-2">
+                    <Label htmlFor="unitsPerPacket">
+                      {t("unitsPerPacket")}
+                    </Label>
+                    <Input
+                      id="unitsPerPacket"
+                      type="number"
+                      {...register("unitsPerPacket", { valueAsNumber: true })}
+                      className="text-right"
+                    />
+                    {errors.unitsPerPacket && (
+                      <p className="text-right text-xs text-red-500">
+                        {errors.unitsPerPacket.message}
+                      </p>
+                    )}
+                  </div>
+                  {/* Packets Per Carton */}
+                  <div className="grid gap-2">
+                    <Label htmlFor="packetsPerCarton">
+                      {t("packetsPerCarton")}
+                    </Label>
+                    <Input
+                      id="packetsPerCarton"
+                      type="number"
+                      {...register("packetsPerCarton", { valueAsNumber: true })}
+                      className="text-right"
+                    />
+                    {errors.packetsPerCarton && (
+                      <p className="text-right text-xs text-red-500">
+                        {errors.packetsPerCarton.message}
+                      </p>
+                    )}
+                  </div>
+                </div>
 
-            {errors.categoryId && (
-              <p className="text-right text-xs text-red-500">
-                {errors.categoryId.message}
-              </p>
-            )}
-          </div>
-        </div>
+                {/* Pricing: Cost, Unit Price, Packet Price */}
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                  {/* Cost Price */}
+                  <div className="grid gap-2">
+                    <Label htmlFor="costPrice">{t("costPrice")}</Label>
+                    <Input
+                      id="costPrice"
+                      type="number"
+                      step="0.01"
+                      {...register("costPrice", { valueAsNumber: true })}
+                      className="text-right"
+                    />
+                    {errors.costPrice && (
+                      <p className="text-right text-xs text-red-500">
+                        {errors.costPrice.message}
+                      </p>
+                    )}
+                  </div>
+                  {/* Price Per Unit */}
+                  <div className="grid gap-2">
+                    <Label htmlFor="pricePerUnit">{t("pricePerUnit")}</Label>
+                    <Input
+                      id="pricePerUnit"
+                      type="number"
+                      step="0.01"
+                      {...register("pricePerUnit", { valueAsNumber: true })}
+                      className="text-right"
+                    />
+                    {errors.pricePerUnit && (
+                      <p className="text-right text-xs text-red-500">
+                        {errors.pricePerUnit.message}
+                      </p>
+                    )}
+                  </div>
+                  {/* Price Per Packet */}
+                  <div className="grid gap-2">
+                    <Label htmlFor="pricePerPacket">
+                      {t("pricePerPacket")}
+                    </Label>
+                    <Input
+                      id="pricePerPacket"
+                      type="number"
+                      step="0.01"
+                      {...register("pricePerPacket", { valueAsNumber: true })}
+                      className="text-right"
+                    />
+                    {errors.pricePerPacket && (
+                      <p className="text-right text-xs text-red-500">
+                        {errors.pricePerPacket.message}
+                      </p>
+                    )}
+                  </div>
+                </div>
 
-        {/* Description */}
-        <div className="grid gap-2">
-          <Label htmlFor="description">الوصف</Label>
-          <Input id="description" type="text" {...register("description")} />
-          {errors.description && (
-            <p className="text-right text-xs text-red-500">
-              {errors.description.message}
-            </p>
-          )}
-        </div>
+                {/* Wholesale Pricing and Weight/Dimensions */}
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                  {/* Price Per Carton */}
+                  <div className="grid gap-2">
+                    <Label htmlFor="pricePerCarton">
+                      {t("pricePerCarton")}
+                    </Label>
+                    <Input
+                      id="pricePerCarton"
+                      type="number"
+                      step="0.01"
+                      {...register("pricePerCarton", { valueAsNumber: true })}
+                      className="text-right"
+                    />
+                    {errors.pricePerCarton && (
+                      <p className="text-right text-xs text-red-500">
+                        {errors.pricePerCarton.message}
+                      </p>
+                    )}
+                  </div>
+                  {/* Wholesale Price */}
+                  <div className="grid gap-2">
+                    <Label htmlFor="wholesalePrice">
+                      {t("wholesalePrice")}
+                    </Label>
+                    <Input
+                      id="wholesalePrice"
+                      type="number"
+                      step="0.01"
+                      {...register("wholesalePrice", { valueAsNumber: true })}
+                      className="text-right"
+                    />
+                    {errors.wholesalePrice && (
+                      <p className="text-right text-xs text-red-500">
+                        {errors.wholesalePrice.message}
+                      </p>
+                    )}
+                  </div>
+                  {/* Min Wholesale Quantity */}
+                  <div className="grid gap-2">
+                    <Label htmlFor="minWholesaleQty">
+                      {t("minWholesaleQty")}
+                    </Label>
+                    <Input
+                      id="minWholesaleQty"
+                      type="number"
+                      {...register("minWholesaleQty", { valueAsNumber: true })}
+                      className="text-right"
+                    />
+                    {errors.minWholesaleQty && (
+                      <p className="text-right text-xs text-red-500">
+                        {errors.minWholesaleQty.message}
+                      </p>
+                    )}
+                  </div>
+                </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {/* Brand ID */}
-          <div className="grid gap-2">
-            <Label htmlFor="brandId">معرّف العلامة التجارية</Label>
-            <SelectField
-              options={formData.warehouses}
-              paramKey="brandId"
-              placeholder="اختر علامة تجارية"
-            />
+                {/* Shipping Details and Logistics */}
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                  {/* Weight */}
+                  <div className="grid gap-2">
+                    <Label htmlFor="weight">{t("weight")}</Label>
+                    <Input
+                      id="weight"
+                      type="number"
+                      step="0.01"
+                      {...register("weight", { valueAsNumber: true })}
+                      className="text-right"
+                    />
+                    {errors.weight && (
+                      <p className="text-right text-xs text-red-500">
+                        {errors.weight.message}
+                      </p>
+                    )}
+                  </div>
+                  {/* Dimensions */}
+                  <div className="grid gap-2">
+                    <Label htmlFor="dimensions">{t("dimensions")} di</Label>
+                    <Input
+                      id="dimensions"
+                      type="text"
+                      {...register("dimensions")}
+                      className="text-right"
+                    />
+                    {errors.dimensions && (
+                      <p className="text-right text-xs text-red-500">
+                        {errors.dimensions.message}
+                      </p>
+                    )}
+                  </div>
+                  {/* Supplier ID */}
+                  <div className="grid gap-2">
+                    <Label htmlFor="supplierId">{t("supplierId")}</Label>
+                    <SelectField
+                      options={formData.suppliers}
+                      value={watchedValues.supplierId}
+                      action={(val) => setValue("supplierId", val)}
+                      placeholder={t("supplierId") || "Select Supplier"}
+                    />
+                    {errors.supplierId && (
+                      <p className="text-right text-xs text-red-500">
+                        {errors.supplierId.message}
+                      </p>
+                    )}
+                  </div>
+                </div>
 
-            {errors.brandId && (
-              <p className="text-right text-xs text-red-500">
-                {errors.brandId.message}
-              </p>
-            )}
-          </div>
-          {/* Type */}
-          <div className="grid gap-2">
-            <Label htmlFor="type">النوع</Label>
-            <SelectField
-              options={[
-                { id: "single", name: "منتج فردي" },
-                { id: "bundle", name: "حزمة" },
-                { id: "variant", name: "متغير" },
-              ]}
-              paramKey="type"
-              placeholder="اختر النوع"
-            />
-            {errors.type && (
-              <p className="text-right text-xs text-red-500">
-                {errors.type.message}
-              </p>
-            )}
-          </div>
-        </div>
+                {/* Warehouse and Status */}
+                <div className="grid grid-cols-1 gap-6 md:w-2/3 md:grid-cols-2">
+                  {/* Warehouse ID */}
+                  <div className="grid gap-2">
+                    <Label htmlFor="warehouseId">{t("warehouseId")}</Label>
+                    <SelectField
+                      options={formData.warehouses}
+                      value={watchedValues.warehouseId}
+                      action={(val) => setValue("warehouseId", val)}
+                      placeholder={t("warehouseId") || "Select Warehouse"}
+                    />
+                    {errors.warehouseId && (
+                      <p className="text-right text-xs text-red-500">
+                        {errors.warehouseId.message}
+                      </p>
+                    )}
+                  </div>
+                  {/* Status */}
+                  <div className="grid gap-2">
+                    <Label htmlFor="status">{t("status")}</Label>
+                    <SelectField
+                      options={statusOptions}
+                      value={watchedValues.status}
+                      action={(val) =>
+                        setValue("status", val as FormValues["status"])
+                      }
+                      placeholder={t("status") || "Select Status"}
+                    />
+                    {errors.status && (
+                      <p className="text-right text-xs text-red-500">
+                        {errors.status.message}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {/* Units Per Packet */}
-          <div className="grid gap-2">
-            <Label htmlFor="unitsPerPacket">عدد الوحدات في العبوة</Label>
-            <Input
-              id="unitsPerPacket"
-              type="number"
-              {...register("unitsPerPacket", { valueAsNumber: true })}
-            />
-            {errors.unitsPerPacket && (
-              <p className="text-right text-xs text-red-500">
-                {errors.unitsPerPacket.message}
-              </p>
-            )}
-          </div>
-          {/* Packets Per Carton */}
-          <div className="grid gap-2">
-            <Label htmlFor="packetsPerCarton">عدد العبوات في الكرتون</Label>
-            <Input
-              id="packetsPerCarton"
-              type="number"
-              {...register("packetsPerCarton", { valueAsNumber: true })}
-            />
-            {errors.packetsPerCarton && (
-              <p className="text-right text-xs text-red-500">
-                {errors.packetsPerCarton.message}
-              </p>
-            )}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {/* Cost Price */}
-          <div className="grid gap-2">
-            <Label htmlFor="costPrice">سعر التكلفة</Label>
-            <Input
-              id="costPrice"
-              type="number"
-              step="0.01"
-              {...register("costPrice", { valueAsNumber: true })}
-            />
-            {errors.costPrice && (
-              <p className="text-right text-xs text-red-500">
-                {errors.costPrice.message}
-              </p>
-            )}
-          </div>
-          {/* Price Per Unit */}
-          <div className="grid gap-2">
-            <Label htmlFor="pricePerUnit">سعر الوحدة</Label>
-            <Input
-              id="pricePerUnit"
-              type="number"
-              step="0.01"
-              {...register("pricePerUnit", { valueAsNumber: true })}
-            />
-            {errors.pricePerUnit && (
-              <p className="text-right text-xs text-red-500">
-                {errors.pricePerUnit.message}
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Price Per Packet */}
-        <div className="grid gap-2">
-          <Label htmlFor="pricePerPacket">سعر العبوة</Label>
-          <Input
-            id="pricePerPacket"
-            type="number"
-            step="0.01"
-            {...register("pricePerPacket", { valueAsNumber: true })}
-          />
-          {errors.pricePerPacket && (
-            <p className="text-right text-xs text-red-500">
-              {errors.pricePerPacket.message}
-            </p>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {/* Price Per Carton */}
-          <div className="grid gap-2">
-            <Label htmlFor="pricePerCarton">سعر الكرتون</Label>
-            <Input
-              id="pricePerCarton"
-              type="number"
-              step="0.01"
-              {...register("pricePerCarton", { valueAsNumber: true })}
-            />
-            {errors.pricePerCarton && (
-              <p className="text-right text-xs text-red-500">
-                {errors.pricePerCarton.message}
-              </p>
-            )}
-          </div>
-          {/* Wholesale Price */}
-          <div className="grid gap-2">
-            <Label htmlFor="wholesalePrice">سعر الجملة</Label>
-            <Input
-              id="wholesalePrice"
-              type="number"
-              step="0.01"
-              {...register("wholesalePrice", { valueAsNumber: true })}
-            />
-            {errors.wholesalePrice && (
-              <p className="text-right text-xs text-red-500">
-                {errors.wholesalePrice.message}
-              </p>
-            )}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {/* Min Wholesale Quantity */}
-          <div className="grid gap-2">
-            <Label htmlFor="minWholesaleQty">الحد الأدنى لكمية الجملة</Label>
-            <Input
-              id="minWholesaleQty"
-              type="number"
-              {...register("minWholesaleQty", { valueAsNumber: true })}
-            />
-            {errors.minWholesaleQty && (
-              <p className="text-right text-xs text-red-500">
-                {errors.minWholesaleQty.message}
-              </p>
-            )}
-          </div>
-          {/* Weight */}
-          <div className="grid gap-2">
-            <Label htmlFor="weight">الوزن</Label>
-            <Input
-              id="weight"
-              type="number"
-              step="0.01"
-              {...register("weight", { valueAsNumber: true })}
-            />
-            {errors.weight && (
-              <p className="text-right text-xs text-red-500">
-                {errors.weight.message}
-              </p>
-            )}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {/* Dimensions */}
-          <div className="grid gap-2">
-            <Label htmlFor="dimensions">الأبعاد</Label>
-            <Input id="dimensions" type="text" {...register("dimensions")} />
-            {errors.dimensions && (
-              <p className="text-right text-xs text-red-500">
-                {errors.dimensions.message}
-              </p>
-            )}
-          </div>
-          {/* Supplier ID */}
-          <div className="grid gap-2">
-            <Label htmlFor="supplierId">معرّف المورد</Label>
-            <SelectField
-              options={formData.suppliers}
-              paramKey={"supplierId"}
-              placeholder="Supplier"
-            />
-            {errors.supplierId && (
-              <p className="text-right text-xs text-red-500">
-                {errors.supplierId.message}
-              </p>
-            )}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {/* Warehouse ID */}
-          <div className="grid gap-2">
-            <Label htmlFor="warehouseId">معرّف المستودع</Label>
-            <SelectField
-              options={formData.warehouses}
-              paramKey="warehouseId"
-              placeholder="اختر المستودع"
-            />
-
-            {errors.warehouseId && (
-              <p className="text-right text-xs text-red-500">
-                {errors.warehouseId.message}
-              </p>
-            )}
-          </div>
-          {/* Status */}
-          <div className="grid gap-2">
-            <Label htmlFor="status">الحالة</Label>
-            <SelectField
-              options={[
-                { id: "active", name: "نشط" },
-                { id: "inactive", name: "غير نشط" },
-                { id: "discontinued", name: "متوقف" },
-              ]}
-              paramKey="status"
-              placeholder="اختر الحالة"
-            />
-            {errors.status && (
-              <p className="text-right text-xs text-red-500">
-                {errors.status.message}
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-      <div className="flex justify-end">
-        <Button type="submit">تأكيد</Button>
-      </div>
-    </form>
+              {/* Submit Button */}
+              <div className="flex justify-end">
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="min-w-[100px]"
+                >
+                  {isSubmitting || loading ? t("loading") : t("save")}
+                </Button>
+              </div>
+            </ScrollArea>
+          </form>
+        </CardContent>
+      </Card>
+    </ScrollArea>
   );
 }
