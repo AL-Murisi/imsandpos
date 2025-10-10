@@ -442,7 +442,7 @@ export default function ProductsList({
       )}
 
       {(product.length > 0 || !queryr) && (
-        <ScrollArea className="overflow-y-auto">
+        <ScrollArea className="h-[76vh]">
           <div className="text-muted-foreground mt-4 px-4 text-center text-sm">
             {productGrid}
           </div>

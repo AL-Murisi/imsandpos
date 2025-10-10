@@ -78,7 +78,7 @@ export default function CartDisplay({ payment }: CustomDialogProps) {
 
   const totals = useAppSelector(selectCartTotals);
   return (
-    <div className="bg-background flex flex-col rounded-2xl p-2 shadow-xl/20 shadow-gray-500 lg:col-span-1">
+    <div className="bg-background flex h-[50hv] flex-col rounded-2xl p-2 shadow-xl/20 shadow-gray-500 lg:col-span-1">
       {/* Header */}
       <div className="flex justify-between">
         <div className="flex justify-between gap-1">
@@ -142,7 +142,7 @@ export default function CartDisplay({ payment }: CustomDialogProps) {
 
       <div className="w-full">
         {/* Single ScrollArea with proper height and both scrollbars */}
-        <ScrollArea className="w-full rounded-2xl border border-amber-300 p-2">
+        <ScrollArea className="h-[60vh] w-full rounded-2xl border border-amber-300 p-2">
           <Table className="w-full">
             <TableHeader className="sticky top-0 z-10">
               <TableRow className="border-amber-300">
@@ -178,7 +178,6 @@ export default function CartDisplay({ payment }: CustomDialogProps) {
                       </TableCell>
                       <TableCell> {item.warehousename}</TableCell>
                       <TableCell>
-                        {" "}
                         <button
                           disabled={item.selectedQty <= 1}
                           onClick={() => {
@@ -306,7 +305,7 @@ export default function CartDisplay({ payment }: CustomDialogProps) {
         </ScrollArea>
       </div>
       {/* Footer with totals and actions */}
-      <CardFooter
+      <div
         className="border-t border-gray-200 p-4 dark:border-gray-700"
         dir="ltr"
       >
@@ -416,7 +415,7 @@ export default function CartDisplay({ payment }: CustomDialogProps) {
             </div>
           )}
         </div>
-      </CardFooter>
+      </div>
     </div>
   );
 }

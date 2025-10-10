@@ -81,42 +81,21 @@ export default function UserClinet({ users, total, role }: ProductClientProps) {
           <CustomerForm />
         </CustomDialog>
       </div>
-      <Suspense
-        fallback={
-          <div className="space-y-2">
-            {/* Table Header */}
-            <div className="grid grid-cols-7 gap-4">
-              {Array.from({ length: 7 }).map((_, i) => (
-                <Skeleton key={i} className="h-6 w-full bg-gray-500" />
-              ))}
-            </div>
 
-            {/* Table Rows */}
-            {Array.from({ length: 7 }).map((_, row) => (
-              <div key={row} className="grid grid-cols-7 gap-4">
-                {Array.from({ length: 7 }).map((_, col) => (
-                  <Skeleton key={col} className="h-6 w-full bg-gray-500" />
-                ))}
-              </div>
-            ))}
-          </div>
-        }
-      >
-        <DataTable
-          data={users}
-          columns={columns}
-          initialPageSize={pagination.pageSize}
-          pageCount={Math.ceil(total / pagination.pageSize)}
-          pageActiom={setPagination}
-          onSortingChange={setSorting}
-          onGlobalFilterChange={setGlobalFilter}
-          globalFilter={globalFilter}
-          sorting={sorting}
-          pagination={pagination}
-          totalCount={total}
-          highet="h-[68vh]"
-        />
-      </Suspense>
+      <DataTable
+        data={users}
+        columns={columns}
+        initialPageSize={pagination.pageSize}
+        pageCount={Math.ceil(total / pagination.pageSize)}
+        pageActiom={setPagination}
+        onSortingChange={setSorting}
+        onGlobalFilterChange={setGlobalFilter}
+        globalFilter={globalFilter}
+        sorting={sorting}
+        pagination={pagination}
+        totalCount={total}
+        highet="h-[68vh]"
+      />
     </div>
   );
 }

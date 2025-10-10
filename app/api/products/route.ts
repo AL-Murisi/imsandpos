@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
     const orderBy: Prisma.ProductOrderByWithRelationInput[] = parsedSort.map(
       (s) => ({
         [s.id]: s.desc ? "desc" : "asc",
-      })
+      }),
     );
 
     // Fetch total count for pagination
@@ -138,7 +138,7 @@ export async function GET(request: NextRequest) {
     console.error("Error fetching products:", error);
     return NextResponse.json(
       { error: "Failed to fetch products" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

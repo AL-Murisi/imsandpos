@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
     if (validProducts.length > 0) {
       const created = await prisma.product.createMany({
         data: validProducts,
-        skipDuplicates: true, // ✅ avoid conflicts if same SKU/barcode already exists
+        // ✅ avoid conflicts if same SKU/barcode already exists
       });
       createdCount = created.count;
     }

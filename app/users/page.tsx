@@ -56,19 +56,19 @@ export default async function User({ searchParams }: Users) {
   const roles = await fetchRoles(pageIndex, pageSize);
   return (
     <DashboardTabs
-      defualt={"userDashboard"}
+      defualt={"useractivity"}
       tabs={[
-        { value: "userDashboard", label: "Dashboard" },
-        { value: "useractivity", label: "useractivity" },
-        { value: "userroles", label: "userroles" },
+        { value: "useractivity", label: "أنشطة المستخدمين" },
+        { value: "userDashboard", label: "المستخدمين" },
+        { value: "userroles", label: "أدوار المستخدمين" },
       ]}
     >
-      <TabsContent value="userDashboard">
-        <UserClinet users={data} total={0} role={roless} />
-      </TabsContent>
-
+      {" "}
       <TabsContent value={"useractivity"}>
         <UserActivityTable logs={logs} total={logs.length} sort={[]} />
+      </TabsContent>
+      <TabsContent value="userDashboard">
+        <UserClinet users={data} total={0} role={roless} />
       </TabsContent>
       <TabsContent value={"userroles"}>
         <RoleTable role={roles} total={logs.length} sort={[]} />
