@@ -1,5 +1,6 @@
 "use client";
 import CustomDialog from "@/components/common/Dailog";
+import { Receipt } from "@/components/common/recipt";
 import SearchInput from "@/components/common/searchtest";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -132,157 +133,6 @@ export default function Payment({ users }: PaymentProps) {
       alert(`❌ حدث خطأ: ${err.message}`);
     }
   };
-  const handlePrint = () => {
-    const printWindow = window.open("", "_blank");
-    if (printWindow) {
-      printWindow.document.write(`
-      <html>
-      <head>
-        <title>Receipt</title>
-        <style>
-          body {
-            font-family: Arial, sans-serif;
-            direction: rtl;
-            padding: 10px;
-            background: #fff;
-            color: #000;
-          }
-          .flex { display: flex; }
-          .justify-between { justify-content: space-between; }
-          .items-center { align-items: center; }
-          .mb-2 { margin-bottom: 8px; }
-          .gap-2 { gap: 8px; }
-          .grid { display: grid; }
-          .grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
-          .text-sm { font-size: 12px; }
-          .text-lg { font-size: 16px; font-weight: bold; }
-          .border { border: 1px solid black; }
-          .rounded-2xl { border-radius: 12px; }
-          .p-2 { padding: 4px; }
-          table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-          th, td { border: 1px solid black; padding: 4px; text-align: center; font-size: 12px; }
-          th { background-color: #f0f0f0; }
-          .separator { border-top: 2px solid black; margin: 8px 0; }
-          .totals-label { width: 80px; text-align: right; }
-          .totals-value { width: 160px; border: 1px solid black; border-radius: 12px; padding: 4px; text-align: right; }
-          .badge { display: inline-block; background: #f0f0f0; padding: 2px 6px; border-radius: 8px; margin-right: 4px; }
-          .text-center { text-align: center; }
-          .text-xs { font-size: 10px; }
-          .green { color: green; }
-          .grey { color: grey; }
-        </style>
-      </head>
-      <body>
-        <div class="flex justify-between items-center mb-2">
-          <div class="flex items-center gap-2">
-            <span style="font-size:20px;">📦</span>
-            <span class="text-lg">اسم الشركة</span>
-          </div>
-          <span>المتجر الرئيسي</span>
-        </div>
-
-        <div class="separator"></div>
-
-        <div class="grid grid-cols-2 gap-2 text-sm">
-          <div>📅 التاريخ: ${new Date().toLocaleDateString("ar-EG")}</div>
-          <div>⏰ الوقت: ${new Date().toLocaleTimeString("ar-EG", {
-            hour12: false,
-          })}</div>
-          <div>👨‍💼 الكاشير: ${user?.name ?? "غير معروف"}</div>
-          <div>🧾 رقم الفاتورة: ${saleNumber}</div>
-          <div>customer: <span class="badge">${users?.name ?? ""}</span></div>
-        </div>
-
-        <table class="border-radius: 12px">
-          <thead>
-            <tr>
-            <th>م</th>
-              <th>المنتج</th>
-              <th>مستودع</th>
-              <th>الكمية</th>
-              <th>النوع</th>
-              <th>السعر</th>
-              <th>الإجمالي</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${items
-              .map(
-                (item, index) => `
-              <tr>
-                <td>${index + 1}</td>
-                <td>${item.name}</td>
-                <td>${item.warehousename}</td>
-                <td>${item.selectedQty}</td>
-                <td>${item.sellingUnit}</td>
-                <td>${getItemPrice(item)}</td>
-                <td>${(getItemPrice(item) * item.selectedQty).toFixed(2)}</td>
-              </tr>
-            `,
-              )
-              .join("")}
-          </tbody>
-        </table>
-
-        <div class="separator"></div>
-
-        <div class="flex justify-between">
-          <div>
-            <div class="flex gap-4 text-sm my-1">
-              <span class="totals-label">الإجمالي:</span>
-              <span class="totals-value">${totals.totalBefore.toFixed(
-                2,
-              )} ﷼</span>
-            </div>
-            <div class="flex gap-4 text-sm my-1">
-              <span class="totals-label">الخصم:</span>
-              <span class="totals-value">${totals.discount.toFixed(2)} ﷼</span>
-            </div>
-            <div class="flex gap-4 text-sm my-1">
-              <span class="totals-label">المبلغ المستحق:</span>
-              <span class="totals-value">${totals.totalAfter.toFixed(
-                2,
-              )} ﷼</span>
-            </div>
-            <div class="flex gap-4 text-sm my-1">
-              <span class="totals-label">المبلغ المدفوع:</span>
-              <span class="totals-value">${
-                receivedAmount?.toFixed(2) ?? 0
-              } ﷼</span>
-            </div>
-            <div class="flex gap-4 text-sm my-1 ${
-              calculatedChange > 0 ? "green" : "grey"
-            }">
-              <span class="totals-label">المتبقي للعميل:</span>
-              <span class="totals-value">${calculatedChange.toFixed(2)} ﷼</span>
-            </div>
-          </div>
-          <div>
-            ${
-              users && users.totalDebt && users.totalDebt > 0
-                ? `
-              <div class="flex gap-2">
-                <span>ديون سابقة:</span>
-                <span class="totals-value">${users.totalDebt} ﷼</span>
-              </div>
-            `
-                : ""
-            }
-          </div>
-        </div>
-
-        <div class="separator"></div>
-
-        <div class="text-center text-xs mt-4">
-          <p>شكرًا لتسوقك معنا!</p>
-        </div>
-      </body>
-      </html>
-    `);
-      printWindow.document.close();
-      printWindow.print();
-    }
-  };
 
   // const handleDownloadPDF = () => {
   //   const receipt = document.getElementById("receipt-content");
@@ -295,6 +145,10 @@ export default function Payment({ users }: PaymentProps) {
   //     }).save();
   //   }
   // };
+  const isCash = receivedAmount >= totals.totalAfter;
+  const isDebt = !isCash;
+  const canPay =
+    (isCash && receivedAmount >= totals.totalAfter) || (isDebt && users?.name);
 
   return (
     <CustomDialog
@@ -356,9 +210,10 @@ export default function Payment({ users }: PaymentProps) {
                 <TableHead>م</TableHead>
                 <TableHead>{t("product")}</TableHead>
                 <TableHead>{t("warehouse")}</TableHead>
-                <TableHead>{t("quantity")}</TableHead>
-                <TableHead>{t("unit_type")}</TableHead>
+                <TableHead>{t("quantity")}</TableHead>{" "}
                 <TableHead>{t("price")}</TableHead>
+                <TableHead>{t("unit_type")}</TableHead>
+                <TableHead>{t("total")}</TableHead>
                 <TableHead>{t("total")}</TableHead>
                 <TableHead>{t("action")}</TableHead>
               </TableRow>
@@ -512,13 +367,27 @@ export default function Payment({ users }: PaymentProps) {
         <div className="mt-4 flex justify-between gap-3">
           <Button
             onClick={handelpayment}
-            className="bg-green-600 text-white hover:bg-green-700"
+            disabled={!canPay}
+            className={`${
+              canPay
+                ? "bg-green-600 hover:bg-green-700"
+                : "cursor-not-allowed bg-gray-400"
+            } text-white`}
           >
             {t("confirm_payment")}
           </Button>
-          <Button onClick={handlePrint} variant="outline">
-            <Printer size={16} className="mr-2" /> {t("print")}
-          </Button>
+          <Receipt
+            saleNumber={saleNumber}
+            items={items}
+            totals={totals}
+            receivedAmount={receivedAmount}
+            calculatedChange={calculatedChange}
+            userName={user?.name}
+            customerName={users?.name}
+            customerDebt={users?.totalDebt}
+            isCash={receivedAmount >= totals.totalAfter}
+            t={t}
+          />
         </div>
       </ScrollArea>
     </CustomDialog>

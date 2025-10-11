@@ -14,7 +14,7 @@ import { Minus, Plus, Trash2Icon, User } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 import { Card, CardContent, CardFooter } from "../../../components/ui/card";
 import { Label } from "../../../components/ui/label";
-import Addtouserrecod from "../debtSell/Addtouserrecod";
+import Addtouserrecod from "../_components/Addtouserrecod";
 import Reservation from "../reservation/reserveItems";
 
 import { useAuth } from "@/lib/context/AuthContext";

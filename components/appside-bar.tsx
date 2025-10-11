@@ -65,136 +65,7 @@ const IMSLogoIcon = ({ className = "", size = 24, color = "currentColor" }) => {
     </svg>
   );
 };
-// Define menu items with role requirements
-// const menuItems = [
-//   {
-//     title: "الرئيسية", // Home
-//     url: "/dashboard",
-//     icon: () => <Home className="text-indigo-600" />,
-//     roles: ["admin"],
-//   },
-//   {
-//     title: "الرئيسية", // Home
-//     url: "/inventory/dashboardUser",
-//     icon: () => <Home className="text-indigo-600" />,
-//     roles: ["manager_wh"],
-//   },
-//   {
-//     title: "المستخدمون", // Users
-//     url: "/users",
-//     icon: () => <Users className="text-red-600" />,
-//     roles: ["admin"], // Only admin can see users
-//   },
-//   {
-//     title: "اداره المخازن", // Inventory
-//     icon: () => <IMSLogoIcon className="text-blue-600" />,
-//     roles: ["admin", "manager_wh"],
-//     isDropdown: true,
-//     subItems: [
-//       {
-//         title: "إدارة المخزون", // Products
-//         url: "/inventory/manageinvetory",
-//         icon: <Warehouse className="h-4 w-4 text-green-600" />,
-//         roles: ["admin", "manager_wh"],
-//       },
 
-//       {
-//         title: "الفئات", // Categories
-//         url: "/inventory/categories",
-//         icon: <FolderKanban className="h-4 w-4 text-purple-600" />,
-//         roles: ["admin", "manager_wh"],
-//       },
-//       {
-//         title: "الموردون", // Suppliers
-//         url: "/inventory/suppliers",
-//         icon: <Users className="h-4 w-4 text-orange-600" />,
-//         roles: ["admin", "manager_wh"],
-//       },
-//       {
-//         title: "المستودعات", // Warehouses
-//         url: "/inventory/warehouses",
-//         icon: <Building2 className="h-4 w-4 text-cyan-600" />,
-//         roles: ["admin", "manager_wh"],
-//       },
-//     ],
-//   },
-//   {
-//     title: "المنتجات", // Products
-//     url: "/inventory/products",
-//     icon: () => <Package className="h-4 w-4 text-green-600" />,
-//     roles: ["admin", "manager_wh"],
-//   },
-//   {
-//     title: "المبيعات", // Sales
-//     // url: "/sells/cashiercontrol",
-//     icon: () => <ShoppingCart className="text-green-600" />,
-//     roles: ["admin", "cashier"],
-//     isDropdown: true,
-//     subItems: [
-//       {
-//         title: " الرئيسية الكاشير", //المبيعات", // Sells
-//         url: "/sells",
-//         icon: <ShoppingCart className="text-blue-500" />,
-//         roles: ["admin", "cashier"],
-//       },
-//       {
-//         title: "الكاشير", //المبيعات", // Sells
-//         url: "/sells/cashiercontrol",
-//         icon: <ShoppingCart className="text-blue-500" />,
-//         roles: ["admin", "cashier"],
-//       },
-//       {
-//         title: " المحجوزة", // Reserved Orders
-//         url: "/sells/reservation",
-//         icon: <Clock className="h-4 w-4 text-teal-600" />,
-//         roles: ["admin", "cashier"],
-//       },
-//       {
-//         title: "الدين", // Due / Credit Sales
-//         url: "/sells/debtSell",
-//         icon: <Receipt className="text-orange-500" size={50} />,
-//         roles: ["admin", "cashier"],
-//       },
-//     ],
-//   },
-
-//   // {
-//   //   title: "طلبات العملاء", // Customer Orders
-//   //   url: "/customer/orders",
-//   //   icon: () => <Package className="text-purple-600" />,
-//   //   roles: ["customer", "admin"],
-//   // },
-//   // {
-//   //   title: "منتجات المورد", // Supplier Products
-//   //   url: "/supplier/products",
-//   //   icon: () => <Truck className="text-orange-600" />,
-//   //   roles: ["supplier", "admin"],
-//   // },
-//   // {
-//   //   title: "طلبات المورد", // Supplier Orders
-//   //   url: "/supplier/orders",
-//   //   icon: () => <Calendar className="text-cyan-600" />,
-//   //   roles: ["supplier", "admin"],
-//   // },
-//   {
-//     title: "الملف الشخصي", // Profile
-//     url: "/profile",
-//     icon: () => <User className="text-pink-600" />,
-//     roles: ["customer", "supplier"],
-//   },
-//   // {
-//   //   title: "بحث", // Search
-//   //   url: "/search",
-//   //   icon: () => <Search className="text-yellow-500" />,
-//   //   roles: ["admin", "worker", "customer"],
-//   // },
-//   {
-//     title: "الإعدادات", // Settings
-//     url: "/settings",
-//     icon: () => <Settings className="w-40 text-gray-600" />,
-//     roles: ["admin"],
-//   },
-// ];
 import { useRouter } from "next/navigation";
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user, hasAnyRole, logoutAndRedirect } = useAuth();
@@ -262,6 +133,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       url: "/inventory/products",
       icon: () => <Package className="h-4 w-4 text-green-600" />,
       roles: ["admin", "manager_wh"],
+    },
+    {
+      title: t("expenses"),
+      url: "/expenses",
+      icon: () => <Receipt className="h-4 w-4 text-red-600" />,
+      roles: ["admin"],
     },
     {
       title: t("debt"),

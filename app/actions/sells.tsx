@@ -1,5 +1,6 @@
 // app/actions/sales/getTopSellingProducts.ts
 "use server";
+import { ReceiptItem } from "@/components/common/recipt";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { SortingState } from "@tanstack/react-table";
@@ -21,7 +22,6 @@ export async function FetchDebtSales(
   pageSize: number = 7,
   sort?: SortingState,
 ) {
-  console.log(pageSize);
   const combinedWhere: Prisma.SaleWhereInput = {
     ...where, // Existing filters (category, warehouse, etc.)
   };
@@ -64,6 +64,7 @@ export async function FetchDebtSales(
       createdAt: true,
       paymentStatus: true,
       customerId: true,
+      saleNumber: true,
       customer: {
         select: {
           name: true,
@@ -130,161 +131,73 @@ export async function FetchCustomerDebtReport(customerId: string) {
     })),
   }));
 }
+export async function fetchReceipt(saleId: string) {
+  const sale = await prisma.sale.findUnique({
+    where: { saleNumber: saleId },
+    include: {
+      customer: true,
+      cashier: true,
+      saleItems: {
+        include: {
+          product: true, // get product info including warehouseId
+        },
+      },
+      payments: true,
+    },
+  });
 
-// export async function fetchSalesSummary(
-//   role: string,
-//   filters?: {
-//     salesFrom?: string;
-//     salesTo?: string;
-//     purchasesFrom?: string;
-//     purchasesTo?: string;
-//     revenueFrom?: string;
-//     revenueTo?: string;
-//     debtFrom?: string;
-//     debtTo?: string;
-//     chartTo?: string;
-//     chartFrom?: string;
-//     allFrom?: string;
-//     allTo?: string;
-//   },
-// ) {
-//   const formatRange = (from?: string, to?: string) => ({
-//     ...(from ? { gte: new Date(from) } : {}),
-//     ...(to ? { lte: new Date(to) } : {}),
-//   });
+  if (!sale) return null;
 
-//   const salesRange = formatRange(
-//     filters?.salesFrom || filters?.allFrom,
-//     filters?.salesTo || filters?.allTo,
-//   );
-//   const purchasesRange = formatRange(
-//     filters?.purchasesFrom || filters?.allFrom,
-//     filters?.purchasesTo || filters?.allTo,
-//   );
-//   const revenueRange = formatRange(
-//     filters?.revenueFrom || filters?.allFrom,
-//     filters?.revenueTo || filters?.allTo,
-//   );
-//   const debtRange = formatRange(
-//     filters?.debtFrom || filters?.allFrom,
-//     filters?.debtTo || filters?.allTo,
-//   );
+  // Get all unique warehouse IDs from products
+  const warehouseIds = [
+    ...new Set(sale.saleItems.map((i) => i.product.warehouseId)),
+  ];
 
-//   // Reduced from 9 queries to 4 queries by combining aggregate + groupBy
-//   const [salesOverTime, purchasesOverTime, revenueOverTime, debtData] =
-//     await Promise.all([
-//       // Query 1: Sales (combines count + groupBy)
-//       prisma.sale.groupBy({
-//         by: ["saleDate"],
-//         _sum: { totalAmount: true },
-//         _count: { id: true },
-//         where: { saleDate: salesRange, status: "completed" },
-//         orderBy: { saleDate: "asc" },
-//       }),
+  // Fetch warehouse names
+  const warehouses = await prisma.warehouse.findMany({
+    where: { id: { in: warehouseIds } },
+  });
 
-//       // Query 2: Purchases (groupBy includes sum)
-//       prisma.product.groupBy({
-//         by: ["createdAt"],
-//         _sum: { costPrice: true },
-//         where: { createdAt: purchasesRange },
-//         orderBy: { createdAt: "asc" },
-//       }),
+  const warehouseMap: Record<string, string> = {};
+  warehouses.forEach((w) => {
+    warehouseMap[w.id] = w.name;
+  });
 
-//       // Query 3: Revenue (groupBy includes sum)
-//       prisma.payment.groupBy({
-//         by: ["createdAt"],
-//         _sum: { amount: true },
-//         where: { createdAt: revenueRange, status: "completed" },
-//         orderBy: { createdAt: "asc" },
-//       }),
+  // Map sale items to ReceiptItem
+  const items: ReceiptItem[] = sale.saleItems.map((item) => ({
+    id: item.productId,
+    name: item.product.name,
+    warehousename: warehouseMap[item.product.warehouseId] || "Unknown",
+    selectedQty: item.quantity,
+    sellingUnit: item.sellingUnit as "unit" | "packet" | "carton",
+    pricePerUnit: item.product.pricePerUnit?.toNumber(),
+    pricePerPacket: item.product.pricePerPacket?.toNumber(),
+    pricePerCarton: item.product.pricePerCarton?.toNumber(),
+  }));
 
-//       // Query 4: Debt data (combined into single query)
-//       prisma.$transaction([
-//         // Total debt
-//         prisma.sale.aggregate({
-//           _sum: { amountDue: true },
-//           where: { saleDate: debtRange },
-//         }),
-//         // Debt payments over time (includes total)
-//         prisma.payment.groupBy({
-//           by: ["createdAt"],
-//           _sum: { amount: true },
-//           _count: { id: true },
-//           where: {
-//             createdAt: debtRange,
-//             paymentType: { in: ["outstanding_payment"] },
-//             status: "completed",
-//           },
-//           orderBy: { createdAt: "asc" },
-//         }),
-//       ]),
-//     ]);
+  const totalBefore = sale.subtotal.toNumber();
+  const discount = sale.discountAmount.toNumber();
+  const totalAfter = sale.totalAmount.toNumber();
+  const receivedAmount = sale.amountPaid?.toNumber() || 0;
+  const calculatedChange = receivedAmount - totalAfter;
+  console.log(items);
+  return {
+    saleNumber: sale.saleNumber,
+    items,
+    totals: {
+      totalBefore,
+      discount,
+      totalAfter,
+    },
+    receivedAmount,
+    calculatedChange,
+    userName: sale.cashier?.name,
+    customerName: sale.customer?.name,
+    customerDebt: sale.customer?.outstandingBalance?.toNumber(),
+    isCash: receivedAmount >= totalAfter,
+  };
+}
 
-//   // Extract debt data from transaction
-//   const [totalDebtAgg, debtPaymentsOverTime] = debtData;
-
-//   // Calculate totals from grouped data (avoiding redundant aggregate queries)
-//   const totalSales = salesOverTime.reduce(
-//     (sum, s) => sum + (s._count.id || 0),
-//     0,
-//   );
-//   const totalPurchases = purchasesOverTime.reduce(
-//     (sum, p) => sum + (p._sum?.costPrice?.toNumber() || 0),
-//     0,
-//   );
-//   const totalRevenue = revenueOverTime.reduce(
-//     (sum, r) => sum + (r._sum?.amount?.toNumber() || 0),
-//     0,
-//   );
-//   const totalDebtReceived = debtPaymentsOverTime.reduce(
-//     (sum, d) => sum + (d._sum?.amount?.toNumber() || 0),
-//     0,
-//   );
-
-//   // Format chart data - group by day to reduce data points
-//   const groupByDay = (data: any[], dateField: string, valueField: string) => {
-//     const grouped = new Map<string, number>();
-
-//     data.forEach((item) => {
-//       const date = item[dateField].toISOString().split("T")[0];
-//       const value = item._sum?.[valueField]?.toNumber() || 0;
-//       grouped.set(date, (grouped.get(date) || 0) + value);
-//     });
-
-//     return Array.from(grouped.entries())
-//       .map(([date, value]) => ({ date, value }))
-//       .sort((a, b) => a.date.localeCompare(b.date));
-//   };
-
-//   const salesChart = groupByDay(salesOverTime, "saleDate", "totalAmount");
-//   const purchasesChart = groupByDay(
-//     purchasesOverTime,
-//     "createdAt",
-//     "costPrice",
-//   );
-//   const revenueChart = groupByDay(revenueOverTime, "createdAt", "amount");
-//   const debtChart = groupByDay(debtPaymentsOverTime, "createdAt", "amount");
-
-//   return {
-//     sales: {
-//       total: totalSales,
-//       chart: salesChart,
-//     },
-//     purchases: {
-//       total: totalPurchases,
-//       chart: purchasesChart,
-//     },
-//     revenue: {
-//       total: totalRevenue,
-//       chart: revenueChart,
-//     },
-//     debt: {
-//       totalDebt: totalDebtAgg._sum.amountDue?.toNumber() || 0,
-//       received: totalDebtReceived,
-//       chart: debtChart,
-//     },
-//   };
-// }
 export async function fetchSalesSummary(
   role: string,
   filters?: {

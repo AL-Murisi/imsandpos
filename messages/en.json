@@ -35,6 +35,7 @@
     "welcome": "Hello",
     "role": "role",
     "new": "New Product",
+    "expenses": "Expenses",
     "edit": "Edit Product"
   },
   "selection": {

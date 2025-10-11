@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation"; // For refreshing data or navigatio
 import dynamic from "next/dynamic";
 import { DataTable } from "@/components/common/Table";
 import { debtSale } from "./columns";
+import DebtSells from "./_components/table";
 const ScrollArea = dynamic(
   () => import("@/components/ui/scroll-area").then((m) => m.ScrollArea),
   {
@@ -218,23 +219,8 @@ export default function SellsDashboardClient({
       {/* Common section - could be recent sales transactions */}
       <div className="space-y-6 py-3">
         <h2 className="text-2xl font-semibold text-gray-800">أحدث العمليات</h2>
-        <Card>
-          <CardHeader>
-            <CardTitle>آخر المبيعات</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {/* This could be a small table showing recent sales */}
-            {/* You might want to filter this based on role too */}
-            {/* <RecentSalesTable data={salesSummary.recentSales} /> */}
-            <DataTable
-              data={recentSales}
-              columns={debtSale}
-              initialPageSize={6}
-              filterColumnId="status"
-              // filterOptions={statusOptions}
-            />
-          </CardContent>
-        </Card>
+
+        <DebtSells data={recentSales} total={0} sort={[]} />
       </div>
     </ScrollArea>
   );
