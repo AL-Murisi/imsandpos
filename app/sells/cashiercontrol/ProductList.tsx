@@ -136,7 +136,7 @@ export default function ProductsList({
           pricePerCarton: products.pricePerCarton ?? 0,
           action: "",
           warehousename: products.warehousename,
-          sellingUnit: "carton",
+          sellingUnit: "unit",
           warehouseId: products.warehouseId,
           selectedQty: 0,
           originalStockQuantity: products.availableCartons,
@@ -149,7 +149,7 @@ export default function ProductsList({
         dispatch(
           updateQty({
             id: products.id,
-            sellingUnit: "carton",
+            sellingUnit: "unit",
             quantity: 1,
             action: "plus",
           }),

@@ -316,25 +316,10 @@ const cartSlice = createSlice({
       );
 
       if (!item) return;
-      const { from, to, product, qty } = action.payload;
-      let newQty = qty;
-      if (from === "carton" && to === "packet")
-        newQty = qty * product.packetsPerCarton;
-      else if (from === "carton" && to === "unit")
-        newQty = qty * product.packetsPerCarton * product.unitsPerPacket;
-      else if (from === "packet" && to === "carton")
-        newQty = Math.floor(qty / product.packetsPerCarton);
-      else if (from === "packet" && to === "unit")
-        newQty = qty * product.unitsPerPacket;
-      else if (from === "unit" && to === "packet")
-        newQty = Math.floor(qty / product.unitsPerPacket);
-      else if (from === "unit" && to === "carton")
-        newQty = Math.floor(
-          qty / (product.unitsPerPacket * product.packetsPerCarton),
-        );
 
-      item.sellingUnit = to;
-      item.selectedQty = newQty;
+      // ✅ Keep same quantity — only change unit type
+      item.sellingUnit = action.payload.to;
+      item.selectedQty = action.payload.qty;
     },
 
     // 🔹 Cart Utilities

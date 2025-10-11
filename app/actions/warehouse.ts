@@ -18,40 +18,54 @@ export async function updateInventory(data: InventoryUpdateWithTrackingInput) {
   try {
     const {
       id,
-      userId = "system",
+      userId = "cmd5xocl8000juunw1hcxsyre",
       reason = "manual_update",
       notes,
+      availableQuantity: inputCartons,
+      stockQuantity: inputCartonsStock,
       ...updateData
     } = data;
 
     return await prisma.$transaction(async (tx) => {
-      // Get current inventory to track changes
+      // Get current inventory
       const currentInventory = await tx.inventory.findUnique({
         where: { id },
-        include: {
-          product: true,
-          warehouse: true,
-        },
+        include: { product: true, warehouse: true },
       });
 
       if (!currentInventory) {
         throw new Error("Inventory record not found");
       }
 
-      // Calculate status based on quantities if not provided
+      // ✅ Convert cartons to units
+      const unitsPerPacket = currentInventory.product.unitsPerPacket || 1;
+      const packetsPerCarton = currentInventory.product.packetsPerCarton || 1;
+
+      const cartonToUnits = (cartons: number) =>
+        cartons * packetsPerCarton * unitsPerPacket;
+
+      const availableQuantityInUnits = inputCartons
+        ? cartonToUnits(inputCartons)
+        : undefined;
+
+      const stockQuantityInUnits = inputCartonsStock
+        ? cartonToUnits(inputCartonsStock)
+        : undefined;
+
+      // Calculate status if needed
       let calculatedStatus: "available" | "low" | "out_of_stock" | undefined;
 
-      if (
-        data.availableQuantity !== undefined &&
-        data.reorderLevel !== undefined
-      ) {
-        if (data.availableQuantity === 0) {
-          calculatedStatus = "out_of_stock";
-        } else if (data.availableQuantity <= data.reorderLevel) {
+      const finalAvailableQty =
+        availableQuantityInUnits ?? currentInventory.availableQuantity;
+
+      const finalReorderLevel =
+        data.reorderLevel ?? currentInventory.reorderLevel;
+
+      if (finalAvailableQty !== undefined && finalReorderLevel !== undefined) {
+        if (finalAvailableQty === 0) calculatedStatus = "out_of_stock";
+        else if (finalAvailableQty <= finalReorderLevel)
           calculatedStatus = "low";
-        } else {
-          calculatedStatus = "available";
-        }
+        else calculatedStatus = "available";
       }
 
       // Update inventory
@@ -59,57 +73,49 @@ export async function updateInventory(data: InventoryUpdateWithTrackingInput) {
         where: { id },
         data: {
           ...updateData,
+          ...(availableQuantityInUnits !== undefined && {
+            availableQuantity: availableQuantityInUnits,
+          }),
+          ...(stockQuantityInUnits !== undefined && {
+            stockQuantity: stockQuantityInUnits,
+          }),
           ...(calculatedStatus && { status: calculatedStatus }),
           ...(data.lastStockTake && {
             lastStockTake: new Date(data.lastStockTake),
           }),
         },
         include: {
-          product: {
-            select: {
-              name: true,
-              sku: true,
-            },
-          },
-          warehouse: {
-            select: {
-              name: true,
-              location: true,
-            },
-          },
+          product: { select: { name: true, sku: true } },
+          warehouse: { select: { name: true, location: true } },
         },
       });
 
-      // Create stock movement record if stock quantity changed
-      if (
-        data.stockQuantity !== undefined &&
-        data.stockQuantity !== currentInventory.stockQuantity
-      ) {
-        const difference = data.stockQuantity - currentInventory.stockQuantity;
+      // Create stock movement if stock changed
+      const finalStockQty =
+        stockQuantityInUnits ?? currentInventory.stockQuantity;
+      if (finalStockQty !== currentInventory.stockQuantity) {
+        const difference = finalStockQty - currentInventory.stockQuantity;
 
         await tx.stockMovement.create({
           data: {
             productId: currentInventory.productId,
             warehouseId: currentInventory.warehouseId,
-            userId: "cmd5xocl8000juunw1hcxsyre",
+            userId,
             movementType: difference > 0 ? "in" : "out",
             quantity: Math.abs(difference),
             reason,
             quantityBefore: currentInventory.stockQuantity,
-            quantityAfter: data.stockQuantity,
+            quantityAfter: finalStockQty,
             notes:
               notes ||
-              `Manual inventory update: ${
-                difference > 0 ? "+" : ""
-              }${difference}`,
+              `Manual inventory update: ${difference > 0 ? "+" : ""}${difference}`,
           },
         });
       }
+
       revalidatePath("/manageinvetory");
-      return {
-        success: true,
-        data: updatedInventory,
-      };
+
+      return { success: true, data: updatedInventory };
     });
   } catch (error) {
     console.error("Error updating inventory:", error);
@@ -120,6 +126,7 @@ export async function updateInventory(data: InventoryUpdateWithTrackingInput) {
     };
   }
 }
+
 // type FormValues = z.infer<typeof UpdateInventorySchema>;
 
 // // // 2. Add stock to warehouse (when receiving inventory) - Updated for form compatibility

@@ -236,7 +236,7 @@ export async function deleteProduct(id: string) {
 //     };
 //   });
 // }
-export async function getAllactiveproductsForSale(
+export async function getAllActiveProductsForSale(
   where: Prisma.ProductWhereInput,
   searchQuery?: string,
 ) {
@@ -245,9 +245,7 @@ export async function getAllactiveproductsForSale(
     isActive: true,
     inventory: {
       some: {
-        availableQuantity: {
-          gt: 0,
-        },
+        availableQuantity: { gt: 0 },
       },
     },
   };
@@ -261,13 +259,10 @@ export async function getAllactiveproductsForSale(
     ];
   }
 
-  // Parallel queries for better performance
   const [activeProducts, warehouses] = await Promise.all([
     prisma.product.findMany({
       where: combinedWhere,
-      orderBy: {
-        name: "asc",
-      },
+      orderBy: { name: "asc" },
       select: {
         id: true,
         name: true,
@@ -279,32 +274,46 @@ export async function getAllactiveproductsForSale(
         unitsPerPacket: true,
         warehouseId: true,
         inventory: {
-          select: {
-            availableQuantity: true,
-          },
-          take: 1, // Only get first inventory record for performance
+          select: { availableQuantity: true },
+          take: 1,
         },
       },
-      // Add cursor-based pagination for large datasets
-      take: 100, // Limit results for better performance
+      take: 100,
     }),
     prisma.warehouse.findMany({
-      select: {
-        id: true,
-        name: true,
-      },
-      // Cache this query as warehouses don't change frequently
+      select: { id: true, name: true },
     }),
   ]);
 
-  // Create warehouse lookup map for O(1) access
   const warehouseMap = new Map(warehouses.map((w) => [w.id, w.name]));
 
-  // Transform products efficiently
+  // 🧮 Convert base unit (unit) to other units
+  function convertFromBaseUnit(
+    product: {
+      unitsPerPacket?: number;
+      packetsPerCarton?: number;
+    },
+    availableUnits: number,
+  ) {
+    const unitsPerPacket = product.unitsPerPacket || 1;
+    const packetsPerCarton = product.packetsPerCarton || 1;
+
+    const availablePackets = Number(
+      (availableUnits / unitsPerPacket).toFixed(2),
+    );
+    const availableCartons = Number(
+      (availablePackets / packetsPerCarton).toFixed(2),
+    );
+
+    return { availablePackets, availableCartons };
+  }
+
   return activeProducts.map((product) => {
-    const available = product.inventory[0]?.availableQuantity ?? 0;
-    const packets = available * product.packetsPerCarton;
-    const units = packets * product.unitsPerPacket;
+    const availableUnits = product.inventory[0]?.availableQuantity ?? 0;
+    const { availablePackets, availableCartons } = convertFromBaseUnit(
+      product,
+      availableUnits,
+    );
 
     return {
       id: product.id,
@@ -312,18 +321,14 @@ export async function getAllactiveproductsForSale(
       sku: product.sku,
       warehouseId: product.warehouseId,
       warehousename: warehouseMap.get(product.warehouseId) ?? "",
-      pricePerUnit: product.pricePerUnit ? Number(product.pricePerUnit) : 0,
-      pricePerPacket: product.pricePerPacket
-        ? Number(product.pricePerPacket)
-        : 0,
-      pricePerCarton: product.pricePerCarton
-        ? Number(product.pricePerCarton)
-        : 0,
-      packetsPerCarton: product.packetsPerCarton,
+      pricePerUnit: Number(product.pricePerUnit) || 0,
+      pricePerPacket: Number(product.pricePerPacket) || 0,
+      pricePerCarton: Number(product.pricePerCarton) || 0,
       unitsPerPacket: product.unitsPerPacket,
-      availableCartons: available,
-      availablePackets: packets,
-      availableUnits: units,
+      packetsPerCarton: product.packetsPerCarton,
+      availableUnits,
+      availablePackets,
+      availableCartons,
     };
   });
 }

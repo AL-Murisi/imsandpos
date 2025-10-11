@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       for (const item of cart) {
         // Convert selling quantity to base units (cartons)
 
-        const quantityInCartons = convertToCartons(
+        const quantityInCartons = convertToBaseUnits(
           item.selectedQty,
           item.sellingUnit,
           item.unitsPerPacket,
@@ -187,7 +187,7 @@ export async function POST(request: NextRequest) {
 }
 
 // Helper functions
-function convertToCartons(
+function convertToBaseUnits(
   quantity: number,
   sellingUnit: "unit" | "packet" | "carton",
   unitsPerPacket: number,
@@ -195,11 +195,11 @@ function convertToCartons(
 ): number {
   switch (sellingUnit) {
     case "unit":
-      return quantity / (unitsPerPacket * packetsPerCarton);
+      return quantity; // already base
     case "packet":
-      return quantity / packetsPerCarton;
+      return quantity * unitsPerPacket; // each packet = unitsPerPacket units
     case "carton":
-      return quantity;
+      return quantity * packetsPerCarton * unitsPerPacket; // each carton = packetsPerCarton * unitsPerPacket units
     default:
       throw new Error(`Invalid selling unit: ${sellingUnit}`);
   }

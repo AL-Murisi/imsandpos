@@ -46,7 +46,7 @@ export default function ProductForm() {
     suppliers: [],
   });
   const [loading, setLoading] = useState(true);
-
+  const [isSubmitting, setIsSubmitting] = useState(false);
   // Initialize useForm hook
   const {
     register,
@@ -54,7 +54,7 @@ export default function ProductForm() {
     setValue,
     reset,
     watch,
-    formState: { isSubmitting, errors },
+    formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(CreateProductSchema),
     // You can set default values here if needed
@@ -97,9 +97,11 @@ export default function ProductForm() {
     try {
       if (user) {
         await CreateProduct(data, user.userId);
+        setIsSubmitting(true);
         // TODO: Add toast/notification for success using t("created")
       }
       toast("✅ adding product sucessed");
+      setIsSubmitting(false);
       reset();
     } catch (error) {
       toast("✅ adding product sucessed", error ?? "");

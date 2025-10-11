@@ -1,5 +1,5 @@
 // // Cart.tsx
-import { getAllactiveproductsForSale } from "@/app/actions/createProduct";
+import { getAllActiveProductsForSale } from "@/app/actions/createProduct";
 import { Fetchcustomerbyname } from "@/app/actions/customers";
 import { fetchAllFormData } from "@/app/actions/roles";
 import { Prisma } from "@prisma/client";
@@ -51,7 +51,8 @@ export default async function Cart({ searchParams }: Props) {
     // 👆 can extend with other filters later
   };
 
-  const products = await getAllactiveproductsForSale(where, productquery);
+  const products = await getAllActiveProductsForSale(where, productquery);
+
   const [formData, users] = await Promise.all([
     fetchAllFormData(),
     Fetchcustomerbyname(usersquery),
