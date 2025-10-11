@@ -39,6 +39,13 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { FormatPrice } from "@/hooks/usePrice";
 import { useTranslations } from "next-intl";
 import { CashierItem } from "@/lib/zod";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export type SellingUnit = "carton" | "packet" | "unit";
 export type discountType = "fixed" | "percentage";
@@ -242,14 +249,14 @@ export default function CartDisplay({ payment }: CustomDialogProps) {
                         </button>
                       </TableCell>
                       <TableCell>
-                        <select
+                        <Select
                           value={item.sellingUnit}
-                          onChange={(e) =>
+                          onValueChange={(value) =>
                             dispatch(
                               changeSellingUnit({
                                 id: item.id,
                                 from: item.sellingUnit,
-                                to: e.target.value as any,
+                                to: value as "unit" | "packet" | "carton",
                                 product: {
                                   packetsPerCarton: item.packetsPerCarton,
                                   unitsPerPacket: item.unitsPerPacket,
@@ -259,10 +266,15 @@ export default function CartDisplay({ payment }: CustomDialogProps) {
                             )
                           }
                         >
-                          <option value="carton">كرتون</option>
-                          <option value="packet">حزمة</option>
-                          <option value="unit">وحدة</option>
-                        </select>
+                          <SelectTrigger className="rounded border px-2 py-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="carton">كرتون</SelectItem>
+                            <SelectItem value="packet">حزمة</SelectItem>
+                            <SelectItem value="unit">وحدة</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                       <TableCell className="w-16 text-center text-sm whitespace-nowrap">
                         ${itemPrice}
@@ -320,21 +332,28 @@ export default function CartDisplay({ payment }: CustomDialogProps) {
                 {t("discount")}
               </label>
               <div className="flex gap-2">
-                <select
+                <Select
                   value={discountType}
-                  onChange={(e) => {
+                  onValueChange={(value: "fixed" | "percentage") => {
                     dispatch(
                       setDiscount({
-                        type: e.target.value as "fixed" | "percentage",
-                        value: discountValue | 10,
+                        type: value,
+                        value: discountValue || 10,
                       }),
                     );
-                    setDiscountType(e.target.value as "fixed" | "percentage");
+                    setDiscountType(value);
                   }}
                 >
-                  <option value="fixed">{t("fixed")}</option>
-                  <option value="percentage">{t("percentage")}</option>
-                </select>
+                  <SelectTrigger className="rounded border px-2 py-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="fixed">{t("fixed")}</SelectItem>
+                    <SelectItem value="percentage">
+                      {t("percentage")}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
 
                 <input
                   type="number"

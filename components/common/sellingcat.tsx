@@ -163,7 +163,7 @@ export function Selection({
         </PopoverContent>
       </Popover>
 
-      <div className="flex flex-wrap gap-1">
+      {/* <div className="flex flex-wrap gap-1">
         {badgesToRender.length > 0 &&
           badgesToRender.map((option) => (
             <div key={option.id} className="rounded-[10px]">
@@ -196,7 +196,7 @@ export function Selection({
               </Badge>
             </div>
           ))}
-      </div>
+      </div> */}
     </div>
   );
 }
