@@ -1,6 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import type { CashierItem, ProductForSale } from "@/lib/zod";
-import { getAllactiveproductsForSale } from "@/app/actions/createProduct";
 import { fetchCategoriesForSelect } from "@/app/actions/roles";
 import { SellingUnit, updateQty } from "./cartSlice";
 
