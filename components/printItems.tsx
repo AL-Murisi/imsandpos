@@ -100,7 +100,7 @@ export const PrintProductTable: React.FC<PrintProductTableProps> = ({
 
           <!-- Branch Info Left -->
           <div class="branch-info">
-            <div>فرع سنحان - أمام محطة الصيادي</div>
+            <div>فرع سناح - أمام محطة الصيادي</div>
             <div>تلفون: 772222599</div>
             <div>التاريخ: ${new Date().toLocaleDateString("ar-EG")}</div>
             <div>الوقت: ${new Date().toLocaleTimeString("ar-EG", { hour12: false })}</div>
