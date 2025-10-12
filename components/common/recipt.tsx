@@ -133,7 +133,7 @@ export const Receipt: React.FC<ReceiptProps> = ({
               padding: 4px;
               text-align: right;
             }
-
+.pl{padding-top:3px;padding-bottom:3px;}
             .badge {
               display: inline-block;
               background: #f0f0f0;
@@ -212,19 +212,19 @@ export const Receipt: React.FC<ReceiptProps> = ({
             <div class="section">
               <div class="flex justify-between">
                 <div>
-                  <div class="flex gap-4 text-sm my-1">
+                  <div class="flex gap-4 text-sm my-1 pl">
                     <span class="totals-label">الخصم:</span>
                     <span class="totals-value">${totals.discount.toFixed(2)} ﷼</span>
                   </div>
-                  <div class="flex gap-4 text-sm my-1">
+                  <div class="flex gap-4 text-sm my-1 l">
                     <span class="totals-label">الإجمالي:</span>
                     <span class="totals-value">${totals.totalAfter.toFixed(2)} ﷼</span>
                   </div>
-                  <div class="flex gap-4 text-sm my-1">
+                  <div class="flex gap-4 text-sm my-1 pl">
                     <span class="totals-label">المبلغ المدفوع:</span>
                     <span class="totals-value">${receivedAmount?.toFixed(2) ?? 0} ﷼</span>
                   </div>
-                  <div class="flex gap-4 text-sm my-1 ${calculatedChange > 0 ? "green" : "grey"}">
+                  <div class="flex gap-4 text-sm my-1 pl> ${calculatedChange > 0 ? "green" : "grey"}">
                     <span class="totals-label">المتبقي للعميل:</span>
                     <span class="totals-value">${calculatedChange.toFixed(2)} ﷼</span>
                   </div>

@@ -21,6 +21,7 @@ import ProductForm from "../new/form";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import ImportProductsPage from "@/components/uploadItesm";
+import { PrintProductTable } from "@/components/printItems";
 
 type ProductClientProps = {
   products: any[];
@@ -102,7 +103,11 @@ export default function ProductClient({
       </div>
 
       <DataTable
-        search={<ImportProductsPage />}
+        search={
+          <>
+            <ImportProductsPage /> <PrintProductTable products={products} />
+          </>
+        }
         data={products}
         columns={columns}
         initialPageSize={pagination.pageSize}
