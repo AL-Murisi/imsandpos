@@ -353,20 +353,21 @@ export default function Payment({ users }: PaymentProps) {
             customerDebt={users?.totalDebt}
             isCash={receivedAmount >= totals.totalAfter}
             t={t}
-          />
-          <Receipt
-            saleNumber={saleNumber}
-            items={items}
-            totals={totals}
-            receivedAmount={receivedAmount}
-            calculatedChange={calculatedChange}
-            userName={user?.name}
-            customerName={users?.name}
-            customerDebt={users?.totalDebt}
-            isCash={receivedAmount >= totals.totalAfter}
-            t={t}
-          />
-          {/* // ) : (
+          />{" "}
+          {/*
+          // <Receipt
+          //   saleNumber={saleNumber}
+          //   items={items}
+          //   totals={totals}
+          //   receivedAmount={receivedAmount}
+          //   calculatedChange={calculatedChange}
+          //   userName={user?.name}
+          //   customerName={users?.name}
+          //   customerDebt={users?.totalDebt}
+          //   isCash={receivedAmount >= totals.totalAfter}
+          //   t={t}
+          // />
+       // ) : (
           
           // )}
           <Receipt
