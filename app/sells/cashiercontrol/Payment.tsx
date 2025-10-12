@@ -1,6 +1,7 @@
 "use client";
 import { Receipt } from "@/components/common/recipt";
 import SearchInput from "@/components/common/searchtest";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -168,8 +169,9 @@ export default function Payment({ users }: PaymentProps) {
 
       <DialogContent className="max-w-90 overflow-hidden md:max-w-4xl lg:max-w-6xl">
         <div id="receipt-content" className="rounded-md text-amber-50">
-          <div className="p-x-5 mb-4 flex w-60 justify-end sm:w-2xs md:w-sm">
+          <div className="p-x-5 mb-4 flex w-60 flex-col justify-end sm:w-2xs md:w-sm">
             <SearchInput placeholder={t("search_customer")} paramKey="users" />
+            {t("customer")}: <Badge>{users?.name ?? ""}</Badge>
           </div>
           <div className="w-80 sm:w-[480px] md:w-3xl lg:w-full">
             <ScrollArea className="h-[30vh] w-full rounded-2xl border border-amber-300 p-2">
