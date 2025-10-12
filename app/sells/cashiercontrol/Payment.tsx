@@ -341,8 +341,19 @@ export default function Payment({ users }: PaymentProps) {
           >
             {t("confirm_payment")}
           </Button>
-
-          {/* {isMobile ? ( */}
+          {/* {isMobile ? ( */}//
+          <ReceiptLaptop
+            saleNumber={saleNumber}
+            items={items}
+            totals={totals}
+            receivedAmount={receivedAmount}
+            calculatedChange={calculatedChange}
+            userName={user?.name}
+            customerName={users?.name}
+            customerDebt={users?.totalDebt}
+            isCash={receivedAmount >= totals.totalAfter}
+            t={t}
+          />
           <Receipt
             saleNumber={saleNumber}
             items={items}
@@ -356,18 +367,7 @@ export default function Payment({ users }: PaymentProps) {
             t={t}
           />
           {/* // ) : (
-          //   <ReceiptLaptop 
-          //     saleNumber={saleNumber}
-          //     items={items}
-          //     totals={totals}
-          //     receivedAmount={receivedAmount}
-          //     calculatedChange={calculatedChange}
-          //     userName={user?.name}
-          //     customerName={users?.name}
-          //     customerDebt={users?.totalDebt}
-          //     isCash={receivedAmount >= totals.totalAfter}
-          //     t={t}
-          //   />
+          
           // )}
           <Receipt
             saleNumber={saleNumber}
