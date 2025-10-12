@@ -80,26 +80,24 @@ export const Receipt: React.FC<ReceiptProps> = ({
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>Receipt</title>
           <style>
-            * {
-              margin: 0;
-              padding: 0;
-              box-sizing: border-box;
-            }
-
             body {
               font-family: Arial, sans-serif;
               direction: rtl;
               background: #fff;
               color: #000;
-              padding: 10px;
+              margin: 0;
+              padding: 20px;
             }
 
             .receipt-container {
               width: 100%;
               max-width: 800px;
               margin: 0 auto;
-              border: 1px solid #000;
-              border-radius: 6px;
+              border: 2px solid #000;
+              border-radius: 12px;
+              padding: 15px;
+              display: flex;
+              flex-direction: column;
             }
 
             .section {
@@ -108,7 +106,7 @@ export const Receipt: React.FC<ReceiptProps> = ({
 
             .header {
               border-bottom: 1px solid black;
-              padding-bottom: 8px;
+              border-radius: 6px;
             }
 
             .flex { display: flex; }
@@ -172,18 +170,70 @@ export const Receipt: React.FC<ReceiptProps> = ({
               margin-right: 4px;
             }
 
+            .grid-rows-3 {
+              grid-template-rows: repeat(3, auto);
+            }
+
+            .grid-rows-4 {
+              grid-template-rows: repeat(4, auto);
+            }
+
+            .items-baseline {
+              align-items: baseline;
+            }
+
+            .text-right {
+              text-align: right;
+            }
+
+            .flex-col {
+              flex-direction: column;
+            }
+
+            .gap-4 {
+              gap: 16px;
+            }
+
+            .my-1 {
+              margin-top: 4px;
+              margin-bottom: 4px;
+            }
+
             @media print {
               body {
-                padding: 0;
-              }
-              
-              .receipt-container {
                 border: none;
+              }
+            }
+
+            /* Print button styling */
+            .print-button {
+              position: fixed;
+              top: 10px;
+              left: 10px;
+              padding: 10px 20px;
+              background: #22c55e;
+              color: white;
+              border: none;
+              border-radius: 6px;
+              font-size: 16px;
+              cursor: pointer;
+              z-index: 1000;
+            }
+
+            .print-button:hover {
+              background: #16a34a;
+            }
+
+            @media print {
+              .print-button {
+                display: none;
               }
             }
           </style>
         </head>
         <body>
+          <button class="print-button" onclick="window.print();">طباعة 🖨️</button>
+          
           <div class="receipt-container">
 
             <!-- HEADER -->
@@ -291,18 +341,7 @@ export const Receipt: React.FC<ReceiptProps> = ({
           </div>
           
           <script>
-            // Auto-print when page loads
-            window.onload = function() {
-              setTimeout(function() {
-                window.print();
-                // Close window after print dialog is dismissed
-                setTimeout(function() {
-                  window.close();
-                }, 100);
-              }, 250);
-            };
-            
-            // Handle print event completion
+            // Close window after print
             window.onafterprint = function() {
               window.close();
             };
