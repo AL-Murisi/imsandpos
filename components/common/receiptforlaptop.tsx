@@ -214,28 +214,7 @@ export const ReceiptLaptop: React.FC<ReceiptProps> = ({
 
             /* Print button styling for mobile */
             .print-button {
-              position: fixed;
-              top: 10px;
-              left: 10px;
-              padding: 12px 24px;
-              background: #22c55e;
-              color: white;
-              border: none;
-              border-radius: 8px;
-              font-size: 18px;
-              font-weight: bold;
-              cursor: pointer;
-              z-index: 10000;
-              box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-              display: none;
-            }
-
-            .print-button.show {
-              display: block;
-            }
-
-            .print-button:active {
-              background: #16a34a;
+              display: none !important;
             }
 
             @media print {
@@ -270,7 +249,7 @@ export const ReceiptLaptop: React.FC<ReceiptProps> = ({
 
                 <!-- Logo -->
                 <div class="flex flex-col items-center">
-                  <img src="/logo.png" alt="Logo" style="width: 100px; height: 90px;" />
+                  <img src="${window.location.origin}/logo.png" alt="Logo" style="width: 100px; height: 90px;" onerror="this.style.display='none'" />
                 </div>
 
                 <!-- Branch -->
@@ -367,10 +346,13 @@ export const ReceiptLaptop: React.FC<ReceiptProps> = ({
             var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Samsung/i.test(navigator.userAgent);
             
             if (isMobile) {
-              // Show print button for mobile
-              document.getElementById('printBtn').classList.add('show');
+              // Auto-print for mobile and close after
+              window.onload = function() {
+                setTimeout(function() {
+                  window.print();
+                }, 500);
+              };
               
-              // Close window after print
               window.onafterprint = function() {
                 window.close();
               };
