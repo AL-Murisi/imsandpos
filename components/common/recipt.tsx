@@ -116,7 +116,7 @@ export const Receipt: React.FC<ReceiptProps> = ({
               text-align: center;
               font-size: 12px;
             }
-
+.h{height: 30px;}
             th {
               background-color: #f0f0f0;
             }
@@ -234,7 +234,7 @@ export const Receipt: React.FC<ReceiptProps> = ({
                 ${
                   customerDebt && customerDebt > 0
                     ? `
-                      <div class="flex gap-2 text-sm">
+                      <div class="flex gap-2 text-sm h">
                         <span>ديون سابقة:</span>
                         <span class="totals-value">${customerDebt} ﷼</span>
                       </div>
