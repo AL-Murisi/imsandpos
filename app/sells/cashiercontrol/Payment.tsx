@@ -1,4 +1,5 @@
 "use client";
+import { ReceiptLaptop } from "@/components/common/receiptforlaptop";
 import { Receipt } from "@/components/common/recipt";
 import SearchInput from "@/components/common/searchtest";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +33,13 @@ import {
   removeFromCart,
   setDiscount,
 } from "@/lib/slices/cartSlice";
+
+// Detect device
+const isMobile =
+  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+    navigator.userAgent,
+  );
+
 import { useAppDispatch, useAppSelector } from "@/lib/store";
 import { CashierItem, CashierSchema } from "@/lib/zod/cashier";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -334,7 +342,34 @@ export default function Payment({ users }: PaymentProps) {
             {t("confirm_payment")}
           </Button>
 
-          <Receipt
+          {isMobile ? (
+            <Receipt
+              saleNumber={saleNumber}
+              items={items}
+              totals={totals}
+              receivedAmount={receivedAmount}
+              calculatedChange={calculatedChange}
+              userName={user?.name}
+              customerName={users?.name}
+              customerDebt={users?.totalDebt}
+              isCash={receivedAmount >= totals.totalAfter}
+              t={t}
+            />
+          ) : (
+            <ReceiptLaptop
+              saleNumber={saleNumber}
+              items={items}
+              totals={totals}
+              receivedAmount={receivedAmount}
+              calculatedChange={calculatedChange}
+              userName={user?.name}
+              customerName={users?.name}
+              customerDebt={users?.totalDebt}
+              isCash={receivedAmount >= totals.totalAfter}
+              t={t}
+            />
+          )}
+          {/* <Receipt
             saleNumber={saleNumber}
             items={items}
             totals={totals}
@@ -345,7 +380,7 @@ export default function Payment({ users }: PaymentProps) {
             customerDebt={users?.totalDebt}
             isCash={receivedAmount >= totals.totalAfter}
             t={t}
-          />
+          /> */}
         </div>
       </DialogContent>
     </Dialog>
