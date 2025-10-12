@@ -341,7 +341,7 @@ export default function Payment({ users }: PaymentProps) {
           >
             {t("confirm_payment")}
           </Button>
-          {/* {isMobile ? ( */}//
+          {/* {isMobile ? ( */}
           <ReceiptLaptop
             saleNumber={saleNumber}
             items={items}

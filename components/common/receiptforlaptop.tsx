@@ -56,6 +56,13 @@ export const ReceiptLaptop: React.FC<ReceiptProps> = ({
     }
   };
 
+  // Detect if device is mobile/Samsung
+  const isMobileDevice = () => {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Samsung/i.test(
+      navigator.userAgent,
+    );
+  };
+
   const handlePrint = () => {
     const dateOptions: Intl.DateTimeFormatOptions = {
       day: "2-digit",
@@ -73,25 +80,37 @@ export const ReceiptLaptop: React.FC<ReceiptProps> = ({
     const formattedTime = new Date().toLocaleTimeString("ar-EG", timeOptions);
 
     const printHTML = `
+      <!DOCTYPE html>
       <html>
         <head>
-          <title>Receipt</title>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Receipt - ${saleNumber}</title>
           <style>
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+
             body {
               font-family: Arial, sans-serif;
               direction: rtl;
               background: #fff;
               color: #000;
-              border: 1px solid #000;
-              border-radius: 6px;
-              margin: 0;
+              padding: 20px;
             }
 
             .receipt-container {
               width: 100%;
-              border-collapse: collapse;
+              max-width: 800px;
+              margin: 0 auto;
+              border: 2px solid #000;
+              border-radius: 12px;
+              padding: 15px;
               display: flex;
               flex-direction: column;
+              background: white;
             }
 
             .section {
@@ -100,7 +119,8 @@ export const ReceiptLaptop: React.FC<ReceiptProps> = ({
 
             .header {
               border-bottom: 1px solid black;
-              border-radius: 6px;
+              padding-bottom: 8px;
+              margin-bottom: 8px;
             }
 
             .flex { display: flex; }
@@ -109,7 +129,6 @@ export const ReceiptLaptop: React.FC<ReceiptProps> = ({
             .mb-2 { margin-bottom: 8px; }
             .gap-2 { gap: 8px; }
             .grid { display: grid; }
-            .grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
             .text-sm { font-size: 12px; }
             .text-lg { font-size: 16px; font-weight: bold; }
             .text-center { text-align: center; }
@@ -122,7 +141,7 @@ export const ReceiptLaptop: React.FC<ReceiptProps> = ({
             table {
               width: 100%;
               border-collapse: collapse;
-              margin: 0;
+              margin: 8px 0;
             }
 
             th, td {
@@ -139,12 +158,12 @@ export const ReceiptLaptop: React.FC<ReceiptProps> = ({
             }
 
             .totals-label {
-              width: 80px;
+              min-width: 80px;
               text-align: right;
             }
 
             .totals-value {
-              width: 160px;
+              min-width: 160px;
               border: 1px solid black;
               border-radius: 6px;
               padding: 4px;
@@ -163,9 +182,80 @@ export const ReceiptLaptop: React.FC<ReceiptProps> = ({
               border-radius: 8px;
               margin-right: 4px;
             }
+
+            .grid-rows-3 {
+              grid-template-rows: repeat(3, auto);
+            }
+
+            .grid-rows-4 {
+              grid-template-rows: repeat(4, auto);
+            }
+
+            .items-baseline {
+              align-items: baseline;
+            }
+
+            .text-right {
+              text-align: right;
+            }
+
+            .flex-col {
+              flex-direction: column;
+            }
+
+            .gap-4 {
+              gap: 16px;
+            }
+
+            .my-1 {
+              margin-top: 4px;
+              margin-bottom: 4px;
+            }
+
+            /* Print button styling for mobile */
+            .print-button {
+              position: fixed;
+              top: 10px;
+              left: 10px;
+              padding: 12px 24px;
+              background: #22c55e;
+              color: white;
+              border: none;
+              border-radius: 8px;
+              font-size: 18px;
+              font-weight: bold;
+              cursor: pointer;
+              z-index: 10000;
+              box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+              display: none;
+            }
+
+            .print-button.show {
+              display: block;
+            }
+
+            .print-button:active {
+              background: #16a34a;
+            }
+
+            @media print {
+              body {
+                padding: 0;
+              }
+              
+              .print-button {
+                display: none !important;
+              }
+
+              .receipt-container {
+                border: 1px solid #000;
+              }
+            }
           </style>
         </head>
         <body>
+          <button class="print-button" id="printBtn" onclick="window.print();">طباعة 🖨️</button>
+          
           <div class="receipt-container">
 
             <!-- HEADER -->
@@ -173,7 +263,7 @@ export const ReceiptLaptop: React.FC<ReceiptProps> = ({
               <div class="flex header justify-between items-center mb-2" dir="rtl">
                 <!-- Company -->
                 <div class="grid grid-rows-3 items-baseline gap-2 text-right">
-                  <span class="text-3xl green font-bold">مؤسسة عادل الرياشي</span>
+                  <span class="text-3xl green">مؤسسة عادل الرياشي</span>
                   <span class="text-2xl">للتجارة والاستيراد</span>
                   <div>رقم الفاتورة: ${saleNumber}</div>
                 </div>
@@ -271,33 +361,85 @@ export const ReceiptLaptop: React.FC<ReceiptProps> = ({
               <p>شكرًا لتسوقك معنا!</p>
             </div>
           </div>
+          
+          <script>
+            // Detect if mobile device
+            var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Samsung/i.test(navigator.userAgent);
+            
+            if (isMobile) {
+              // Show print button for mobile
+              document.getElementById('printBtn').classList.add('show');
+              
+              // Close window after print
+              window.onafterprint = function() {
+                window.close();
+              };
+            } else {
+              // Auto-print for desktop
+              window.onload = function() {
+                setTimeout(function() {
+                  window.print();
+                }, 250);
+              };
+            }
+          </script>
         </body>
       </html>
     `;
 
-    // Use hidden iframe for laptop/desktop
-    const iframe = document.createElement("iframe");
-    iframe.style.position = "fixed";
-    iframe.style.right = "0";
-    iframe.style.bottom = "0";
-    iframe.style.width = "0";
-    iframe.style.height = "0";
-    iframe.style.border = "none";
-    document.body.appendChild(iframe);
+    // Check if mobile device
+    if (isMobileDevice()) {
+      // For mobile: Use window.open with blob
+      const blob = new Blob([printHTML], { type: "text/html;charset=utf-8" });
+      const blobUrl = URL.createObjectURL(blob);
 
-    const doc = iframe.contentWindow?.document;
-    if (!doc) return;
+      const printWindow = window.open(
+        blobUrl,
+        "_blank",
+        "width=800,height=600,toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes",
+      );
 
-    doc.open();
-    doc.write(printHTML);
-    doc.close();
+      if (printWindow) {
+        printWindow.onload = function () {
+          setTimeout(() => {
+            URL.revokeObjectURL(blobUrl);
+          }, 100);
+        };
+      } else {
+        // Fallback if popup blocked
+        const directWindow = window.open("", "_blank");
+        if (directWindow) {
+          directWindow.document.open();
+          directWindow.document.write(printHTML);
+          directWindow.document.close();
+        }
+        URL.revokeObjectURL(blobUrl);
+      }
+    } else {
+      // For laptop/desktop: Use iframe (your original method)
+      const iframe = document.createElement("iframe");
+      iframe.style.position = "fixed";
+      iframe.style.right = "0";
+      iframe.style.bottom = "0";
+      iframe.style.width = "0";
+      iframe.style.height = "0";
+      iframe.style.border = "none";
+      document.body.appendChild(iframe);
 
-    iframe.contentWindow?.focus();
-    iframe.contentWindow?.print();
+      const doc = iframe.contentWindow?.document;
+      if (!doc) return;
 
-    setTimeout(() => {
-      document.body.removeChild(iframe);
-    }, 1000);
+      doc.open();
+      doc.write(printHTML);
+      doc.close();
+
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+
+      setTimeout(() => {
+        document.body.removeChild(iframe);
+      }, 1000);
+    }
   };
 
   return (
