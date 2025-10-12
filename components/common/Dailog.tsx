@@ -34,7 +34,7 @@ export default function CustomDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent
-        className="sm:max-w-[60vw] h-[90vh] overflow-y-auto bg-popover"
+        className="bg-popover h-[90vh] w-2xs overflow-y-auto md:w-md lg:w-full"
         dir="rtl"
       >
         <DialogHeader>

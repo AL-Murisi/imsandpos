@@ -34,8 +34,8 @@ export default function SearchInput({ placeholder, paramKey }: InputProps) {
 
   return (
     <form
-      action=""
-      className="bg-amber- relative flex w-60 flex-col gap-2 md:w-full lg:w-md"
+      onSubmit={(e) => e.preventDefault()} // 🧠 Prevent page reload
+      className="relative flex w-60 flex-col gap-2 md:w-full lg:w-md"
       dir="rtl"
     >
       <div className="relative w-full">
@@ -48,7 +48,6 @@ export default function SearchInput({ placeholder, paramKey }: InputProps) {
           defaultValue={query}
         />
 
-        {/* SearchStatus positioned inside input container */}
         <div className="absolute top-1/2 right-10 -translate-y-1/2">
           <SearchStatus searching={isPending} />
         </div>

@@ -4,9 +4,17 @@ import { Receipt } from "@/components/common/recipt";
 import SearchInput from "@/components/common/searchtest";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import {
   Table,
@@ -29,7 +37,7 @@ import {
 import { useAppDispatch, useAppSelector } from "@/lib/store";
 import { CashierItem, CashierSchema } from "@/lib/zod/cashier";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Minus, Package2Icon, Plus, Printer, Trash2Icon } from "lucide-react";
+import { Minus, Package2Icon, Plus, Trash2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import React from "react";
 import { useForm } from "react-hook-form";
@@ -151,211 +159,162 @@ export default function Payment({ users }: PaymentProps) {
     (isCash && receivedAmount >= totals.totalAfter) || (isDebt && users?.name);
 
   return (
-    <CustomDialog
-      trigger={
+    <Dialog>
+      <DialogTrigger asChild>
         <Button
           variant="outline"
           className="flex-1 rounded-md border-amber-500 py-3 text-amber-600 shadow-md hover:bg-amber-50"
         >
           {t("pay_now")}
         </Button>
-      }
-      title={t("receipt_title")}
-      description={t("receipt_desc")}
-    >
-      <ScrollArea>
-        <div className="mb-4">
-          <SearchInput placeholder={t("search_customer")} paramKey="users" />
-        </div>
-        <div
-          id="receipt-content"
-          className="rounded-md bg-white p-4 text-black"
-        >
-          <div className="mb-2 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Package2Icon />
-              <span className="text-lg font-bold">{t("company_name")}</span>
-            </div>
-            <Label>{t("store_name")}</Label>
-          </div>
+      </DialogTrigger>
 
-          <Separator className="my-2 bg-black" />
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            <Label>
-              📅 {t("date")}: {new Date().toLocaleDateString("ar-EG")}
-            </Label>
-            <Label>
-              ⏰ {t("time")}:{" "}
-              {new Date().toLocaleTimeString("ar-EG", { hour12: false })}
-            </Label>
-            <Label>
-              👨‍💼 {t("cashier")}: {user?.name ?? t("")}
-            </Label>
-            <Label>
-              🧾 {t("invoice_number")}: {saleNumber}
-            </Label>
-            <Label>
-              💳 {t("payment_type")}: {paymentType}
-            </Label>
-            <div>
-              <Label>
-                {t("customer")}: <Badge>{users?.name ?? ""}</Badge>
-              </Label>
-            </div>
+      <DialogContent className="max-w-90 overflow-hidden md:max-w-4xl lg:max-w-6xl">
+        <div id="receipt-content" className="rounded-md text-amber-50">
+          <div className="p-x-5 mb-4 flex w-60 justify-end sm:w-2xs md:w-sm">
+            <SearchInput placeholder={t("search_customer")} paramKey="users" />
           </div>
-
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>م</TableHead>
-                <TableHead>{t("product")}</TableHead>
-                <TableHead>{t("warehouse")}</TableHead>
-                <TableHead>{t("quantity")}</TableHead>{" "}
-                <TableHead>{t("price")}</TableHead>
-                <TableHead>{t("unit_type")}</TableHead>
-                <TableHead>{t("total")}</TableHead>
-                <TableHead>{t("total")}</TableHead>
-                <TableHead>{t("action")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.map((item, index) => {
-                const itemPrice = getItemPrice(item);
-                return (
-                  <TableRow key={`${item.id}-${item.sellingUnit}`}>
-                    <TableCell>{index + 1}</TableCell>
-                    <TableCell>{item.name}</TableCell>
-                    <TableCell>{item.warehousename}</TableCell>
-                    <TableCell>
-                      <button
-                        disabled={item.selectedQty <= 1}
-                        onClick={() => {
-                          dispatch(
-                            updateQty({
-                              id: item.id,
-                              sellingUnit: item.sellingUnit,
-                              quantity: 1,
-                              action: "mins",
-                            }),
-                          );
-                        }}
-                        className="bg-primary text-background rounded p-1 disabled:bg-gray-400"
-                      >
-                        <Minus size={16} />
-                      </button>
-                      <input
-                        type="number"
-                        value={item.selectedQty}
-                        onChange={(e) => {
-                          const qty = Math.max(1, Number(e.target.value) || 1);
-                          dispatch(
-                            updateQty({
-                              id: item.id,
-                              sellingUnit: item.sellingUnit,
-                              quantity: 1,
-                              action: "",
-                            }),
-                          );
-                        }}
-                        className="w-16 rounded border bg-white px-2 py-1 text-center text-black dark:bg-gray-800 dark:text-white"
-                        min={1}
-                        // max={maxQty}
-                      />
-                      <button
-                        disabled={
-                          item.selectedQty >= item.originalStockQuantity
-                        }
-                        onClick={() => {
-                          dispatch(
-                            updateQty({
-                              id: item.id,
-                              sellingUnit: item.sellingUnit,
-                              quantity: 1,
-                              action: "plus",
-                            }),
-                          );
-                        }}
-                        className="bg-primary text-background rounded p-1 disabled:bg-gray-400"
-                      >
-                        <Plus size={16} />
-                      </button>
-                    </TableCell>
-                    <TableCell>{item.selectedQty}</TableCell>
-                    <TableCell>{item.sellingUnit}</TableCell>
-                    <TableCell>{itemPrice}</TableCell>
-                    <TableCell>
-                      {(itemPrice * item.selectedQty).toFixed(2)}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        onClick={() => dispatch(removeFromCart(item.id))}
-                        variant="ghost"
-                        size="icon"
-                      >
-                        <Trash2Icon color="red" size={18} />
-                      </Button>
-                    </TableCell>
+          <div className="w-80 sm:w-[480px] md:w-3xl lg:w-full">
+            <ScrollArea className="h-[30vh] w-full rounded-2xl border border-amber-300 p-2">
+              <Table className="w-full">
+                <TableHeader className="sticky top-0 z-10">
+                  <TableRow className="border-amber-300">
+                    <TableHead>#</TableHead>
+                    <TableHead>{t("sku")}</TableHead>
+                    <TableHead>{t("product")}</TableHead>
+                    <TableHead>{t("warehouse")}</TableHead>
+                    <TableHead>{t("quantity")}</TableHead>
+                    <TableHead>{t("type")}</TableHead>
+                    <TableHead>{t("price")}</TableHead>
+                    <TableHead>{t("total")}</TableHead>
+                    <TableHead>{t("actions")}</TableHead>
                   </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                </TableHeader>
 
-          <Separator className="my-2 bg-black" />
-          <div className="flex flex-row justify-between">
-            <div className="flex flex-col justify-end px-3">
-              <div className="my-1 flex gap-4 text-sm">
+                <TableBody>
+                  {items.length > 0 ? (
+                    items.map((item, index) => {
+                      const itemPrice = getItemPrice(item);
+                      return (
+                        <TableRow
+                          key={`${item.id}-${item.sellingUnit}`}
+                          className="border-amber-300"
+                        >
+                          <TableCell>{index + 1}</TableCell>
+                          <TableCell>{item.sku}</TableCell>
+                          <TableCell className="max-w-[120px] truncate">
+                            {item.name}
+                          </TableCell>
+                          <TableCell>{item.warehousename}</TableCell>
+                          <TableCell>{item.selectedQty}</TableCell>
+                          <TableCell>
+                            <Select
+                              value={item.sellingUnit}
+                              onValueChange={(value) =>
+                                dispatch(
+                                  changeSellingUnit({
+                                    id: item.id,
+                                    from: item.sellingUnit,
+                                    to: value as "unit" | "packet" | "carton",
+                                    product: {
+                                      packetsPerCarton: item.packetsPerCarton,
+                                      unitsPerPacket: item.unitsPerPacket,
+                                    },
+                                    qty: item.selectedQty,
+                                  }),
+                                )
+                              }
+                            >
+                              <SelectTrigger className="rounded border px-2 py-1 text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="carton">كرتون</SelectItem>
+                                <SelectItem value="packet">حزمة</SelectItem>
+                                <SelectItem value="unit">وحدة</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell className="text-center whitespace-nowrap">
+                            {itemPrice}
+                          </TableCell>
+                          <TableCell className="text-center whitespace-nowrap">
+                            {(itemPrice * item.selectedQty).toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Button
+                              onClick={() => dispatch(removeFromCart(item.id))}
+                              variant="ghost"
+                              size="icon"
+                            >
+                              <Trash2Icon color="red" size={18} />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  ) : (
+                    <TableRow>
+                      <TableCell
+                        colSpan={9}
+                        className="py-6 text-center text-gray-500"
+                      >
+                        {t("noProducts")}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+
+              {/* Totals */}
+              <Separator className="my-2 bg-black" />
+              <div
+                className="flex flex-col justify-between gap-4 text-sm sm:flex-row"
+                dir="rtl"
+              >
                 <Label>
                   {t("total_before")}: {totals.totalBefore.toFixed(2)} ﷼
                 </Label>
-              </div>
-              <div className="my-1 flex gap-4 text-sm">
                 <Label>
                   {t("discount")}: {totals.discount.toFixed(2)} ﷼
                 </Label>
-              </div>
-              <div className="my-1 flex gap-4 text-sm">
                 <Label>
                   {t("total_after")}: {totals.totalAfter.toFixed(2)} ﷼
                 </Label>
-              </div>
-              <div className="my-1 flex gap-4 text-sm">
                 <Label>
                   {t("received_amount")}: {receivedAmount ?? 0} ﷼
                 </Label>
-              </div>
-              <div className="my-1 flex gap-4 text-sm">
                 <Label>
                   {t("remaining_to_customer")}: {calculatedChange.toFixed(2)} ﷼
                 </Label>
+
+                {users?.totalDebt && users.totalDebt > 0 && (
+                  <div className="mt-2">
+                    <Label>
+                      {t("previous_debts")}: {users.totalDebt} ﷼
+                    </Label>
+                  </div>
+                )}
               </div>
-            </div>
-            <div className="flex flex-col justify-start">
-              {users?.totalDebt && users.totalDebt > 0 && (
-                <div className="mt-2">
-                  <Label>
-                    {t("previous_debts")}: {users.totalDebt} ﷼
-                  </Label>
-                </div>
-              )}
-            </div>
-          </div>
-          <Separator className="my-2 bg-black" />
-          <div className="mt-4 text-center text-xs">
-            <p>{t("thanks")}</p>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
           </div>
         </div>
 
+        {/* Payment Input + Buttons */}
         <Separator className="my-2 bg-black" />
-        <div className="max-w-md space-y-2">
+        <div
+          className="flex space-y-2 sm:w-2xs md:w-sm md:justify-self-end"
+          dir="rtl"
+        >
           <Label htmlFor="receivedAmount">{t("received_amount")}:</Label>
           <Input
             id="receivedAmount"
             type="number"
             step="0.01"
             {...register("receivedAmount", { valueAsNumber: true })}
-            className="border-2"
-            placeholder={"أدخل المبلغ المستلم"}
+            className="w-60 border-2 sm:w-2xs md:w-sm"
+            placeholder="أدخل المبلغ المستلم"
           />
           {errors.receivedAmount && (
             <p className="text-sm text-red-500">
@@ -364,7 +323,7 @@ export default function Payment({ users }: PaymentProps) {
           )}
         </div>
 
-        <div className="mt-4 flex justify-between gap-3">
+        <div className="mt-4 flex flex-row gap-3 md:justify-between">
           <Button
             onClick={handelpayment}
             disabled={!canPay}
@@ -372,10 +331,11 @@ export default function Payment({ users }: PaymentProps) {
               canPay
                 ? "bg-green-600 hover:bg-green-700"
                 : "cursor-not-allowed bg-gray-400"
-            } text-white`}
+            } sm:w-4xs w-40 text-white md:w-sm`}
           >
             {t("confirm_payment")}
           </Button>
+
           <Receipt
             saleNumber={saleNumber}
             items={items}
@@ -389,7 +349,7 @@ export default function Payment({ users }: PaymentProps) {
             t={t}
           />
         </div>
-      </ScrollArea>
-    </CustomDialog>
+      </DialogContent>
+    </Dialog>
   );
 }
