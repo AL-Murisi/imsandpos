@@ -346,15 +346,18 @@ export const ReceiptLaptop: React.FC<ReceiptProps> = ({
             var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Samsung/i.test(navigator.userAgent);
             
             if (isMobile) {
-              // Auto-print for mobile and close after
+              // Auto-print for mobile with longer delay for Samsung
               window.onload = function() {
                 setTimeout(function() {
                   window.print();
-                }, 500);
+                }, 1500);
               };
               
+              // Close after print dialog is dismissed
               window.onafterprint = function() {
-                window.close();
+                setTimeout(function() {
+                  window.close();
+                }, 300);
               };
             } else {
               // Auto-print for desktop
