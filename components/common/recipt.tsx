@@ -28,7 +28,7 @@ export interface ReceiptProps {
   customerName?: string;
   customerDebt?: number;
   isCash: boolean;
-  t: any;
+  t: any; // Correct type for translation function
 }
 
 export const Receipt: React.FC<ReceiptProps> = ({
@@ -57,6 +57,26 @@ export const Receipt: React.FC<ReceiptProps> = ({
   };
 
   const handlePrint = () => {
+    // FIX 1: Accessing the variables is now correct as handlePrint is defined
+    // within the component scope where the props are available.
+
+    // FIX 2: Correcting the Date formatting options for TypeScript Error 2769
+    const dateOptions: Intl.DateTimeFormatOptions = {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    };
+    const timeOptions: Intl.DateTimeFormatOptions = {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    };
+
+    // This is the correct way to format the date/time string with options
+    const formattedDate = new Date().toLocaleDateString("ar-EG", dateOptions);
+    const formattedTime = new Date().toLocaleTimeString("ar-EG", timeOptions);
+
     const printHTML = `
       <html>
         <head>
@@ -251,9 +271,12 @@ export const Receipt: React.FC<ReceiptProps> = ({
           </div>
         </body>
       </html>
-    `;
-
+    `; // NOTE: The original iframe logic is kept as you provided it, but be aware that
     // ✅ Use hidden iframe for mobile/PWA-safe printing
+
+    // this can still be blocked by some mobile browsers (as you experienced).
+    // A better long-term solution is often to print to a new window (window.open).
+
     const iframe = document.createElement("iframe");
     iframe.style.position = "fixed";
     iframe.style.right = "0";

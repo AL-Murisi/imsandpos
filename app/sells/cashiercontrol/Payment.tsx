@@ -1,8 +1,6 @@
 "use client";
-import CustomDialog from "@/components/common/Dailog";
 import { Receipt } from "@/components/common/recipt";
 import SearchInput from "@/components/common/searchtest";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -32,12 +30,11 @@ import {
   clearCart,
   removeFromCart,
   setDiscount,
-  updateQty,
 } from "@/lib/slices/cartSlice";
 import { useAppDispatch, useAppSelector } from "@/lib/store";
 import { CashierItem, CashierSchema } from "@/lib/zod/cashier";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Minus, Package2Icon, Plus, Trash2Icon } from "lucide-react";
+import { Trash2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import React from "react";
 import { useForm } from "react-hook-form";
