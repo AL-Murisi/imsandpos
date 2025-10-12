@@ -253,7 +253,7 @@ export const Receipt: React.FC<ReceiptProps> = ({
 
                 <!-- Branch -->
                 <div class="grid grid-rows-4">  
-                  <div class="text-lg">فرع سنحان - أمام محطة الصيادي</div>
+                  <div class="text-lg">فرع سناح - أمام محطة الصيادي</div>
                   <div>تلفون: 772222599</div>
                   <div>التاريخ: ${formattedDate}</div>
                   <div>الوقت: ${formattedTime}</div>
