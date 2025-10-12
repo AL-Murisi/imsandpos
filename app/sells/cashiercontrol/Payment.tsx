@@ -310,7 +310,6 @@ export default function Payment({ users }: PaymentProps) {
           <Input
             id="receivedAmount"
             type="number"
-            step="0.01"
             {...register("receivedAmount", { valueAsNumber: true })}
             className="w-60 border-2 sm:w-2xs md:w-sm"
             placeholder="أدخل المبلغ المستلم"

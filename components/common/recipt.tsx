@@ -28,7 +28,7 @@ export interface ReceiptProps {
   customerName?: string;
   customerDebt?: number;
   isCash: boolean;
-  t: any; // Correct type for translation function
+  t: any;
 }
 
 export const Receipt: React.FC<ReceiptProps> = ({
@@ -57,10 +57,6 @@ export const Receipt: React.FC<ReceiptProps> = ({
   };
 
   const handlePrint = () => {
-    // FIX 1: Accessing the variables is now correct as handlePrint is defined
-    // within the component scope where the props are available.
-
-    // FIX 2: Correcting the Date formatting options for TypeScript Error 2769
     const dateOptions: Intl.DateTimeFormatOptions = {
       day: "2-digit",
       month: "2-digit",
@@ -73,30 +69,37 @@ export const Receipt: React.FC<ReceiptProps> = ({
       hour12: false,
     };
 
-    // This is the correct way to format the date/time string with options
     const formattedDate = new Date().toLocaleDateString("ar-EG", dateOptions);
     const formattedTime = new Date().toLocaleTimeString("ar-EG", timeOptions);
 
     const printHTML = `
+      <!DOCTYPE html>
       <html>
         <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>Receipt</title>
           <style>
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+
             body {
               font-family: Arial, sans-serif;
               direction: rtl;
               background: #fff;
               color: #000;
-              border: 1px solid #000;
-              border-radius: 6px;
-              margin: 0;
+              padding: 10px;
             }
 
             .receipt-container {
               width: 100%;
-              border-collapse: collapse;
-              display: flex;
-              flex-direction: column;
+              max-width: 800px;
+              margin: 0 auto;
+              border: 1px solid #000;
+              border-radius: 6px;
             }
 
             .section {
@@ -105,7 +108,7 @@ export const Receipt: React.FC<ReceiptProps> = ({
 
             .header {
               border-bottom: 1px solid black;
-              border-radius: 6px;
+              padding-bottom: 8px;
             }
 
             .flex { display: flex; }
@@ -136,7 +139,9 @@ export const Receipt: React.FC<ReceiptProps> = ({
               text-align: center;
               font-size: 12px;
             }
-.h{height: 30px;}
+
+            .h { height: 30px; }
+            
             th {
               background-color: #f0f0f0;
             }
@@ -153,13 +158,28 @@ export const Receipt: React.FC<ReceiptProps> = ({
               padding: 4px;
               text-align: right;
             }
-.pl{padding-top:3px;padding-bottom:3px;}
+
+            .pl { 
+              padding-top: 3px;
+              padding-bottom: 3px;
+            }
+
             .badge {
               display: inline-block;
               background: #f0f0f0;
               padding: 2px 6px;
               border-radius: 8px;
               margin-right: 4px;
+            }
+
+            @media print {
+              body {
+                padding: 0;
+              }
+              
+              .receipt-container {
+                border: none;
+              }
             }
           </style>
         </head>
@@ -185,8 +205,8 @@ export const Receipt: React.FC<ReceiptProps> = ({
                 <div class="grid grid-rows-4">  
                   <div class="text-lg">فرع سنحان - أمام محطة الصيادي</div>
                   <div>تلفون: 772222599</div>
-                  <div>التاريخ: ${new Date().toLocaleDateString("ar-EG")}</div>
-                  <div>الوقت: ${new Date().toLocaleTimeString("ar-EG", { hour12: false })}</div>
+                  <div>التاريخ: ${formattedDate}</div>
+                  <div>الوقت: ${formattedTime}</div>
                 </div>
               </div>
             </div>
@@ -236,7 +256,7 @@ export const Receipt: React.FC<ReceiptProps> = ({
                     <span class="totals-label">الخصم:</span>
                     <span class="totals-value">${totals.discount.toFixed(2)} ﷼</span>
                   </div>
-                  <div class="flex gap-4 text-sm my-1 l">
+                  <div class="flex gap-4 text-sm my-1 pl">
                     <span class="totals-label">الإجمالي:</span>
                     <span class="totals-value">${totals.totalAfter.toFixed(2)} ﷼</span>
                   </div>
@@ -244,7 +264,7 @@ export const Receipt: React.FC<ReceiptProps> = ({
                     <span class="totals-label">المبلغ المدفوع:</span>
                     <span class="totals-value">${receivedAmount?.toFixed(2) ?? 0} ﷼</span>
                   </div>
-                  <div class="flex gap-4 text-sm my-1 pl> ${calculatedChange > 0 ? "green" : "grey"}">
+                  <div class="flex gap-4 text-sm my-1 pl ${calculatedChange > 0 ? "green" : "grey"}">
                     <span class="totals-label">المتبقي للعميل:</span>
                     <span class="totals-value">${calculatedChange.toFixed(2)} ﷼</span>
                   </div>
@@ -269,42 +289,52 @@ export const Receipt: React.FC<ReceiptProps> = ({
               <p>شكرًا لتسوقك معنا!</p>
             </div>
           </div>
+          
+          <script>
+            // Auto-print when page loads
+            window.onload = function() {
+              setTimeout(function() {
+                window.print();
+                // Close window after print dialog is dismissed
+                setTimeout(function() {
+                  window.close();
+                }, 100);
+              }, 250);
+            };
+            
+            // Handle print event completion
+            window.onafterprint = function() {
+              window.close();
+            };
+          </script>
         </body>
       </html>
-    `; // NOTE: The original iframe logic is kept as you provided it, but be aware that
-    // ✅ Use hidden iframe for mobile/PWA-safe printing
+    `;
 
-    // this can still be blocked by some mobile browsers (as you experienced).
-    // A better long-term solution is often to print to a new window (window.open).
+    // Use window.open instead of iframe for better mobile support
+    const printWindow = window.open("", "_blank", "width=800,height=600");
 
-    const iframe = document.createElement("iframe");
-    iframe.style.position = "fixed";
-    iframe.style.right = "0";
-    iframe.style.bottom = "0";
-    iframe.style.width = "0";
-    iframe.style.height = "0";
-    iframe.style.border = "none";
-    document.body.appendChild(iframe);
+    if (printWindow) {
+      printWindow.document.open();
+      printWindow.document.write(printHTML);
+      printWindow.document.close();
+    } else {
+      // Fallback: Create blob URL and open in new tab
+      const blob = new Blob([printHTML], { type: "text/html" });
+      const blobUrl = URL.createObjectURL(blob);
+      const newWindow = window.open(blobUrl, "_blank");
 
-    const doc = iframe.contentWindow?.document;
-    if (!doc) return;
-
-    doc.open();
-    doc.write(printHTML);
-    doc.close();
-
-    iframe.contentWindow?.focus();
-    iframe.contentWindow?.print();
-
-    setTimeout(() => {
-      document.body.removeChild(iframe);
-    }, 1000);
+      // Clean up blob URL after a delay
+      setTimeout(() => {
+        URL.revokeObjectURL(blobUrl);
+      }, 1000);
+    }
   };
 
   return (
     <Button
       onClick={handlePrint}
-      className="md:w-sm` sm:w-4xs w-40 rounded bg-green-600 px-4 py-2 text-white"
+      className="sm:w-4xs w-40 rounded bg-green-600 px-4 py-2 text-white md:w-sm"
     >
       {t("print")}
     </Button>
