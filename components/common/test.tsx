@@ -190,7 +190,7 @@ export function DataTable<T>({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
             {/* Align to the start (right) for RTL */}
-            {[5, 10, 20, 50].map((size) => (
+            {[5, 10, 20, 50, 100, 1000].map((size) => (
               <DropdownMenuItem
                 key={size}
                 onClick={() => table.setPageSize(size)}

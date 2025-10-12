@@ -59,11 +59,7 @@ export default async function SellsDashboard({ searchParams }: DashboardProps) {
 
   const pageIndex = Number(page) - 1;
   const pageSize = Number(limit);
-  const filter: Prisma.SaleWhereInput = {
-    paymentStatus: {
-      in: ["partial"],
-    },
-  };
+  const filter: Prisma.SaleWhereInput = {};
   const parsedSort: SortingState = ParsedSort(sort);
 
   const { userId, userRole } = await verifySession();

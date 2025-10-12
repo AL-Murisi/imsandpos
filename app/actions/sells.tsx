@@ -1,6 +1,29 @@
 // app/actions/sales/getTopSellingProducts.ts
 "use server";
-import { ReceiptItem } from "@/components/common/recipt";
+type ReceiptItem = {
+  id: string;
+  name: string;
+  warehousename: string;
+  selectedQty: number;
+  sellingUnit: "unit" | "packet" | "carton";
+  pricePerUnit: number;
+  pricePerPacket: number;
+  pricePerCarton: number;
+};
+
+type ReceiptResult = {
+  sale_number: string;
+  total_before: number;
+  total_after: number;
+  received_amount: number;
+  calculated_change: number;
+  user_name: string | null;
+  customer_name: string | null;
+  customer_debt: number | null;
+  is_cash: boolean;
+  items: ReceiptItem[];
+  payment_list: any[] | null;
+};
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { SortingState } from "@tanstack/react-table";
@@ -131,73 +154,170 @@ export async function FetchCustomerDebtReport(customerId: string) {
     })),
   }));
 }
+// export async function fetchReceipt(saleId: string) {
+//   const sale = await prisma.sale.findUnique({
+//     where: { saleNumber: saleId },
+//     include: {
+//       customer: true,
+//       cashier: true,
+//       saleItems: {
+//         include: {
+//           product: true, // get product info including warehouseId
+//         },
+//       },
+//       payments: true,
+//     },
+//   });
+
+//   if (!sale) return null;
+
+//   // Get all unique warehouse IDs from products
+//   const warehouseIds = [
+//     ...new Set(sale.saleItems.map((i) => i.product.warehouseId)),
+//   ];
+
+//   // Fetch warehouse names
+//   const warehouses = await prisma.warehouse.findMany({
+//     where: { id: { in: warehouseIds } },
+//   });
+
+//   const warehouseMap: Record<string, string> = {};
+//   warehouses.forEach((w) => {
+//     warehouseMap[w.id] = w.name;
+//   });
+
+//   // Map sale items to ReceiptItem
+//   const items: ReceiptItem[] = sale.saleItems.map((item) => ({
+//     id: item.productId,
+//     name: item.product.name,
+//     warehousename: warehouseMap[item.product.warehouseId] || "Unknown",
+//     selectedQty: item.quantity,
+//     sellingUnit: item.sellingUnit as "unit" | "packet" | "carton",
+//     pricePerUnit: item.product.pricePerUnit?.toNumber(),
+//     pricePerPacket: item.product.pricePerPacket?.toNumber(),
+//     pricePerCarton: item.product.pricePerCarton?.toNumber(),
+//   }));
+
+//   const totalBefore = sale.subtotal.toNumber();
+//   const discount = sale.discountAmount.toNumber();
+//   const totalAfter = sale.totalAmount.toNumber();
+//   const receivedAmount = sale.amountPaid?.toNumber() || 0;
+//   const calculatedChange = receivedAmount - totalAfter;
+//   console.log(items);
+//   return {
+//     saleNumber: sale.saleNumber,
+//     items,
+//     totals: {
+//       totalBefore,
+//       discount,
+//       totalAfter,
+//     },
+//     receivedAmount,
+//     calculatedChange,
+//     userName: sale.cashier?.name,
+//     customerName: sale.customer?.name,
+//     customerDebt: sale.customer?.outstandingBalance?.toNumber(),
+//     isCash: receivedAmount >= totalAfter,
+//   };
+// }
 export async function fetchReceipt(saleId: string) {
-  const sale = await prisma.sale.findUnique({
-    where: { saleNumber: saleId },
-    include: {
-      customer: true,
-      cashier: true,
-      saleItems: {
-        include: {
-          product: true, // get product info including warehouseId
-        },
-      },
-      payments: true,
-    },
-  });
+  const result = await prisma.$queryRawUnsafe<ReceiptResult[]>(
+    `
+    WITH sale_data AS (
+      SELECT 
+        s.id AS sale_id,
+        s.sale_number,
+        s.subtotal,
+        s.total_amount,
+        s.amount_paid,
+        s.cashier_id,
+        s.customer_id,
+        c.name AS customer_name,
+        c.outstanding_balance,
+        u.name AS cashier_name
+      FROM sales s
+      LEFT JOIN customers c ON s.customer_id = c.id
+      LEFT JOIN users u ON s.cashier_id = u.id
+      WHERE s.sale_number = $1
+    ),
+    sale_items AS (
+      SELECT 
+        si.sale_id,
+        si.product_id,
+        si.quantity,
+        si.selling_unit,
+        p.name AS product_name,
+        p.price_per_unit,
+        p.price_per_packet,
+        p.price_per_carton,
+        p.warehouse_id,
+        w.name AS warehouse_name
+      FROM sale_items si
+      JOIN products p ON si.product_id = p.id
+      LEFT JOIN warehouses w ON p.warehouse_id = w.id
+    ),
+    payments AS (
+      SELECT 
+        p.sale_id,
+        json_agg(
+          json_build_object(
+            'id', p.id,
+            'amount', p.amount,
+            'method', p.payment_method,
+            'date', p.created_at
+          )
+        ) AS payment_list
+      FROM payments p
+      GROUP BY p.sale_id
+    )
+    SELECT 
+      s.sale_number,
+      s.subtotal::numeric AS total_before,
+      s.total_amount::numeric AS total_after,
+      COALESCE(s.amount_paid, 0)::numeric AS received_amount,
+      (COALESCE(s.amount_paid, 0)::numeric - s.total_amount::numeric) AS calculated_change,
+      s.cashier_name AS user_name,
+      s.customer_name,
+      s.outstanding_balance::numeric AS customer_debt,
+      (COALESCE(s.amount_paid, 0)::numeric >= s.total_amount::numeric) AS is_cash,
+      (
+        SELECT json_agg(
+          json_build_object(
+            'id', si.product_id,
+            'name', si.product_name,
+            'warehousename', si.warehouse_name,
+            'selectedQty', si.quantity,
+            'sellingUnit', si.selling_unit,
+            'pricePerUnit', si.price_per_unit,
+            'pricePerPacket', si.price_per_packet,
+            'pricePerCarton', si.price_per_carton
+          )
+        )
+        FROM sale_items si
+        WHERE si.sale_id = s.sale_id
+      ) AS items,
+      p.payment_list
+    FROM sale_data s
+    LEFT JOIN payments p ON p.sale_id = s.sale_id;
+  `,
+    saleId,
+  );
+  const receipt = result[0];
+  if (!receipt) return null;
 
-  if (!sale) return null;
+  // Convert Decimals to numbers recursively
+  const safeReceipt = JSON.parse(
+    JSON.stringify(receipt, (_key, value) => {
+      if (typeof value === "object" && value !== null && "toNumber" in value) {
+        return Number(value.toNumber());
+      }
+      if (typeof value === "bigint") return Number(value);
+      return value;
+    }),
+  );
 
-  // Get all unique warehouse IDs from products
-  const warehouseIds = [
-    ...new Set(sale.saleItems.map((i) => i.product.warehouseId)),
-  ];
-
-  // Fetch warehouse names
-  const warehouses = await prisma.warehouse.findMany({
-    where: { id: { in: warehouseIds } },
-  });
-
-  const warehouseMap: Record<string, string> = {};
-  warehouses.forEach((w) => {
-    warehouseMap[w.id] = w.name;
-  });
-
-  // Map sale items to ReceiptItem
-  const items: ReceiptItem[] = sale.saleItems.map((item) => ({
-    id: item.productId,
-    name: item.product.name,
-    warehousename: warehouseMap[item.product.warehouseId] || "Unknown",
-    selectedQty: item.quantity,
-    sellingUnit: item.sellingUnit as "unit" | "packet" | "carton",
-    pricePerUnit: item.product.pricePerUnit?.toNumber(),
-    pricePerPacket: item.product.pricePerPacket?.toNumber(),
-    pricePerCarton: item.product.pricePerCarton?.toNumber(),
-  }));
-
-  const totalBefore = sale.subtotal.toNumber();
-  const discount = sale.discountAmount.toNumber();
-  const totalAfter = sale.totalAmount.toNumber();
-  const receivedAmount = sale.amountPaid?.toNumber() || 0;
-  const calculatedChange = receivedAmount - totalAfter;
-  console.log(items);
-  return {
-    saleNumber: sale.saleNumber,
-    items,
-    totals: {
-      totalBefore,
-      discount,
-      totalAfter,
-    },
-    receivedAmount,
-    calculatedChange,
-    userName: sale.cashier?.name,
-    customerName: sale.customer?.name,
-    customerDebt: sale.customer?.outstandingBalance?.toNumber(),
-    isCash: receivedAmount >= totalAfter,
-  };
+  return safeReceipt;
 }
-
 export async function fetchSalesSummary(
   role: string,
   filters?: {
