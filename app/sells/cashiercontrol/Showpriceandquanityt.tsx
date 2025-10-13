@@ -48,7 +48,7 @@ import {
 } from "@/components/ui/select";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
-import { Receipt } from "@/components/common/recipt";
+import Receipt from "@/components/common/recipt";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import SearchInput from "@/components/common/searchtest";

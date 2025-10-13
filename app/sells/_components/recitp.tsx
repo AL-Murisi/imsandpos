@@ -23,7 +23,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { ReceiptLaptop } from "@/components/common/receiptforlaptop";
-import { Receipt } from "@/components/common/recipt";
+import Receipt from "@/components/common/recipt";
 
 type Props = {
   id: string;
