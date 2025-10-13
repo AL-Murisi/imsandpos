@@ -23,7 +23,8 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { ReceiptLaptop } from "@/components/common/receiptforlaptop";
-import Receipt from "@/components/common/recipt";
+import Receipt from "@/app/sells/receipt/page";
+import { PrintButton } from "../cashiercontrol/test";
 
 type Props = {
   id: string;
@@ -175,7 +176,7 @@ export default function Recitp({ id }: Props) {
         {/* Print Button */}
         {data && (
           <div className="mt-3 flex justify-center">
-            <Receipt
+            <PrintButton
               saleNumber={data.sale_number ?? ""}
               items={data.items ?? []}
               totals={{

@@ -48,12 +48,13 @@ import {
 } from "@/components/ui/select";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
-import Receipt from "@/components/common/recipt";
+import Receipt from "@/app/sells/receipt/page";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import SearchInput from "@/components/common/searchtest";
 import { useTablePrams } from "@/hooks/useTableParams";
 import { processSale } from "@/app/actions/cashier";
+import { PrintButton } from "./test";
 export type SellingUnit = "carton" | "packet" | "unit";
 export type discountType = "fixed" | "percentage";
 type CartItem = CashierItem & {
@@ -505,7 +506,7 @@ export default function CartDisplay({ users }: CustomDialogProps) {
 
           {items.length !== 0 ? (
             <div className="mt-4 flex flex-col gap-3 md:flex-row">
-              <Receipt
+              <PrintButton
                 saleNumber={saleNumber}
                 items={items}
                 totals={totals}

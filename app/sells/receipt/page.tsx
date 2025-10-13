@@ -357,11 +357,14 @@
 //       {t("print")}
 //     </Button>
 //   );
-// };"use client";
+// };
+//
+"use client";
 
 import React, { useRef } from "react";
-import { Button } from "../ui/button";
+import { Button } from "../../../components/ui/button";
 import { useReactToPrint } from "react-to-print";
+import { useSearchParams } from "next/navigation";
 export interface ReceiptItem {
   id: string;
   name: string;
@@ -389,19 +392,20 @@ export interface ReceiptProps {
   isCash: boolean;
   t: any;
 }
-export default function Receipt({
-  saleNumber,
-  items,
-  totals,
-  receivedAmount,
-  calculatedChange,
-  userName,
-  customerName,
-  customerDebt,
-  isCash,
-  t,
-}: any) {
+export default function Receipt() {
   const printRef = useRef<HTMLDivElement>(null);
+  const params = useSearchParams();
+
+  // Parse the query
+  const saleNumber = params.get("saleNumber") ?? "";
+  const items = JSON.parse(params.get("items") ?? "[]");
+  const totals = JSON.parse(params.get("totals") ?? "{}");
+  const receivedAmount = parseFloat(params.get("receivedAmount") ?? "0");
+  const calculatedChange = parseFloat(params.get("calculatedChange") ?? "0");
+  const userName = params.get("userName") ?? "";
+  const customerName = params.get("customerName") ?? "";
+  const customerDebt = parseFloat(params.get("customerDebt") ?? "0");
+  const isCash = params.get("isCash") === "1";
 
   const handlePrint = useReactToPrint({
     contentRef: printRef,
@@ -434,7 +438,7 @@ export default function Receipt({
   return (
     <div>
       {/* 🔹 Printable Area */}
-      <div ref={printRef} className="hidden print:block">
+      <div ref={printRef} className="print:block">
         <div dir="rtl" style={{ fontFamily: "Arial, sans-serif" }}>
           <style>
             {`
@@ -611,14 +615,13 @@ export default function Receipt({
           </div>
         </div>
       </div>
-
-      {/* 🔹 Print Button */}
       <Button
         onClick={handlePrint}
         className="w-40 rounded bg-green-600 px-4 py-2 text-white sm:w-2xs md:w-sm"
       >
-        {t("print")}
+        print
       </Button>
+      {/* 🔹 Print Button */}
     </div>
   );
 }
