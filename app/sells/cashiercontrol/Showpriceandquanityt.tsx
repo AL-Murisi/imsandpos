@@ -48,13 +48,14 @@ import {
 } from "@/components/ui/select";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
-import Receipt from "@/app/sells/receipt/page";
+
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import SearchInput from "@/components/common/searchtest";
 import { useTablePrams } from "@/hooks/useTableParams";
 import { processSale } from "@/app/actions/cashier";
 import { PrintButton } from "./test";
+import { Receipt } from "@/components/common/receipt";
 export type SellingUnit = "carton" | "packet" | "unit";
 export type discountType = "fixed" | "percentage";
 type CartItem = CashierItem & {
@@ -83,7 +84,12 @@ export default function CartDisplay({ users }: CustomDialogProps) {
   const [receivedAmount, setReceivedAmount] = useState(0);
   const totals = useAppSelector(selectCartTotals);
   const tt = useTranslations("payment");
-
+  const userAgent =
+    typeof window !== "undefined" ? navigator.userAgent.toLowerCase() : "";
+  const isMobileUA =
+    /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(
+      userAgent,
+    );
   const hasAddedCart = useRef(false);
 
   useEffect(() => {
@@ -506,18 +512,33 @@ export default function CartDisplay({ users }: CustomDialogProps) {
 
           {items.length !== 0 ? (
             <div className="mt-4 flex flex-col gap-3 md:flex-row">
-              <PrintButton
-                saleNumber={saleNumber}
-                items={items}
-                totals={totals}
-                receivedAmount={receivedAmount}
-                calculatedChange={calculatedChange}
-                userName={user?.name}
-                customerName={users?.name}
-                customerDebt={users?.totalDebt}
-                isCash={receivedAmount >= totals.totalAfter}
-                t={tt}
-              />
+              {isMobileUA ? (
+                <PrintButton
+                  saleNumber={saleNumber}
+                  items={items}
+                  totals={totals}
+                  receivedAmount={receivedAmount}
+                  calculatedChange={calculatedChange}
+                  userName={user?.name}
+                  customerName={users?.name}
+                  customerDebt={users?.totalDebt}
+                  isCash={receivedAmount >= totals.totalAfter}
+                  t={tt}
+                />
+              ) : (
+                <Receipt
+                  saleNumber={saleNumber}
+                  items={items}
+                  totals={totals}
+                  receivedAmount={receivedAmount}
+                  calculatedChange={calculatedChange}
+                  userName={user?.name}
+                  customerName={users?.name}
+                  customerDebt={users?.totalDebt}
+                  isCash={receivedAmount >= totals.totalAfter}
+                  t={tt}
+                />
+              )}
               <Button
                 disabled={pending && !canPay}
                 onClick={() =>

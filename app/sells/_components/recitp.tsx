@@ -23,8 +23,9 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { ReceiptLaptop } from "@/components/common/receiptforlaptop";
-import Receipt from "@/app/sells/receipt/page";
+
 import { PrintButton } from "../cashiercontrol/test";
+import { Receipt } from "@/components/common/receipt";
 
 type Props = {
   id: string;
@@ -34,7 +35,12 @@ export default function Recitp({ id }: Props) {
   const [data, setData] = React.useState<any>(null);
   const [loading, setLoading] = React.useState(false);
   const t = useTranslations("payment");
-
+  const userAgent =
+    typeof window !== "undefined" ? navigator.userAgent.toLowerCase() : "";
+  const isMobileUA =
+    /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(
+      userAgent,
+    );
   const handleFetch = async () => {
     try {
       setLoading(true);
@@ -176,22 +182,41 @@ export default function Recitp({ id }: Props) {
         {/* Print Button */}
         {data && (
           <div className="mt-3 flex justify-center">
-            <PrintButton
-              saleNumber={data.sale_number ?? ""}
-              items={data.items ?? []}
-              totals={{
-                totalBefore: Number(data.total_before ?? 0),
-                discount: Number(data.discount_amount ?? 0),
-                totalAfter: Number(data.total_after ?? 0),
-              }}
-              receivedAmount={Number(data.received_amount ?? 0)}
-              calculatedChange={Number(data.calculated_change ?? 0)}
-              userName={data.user_name ?? ""}
-              customerName={data.customer_name ?? ""}
-              customerDebt={Number(data.customer_debt ?? 0)}
-              isCash={Boolean(data.is_cash)}
-              t={t}
-            />
+            {isMobileUA ? (
+              <PrintButton
+                saleNumber={data.sale_number ?? ""}
+                items={data.items ?? []}
+                totals={{
+                  totalBefore: Number(data.total_before ?? 0),
+                  discount: Number(data.discount_amount ?? 0),
+                  totalAfter: Number(data.total_after ?? 0),
+                }}
+                receivedAmount={Number(data.received_amount ?? 0)}
+                calculatedChange={Number(data.calculated_change ?? 0)}
+                userName={data.user_name ?? ""}
+                customerName={data.customer_name ?? ""}
+                customerDebt={Number(data.customer_debt ?? 0)}
+                isCash={Boolean(data.is_cash)}
+                t={t}
+              />
+            ) : (
+              <Receipt
+                saleNumber={data.sale_number ?? ""}
+                items={data.items ?? []}
+                totals={{
+                  totalBefore: Number(data.total_before ?? 0),
+                  discount: Number(data.discount_amount ?? 0),
+                  totalAfter: Number(data.total_after ?? 0),
+                }}
+                receivedAmount={Number(data.received_amount ?? 0)}
+                calculatedChange={Number(data.calculated_change ?? 0)}
+                userName={data.user_name ?? ""}
+                customerName={data.customer_name ?? ""}
+                customerDebt={Number(data.customer_debt ?? 0)}
+                isCash={Boolean(data.is_cash)}
+                t={t}
+              />
+            )}
           </div>
         )}
       </DialogContent>
