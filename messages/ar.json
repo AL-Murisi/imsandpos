@@ -16,6 +16,7 @@
     "label": "Sprache"
   },
   "menu": {
+    "customer": "العملاء",
     "home": "الرئيسية",
     "users": "المستخدمون",
     "inventory": "إدارة المخازن",

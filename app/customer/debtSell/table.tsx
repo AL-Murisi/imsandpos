@@ -19,19 +19,18 @@ import { Plus } from "lucide-react";
 import CustomDialog from "@/components/common/Dailog";
 // import SearchInput from "@/components/common/SearchInput";
 
-import { columns } from "./columns";
+import { customerColumns } from "./columns";
 import SearchInput from "@/components/common/searchtest";
-import UserForm from "../new/form";
-import CustomerForm from "../../customer/debtSell/Newcustomer";
-import { Skeleton } from "@/components/ui/skeleton";
 
-type ProductClientProps = {
+import CustomerForm from "./Newcustomer";
+
+type Props = {
   users: any[];
   total: number;
   role: { id: string; name: string }[];
 };
 
-export default function UserClinet({ users, total, role }: ProductClientProps) {
+export default function CustomerClinet({ users, total, role }: Props) {
   const {
     pagination,
     sorting,
@@ -59,19 +58,6 @@ export default function UserClinet({ users, total, role }: ProductClientProps) {
             <Button>
               <Plus className="ml-1" />{" "}
               {/* Change mr-1 to ml-1 for RTL icon placement */}
-              إضافة مستخدم
-            </Button>
-          }
-          title="إضافة مستخدم"
-          description="أدخل تفاصيل المستخدم أدناه."
-        >
-          <UserForm />
-        </CustomDialog>
-        <CustomDialog
-          trigger={
-            <Button>
-              <Plus className="ml-1" />{" "}
-              {/* Change mr-1 to ml-1 for RTL icon placement */}
               إضافة عميل
             </Button>
           }
@@ -84,7 +70,7 @@ export default function UserClinet({ users, total, role }: ProductClientProps) {
 
       <DataTable
         data={users}
-        columns={columns}
+        columns={customerColumns}
         initialPageSize={pagination.pageSize}
         pageCount={Math.ceil(total / pagination.pageSize)}
         pageActiom={setPagination}

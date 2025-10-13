@@ -10,6 +10,7 @@ export const CreateCustomerSchema = z.object({
   postalCode: z.string().optional(),
   customerType: z.enum(["individual", "business"]),
   taxId: z.string().optional(),
+  outstandingBalance: z.string(),
   // creditLimit: z.number().positive().optional(),
 });
 export type createCusomer = z.infer<typeof CreateCustomerSchema>;

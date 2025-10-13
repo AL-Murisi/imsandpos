@@ -4,11 +4,12 @@ import React from "react";
 const CardContainer = dynamic(
   () => import("@/components/common/CardContainer"),
 );
-import { FetchDebtSales } from "@/app/actions/sells";
-import { debtSaleColumns } from "./debtSell/columns";
+
 import { Prisma } from "@prisma/client";
 import { useAuth } from "@/lib/context/AuthContext";
 import dynamic from "next/dynamic";
+import CustomerClinet from "./debtSell/table";
+import { getCustomerById } from "../actions/customers";
 
 export default async function DebtSell() {
   // const { user } = useAuth();
@@ -19,33 +20,11 @@ export default async function DebtSell() {
     },
     customerId: "user?.userId",
   };
-
-  const data = await FetchDebtSales(filter);
+  const data = await getCustomerById();
+  // const data = await FetchDebtSales(filter);
   return (
-    <CardContainer title="Supplier">
-      {/* <>
-        <CustomDialog
-          trigger={
-            <Button>
-              <Plus />
-              add
-            </Button>
-          }
-          title="إضافة فئة جديدة"
-        >
-          <Form />
-        </CustomDialog>{" "}
-      </> */}
-
-      <>
-        <p>{data.length}</p>
-        <DataTable
-          data={data}
-          columns={debtSaleColumns}
-          initialPageSize={6}
-          filterColumnId="status"
-        />
-      </>
-    </CardContainer>
+    <div className="rounded-xl p-3">
+      <CustomerClinet users={data} total={0} role={[]} />
+    </div>
   );
 }

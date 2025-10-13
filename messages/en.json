@@ -36,6 +36,7 @@
     "role": "role",
     "new": "New Product",
     "expenses": "Expenses",
+    "customer": "customer",
     "edit": "Edit Product"
   },
   "selection": {
