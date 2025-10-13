@@ -256,8 +256,7 @@ export const ReceiptLaptop: React.FC<ReceiptProps> = ({
                 <div class="grid grid-rows-4">  
                   <div class="text-lg">فرع سنحان - أمام محطة الصيادي</div>
                   <div>تلفون: 772222599</div>
-                  <div>التاريخ: ${formattedDate}</div>
-                  <div>الوقت: ${formattedTime}</div>
+                
                 </div>
               </div>
             </div>
@@ -309,17 +308,17 @@ export const ReceiptLaptop: React.FC<ReceiptProps> = ({
                   </div>
                   <div class="flex gap-4 text-sm my-1 pl">
                     <span class="totals-label">الإجمالي:</span>
-                    <span class="totals-value">${totals.totalAfter.toFixed(2)} ﷼</span>
+                    <span class="totals-value">${totals.totalAfter} ﷼</span>
                   </div>
                   <div class="flex gap-4 text-sm my-1 pl">
                     <span class="totals-label">المبلغ المدفوع:</span>
                     <span class="totals-value">${receivedAmount?.toFixed(2) ?? 0} ﷼</span>
                   </div>
                   <div class="flex gap-4 text-sm my-1 pl ${calculatedChange > 0 ? "green" : "grey"}">
-                    <span class="totals-label">المتبقي للعميل:</span>
+                    <span class="totals-label">المتبقي :</span>
                     <span class="totals-value">${calculatedChange.toFixed(2)} ﷼</span>
                   </div>
-                  <div>👨‍💼 الكاشير: ${userName ?? "غير محدد"}</div>
+                 
                 </div>
 
                 ${
@@ -339,6 +338,7 @@ export const ReceiptLaptop: React.FC<ReceiptProps> = ({
             <div class="section text-center text-xs">
               <p>شكرًا لتسوقك معنا!</p>
             </div>
+         
           </div>
           
           <script>
@@ -368,8 +368,9 @@ export const ReceiptLaptop: React.FC<ReceiptProps> = ({
               };
             }
           </script>
-        </body>
-      </html>
+        </body>     <div class="flex flex-col justify-between"> <div>التاريخ: ${formattedDate}</div>
+                  <div>الوقت: ${formattedTime}</div><div>👨‍💼 الكاشير: ${userName ?? "غير محدد"}</div>
+     </div> </html>
     `;
 
     // Check if mobile device

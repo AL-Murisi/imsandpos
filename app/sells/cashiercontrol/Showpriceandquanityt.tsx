@@ -34,11 +34,11 @@ import {
   setDiscount,
   updateQty,
 } from "@/lib/slices/cartSlice";
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useRef, useState, useTransition } from "react";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { FormatPrice } from "@/hooks/usePrice";
 import { useTranslations } from "next-intl";
-import { CashierItem } from "@/lib/zod";
+import { Cashier, CashierItem, type CashierSchema } from "@/lib/zod";
 import {
   Select,
   SelectContent,
@@ -46,7 +46,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
+import { useRouter, useSearchParams } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
+import { Receipt } from "@/components/common/recipt";
+import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
+import SearchInput from "@/components/common/searchtest";
+import { useTablePrams } from "@/hooks/useTableParams";
+import { processSale } from "@/app/actions/cashier";
 export type SellingUnit = "carton" | "packet" | "unit";
 export type discountType = "fixed" | "percentage";
 type CartItem = CashierItem & {
@@ -59,14 +66,43 @@ type CartItem = CashierItem & {
   unitsPerPacket: number;
   packetsPerCarton: number;
 };
-
 interface CustomDialogProps {
-  payment: ReactNode;
+  users: {
+    id?: string;
+    name?: string;
+    phoneNumber?: string | null;
+    totalDebt?: number;
+  } | null;
 }
-export default function CartDisplay({ payment }: CustomDialogProps) {
+
+export default function CartDisplay({ users }: CustomDialogProps) {
   const { user, hasAnyRole, logout } = useAuth();
   const [discountType, setDiscountType] = useState<discountType>("fixed");
   const [discountValue, setDiscountsValue] = useState(10);
+  const [receivedAmount, setReceivedAmount] = useState(0);
+  const totals = useAppSelector(selectCartTotals);
+  const tt = useTranslations("payment");
+
+  const hasAddedCart = useRef(false);
+
+  useEffect(() => {
+    if (hasAddedCart.current) return; // prevent double
+    if (!activeCartId) {
+      const newCartId = Date.now().toString();
+      dispatch(
+        addCart({
+          id: newCartId,
+          name: `Cart-${newCartId.slice(-3)}`,
+        }),
+      );
+    }
+    hasAddedCart.current = true;
+  }, []);
+
+  const [saleNumber, setSaleNumber] = useState(
+    () => `SALE-${Date.now().toString().slice(-3)}`,
+  );
+
   const getItemPrice = (item: CartItem) => {
     const prices = {
       unit: item.pricePerUnit ?? 0,
@@ -75,15 +111,69 @@ export default function CartDisplay({ payment }: CustomDialogProps) {
     };
     return prices[item.sellingUnit] || 0;
   };
-
+  const calculatedChange =
+    receivedAmount >= totals.totalAfter
+      ? receivedAmount - totals.totalAfter
+      : 0;
+  const [pending, startTransition] = useTransition();
+  const params = useSearchParams();
   const dispatch = useAppDispatch();
   const products = useAppSelector(selectAvailableStock);
   const carts = useAppSelector((state) => state.cart.carts);
   const activeCartId = useAppSelector((state) => state.cart.activeCartId);
   const items = useAppSelector(selectActiveCartItems);
+  const cartState = useAppSelector((s) => s.cart);
   const t = useTranslations("cashier");
+  const isCash = receivedAmount >= totals.totalAfter;
+  const isDebt = !isCash;
+  const router = useRouter();
+  const canPay =
+    (isCash && receivedAmount >= totals.totalAfter) || (isDebt && users?.name);
+  const handelpayment = async () => {
+    const payment: Cashier = {
+      cart: items,
+      discountValue: cartState.discountValue,
+      discountType: cartState.discountType,
+      totalBeforeDiscount: totals.totalBefore,
+      totalDiscount: totals.discount,
+      totalAfterDiscount: totals.totalAfter,
+      cashierId: user?.userId ?? "",
+      customerId: users?.id,
+      saleNumber: saleNumber,
+      receivedAmount,
+      change: calculatedChange,
+      paidAt: new Date(),
+    };
 
-  const totals = useAppSelector(selectCartTotals);
+    try {
+      await processSale(payment); // ✅ await server action
+      toast("✅ تم الدفع بنجاح!");
+
+      // 1️⃣ Clear current cart
+      dispatch(clearCart());
+      setReceivedAmount(0);
+      dispatch(setDiscount({ type: "fixed", value: 0 }));
+
+      // 2️⃣ Generate new sale number
+      const newSaleNumber = `SALE-${Date.now().toString().slice(-66)}`;
+      setSaleNumber(newSaleNumber);
+      dispatch(removeCart(activeCartId ?? ""));
+
+      // 3️⃣ Create new cart with the new sale number
+      const newCartId = Date.now().toString();
+      dispatch(
+        addCart({
+          id: newCartId,
+          name: `Chart-${newCartId.slice(-3)}`,
+        }),
+      );
+
+      dispatch(setActiveCart(newCartId)); // set the new cart as active
+    } catch (err: any) {
+      alert(`❌ حدث خطأ: ${err.message}`);
+    }
+  };
+
   return (
     <div className="bg-background flex h-[50hv] flex-col rounded-2xl p-2 shadow-xl/20 shadow-gray-500 lg:col-span-1">
       {/* Header */}
@@ -111,11 +201,8 @@ export default function CartDisplay({ payment }: CustomDialogProps) {
             </Button>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <Label> {user?.name}مرحباً</Label>
-          <User size={20} />
-
-          {/* //الأدوار: {user?.roles.join(", ")} */}
+        <div className="flex w-60 flex-row justify-end sm:w-2xs md:w-sm">
+          <SearchInput placeholder={tt("search_customer")} paramKey="users" />
         </div>
       </div>
 
@@ -272,7 +359,7 @@ export default function CartDisplay({ payment }: CustomDialogProps) {
                           <SelectContent>
                             <SelectItem value="carton">كرتون</SelectItem>
                             <SelectItem value="packet">حزمة</SelectItem>
-                            <SelectItem value="unit">وحدة</SelectItem>
+                            <SelectItem value="unit">حبة</SelectItem>
                           </SelectContent>
                         </Select>
                       </TableCell>
@@ -325,6 +412,8 @@ export default function CartDisplay({ payment }: CustomDialogProps) {
           <div className="flex items-end justify-between">
             {/* Discount controls */}
             <div className="flex flex-col gap-1">
+              {" "}
+              {tt("customer")}: <Badge>{users?.name ?? ""}</Badge>
               <label
                 htmlFor="discount"
                 className="text-sm font-semibold text-gray-700 dark:text-gray-300"
@@ -338,7 +427,7 @@ export default function CartDisplay({ payment }: CustomDialogProps) {
                     dispatch(
                       setDiscount({
                         type: value,
-                        value: discountValue || 10,
+                        value: discountValue || 0,
                       }),
                     );
                     setDiscountType(value);
@@ -372,7 +461,7 @@ export default function CartDisplay({ payment }: CustomDialogProps) {
                   className="w-20 rounded border border-gray-300 px-2 py-1 text-sm dark:border-gray-600"
                   max={discountType === "percentage" ? 100 : totals.totalBefore}
                 />
-              </div>
+              </div>{" "}
             </div>
 
             {/* Totals display */}
@@ -400,15 +489,49 @@ export default function CartDisplay({ payment }: CustomDialogProps) {
                 <span className="text-lg font-bold text-amber-600 dark:text-amber-400">
                   Total: ${FormatPrice(totals.totalAfter)}
                 </span>
-              </div>
+              </div>{" "}
+              <Input
+                value={receivedAmount === 0 ? "" : receivedAmount} // show empty instead of 0
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  setReceivedAmount(isNaN(val) ? 0 : val); // store 0 if input is empty or invalid
+                }}
+                placeholder="المبلغ المستلم"
+                className="w-40 border-2 sm:w-2xs md:w-sm"
+                type="number"
+              />
             </div>
           </div>
 
           {items.length !== 0 ? (
-            <div className="mt-4 flex flex-1/3 gap-3">
-              <Addtouserrecod />
-
-              {payment}
+            <div className="mt-4 flex flex-col gap-3 md:flex-row">
+              <Receipt
+                saleNumber={saleNumber}
+                items={items}
+                totals={totals}
+                receivedAmount={receivedAmount}
+                calculatedChange={calculatedChange}
+                userName={user?.name}
+                customerName={users?.name}
+                customerDebt={users?.totalDebt}
+                isCash={receivedAmount >= totals.totalAfter}
+                t={tt}
+              />
+              <Button
+                disabled={pending && !canPay}
+                onClick={() =>
+                  startTransition(async () => {
+                    await handelpayment(); // ✅ call the function
+                  })
+                }
+                className={`${
+                  canPay
+                    ? "bg-green-600 hover:bg-green-700"
+                    : "cursor-not-allowed bg-gray-400"
+                } sm:w-4xs w-40 flex-1 rounded-md border-amber-500 py-3 text-amber-100 shadow-md hover:bg-amber-50 md:w-sm`}
+              >
+                {tt("pay_now")}
+              </Button>
               <Reservation
                 cart={items}
                 total={totals.totalAfter}

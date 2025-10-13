@@ -200,6 +200,3 @@ export function Selection({
     </div>
   );
 }
-function replace(arg0: string) {
-  throw new Error("Function not implemented.");
-}

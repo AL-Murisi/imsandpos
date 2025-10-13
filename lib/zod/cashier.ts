@@ -30,6 +30,7 @@ export const CashierSchema = z.object({
 
   paidAt: z.date(),
 });
+export type Cashier = z.infer<typeof CashierSchema>;
 
 export const ProductForSaleSchema = z.object({
   id: z.string(),

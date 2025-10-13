@@ -16,6 +16,7 @@ type ReceiptResult = {
   total_before: number;
   total_after: number;
   received_amount: number;
+  discount_amount: string;
   calculated_change: number;
   user_name: string | null;
   customer_name: string | null;
@@ -232,6 +233,7 @@ export async function fetchReceipt(saleId: string) {
         s.amount_paid,
         s.cashier_id,
         s.customer_id,
+        s.discount_amount,
         c.name AS customer_name,
         c.outstanding_balance,
         u.name AS cashier_name
@@ -274,6 +276,7 @@ export async function fetchReceipt(saleId: string) {
       s.sale_number,
       s.subtotal::numeric AS total_before,
       s.total_amount::numeric AS total_after,
+      s.discount_amount::numeric AS discount_amount,
       COALESCE(s.amount_paid, 0)::numeric AS received_amount,
       (COALESCE(s.amount_paid, 0)::numeric - s.total_amount::numeric) AS calculated_change,
       s.cashier_name AS user_name,
@@ -315,11 +318,13 @@ export async function fetchReceipt(saleId: string) {
       return value;
     }),
   );
-
+  console.log(safeReceipt);
   return safeReceipt;
 }
+
 export async function fetchSalesSummary(
   role: string,
+  userId?: string,
   filters?: {
     salesFrom?: string;
     salesTo?: string;
@@ -340,6 +345,7 @@ export async function fetchSalesSummary(
     ...(to ? { lte: new Date(to) } : {}),
   });
 
+  // 🔹 Base time filters
   const salesRange = formatRange(
     filters?.salesFrom || filters?.allFrom,
     filters?.salesTo || filters?.allTo,
@@ -357,13 +363,45 @@ export async function fetchSalesSummary(
     filters?.debtTo || filters?.allTo,
   );
 
+  // 🔹 Role-based filters
+  const userFilter = role === "cashier" && userId ? { cashierId: userId } : {};
+
+  // 🔹 Today’s date range (start to end of day)
+  const today = new Date();
+  const startOfToday = new Date(today.setHours(0, 0, 0, 0));
+  const endOfToday = new Date(today.setHours(23, 59, 59, 999));
+
+  // 🔹 Sales and debt payments for today
+  const [todaySales, todayDebtPayments] = await Promise.all([
+    prisma.sale.aggregate({
+      _sum: { totalAmount: true },
+      _count: { id: true },
+      where: {
+        saleDate: { gte: startOfToday, lte: endOfToday },
+        status: "completed",
+        ...userFilter,
+      },
+    }),
+    prisma.payment.aggregate({
+      _sum: { amount: true },
+      _count: { id: true },
+      where: {
+        createdAt: { gte: startOfToday, lte: endOfToday },
+        paymentType: "outstanding_payment",
+        status: "completed",
+        ...(role === "cashier" && userId ? { cashierId: userId } : {}),
+      },
+    }),
+  ]);
+
+  // 🔹 Full data for charts and totals
   const [salesOverTime, purchasesOverTime, revenueOverTime, debtData] =
     await Promise.all([
       prisma.sale.groupBy({
         by: ["saleDate"],
         _sum: { totalAmount: true },
         _count: { id: true },
-        where: { saleDate: salesRange, status: "completed" },
+        where: { saleDate: salesRange, status: "completed", ...userFilter },
         orderBy: { saleDate: "asc" },
       }),
 
@@ -377,39 +415,38 @@ export async function fetchSalesSummary(
       prisma.payment.groupBy({
         by: ["createdAt"],
         _sum: { amount: true },
-        where: { createdAt: revenueRange, status: "completed" },
+        where: { createdAt: revenueRange, status: "completed", ...userFilter },
         orderBy: { createdAt: "asc" },
       }),
 
       prisma.$transaction([
-        // 🔹 Outstanding debt (from sales still unpaid/partially paid)
         prisma.sale.aggregate({
           _sum: { amountDue: true },
           where: {
             saleDate: debtRange,
             paymentStatus: { in: ["partial", "pending"] },
+            ...userFilter,
           },
         }),
-        // 🔹 Received debt payments
         prisma.payment.aggregate({
           _sum: { amount: true },
           where: {
             createdAt: debtRange,
             paymentType: "outstanding_payment",
             status: "completed",
+            ...userFilter,
           },
         }),
-        // Group outstanding (unreceived) by month
         prisma.sale.groupBy({
           by: ["saleDate"],
           _sum: { amountDue: true },
           where: {
             saleDate: debtRange,
             paymentStatus: { in: ["partial", "pending"] },
+            ...userFilter,
           },
           orderBy: { saleDate: "asc" },
         }),
-        // Group received debt by month
         prisma.payment.groupBy({
           by: ["createdAt"],
           _sum: { amount: true },
@@ -417,6 +454,7 @@ export async function fetchSalesSummary(
             createdAt: debtRange,
             paymentType: "outstanding_payment",
             status: "completed",
+            ...userFilter,
           },
           orderBy: { createdAt: "asc" },
         }),
@@ -446,7 +484,6 @@ export async function fetchSalesSummary(
   const totalUnreceived = totalUnreceivedAgg._sum.amountDue?.toNumber() || 0;
   const totalReceived = totalReceivedAgg._sum.amount?.toNumber() || 0;
 
-  // Group by month
   const groupByMonth = (data: any[], dateField: string, valueField: string) => {
     const grouped = new Map<string, number>();
     data.forEach((item) => {
@@ -460,47 +497,43 @@ export async function fetchSalesSummary(
       .sort((a, b) => a.date.localeCompare(b.date));
   };
 
-  const salesChart = salesOverTime.map((s) => ({
-    date: s.saleDate.toISOString().split("T")[0],
-    value: s._sum.totalAmount?.toNumber() || 0,
-  }));
-
-  const purchasesChart = purchasesOverTime.map((p) => ({
-    date: p.createdAt.toISOString().split("T")[0],
-    value: p._sum.costPrice?.toNumber() || 0,
-  }));
-
-  const revenueChart = revenueOverTime.map((r) => ({
-    date: r.createdAt.toISOString().split("T")[0],
-    value: r._sum.amount?.toNumber() || 0,
-  }));
-
-  const unreceivedChart = groupByMonth(
-    unreceivedOverTime,
-    "saleDate",
-    "amountDue",
-  );
-  const receivedChart = groupByMonth(receivedOverTime, "createdAt", "amount");
-
   return {
     sales: {
       total: totalSales,
-      chart: salesChart,
+      chart: salesOverTime.map((s) => ({
+        date: s.saleDate.toISOString().split("T")[0],
+        value: s._sum.totalAmount?.toNumber() || 0,
+      })),
     },
     purchases: {
       total: totalPurchases,
-      chart: purchasesChart,
+      chart: purchasesOverTime.map((p) => ({
+        date: p.createdAt.toISOString().split("T")[0],
+        value: p._sum.costPrice?.toNumber() || 0,
+      })),
     },
     revenue: {
       total: totalRevenue,
-      chart: revenueChart,
+      chart: revenueOverTime.map((r) => ({
+        date: r.createdAt.toISOString().split("T")[0],
+        value: r._sum.amount?.toNumber() || 0,
+      })),
     },
     debt: {
-      unreceived: totalUnreceived, // 💡 From Sale.amountDue
-      received: totalReceived, // 💡 From Payment.amount
-      unreceivedChart, // monthly chart from Sale
-      receivedChart, // monthly chart from Payment
+      unreceived: totalUnreceived,
+      received: totalReceived,
+      unreceivedChart: groupByMonth(
+        unreceivedOverTime,
+        "saleDate",
+        "amountDue",
+      ),
+      receivedChart: groupByMonth(receivedOverTime, "createdAt", "amount"),
     },
+    // 🧾 Cashier or Admin Daily Summary
+    cashierSalesToday: todaySales._sum.totalAmount?.toNumber() || 0,
+    cashierTransactionsToday: todaySales._count.id || 0,
+    cashierDebtPaymentsToday: todayDebtPayments._sum.amount?.toNumber() || 0,
+    cashierDebtPaymentsCountToday: todayDebtPayments._count.id || 0,
   };
 }
 

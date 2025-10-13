@@ -18,6 +18,7 @@ import {
   Warehouse,
   Clock,
   Receipt,
+  BarChart,
 } from "lucide-react";
 
 import {
@@ -141,12 +142,23 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       roles: ["admin"],
     },
     {
+      title: t("cashierMain"),
+      url: "/sells",
+      icon: () => <ShoppingCart className="text-blue-500" />,
+      roles: ["cashier"],
+    },
+    {
       title: t("debt"),
       url: "/debt",
       icon: () => <Receipt className="h-4 w-4 text-green-600" />,
-      roles: ["admin", "manager_wh"],
+      roles: ["admin", "cashier"],
     },
-
+    {
+      title: "التقرير",
+      url: "/reports",
+      icon: () => <BarChart className="h-4 w-4 text-green-600" />,
+      roles: ["admin", "cashier"],
+    },
     {
       title: t("sales"),
       icon: () => <ShoppingCart className="text-green-600" />,
@@ -157,7 +169,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           title: t("cashierMain"),
           url: "/sells",
           icon: <ShoppingCart className="text-blue-500" />,
-          roles: ["admin", "cashier"],
+          roles: ["admin"],
         },
         {
           title: t("cashier"),
@@ -169,12 +181,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           title: t("reservedOrders"),
           url: "/sells/reservation",
           icon: <Clock className="h-4 w-4 text-teal-600" />,
-          roles: ["admin", "cashier"],
-        },
-        {
-          title: t("debt"),
-          url: "/sells/debtSell",
-          icon: <Receipt className="text-orange-500" size={20} />,
           roles: ["admin", "cashier"],
         },
       ],

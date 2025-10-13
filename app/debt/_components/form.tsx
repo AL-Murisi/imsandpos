@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/context/AuthContext";
 
 // This schema needs to be defined for the payment input
 // Example: Create a new schema like PaymentAmountSchema
@@ -42,12 +43,12 @@ export default function Debtupdate({ debt }: DebtSaleProps) {
       paymentAmount: 0, // Initialize with 0 or a placeholder
     },
   });
-
+  const { user, hasAnyRole, logout } = useAuth();
   const onSubmit = async (data: FormValues) => {
     try {
       // **IMPORTANT: Replace with actual cashier ID**
 
-      await updateSales(debt.id, data.paymentAmount);
+      await updateSales(debt.id, data.paymentAmount, user?.userId);
 
       // Reset the form after successful submission
       reset();

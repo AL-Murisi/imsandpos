@@ -29,10 +29,11 @@ export default function DashboardHeader({
       {/* Left side: Logo */}
 
       {/* Middle (optional search) */}
-      <div className="flex-1 justify-center px-4 md:flex">
-        <div className="mb-4 flex-1/2 items-center gap-6 md:flex md:gap-4">
+      <div className="flex flex-col justify-between gap-4 px-4 md:flex-row">
+        <div className="p-y-4">
           <DateRangeFilter fromKey={`${card}From`} toKey={`${card}To`} />
-
+        </div>
+        <div className="p-x-4">
           <CardSelector sections={sections} chartConfigs={chartConfigs} />
         </div>
       </div>

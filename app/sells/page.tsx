@@ -1,14 +1,15 @@
-// app/sells/SellsDashboard.tsx
 import {
   FetchDebtSales,
   fetchProductStats,
   fetchSalesSummary,
 } from "@/app/actions/sells";
 import { verifySession } from "@/lib/dal";
+import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import SellsDashboardClient from "./sellsDasboard";
 import { SortingState } from "@tanstack/react-table";
 import { ParsedSort } from "@/hooks/sort";
+
 type DashboardProps = {
   searchParams: Promise<{
     from?: string;
@@ -33,12 +34,12 @@ type DashboardProps = {
     sort: string;
   }>;
 };
+
 export default async function SellsDashboard({ searchParams }: DashboardProps) {
   const param = await searchParams;
   const {
     from,
     to,
-
     usersquery = "",
     page = "1",
     limit = "5",
@@ -59,15 +60,22 @@ export default async function SellsDashboard({ searchParams }: DashboardProps) {
 
   const pageIndex = Number(page) - 1;
   const pageSize = Number(limit);
-  const filter: Prisma.SaleWhereInput = {};
   const parsedSort: SortingState = ParsedSort(sort);
 
+  // 🧩 Verify session and extract role
   const { userId, userRole } = await verifySession();
-  const role = userRole?.includes("admin") ? "admin" : "worker";
+  const role = userRole?.includes("admin") ? "admin" : "cashier";
 
+  // 🧩 Filter: if cashier → limit to his own sales
+  const filter: Prisma.SaleWhereInput =
+    role === "cashier"
+      ? ({ cashierId: userId ?? undefined } as Prisma.SaleWhereInput)
+      : {};
+
+  // 🧩 Fetch data in parallel
   const [salesSummary, productStats, data] = await Promise.all([
-    fetchSalesSummary("admin"),
-    fetchProductStats("admin"),
+    fetchSalesSummary(role, userId ?? ""),
+    fetchProductStats(role),
     FetchDebtSales(
       filter,
       usersquery,
@@ -81,7 +89,7 @@ export default async function SellsDashboard({ searchParams }: DashboardProps) {
 
   const currentUser = {
     id: userId,
-    name: "", // Optional: fetch user info if you need
+    name: "", // can be fetched if needed
     email: "",
     role,
   };

@@ -159,7 +159,6 @@ export default function ProductsList({
     [dispatch],
   );
 
-  // Only update Redux when products actually change
   useEffect(() => {
     if (!product || product.length === 0) return;
 
@@ -167,8 +166,9 @@ export default function ProductsList({
       handleAdd(product[0], true);
     }
 
-    dispatch(setProductsLocal(product));
-  }, [product.length, queryr, dispatch, handleAdd]);
+    // Always dispatch updated product list
+    dispatch(setProductsLocal([...product])); // create new reference to force re-render
+  }, [product, queryr, dispatch, handleAdd]);
 
   // Memoize the product grid
   const productGrid = useMemo(

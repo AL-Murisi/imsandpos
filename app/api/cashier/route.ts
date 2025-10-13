@@ -1,7 +1,7 @@
 // app/api/cashier/route.ts - Fixed with proper product updates
 import { logActivity } from "@/app/actions/activitylogs";
 import prisma from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
@@ -9,8 +9,7 @@ export async function POST(request: NextRequest) {
     const data = await request.json();
     const {
       cart,
-      discountValue,
-      discountType,
+
       totalBeforeDiscount,
       totalDiscount,
       totalAfterDiscount,
@@ -18,7 +17,6 @@ export async function POST(request: NextRequest) {
       customerId,
       saleNumber,
       receivedAmount,
-      change,
     } = data;
 
     // Start transaction to ensure data consistency
@@ -174,7 +172,7 @@ export async function POST(request: NextRequest) {
         message: "Sale processed successfully",
       };
     });
-    revalidatePath("/api/fetch");
+    revalidateTag("products-for-sale");
     return NextResponse.json(result);
   } catch (error: unknown) {
     const err = error as Error;

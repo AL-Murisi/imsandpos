@@ -57,7 +57,11 @@ import { fetchProductStats } from "./sells";
 //   }));
 //   return serializedDebt;
 // }
-export async function updateSales(saleId: string, paymentAmount: number) {
+export async function updateSales(
+  saleId: string,
+  paymentAmount: number,
+  cashierId?: string,
+) {
   // Input validation for paymentAmount
   if (paymentAmount <= 0) {
     throw new Error("Payment amount must be greater than zero.");
@@ -128,7 +132,7 @@ export async function updateSales(saleId: string, paymentAmount: number) {
       data: {
         saleId: saleId,
         // customerId: "", // Link to customer if available
-        cashierId: "cmd5xocl8000juunw1hcxsyre", // The user processing this payment
+        cashierId: cashierId ?? "", // The user processing this payment
         paymentType: "outstanding_payment", // Or "outstanding_payment" if it's specifically for a debt
         paymentMethod: "cash", // You might want to pass this as a parameter as well
         amount: paymentAmount,

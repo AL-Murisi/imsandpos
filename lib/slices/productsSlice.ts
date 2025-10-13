@@ -85,7 +85,6 @@ const productsSlice = createSlice({
         productId: string;
         sellingUnit: SellingUnit;
         diff: number;
-
         qCartons: number;
         qPackets: number;
         qunit: number;
@@ -93,34 +92,49 @@ const productsSlice = createSlice({
     ) => {
       const { productId, sellingUnit, diff, qCartons, qPackets, qunit } =
         action.payload;
-      const item = state.items.find(
-        (p) => p.id === productId && p.sellingUnit === sellingUnit,
-      );
+      if (diff === 0) return;
 
-      const product = state.products.find((p) => p.id === productId);
-      if (!product || diff === 0) return;
+      const productIndex = state.products.findIndex((p) => p.id === productId);
+      if (productIndex === -1) return;
+
+      // Create a new product object to trigger reactivity
+      const product = { ...state.products[productIndex] };
+
       if (sellingUnit === "carton") {
-        product.availableCartons -= diff;
-        product.availablePackets -= diff * qPackets;
-        product.availableUnits -= diff * qPackets * qunit;
+        product.availableCartons = Math.max(product.availableCartons - diff, 0);
+        product.availablePackets = Math.max(
+          product.availablePackets - diff * qPackets,
+          0,
+        );
+        product.availableUnits = Math.max(
+          product.availableUnits - diff * qPackets * qunit,
+          0,
+        );
       } else if (sellingUnit === "packet") {
-        product.availablePackets -= diff;
-        ((product.availableUnits -= diff * qunit),
-          (product.availableCartons = Math.floor(
-            product.availableUnits / qPackets,
-          )));
+        product.availablePackets = Math.max(product.availablePackets - diff, 0);
+        product.availableUnits = Math.max(
+          product.availableUnits - diff * qunit,
+          0,
+        );
+        product.availableCartons = Math.floor(
+          product.availableUnits / (qPackets * qunit),
+        );
       } else if (sellingUnit === "unit") {
-        product.availableUnits -= diff;
+        product.availableUnits = Math.max(product.availableUnits - diff, 0);
         product.availablePackets = Math.floor(product.availableUnits / qunit);
         product.availableCartons = Math.floor(
           product.availablePackets / qPackets,
         );
       }
-      product.availableCartons = Math.max(product.availableCartons, 0);
-      product.availablePackets = Math.max(product.availablePackets, 0);
 
-      product.availableUnits = Math.max(product.availableUnits, 0);
+      // Replace the product in the array to update the reference
+      state.products = [
+        ...state.products.slice(0, productIndex),
+        product,
+        ...state.products.slice(productIndex + 1),
+      ];
     },
+
     setProductsLocal: (state, action: PayloadAction<forsale[]>) => {
       state.products = action.payload;
     },

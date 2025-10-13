@@ -8,7 +8,7 @@ export interface ReceiptItem {
   name: string;
   warehousename: string;
   selectedQty: number;
-  sellingUnit: string;
+  sellingUnit: "unit" | "packet" | "carton";
   pricePerUnit?: number;
   pricePerPacket?: number;
   pricePerCarton?: number;
@@ -55,29 +55,23 @@ export const Receipt: React.FC<ReceiptProps> = ({
         return 0;
     }
   };
+  const unitToArabic = (sellingUnit: "unit" | "packet" | "carton") => {
+    switch (sellingUnit) {
+      case "unit":
+        return "حبة";
+      case "packet":
+        return "كيس";
+      case "carton":
+        return "كرتون";
+      default:
+        return "";
+    }
+  };
 
   const handlePrint = () => {
-    const dateOptions: Intl.DateTimeFormatOptions = {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    };
-    const timeOptions: Intl.DateTimeFormatOptions = {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: false,
-    };
-
-    const formattedDate = new Date().toLocaleDateString("ar-EG", dateOptions);
-    const formattedTime = new Date().toLocaleTimeString("ar-EG", timeOptions);
-
     const printHTML = `
-      <!DOCTYPE html>
       <html>
         <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>Receipt</title>
           <style>
             body {
@@ -85,17 +79,14 @@ export const Receipt: React.FC<ReceiptProps> = ({
               direction: rtl;
               background: #fff;
               color: #000;
+              border: 1px solid #000;
+              border-radius: 6px;
               margin: 0;
-              padding: 20px;
             }
-
+.test{}
             .receipt-container {
               width: 100%;
-              max-width: 800px;
-              margin: 0 auto;
-              border: 2px solid #000;
-              border-radius: 12px;
-              padding: 15px;
+              border-collapse: collapse;
               display: flex;
               flex-direction: column;
             }
@@ -129,7 +120,19 @@ export const Receipt: React.FC<ReceiptProps> = ({
               width: 100%;
               border-collapse: collapse;
               margin: 0;
-            }
+            }.footer-info {
+        display: flex;
+        justify-content: space-between;
+        font-size: 11px;
+        margin-top: 6px;
+        color: #000;
+      }
+
+      .footer-info div {
+        text-align: left;
+        direction: ltr;
+      }
+
 
             th, td {
               border: 1px solid black;
@@ -137,9 +140,7 @@ export const Receipt: React.FC<ReceiptProps> = ({
               text-align: center;
               font-size: 12px;
             }
-
-            .h { height: 30px; }
-            
+.h{height: 30px;}
             th {
               background-color: #f0f0f0;
             }
@@ -155,13 +156,40 @@ export const Receipt: React.FC<ReceiptProps> = ({
               border-radius: 6px;
               padding: 4px;
               text-align: right;
-            }
+            }footer {
+  position: fixed;
+  bottom: 0;
+  right: 0;
+  left: 0;
+  border-top: 1px solid #000;
+  padding: 4px 12px;
+  font-size: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fff;
+}
 
-            .pl { 
-              padding-top: 3px;
-              padding-bottom: 3px;
-            }
+.footer-content {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  direction: rtl;
+}
 
+.cashier {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.datetime {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pl{padding-top:3px;padding-bottom:3px;}
             .badge {
               display: inline-block;
               background: #f0f0f0;
@@ -169,71 +197,10 @@ export const Receipt: React.FC<ReceiptProps> = ({
               border-radius: 8px;
               margin-right: 4px;
             }
-
-            .grid-rows-3 {
-              grid-template-rows: repeat(3, auto);
-            }
-
-            .grid-rows-4 {
-              grid-template-rows: repeat(4, auto);
-            }
-
-            .items-baseline {
-              align-items: baseline;
-            }
-
-            .text-right {
-              text-align: right;
-            }
-
-            .flex-col {
-              flex-direction: column;
-            }
-
-            .gap-4 {
-              gap: 16px;
-            }
-
-            .my-1 {
-              margin-top: 4px;
-              margin-bottom: 4px;
-            }
-
-            @media print {
-              body {
-                border: none;
-              }
-            }
-
-            /* Print button styling */
-            .print-button {
-              position: fixed;
-              top: 10px;
-              left: 10px;
-              padding: 10px 20px;
-              background: #22c55e;
-              color: white;
-              border: none;
-              border-radius: 6px;
-              font-size: 16px;
-              cursor: pointer;
-              z-index: 1000;
-            }
-
-            .print-button:hover {
-              background: #16a34a;
-            }
-
-            @media print {
-              .print-button {
-                display: none;
-              }
-            }
           </style>
         </head>
         <body>
-          <button class="print-button" onclick="window.print();">طباعة 🖨️</button>
-          
+      
           <div class="receipt-container">
 
             <!-- HEADER -->
@@ -255,8 +222,7 @@ export const Receipt: React.FC<ReceiptProps> = ({
                 <div class="grid grid-rows-4">  
                   <div class="text-lg">فرع سناح - أمام محطة الصيادي</div>
                   <div>تلفون: 772222599</div>
-                  <div>التاريخ: ${formattedDate}</div>
-                  <div>الوقت: ${formattedTime}</div>
+              
                 </div>
               </div>
             </div>
@@ -288,7 +254,7 @@ export const Receipt: React.FC<ReceiptProps> = ({
                       <td>${item.name}</td>
                       <td>${item.warehousename}</td>
                       <td>${item.selectedQty}</td>
-                      <td>${item.sellingUnit}</td>
+                      <td>${unitToArabic(item.sellingUnit)}</td>
                       <td>${getItemPrice(item)}</td>
                       <td>${(getItemPrice(item) * item.selectedQty).toFixed(2)}</td>
                     </tr>
@@ -306,7 +272,7 @@ export const Receipt: React.FC<ReceiptProps> = ({
                     <span class="totals-label">الخصم:</span>
                     <span class="totals-value">${totals.discount.toFixed(2)} ﷼</span>
                   </div>
-                  <div class="flex gap-4 text-sm my-1 pl">
+                  <div class="flex gap-4 text-sm my-1 l">
                     <span class="totals-label">الإجمالي:</span>
                     <span class="totals-value">${totals.totalAfter.toFixed(2)} ﷼</span>
                   </div>
@@ -314,11 +280,11 @@ export const Receipt: React.FC<ReceiptProps> = ({
                     <span class="totals-label">المبلغ المدفوع:</span>
                     <span class="totals-value">${receivedAmount?.toFixed(2) ?? 0} ﷼</span>
                   </div>
-                  <div class="flex gap-4 text-sm my-1 pl ${calculatedChange > 0 ? "green" : "grey"}">
+                  <div class="flex gap-4 text-sm my-1 pl> ${calculatedChange > 0 ? "green" : "grey"}">
                     <span class="totals-label">المتبقي للعميل:</span>
                     <span class="totals-value">${calculatedChange.toFixed(2)} ﷼</span>
                   </div>
-                  <div>👨‍💼 الكاشير: ${userName ?? "غير محدد"}</div>
+              
                 </div>
 
                 ${
@@ -335,45 +301,59 @@ export const Receipt: React.FC<ReceiptProps> = ({
             </div>
 
             <!-- FOOTER -->
-            <div class="section text-center text-xs">
-              <p>شكرًا لتسوقك معنا!</p>
-            </div>
-          </div>
-          
-          <script>
-            // Close window after print
-            window.onafterprint = function() {
-              window.close();
-            };
-          </script>
+            <!-- FOOTER -->
+<div class="section text-center text-xs">
+  <p>شكرًا لتسوقك معنا!</p>
+</div>
+
+<!-- CASHIER + DATE/TIME -->
+<footer class="footer">
+  <div class="footer-content">
+    <div class="cashier">
+      👨‍💼 الكاشير: ${userName ?? "غير محدد"}
+    </div>
+    <div class="datetime">
+      📅 التاريخ: ${new Date().toLocaleDateString("ar-EG")} &nbsp;&nbsp;
+      ⏰ الوقت: ${new Date().toLocaleTimeString("ar-EG", { hour12: false })}
+    </div>
+  </div>
+</footer>
+
         </body>
+          <div class="footer-info">
+        
       </html>
     `;
 
-    // Use window.open instead of iframe for better mobile support
-    const printWindow = window.open("", "_blank", "width=800,height=600");
+    // ✅ Use hidden iframe for mobile/PWA-safe printing
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "none";
+    document.body.appendChild(iframe);
 
-    if (printWindow) {
-      printWindow.document.open();
-      printWindow.document.write(printHTML);
-      printWindow.document.close();
-    } else {
-      // Fallback: Create blob URL and open in new tab
-      const blob = new Blob([printHTML], { type: "text/html" });
-      const blobUrl = URL.createObjectURL(blob);
-      const newWindow = window.open(blobUrl, "_blank");
+    const doc = iframe.contentWindow?.document;
+    if (!doc) return;
 
-      // Clean up blob URL after a delay
-      setTimeout(() => {
-        URL.revokeObjectURL(blobUrl);
-      }, 1000);
-    }
+    doc.open();
+    doc.write(printHTML);
+    doc.close();
+
+    iframe.contentWindow?.focus();
+    iframe.contentWindow?.print();
+
+    setTimeout(() => {
+      document.body.removeChild(iframe);
+    }, 1000);
   };
 
   return (
     <Button
       onClick={handlePrint}
-      className="sm:w-4xs w-40 rounded bg-green-600 px-4 py-2 text-white md:w-sm"
+      className="w-40 rounded bg-green-600 px-4 py-2 text-white sm:w-2xs md:w-sm"
     >
       {t("print")}
     </Button>

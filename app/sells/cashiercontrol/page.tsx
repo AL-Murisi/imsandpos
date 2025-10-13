@@ -3,16 +3,13 @@ import { getAllActiveProductsForSale } from "@/app/actions/createProduct";
 import { Fetchcustomerbyname } from "@/app/actions/customers";
 import { fetchAllFormData } from "@/app/actions/roles";
 import { Prisma } from "@prisma/client";
-import Payment from "./Payment";
+
 import ProductListRedux from "./ProductList";
 import CartDisplayRedux from "./Showpriceandquanityt";
 import dynamic from "next/dynamic";
 const ScrollArea = dynamic(
   () => import("@/components/ui/scroll-area").then((m) => m.ScrollArea),
-  {
-    // ensures it only loads on the client
-    // optional fallback
-  },
+  {},
 );
 type Props = {
   searchParams: Promise<{
@@ -74,7 +71,7 @@ export default async function Cart({ searchParams }: Props) {
           queryr={productquery}
         />
 
-        <CartDisplayRedux payment={<Payment users={users} />} />
+        <CartDisplayRedux users={users} />
       </div>
     </ScrollArea>
   );

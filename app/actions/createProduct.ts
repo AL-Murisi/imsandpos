@@ -236,99 +236,184 @@ export async function deleteProduct(id: string) {
 //     };
 //   });
 // }
-export async function getAllActiveProductsForSale(
-  where: Prisma.ProductWhereInput,
-  searchQuery?: string,
-) {
-  const combinedWhere: Prisma.ProductWhereInput = {
-    ...where,
-    isActive: true,
-    inventory: {
-      some: {
-        availableQuantity: { gt: 0 },
+// export async function getAllActiveProductsForSale(
+//   where: Prisma.ProductWhereInput,
+//   searchQuery?: string,
+// ) {
+//   const combinedWhere: Prisma.ProductWhereInput = {
+//     ...where,
+//     isActive: true,
+//     inventory: {
+//       some: {
+//         availableQuantity: { gt: 0 },
+//       },
+//     },
+//   };
+
+//   if (searchQuery) {
+//     combinedWhere.OR = [
+//       { name: { contains: searchQuery, mode: "insensitive" } },
+//       { sku: { contains: searchQuery, mode: "insensitive" } },
+//       { barcode: { contains: searchQuery, mode: "insensitive" } },
+//       { description: { contains: searchQuery, mode: "insensitive" } },
+//     ];
+//   }
+
+//   const [activeProducts, warehouses] = await Promise.all([
+//     prisma.product.findMany({
+//       where: combinedWhere,
+//       orderBy: { name: "asc" },
+//       select: {
+//         id: true,
+//         name: true,
+//         sku: true,
+//         pricePerUnit: true,
+//         pricePerPacket: true,
+//         pricePerCarton: true,
+//         packetsPerCarton: true,
+//         unitsPerPacket: true,
+//         warehouseId: true,
+//         inventory: {
+//           select: { availableQuantity: true },
+//           take: 1,
+//         },
+//       },
+//       take: 100,
+//     }),
+//     prisma.warehouse.findMany({
+//       select: { id: true, name: true },
+//     }),
+//   ]);
+
+//   const warehouseMap = new Map(warehouses.map((w) => [w.id, w.name]));
+
+//   // 🧮 Convert base unit (unit) to other units
+//   function convertFromBaseUnit(
+//     product: {
+//       unitsPerPacket?: number;
+//       packetsPerCarton?: number;
+//     },
+//     availableUnits: number,
+//   ) {
+//     const unitsPerPacket = product.unitsPerPacket || 1;
+//     const packetsPerCarton = product.packetsPerCarton || 1;
+
+//     const availablePackets = Number(
+//       (availableUnits / unitsPerPacket).toFixed(2),
+//     );
+//     const availableCartons = Number(
+//       (availablePackets / packetsPerCarton).toFixed(2),
+//     );
+
+//     return { availablePackets, availableCartons };
+//   }
+
+//   return activeProducts.map((product) => {
+//     const availableUnits = product.inventory[0]?.availableQuantity ?? 0;
+//     const { availablePackets, availableCartons } = convertFromBaseUnit(
+//       product,
+//       availableUnits,
+//     );
+
+//     return {
+//       id: product.id,
+//       name: product.name,
+//       sku: product.sku,
+//       warehouseId: product.warehouseId,
+//       warehousename: warehouseMap.get(product.warehouseId) ?? "",
+//       pricePerUnit: Number(product.pricePerUnit) || 0,
+//       pricePerPacket: Number(product.pricePerPacket) || 0,
+//       pricePerCarton: Number(product.pricePerCarton) || 0,
+//       unitsPerPacket: product.unitsPerPacket,
+//       packetsPerCarton: product.packetsPerCarton,
+//       availableUnits,
+//       availablePackets,
+//       availableCartons,
+//     };
+//   });
+// }
+import { unstable_cache, revalidateTag } from "next/cache";
+
+export const getAllActiveProductsForSale = unstable_cache(
+  async (where: Prisma.ProductWhereInput, searchQuery?: string) => {
+    const combinedWhere: Prisma.ProductWhereInput = {
+      ...where,
+      isActive: true,
+      inventory: {
+        some: { availableQuantity: { gt: 0 } },
       },
-    },
-  };
-
-  if (searchQuery) {
-    combinedWhere.OR = [
-      { name: { contains: searchQuery, mode: "insensitive" } },
-      { sku: { contains: searchQuery, mode: "insensitive" } },
-      { barcode: { contains: searchQuery, mode: "insensitive" } },
-      { description: { contains: searchQuery, mode: "insensitive" } },
-    ];
-  }
-
-  const [activeProducts, warehouses] = await Promise.all([
-    prisma.product.findMany({
-      where: combinedWhere,
-      orderBy: { name: "asc" },
-      select: {
-        id: true,
-        name: true,
-        sku: true,
-        pricePerUnit: true,
-        pricePerPacket: true,
-        pricePerCarton: true,
-        packetsPerCarton: true,
-        unitsPerPacket: true,
-        warehouseId: true,
-        inventory: {
-          select: { availableQuantity: true },
-          take: 1,
-        },
-      },
-      take: 100,
-    }),
-    prisma.warehouse.findMany({
-      select: { id: true, name: true },
-    }),
-  ]);
-
-  const warehouseMap = new Map(warehouses.map((w) => [w.id, w.name]));
-
-  // 🧮 Convert base unit (unit) to other units
-  function convertFromBaseUnit(
-    product: {
-      unitsPerPacket?: number;
-      packetsPerCarton?: number;
-    },
-    availableUnits: number,
-  ) {
-    const unitsPerPacket = product.unitsPerPacket || 1;
-    const packetsPerCarton = product.packetsPerCarton || 1;
-
-    const availablePackets = Number(
-      (availableUnits / unitsPerPacket).toFixed(2),
-    );
-    const availableCartons = Number(
-      (availablePackets / packetsPerCarton).toFixed(2),
-    );
-
-    return { availablePackets, availableCartons };
-  }
-
-  return activeProducts.map((product) => {
-    const availableUnits = product.inventory[0]?.availableQuantity ?? 0;
-    const { availablePackets, availableCartons } = convertFromBaseUnit(
-      product,
-      availableUnits,
-    );
-
-    return {
-      id: product.id,
-      name: product.name,
-      sku: product.sku,
-      warehouseId: product.warehouseId,
-      warehousename: warehouseMap.get(product.warehouseId) ?? "",
-      pricePerUnit: Number(product.pricePerUnit) || 0,
-      pricePerPacket: Number(product.pricePerPacket) || 0,
-      pricePerCarton: Number(product.pricePerCarton) || 0,
-      unitsPerPacket: product.unitsPerPacket,
-      packetsPerCarton: product.packetsPerCarton,
-      availableUnits,
-      availablePackets,
-      availableCartons,
     };
-  });
-}
+
+    if (searchQuery) {
+      combinedWhere.OR = [
+        { name: { contains: searchQuery, mode: "insensitive" } },
+        { sku: { contains: searchQuery, mode: "insensitive" } },
+        { barcode: { contains: searchQuery, mode: "insensitive" } },
+        { description: { contains: searchQuery, mode: "insensitive" } },
+      ];
+    }
+
+    const [activeProducts, warehouses] = await Promise.all([
+      prisma.product.findMany({
+        where: combinedWhere,
+        orderBy: { name: "asc" },
+        select: {
+          id: true,
+          name: true,
+          sku: true,
+          pricePerUnit: true,
+          pricePerPacket: true,
+          pricePerCarton: true,
+          packetsPerCarton: true,
+          unitsPerPacket: true,
+          warehouseId: true,
+          inventory: { select: { availableQuantity: true }, take: 1 },
+        },
+        take: 100,
+      }),
+      prisma.warehouse.findMany({ select: { id: true, name: true } }),
+    ]);
+
+    const warehouseMap = new Map(warehouses.map((w) => [w.id, w.name]));
+
+    function convertFromBaseUnit(product: any, availableUnits: number) {
+      const unitsPerPacket = product.unitsPerPacket || 1;
+      const packetsPerCarton = product.packetsPerCarton || 1;
+
+      const availablePackets = Number(
+        (availableUnits / unitsPerPacket).toFixed(2),
+      );
+      const availableCartons = Number(
+        (availablePackets / packetsPerCarton).toFixed(2),
+      );
+
+      return { availablePackets, availableCartons };
+    }
+
+    return activeProducts.map((product) => {
+      const availableUnits = product.inventory[0]?.availableQuantity ?? 0;
+      const { availablePackets, availableCartons } = convertFromBaseUnit(
+        product,
+        availableUnits,
+      );
+
+      return {
+        id: product.id,
+        name: product.name,
+        sku: product.sku,
+        warehouseId: product.warehouseId,
+        warehousename: warehouseMap.get(product.warehouseId) ?? "",
+        pricePerUnit: Number(product.pricePerUnit) || 0,
+        pricePerPacket: Number(product.pricePerPacket) || 0,
+        pricePerCarton: Number(product.pricePerCarton) || 0,
+        unitsPerPacket: product.unitsPerPacket,
+        packetsPerCarton: product.packetsPerCarton,
+        availableUnits,
+        availablePackets,
+        availableCartons,
+      };
+    });
+  },
+  ["products-for-sale"], // ✅ cache key
+  { tags: ["products-for-sale"] }, // ✅ tag for revalidation
+);
