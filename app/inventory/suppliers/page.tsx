@@ -1,5 +1,5 @@
 import { fetchSuppliers } from "@/app/actions/roles";
-import SuppliersTable from "../categories/_components/tables";
+import SuppliersTable from "./table";
 
 export default async function suppliers() {
   const data = await fetchSuppliers();

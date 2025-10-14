@@ -1,6 +1,7 @@
 "use client";
 
 import CustomDialog from "@/components/common/Dailog";
+import Form from "@/components/forms/supplierform";
 
 import dynamic from "next/dynamic";
 const Calendar22 = dynamic(
@@ -10,23 +11,23 @@ const Calendar22 = dynamic(
     loading: () => <input type="date" className="..." />,
   },
 );
-import { SelectField } from "@/components/common/selection";
+
 import { DataTable } from "@/components/common/test";
 import { Button } from "@/components/ui/button";
 import { useTablePrams } from "@/hooks/useTableParams";
 
 import SearchInput from "@/components/common/searchtest";
-import { columns } from "./columns";
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import ImportProductsPage from "@/components/uploadItesm";
-import WarehouseForm from "@/components/forms/form";
+
 import { Plus } from "lucide-react";
 import ImportWarehouse from "@/components/uploadwarehouse";
+import SupplierForm from "@/components/forms/supplierform";
+import { supplierColumns } from "./columns";
 
 type ProductClientProps = {
-  products: any[];
+  data: any[];
   total: number;
   formData: {
     warehouses: { id: string; name: string }[];
@@ -38,8 +39,8 @@ type ProductClientProps = {
 
 // Loading skeleton for table
 
-export default function WarehouseTable({
-  products,
+export default function SuppliersTable({
+  data,
   total,
   formData,
 }: ProductClientProps) {
@@ -65,11 +66,6 @@ export default function WarehouseTable({
       className="bg-accent w-full rounded-2xl p-2 shadow-xl/20 shadow-gray-500 group-data-[[state=pending]]:animate-pulse"
       dir="rtl"
     >
-      {/* <SearchInput
-        placeholder={"search"}
-        value={globalFilter}
-        onSearchChange={(value) => setParam("search", value)}
-      /> */}
       <div className="flex flex-wrap gap-2 p-1 md:flex-row lg:flex-row">
         <Calendar22 />
         <SearchInput placeholder={"بحث "} paramKey={"product"} />
@@ -81,16 +77,16 @@ export default function WarehouseTable({
               إضافة
             </Button>
           }
-          title="إضافة مستودع جديدة"
+          title="إضافة  جديدة"
         >
-          <WarehouseForm />
+          <SupplierForm />
         </CustomDialog>
       </div>
 
       <DataTable
         search={<ImportWarehouse />}
-        data={products}
-        columns={columns}
+        data={data}
+        columns={supplierColumns}
         initialPageSize={pagination.pageSize}
         pageCount={Math.ceil(total / pagination.pageSize)}
         pageActiom={setPagination}

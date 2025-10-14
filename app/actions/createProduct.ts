@@ -367,7 +367,7 @@ export const getAllActiveProductsForSale = unstable_cache(
           packetsPerCarton: true,
           unitsPerPacket: true,
           warehouseId: true,
-          inventory: { select: { availableQuantity: true }, take: 1 },
+          inventory: { select: { availableQuantity: true } },
         },
         take: 100,
       }),

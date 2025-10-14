@@ -140,6 +140,18 @@ export async function processSale(data: any) {
         },
       });
     }
+    if (customerId && totalAfterDiscount > receivedAmount) {
+      const amountDue = totalAfterDiscount - receivedAmount;
+
+      await tx.customer.update({
+        where: { id: customerId },
+        data: {
+          outstandingBalance: {
+            increment: amountDue, // increase debt
+          },
+        },
+      });
+    }
 
     if (receivedAmount > 0) {
       await tx.payment.create({

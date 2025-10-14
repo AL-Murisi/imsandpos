@@ -5,25 +5,34 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ColumnDef } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, ArrowUpDown, EditIcon } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  EditIcon,
+  FileText,
+} from "lucide-react";
 import Debtupdate from "./form";
 import DebtReport from "./DebtReport";
+
 interface DebtSaleData {
   id: string;
-  totalAmount: string; // As string from FetchDebtSales
+  totalAmount: string;
   amountPaid: string;
   amountDue: string;
   saleDate: string;
   createdAt: string;
   paymentStatus: string;
   customerId: string;
+
   customer: {
+    outstandingBalance?: number;
     name: string;
     phoneNumber: string | null;
     customerType: string;
   };
-  // Add any other properties from your Prisma `Sale` select
 }
+
 type SortableHeaderProps = {
   column: any;
   label: string;
@@ -94,8 +103,54 @@ export const debtSaleColumns: ColumnDef<DebtSaleData>[] = [
   {
     accessorKey: "customer.customerType",
     header: ({ column }) => (
-      <SortableHeader column={column} label="customerType" />
+      <SortableHeader column={column} label="نوع الزبون" />
     ),
+  },
+  // {
+  //   accessorKey: "customer.outstandingBalance",
+  //   header: "رصيد العميل",
+  //   cell: ({ row }) => {
+  //     const balance = row.original.outstandingBalance;
+
+  //     const isDebit = balance > 0; // customer owes company
+  //     const isCredit = balance < 0; // company owes customer
+
+  //     return (
+  //       <span
+  //         className={`font-bold ${
+  //           isDebit
+  //             ? "text-red-600"
+  //             : isCredit
+  //               ? "text-green-600"
+  //               : "text-gray-600"
+  //         }`}
+  //       >
+  //         {balance > 0
+  //           ? `+${balance.toFixed(2)} مدين`
+  //           : balance < 0
+  //             ? `${balance.toFixed(2)} دائن`
+  //             : "0"}
+  //       </span>
+  //     );
+  //   },
+  // },
+  {
+    accessorKey: "customer.outstandingBalance",
+    header: ({ column }) => (
+      <SortableHeader column={column} label="رصيد العميل" />
+    ),
+    cell: ({ row }) => {
+      const balance = row.original.customer?.outstandingBalance ?? 0;
+      const color =
+        balance > 0
+          ? "text-green-600"
+          : balance < 0
+            ? "text-red-600"
+            : "text-gray-600";
+
+      const formatted = balance > 0 ? `+${balance}` : balance.toString();
+      return <div className={color}>{formatted} ريال</div>;
+    },
   },
   {
     accessorKey: "totalAmount",
@@ -143,36 +198,28 @@ export const debtSaleColumns: ColumnDef<DebtSaleData>[] = [
   {
     id: "actions",
     enableHiding: false,
+    header: "الإجراءات",
     cell: ({ row }) => {
       const debt = row.original;
       return (
-        <>
+        <div className="flex gap-2">
           <CustomDialog
             trigger={
-              <Button variant="outline">
-                <EditIcon />
+              <Button variant="outline" className="text-blue-600">
+                <EditIcon className="h-4 w-4" />
               </Button>
             }
-            title="إضافة منتج"
-            description="أدخل تفاصيل المنتج واحفظه"
+            title="تحديث الديون"
+            description="قم بتحديث حالة الدين أو المبلغ المدفوع"
           >
             <Debtupdate debt={debt} />
           </CustomDialog>
-          <CustomDialog
-            trigger={
-              <Button variant="outline">
-                <EditIcon />
-              </Button>
-            }
-            title="إضافة منتج"
-            description="أدخل تفاصيل المنتج واحفظه"
-          >
-            <DebtReport
-              customerName={debt.customer?.name}
-              customerID={debt.customerId}
-            />
-          </CustomDialog>
-        </>
+
+          <DebtReport
+            customerName={debt.customer?.name}
+            customerID={debt.customerId}
+          />
+        </div>
       );
     },
   },

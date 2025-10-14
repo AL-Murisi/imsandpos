@@ -352,7 +352,7 @@ export const Receipt: React.FC<ReceiptProps> = ({
   return (
     <Button
       onClick={handlePrint}
-      className="w-40 rounded bg-green-600 px-4 py-2 text-white sm:w-2xs md:w-sm"
+      className="rounded bg-green-600 px-4 py-2 text-white"
     >
       {t("print")}
     </Button>

@@ -99,6 +99,7 @@
     "invoiceNo": "رقم الفاتورة",
     "items": "العناصر",
     "total": "الإجمالي",
+
     "paid": "المدفوع",
     "remaining": "المتبقي",
     "totalOutstanding": "إجمالي المتبقي",
@@ -221,7 +222,7 @@
     "discount": "الخصم",
     "total_after": "المبلغ المستحق",
     "received_amount": "المبلغ المستلم",
-    "remaining_to_customer": "المتبقي للعميل",
+    "remaining_to_customer": "المتبقي ",
     "previous_debts": "ديون سابقة",
     "thanks": "شكرًا لتسوقك معنا!",
     "confirm_payment": "تأكيد الدفع",

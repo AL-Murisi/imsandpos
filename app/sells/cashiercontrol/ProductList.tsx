@@ -189,10 +189,8 @@ export default function ProductsList({
 
   return (
     <div className="rounded-2xl p-2 lg:col-span-1">
-      <div className="mb-4 flex flex-col gap-3 bg-transparent px-3 md:flex-row">
-        <div className="h-10 w-sm md:w-full">
-          <SearchInput placeholder={t("search")} paramKey="product" />
-        </div>
+      <div className="mb-4 flex flex-wrap gap-3 bg-transparent px-3 lg:flex-row">
+        <SearchInput placeholder={t("search")} paramKey="product" />
 
         <Selection
           options={formData.categories}

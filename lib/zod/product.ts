@@ -40,7 +40,7 @@ export const CreateProductSchema = z
     description: z.string().nullable().optional(),
     categoryId: z.string().min(1, "معرّف الفئة مطلوب"),
     brandId: z.string().nullable().optional(),
-    type: z.enum(["single", "bundle", "variant"]),
+    type: z.enum(["single", "bundle", "variant"]).nullable().optional(),
 
     unitsPerPacket: z.number().int().min(1, "عدد الوحدات في العبوة مطلوب"),
     packetsPerCarton: z.number().int().min(1, "عدد العبوات في الكرتون مطلوب"),
@@ -61,11 +61,6 @@ export const CreateProductSchema = z
     supplierId: z.string().min(1, "معرّف المورد مطلوب").optional(),
     warehouseId: z.string().min(1, "معرّف المستودع مطلوب"),
     status: z.enum(["active", "inactive", "discontinued"]),
-    // image: z
-    //   .any()
-    //   .optional()
-    //   .refine((file) => file?.size <= 500000, "max imga is 5mb")
-    //   .refine((file) => file?.type, "acetpeyd files only jpg,jpeg,png"),
   })
   .refine((data) => data.pricePerCarton > data.costPrice, {
     message: "سعر البيع يجب أن يكون أكبر من سعر التكلفة",
@@ -75,21 +70,6 @@ export const CreateProductSchema = z
     message: "سعر الجملة يجب أن يكون أكبر أو يساوي سعر التكلفة",
     path: ["wholesalePrice"],
   });
-
-// // ✅ Create schema (used in form)
-// export const CreateProductSchema = productSchema
-//   .omit({ id: true, isActive: true })
-//   .extend({
-//     type: z.enum(["single", "bundle", "variant"]),
-//   })
-//   .refine((data) => data.pricePerCarton > data.costPrice, {
-//     message: "سعر البيع يجب أن يكون أكبر من سعر التكلفة",
-//     path: ["pricePerCarton"],
-//   })
-//   .refine((data) => data.wholesalePrice >= data.costPrice, {
-//     message: "سعر الجملة يجب أن يكون أكبر أو يساوي سعر التكلفة",
-//     path: ["wholesalePrice"],
-//   });
 
 export type CreateProductInput = z.infer<typeof CreateProductSchema>;
 export const UpdateProductSchema = productSchema.partial();

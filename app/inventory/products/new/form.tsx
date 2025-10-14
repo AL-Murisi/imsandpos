@@ -21,10 +21,9 @@ import { useAuth } from "@/lib/context/AuthContext";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { CreateProductSchema } from "@/lib/zod/product";
+import { CreateProductInput, CreateProductSchema } from "@/lib/zod";
 
 // Define the shape of the form values
-type FormValues = z.infer<typeof CreateProductSchema>;
 
 // Define the shape of the option objects for select fields
 interface Option {
@@ -55,7 +54,7 @@ export default function ProductForm() {
     reset,
     watch,
     formState: { errors },
-  } = useForm<FormValues>({
+  } = useForm<CreateProductInput>({
     resolver: zodResolver(CreateProductSchema),
     // You can set default values here if needed
     // defaultValues: { ... }
@@ -91,7 +90,7 @@ export default function ProductForm() {
   }, []);
 
   // Handle form submission
-  const onSubmit = async (data: FormValues) => {
+  const onSubmit = async (data: CreateProductInput) => {
     console.log("Submitted:", data);
 
     try {
@@ -240,7 +239,7 @@ export default function ProductForm() {
                     options={productTypeOptions}
                     value={watchedType}
                     action={(val) =>
-                      setValue("type", val as FormValues["type"])
+                      setValue("type", val as CreateProductInput["type"])
                     }
                     placeholder={t("type") || "Select Type"}
                   />
@@ -397,8 +396,7 @@ export default function ProductForm() {
                   <Input
                     id="weight"
                     type="number"
-                    step="0.01"
-                    {...register("weight", { valueAsNumber: true })}
+                    {...register("weight")}
                     className="text-right"
                   />
                   {errors.weight && (
@@ -463,7 +461,7 @@ export default function ProductForm() {
                     options={statusOptions}
                     value={watchedStatus}
                     action={(val) =>
-                      setValue("status", val as FormValues["status"])
+                      setValue("status", val as CreateProductInput["status"])
                     }
                     placeholder={t("status") || "Select Status"}
                   />

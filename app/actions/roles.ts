@@ -19,6 +19,7 @@ import {
   WarehouseInput,
 } from "@/lib/zod";
 import { Prisma } from "@prisma/client";
+import { revalidatePath } from "next/cache";
 import { email, safeParse, z } from "zod";
 import { number } from "zod/v3";
 
@@ -591,7 +592,7 @@ export async function createSupplier(form: CreateSupplierInput) {
         paymentTerms,
       },
     });
-
+    revalidatePath("/suppliers");
     return user;
   } catch (error) {
     console.error("Failed to create user:", error);

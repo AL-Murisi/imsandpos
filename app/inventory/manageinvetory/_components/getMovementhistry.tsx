@@ -72,12 +72,6 @@ export default function ManagemovementClient({
           paramKey="category"
           placeholder="warehouseId"
         />
-        {/* <SelectField
-          options={formData.warehouses}
-          onValueChange={(value) => setParam("warehouseId", value)}
-          value={warehouseId ?? ""}
-         
-        /> */}
       </div>
       <div>
         <DataTable

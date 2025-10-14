@@ -127,8 +127,31 @@ export const customerColumns: ColumnDef<any>[] = [
   },
   {
     accessorKey: "outstandingBalance",
-    header: "الرصيد المستحق",
-    cell: ({ row }) => <div>{row.original.outstandingBalance} ﷼</div>,
+    header: "رصيد العميل",
+    cell: ({ row }) => {
+      const balance = Number(row.original.outstandingBalance);
+
+      const isDebit = balance > 0; // customer owes company
+      const isCredit = balance < 0; // company owes customer
+
+      return (
+        <span
+          className={`font-bold ${
+            isDebit
+              ? "text-red-600"
+              : isCredit
+                ? "text-green-600"
+                : "text-gray-600"
+          }`}
+        >
+          {balance > 0
+            ? `+${balance.toFixed(2)} مدين`
+            : balance < 0
+              ? `${balance.toFixed(2)} دائن`
+              : "0"}
+        </span>
+      );
+    },
   },
   {
     id: "actions",

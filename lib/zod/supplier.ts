@@ -4,7 +4,13 @@ import { z } from "zod";
 export const CreateSupplierSchema = z.object({
   name: z.string().min(1, "اسم المورد مطلوب"),
   contactPerson: z.string().optional(),
-  email: z.string().email().optional(),
+  email: z
+    .string()
+    .trim()
+    .email("البريد الإلكتروني غير صالح")
+    .optional()
+    .or(z.literal("")),
+
   phoneNumber: z.string().optional(),
   address: z.string().optional(),
   city: z.string().optional(),

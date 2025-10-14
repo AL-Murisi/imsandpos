@@ -35,7 +35,8 @@ export async function getCustomerById(customerId?: string) {
     const result = customers.map((c) => ({
       ...c,
       creditLimit: c.creditLimit?.toString() ?? "0",
-      outstandingBalance: c.outstandingBalance.toString(),
+
+      outstandingBalance: Number(c.outstandingBalance),
     }));
 
     return result; // ✅ this is an array now
@@ -139,6 +140,7 @@ export async function createCutomer(form: createCusomer) {
   if (!pared.success) {
     throw new Error("Invalid customer data");
   }
+
   const {
     name,
     email,
@@ -152,12 +154,13 @@ export async function createCutomer(form: createCusomer) {
     outstandingBalance,
   } = pared.data;
   console.log(pared.data);
-  const outstanding = outstandingBalance.toString();
+  const emailValue = email?.trim() || null;
+  const outstanding = outstandingBalance?.toString() ?? 0;
   try {
     const customer = await prisma.customer.create({
       data: {
         name,
-        email,
+        ...(emailValue ? { email: emailValue } : {}),
         phoneNumber,
         address,
         city,
@@ -169,7 +172,7 @@ export async function createCutomer(form: createCusomer) {
         taxId,
       },
     });
-
+    revalidatePath("/customer");
     return customer;
   } catch (error) {
     console.error("Failed to create customer:", error);

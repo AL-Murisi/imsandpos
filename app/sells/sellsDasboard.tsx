@@ -46,88 +46,68 @@ export default function SellsDashboardClient({
   };
 
   return (
-    <ScrollArea className="flex max-h-[95vh] flex-col space-y-8 p-6" dir="rtl">
-      <h1 className="text-3xl font-bold">مرحباً، {user.role}!</h1>
-
-      {/* Conditional Rendering based on Role */}
-
-      <section className="space-y-6">
-        <h2 className="text-2xl font-semibold text-gray-800">
-          نظرة عامة للصراف
-        </h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {/* Cashier-specific KPIs */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                مبيعاتك اليوم
-              </CardTitle>
-              <DollarSignIcon className="text-muted-foreground h-4 w-4" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {salesSummary.cashierSalesToday || "0"} د.ع
-              </div>
-              <p className="text-muted-foreground text-xs">
-                على {salesSummary.cashierTransactionsToday || "0"} عملية
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                مدفوعات الديون التي جمعتها (اليوم)
-              </CardTitle>
-              <WalletIcon className="text-muted-foreground h-4 w-4" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {salesSummary.cashierDebtPaymentsToday || "0"} د.ع
-              </div>
-              <p className="text-muted-foreground text-xs">
-                من {salesSummary.cashierDebtPaymentsCountToday || "0"} عملية
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                الكمية في المخزون
-              </CardTitle>
-              <ShoppingBagIcon className="text-muted-foreground h-4 w-4" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {productStats.totalStockQuantity || "N/A"}
-              </div>
-              {productStats.lowStockProducts || 0}
-              <p className="text-muted-foreground text-xs">مخزون المنتجات</p>
-            </CardContent>
-          </Card>
-          {/* Add more cashier KPIs */}
-        </div>
-
-        {/* Cashier Quick Actions */}
-        <h3 className="text-xl font-semibold">إجراءات سريعة للصراف</h3>
-        <div className="flex flex-wrap gap-4">
-          <Button asChild size="lg">
-            <Link href="/sells/new">بدء عملية بيع جديدة</Link>
-          </Button>
-          <Button asChild>
-            <Link href="/sells/debtSell">عرض ديون العملاء</Link>
-          </Button>
-          <Button asChild>
-            <Link href="/products">البحث عن منتج</Link>
-          </Button>
-        </div>
-      </section>
-
-      {/* Common section - could be recent sales transactions */}
-      <div className="space-y-6 py-3">
-        <h2 className="text-2xl font-semibold text-gray-800">أحدث العمليات</h2>
-
-        <DebtSells data={recentSales} total={0} sort={[]} />
+    <section className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {/* Cashier-specific KPIs */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">مبيعاتك اليوم</CardTitle>
+            <DollarSignIcon className="text-muted-foreground h-4 w-4" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {salesSummary.cashierSalesToday || "0"} د.ع
+            </div>
+            <p className="text-muted-foreground text-xs">
+              على {salesSummary.cashierTransactionsToday || "0"} عملية
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              مدفوعات الديون التي جمعتها (اليوم)
+            </CardTitle>
+            <WalletIcon className="text-muted-foreground h-4 w-4" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {salesSummary.cashierDebtPaymentsToday || "0"} د.ع
+            </div>
+            <p className="text-muted-foreground text-xs">
+              من {salesSummary.cashierDebtPaymentsCountToday || "0"} عملية
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              الكمية في المخزون
+            </CardTitle>
+            <ShoppingBagIcon className="text-muted-foreground h-4 w-4" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {productStats.totalStockQuantity || "N/A"}
+            </div>
+            {productStats.lowStockProducts || 0}
+            <p className="text-muted-foreground text-xs">مخزون المنتجات</p>
+          </CardContent>
+        </Card>
+        {/* Add more cashier KPIs */}
       </div>
-    </ScrollArea>
+      <div className="flex flex-wrap gap-4">
+        <Button asChild size="lg">
+          <Link href="/sells/cashiercontrol">بدء عملية بيع جديدة</Link>
+        </Button>
+        <Button asChild>
+          <Link href="/debt">عرض ديون العملاء</Link>
+        </Button>
+        {/* <Button asChild>
+            <Link href="/products">البحث عن منتج</Link>
+          </Button> */}
+      </div>
+      <DebtSells data={recentSales} total={0} sort={[]} />
+    </section>
   );
 }

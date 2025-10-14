@@ -160,7 +160,9 @@ export default function Recitp({ id }: Props) {
                         : "text-green-600"
                     }
                   >
-                    {t("change")}: {data.calculated_change ?? 0} ﷼
+                    {Number(data.calculated_change) < 0
+                      ? `على الزبون: ${Math.abs(Number(data.calculated_change))} ﷼`
+                      : `له: ${data.calculated_change ?? 0} ﷼`}
                   </Label>
                 </div>
 

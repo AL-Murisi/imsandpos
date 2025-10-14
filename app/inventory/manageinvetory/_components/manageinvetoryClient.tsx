@@ -75,17 +75,6 @@ export default function ManageinvetoryClient({
           paramKey={"supplierId"}
           placeholder="Supplier"
         />
-        <CustomDialog
-          trigger={
-            <Button>
-              <Plus className="mr-1" /> Add Product
-            </Button>
-          }
-          title="Add Product"
-          description="Enter product details below."
-        >
-          <InvonteryEditFormm inventory={undefined} />
-        </CustomDialog>
       </div>
 
       <DataTable

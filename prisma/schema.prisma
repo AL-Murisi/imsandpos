@@ -332,7 +332,6 @@ model Customer {
   city        String?
   state       String?
   country     String?
-  
   // Business info
   customerType String  @default("individual") @map("customer_type") // "individual", "business"
   taxId       String?  @map("tax_id")

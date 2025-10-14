@@ -84,6 +84,7 @@ export default function CartDisplay({ users }: CustomDialogProps) {
   const [receivedAmount, setReceivedAmount] = useState(0);
   const totals = useAppSelector(selectCartTotals);
   const tt = useTranslations("payment");
+
   const userAgent =
     typeof window !== "undefined" ? navigator.userAgent.toLowerCase() : "";
   const isMobileUA =
@@ -317,16 +318,34 @@ export default function CartDisplay({ users }: CustomDialogProps) {
                           // max={maxQty}
                         />
                         <button
-                          disabled={
-                            (item.sellingUnit === "carton" &&
-                              item.selectedQty >=
-                                products[0].availableCartons) ||
-                            (item.sellingUnit === "packet" &&
-                              item.selectedQty >=
-                                products[0].availablePackets) ||
-                            (item.sellingUnit === "unit" &&
-                              item.selectedQty >= products[0].availableUnits)
-                          }
+                          disabled={(() => {
+                            const product = products.find(
+                              (p) => p.id === item.id,
+                            );
+                            if (!product) return true;
+
+                            // Check stock based on current selling unit
+                            if (item.sellingUnit === "carton") {
+                              // For cartons, only count full cartons (integer part)
+                              const fullCartons = Math.floor(
+                                product.availableCartons,
+                              );
+                              return item.selectedQty >= fullCartons;
+                            } else if (item.sellingUnit === "packet") {
+                              // For packets, extract packets from decimal part + direct packets
+                              const decimalPart = product.availableCartons % 1;
+                              const packetsFromCartons = Math.floor(
+                                decimalPart * 100,
+                              );
+                              const totalPackets =
+                                packetsFromCartons + product.availablePackets;
+                              return item.selectedQty >= totalPackets;
+                            } else if (item.sellingUnit === "unit") {
+                              // For units, use total available units
+                              return item.selectedQty >= product.availableUnits;
+                            }
+                            return false;
+                          })()}
                           onClick={() => {
                             dispatch(
                               updateQty({
@@ -364,9 +383,67 @@ export default function CartDisplay({ users }: CustomDialogProps) {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="carton">كرتون</SelectItem>
-                            <SelectItem value="packet">حزمة</SelectItem>
-                            <SelectItem value="unit">حبة</SelectItem>
+                            <SelectItem
+                              value="carton"
+                              disabled={(() => {
+                                const product = products.find(
+                                  (p) => p.id === item.id,
+                                );
+                                if (!product) return true;
+
+                                // Disable carton if less than 1 full carton available
+                                if (product.availableCartons < 1) return true;
+
+                                // Disable if current qty has decimals
+                                if (item.selectedQty % 1 !== 0) return true;
+
+                                return false;
+                              })()}
+                            >
+                              كرتون
+                            </SelectItem>
+                            <SelectItem
+                              value="packet"
+                              disabled={(() => {
+                                const product = products.find(
+                                  (p) => p.id === item.id,
+                                );
+                                if (!product) return true;
+
+                                // Extract the decimal part to get packets
+                                // 1.90 cartons = Math.floor(0.90 * 100) = 90 packets
+                                // 0.90 cartons = Math.floor(0.90 * 100) = 90 packets
+                                // 0.00 cartons = 0 packets
+                                if (product.availablePackets < 1) return true;
+
+                                // Disable if current qty has decimals
+                                if (item.selectedQty % 1 !== 0) return true;
+
+                                // Disable if converting from unit and current qty has decimals
+                                if (
+                                  item.sellingUnit === "unit" &&
+                                  item.selectedQty % 1 !== 0
+                                )
+                                  return true;
+
+                                return false;
+                              })()}
+                            >
+                              حزمة
+                            </SelectItem>
+                            <SelectItem
+                              value="unit"
+                              disabled={(() => {
+                                const product = products.find(
+                                  (p) => p.id === item.id,
+                                );
+                                if (!product) return true;
+
+                                return product.availableUnits < 1;
+                              })()}
+                            >
+                              حبة
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </TableCell>
@@ -504,7 +581,7 @@ export default function CartDisplay({ users }: CustomDialogProps) {
                   setReceivedAmount(isNaN(val) ? 0 : val); // store 0 if input is empty or invalid
                 }}
                 placeholder="المبلغ المستلم"
-                className="w-40 border-2 sm:w-2xs md:w-sm"
+                className="w-40 border-2 sm:w-2xs md:w-2xs lg:w-[200px]"
                 type="number"
               />
             </div>
@@ -550,7 +627,7 @@ export default function CartDisplay({ users }: CustomDialogProps) {
                   canPay
                     ? "bg-green-600 hover:bg-green-700"
                     : "cursor-not-allowed bg-gray-400"
-                } sm:w-4xs w-40 flex-1 rounded-md border-amber-500 py-3 text-amber-100 shadow-md hover:bg-amber-50 md:w-sm`}
+                } flex-1 rounded-md border-amber-500 py-3 text-amber-100 shadow-md hover:bg-amber-50`}
               >
                 {tt("pay_now")}
               </Button>

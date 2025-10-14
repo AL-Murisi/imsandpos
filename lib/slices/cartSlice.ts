@@ -317,9 +317,11 @@ const cartSlice = createSlice({
 
       if (!item) return;
 
-      // ✅ Keep same quantity — only change unit type
-      item.sellingUnit = action.payload.to;
-      item.selectedQty = action.payload.qty;
+      const { to } = action.payload;
+
+      // Simply set quantity to 1 when changing units
+      item.sellingUnit = to;
+      item.selectedQty = 1;
     },
 
     // 🔹 Cart Utilities

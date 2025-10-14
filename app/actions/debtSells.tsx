@@ -57,67 +57,55 @@ import { fetchProductStats } from "./sells";
 //   }));
 //   return serializedDebt;
 // }
+
 export async function updateSales(
   saleId: string,
   paymentAmount: number,
   cashierId?: string,
 ) {
-  // Input validation for paymentAmount
   if (paymentAmount <= 0) {
     throw new Error("Payment amount must be greater than zero.");
   }
-  // You might also want to add validation for cashierId
 
-  const updatedSale = await prisma.$transaction(async (transaction) => {
-    // 1. Fetch the current sale details using the transaction client
-    const sale = await transaction.sale.findUnique({
-      where: {
-        id: saleId,
-      },
+  const updatedSale = await prisma.$transaction(async (tx) => {
+    // 1️⃣ Fetch current sale
+    const sale = await tx.sale.findUnique({
+      where: { id: saleId },
       select: {
         id: true,
         totalAmount: true,
         amountPaid: true,
         amountDue: true,
         paymentStatus: true,
+        customerId: true,
       },
     });
 
-    if (!sale) {
-      throw new Error(`Sale with ID ${saleId} not found.`);
-    }
+    if (!sale) throw new Error(`Sale with ID ${saleId} not found.`);
 
-    // Convert Decimal types to numbers for calculations.
-    // As noted before, for high precision, consider a BigNumber library or Prisma's increment/decrement.
-    const currentAmountPaid = sale.amountPaid.toNumber();
-    const currentAmountDue = sale.amountDue.toNumber();
-    const totalSaleAmount = sale.totalAmount.toNumber();
+    const totalAmount = sale.totalAmount.toNumber();
+    const currentPaid = sale.amountPaid.toNumber();
+    const currentDue = sale.amountDue.toNumber();
+    const customerId = sale.customerId;
 
-    // 2. Calculate new amounts for the Sale record
-    let newAmountPaid = currentAmountPaid + paymentAmount;
-    let newAmountDue = currentAmountDue - paymentAmount;
+    // 2️⃣ Compute new values
+    let newAmountPaid = currentPaid + paymentAmount;
+    let newAmountDue = currentDue - paymentAmount;
+    if (newAmountDue < 0) newAmountDue = 0;
 
-    // Ensure amountDue does not go below zero
-    if (newAmountDue < 0) {
-      newAmountDue = 0;
-    }
-
-    // 3. Determine new payment status for the Sale record
     let newPaymentStatus: "paid" | "partial" | "pending";
-    if (newAmountPaid >= totalSaleAmount) {
+    if (newAmountPaid >= totalAmount) {
       newPaymentStatus = "paid";
-      newAmountDue = 0; // Ensure amountDue is 0 if fully paid
-    } else if (newAmountPaid > 0 && newAmountPaid < totalSaleAmount) {
+      newAmountDue = 0;
+    } else if (newAmountPaid > 0) {
       newPaymentStatus = "partial";
     } else {
       newPaymentStatus = "pending";
     }
 
-    // 4. Update the Sale record using the transaction client
-    const updatedSaleRecord = await transaction.sale.update({
-      where: {
-        id: saleId,
-      },
+    // 3️⃣ Update Sale
+    const updatedSaleRecord = await tx.sale.update({
+      where: { id: saleId },
       data: {
         amountPaid: newAmountPaid,
         amountDue: newAmountDue,
@@ -126,24 +114,34 @@ export async function updateSales(
       },
     });
 
-    // 5. Create a new Payment record for the received amount
-    // This is generally how you track individual payments.
-    await transaction.payment.create({
+    // 4️⃣ Log Payment
+    await tx.payment.create({
       data: {
-        saleId: saleId,
-        // customerId: "", // Link to customer if available
-        cashierId: cashierId ?? "", // The user processing this payment
-        paymentType: "outstanding_payment", // Or "outstanding_payment" if it's specifically for a debt
-        paymentMethod: "cash", // You might want to pass this as a parameter as well
+        saleId,
+        cashierId: cashierId ?? "",
+        paymentType: "outstanding_payment",
+        paymentMethod: "cash",
         amount: paymentAmount,
-        status: "completed", // Assuming it's a successful payment
+        status: "completed",
         notes: `Payment for Sale ${saleId}`,
         createdAt: new Date(),
       },
     });
 
-    // You can return the updated sale record or an object containing both
-    const serializedUpdatedSaleRecord = {
+    // 5️⃣ Update Customer balance (reduce what company owes)
+    if (customerId) {
+      await tx.customer.update({
+        where: { id: customerId },
+        data: {
+          outstandingBalance: {
+            decrement: paymentAmount, // reduce customer's debt
+          },
+        },
+      });
+    }
+
+    // 6️⃣ Return clean serialized sale
+    return {
       ...updatedSaleRecord,
       totalAmount: updatedSaleRecord.totalAmount.toString(),
       amountPaid: updatedSaleRecord.amountPaid.toString(),
@@ -151,12 +149,12 @@ export async function updateSales(
       createdAt: updatedSaleRecord.createdAt.toISOString(),
       updatedAt: updatedSaleRecord.updatedAt.toISOString(),
     };
-
-    return serializedUpdatedSaleRecord;
   });
+
   revalidatePath("/sells/debtSell");
-  return updatedSale; // Return the result of the transaction
+  return updatedSale;
 }
+
 type DateRange = {
   from: Date | null;
   to: Date | null;

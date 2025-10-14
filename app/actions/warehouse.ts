@@ -114,6 +114,7 @@ export async function updateInventory(data: InventoryUpdateWithTrackingInput) {
       }
 
       revalidatePath("/manageinvetory");
+      revalidatePath("/cashiercontrol");
 
       return { success: true, data: updatedInventory };
     });

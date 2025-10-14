@@ -9,6 +9,7 @@ import { Prisma } from "@prisma/client";
 import SellsDashboardClient from "./sellsDasboard";
 import { SortingState } from "@tanstack/react-table";
 import { ParsedSort } from "@/hooks/sort";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 type DashboardProps = {
   searchParams: Promise<{
@@ -95,12 +96,14 @@ export default async function SellsDashboard({ searchParams }: DashboardProps) {
   };
 
   return (
-    <SellsDashboardClient
-      user={currentUser}
-      debtSales={data}
-      recentSales={data}
-      salesSummary={salesSummary}
-      productStats={productStats}
-    />
+    <ScrollArea className="flex h-[95vh] flex-col space-y-8 p-6" dir="rtl">
+      <SellsDashboardClient
+        user={currentUser}
+        debtSales={data}
+        recentSales={data}
+        salesSummary={salesSummary}
+        productStats={productStats}
+      />
+    </ScrollArea>
   );
 }

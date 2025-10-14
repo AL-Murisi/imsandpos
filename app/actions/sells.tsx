@@ -92,6 +92,7 @@ export async function FetchDebtSales(
       customer: {
         select: {
           name: true,
+          outstandingBalance: true,
           phoneNumber: true,
           customerType: true,
         },
@@ -110,6 +111,12 @@ export async function FetchDebtSales(
     amountDue: sale.amountDue.toString(), // Convert Decimal to string
     saleDate: sale.saleDate.toISOString(),
     createdAt: sale.createdAt.toISOString(),
+    customer: sale.customer
+      ? {
+          ...sale.customer,
+          outstandingBalance: Number(sale.customer.outstandingBalance), // ✅ converts nested Decimal
+        }
+      : null,
   }));
 
   return serializedDebts; // Return the transformed data

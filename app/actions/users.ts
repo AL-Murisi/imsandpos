@@ -13,3 +13,17 @@ export async function updateUsers(isActive: boolean, id: string) {
   revalidatePath("/users");
   return updateUsers;
 }
+export async function deleteCustomer(supplierId: string) {
+  try {
+    const deletedCustomer = await prisma.supplier.delete({
+      where: { id: supplierId },
+    });
+    revalidatePath("/suppliers");
+    return {
+      deletedCustomer,
+    };
+  } catch (error) {
+    console.error("Failed to delete customer:", error);
+    throw error;
+  }
+}

@@ -28,6 +28,19 @@ export default function CustomerForm() {
     formState: { errors },
   } = useForm<CreateCustomer>({
     resolver: zodResolver(CreateCustomerSchema),
+    defaultValues: {
+      outstandingBalance: 0,
+
+      phoneNumber: "",
+      address: "",
+
+      city: "",
+      state: "",
+      country: "",
+      postalCode: "",
+      customerType: "individual",
+      taxId: "",
+    },
   });
 
   const onSubmit = async (data: CreateCustomer) => {
@@ -144,7 +157,6 @@ export default function CustomerForm() {
         <div className="grid gap-2">
           <Label htmlFor="outstandingBalance">إجمالي الديون </Label>
           <Input
-            defaultValue={0}
             type="number"
             id="outstandingBalance"
             {...register("outstandingBalance")}
