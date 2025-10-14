@@ -94,15 +94,12 @@ export default function ProductEditFormm({ sku }: { sku: string }) {
             setValue("pricePerPacket", productData.pricePerPacket ?? 0);
             setValue("pricePerCarton", productData.pricePerCarton ?? 0);
             setValue("minWholesaleQty", productData.minWholesaleQty ?? 0);
-            setValue("weight", productData.weight ?? 0);
             setValue("description", productData.description ?? "");
             setValue("unitsPerPacket", productData.unitsPerPacket ?? "");
             setValue("packetsPerCarton", productData.packetsPerCarton ?? "");
             setValue("dimensions", productData.dimensions ?? "");
             setValue("costPrice", productData.costPrice ?? 0);
             setValue("wholesalePrice", productData.wholesalePrice ?? 0);
-
-            setValue("status", safeStatus);
           }
         }
       } catch (error) {
@@ -412,21 +409,7 @@ export default function ProductEditFormm({ sku }: { sku: string }) {
                 {/* Shipping Details and Logistics */}
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
                   {/* Weight */}
-                  <div className="grid gap-2">
-                    <Label htmlFor="weight">{t("weight")}</Label>
-                    <Input
-                      id="weight"
-                      type="number"
-                      step="0.01"
-                      {...register("weight", { valueAsNumber: true })}
-                      className="text-right"
-                    />
-                    {errors.weight && (
-                      <p className="text-right text-xs text-red-500">
-                        {errors.weight.message}
-                      </p>
-                    )}
-                  </div>
+
                   {/* Dimensions */}
                   <div className="grid gap-2">
                     <Label htmlFor="dimensions">{t("dimensions")} di</Label>
@@ -473,23 +456,6 @@ export default function ProductEditFormm({ sku }: { sku: string }) {
                     {errors.warehouseId && (
                       <p className="text-right text-xs text-red-500">
                         {errors.warehouseId.message}
-                      </p>
-                    )}
-                  </div>
-                  {/* Status */}
-                  <div className="grid gap-2">
-                    <Label htmlFor="status">{t("status")}</Label>
-                    <SelectField
-                      options={statusOptions}
-                      value={watchedValues.status}
-                      action={(val) =>
-                        setValue("status", val as FormValues["status"])
-                      }
-                      placeholder={t("status") || "Select Status"}
-                    />
-                    {errors.status && (
-                      <p className="text-right text-xs text-red-500">
-                        {errors.status.message}
                       </p>
                     )}
                   </div>
