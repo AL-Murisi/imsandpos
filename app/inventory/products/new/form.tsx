@@ -23,16 +23,79 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { CreateProductInput, CreateProductSchema } from "@/lib/zod";
 
-// Define the shape of the form values
-
-// Define the shape of the option objects for select fields
 interface Option {
   id: string;
   name: string;
 }
 
+// Arabic to English transliteration map
+const arabicToEnglish: { [key: string]: string } = {
+  ا: "A",
+  أ: "A",
+  إ: "A",
+  آ: "A",
+  ب: "B",
+  ت: "T",
+  ث: "TH",
+  ج: "J",
+  ح: "H",
+  خ: "KH",
+  د: "D",
+  ذ: "DH",
+  ر: "R",
+  ز: "Z",
+  س: "S",
+  ش: "SH",
+  ص: "S",
+  ض: "D",
+  ط: "T",
+  ظ: "Z",
+  ع: "A",
+  غ: "GH",
+  ف: "F",
+  ق: "Q",
+  ك: "K",
+  ل: "L",
+  م: "M",
+  ن: "N",
+  ه: "H",
+  و: "W",
+  ي: "Y",
+  ى: "Y",
+  ة: "H",
+  ئ: "Y",
+  ؤ: "W",
+};
+
+// Function to transliterate Arabic to English
+const transliterateArabic = (text: string): string => {
+  return text
+    .split("")
+    .map((char) => arabicToEnglish[char] || char)
+    .join("")
+    .replace(/[^A-Z]/g, "") // Keep only English letters
+    .toUpperCase();
+};
+
+// Function to generate SKU from product name, category, and random number
+const generateSKU = (productName: string, categoryName: string): string => {
+  // Transliterate Arabic to English and get first 3 letters
+  const namePart = transliterateArabic(productName)
+    .substring(0, 3)
+    .padEnd(3, "X"); // Pad with X if less than 3 letters
+
+  // Transliterate category and get first 2 letters
+  const categoryPart = transliterateArabic(categoryName)
+    .substring(0, 2)
+    .padEnd(2, "X");
+
+  // Generate random 4-digit number
+  const randomPart = Math.floor(1000 + Math.random() * 9000);
+
+  return `${namePart}-${categoryPart}-${randomPart}`;
+};
+
 export default function ProductForm() {
-  // State for options data fetched from the server
   const [formData, setFormData] = useState<{
     warehouses: Option[];
     categories: Option[];
@@ -46,7 +109,7 @@ export default function ProductForm() {
   });
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // Initialize useForm hook
+
   const {
     register,
     handleSubmit,
@@ -56,23 +119,22 @@ export default function ProductForm() {
     formState: { errors },
   } = useForm<CreateProductInput>({
     resolver: zodResolver(CreateProductSchema),
-    // You can set default values here if needed
-    // defaultValues: { ... }
   });
 
-  // Watch form values for controlled components and SelectField updates
+  // Watch form values
   const watchedWarehouseId = watch("warehouseId");
   const watchedCategoryId = watch("categoryId");
   const watchedBrandId = watch("brandId");
   const watchedSupplierId = watch("supplierId");
   const watchedType = watch("type");
-  const watchedStatus = watch("status");
 
-  // Get translations
+  const watchedName = watch("name");
+  const watchedSku = watch("sku");
+
   const t = useTranslations("productForm");
   const { user } = useAuth();
 
-  // Fetch all form data (warehouses, categories, brands, suppliers)
+  // Fetch all form data
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -89,35 +151,47 @@ export default function ProductForm() {
     fetchData();
   }, []);
 
-  // Handle form submission
+  // Auto-generate SKU when name or category changes
+  useEffect(() => {
+    if (watchedName && watchedCategoryId) {
+      // Find the category name from the ID
+      const category = formData.categories.find(
+        (cat) => cat.id === watchedCategoryId,
+      );
+
+      if (category) {
+        const generatedSKU = generateSKU(watchedName, category.name);
+        setValue("sku", generatedSKU);
+      }
+    }
+  }, [watchedName, watchedCategoryId, formData.categories, setValue]);
+
   const onSubmit = async (data: CreateProductInput) => {
     console.log("Submitted:", data);
 
     try {
+      setIsSubmitting(true);
       if (user) {
         await CreateProduct(data, user.userId);
-        setIsSubmitting(true);
-        // TODO: Add toast/notification for success using t("created")
+        toast.success("✅ تم إضافة المنتج بنجاح!");
+        reset();
       }
-      toast("✅ adding product sucessed");
-      setIsSubmitting(false);
-      reset();
     } catch (error) {
-      toast("✅ adding product sucessed", error ?? "");
-
-      // TODO: Add toast/notification for error using t("createError")
+      toast.error("❌ حدث خطأ أثناء إضافة المنتج");
+      console.error(error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  // Options for Type and Status SelectFields (hardcoded, using translation keys)
   const productTypeOptions = [
-    { id: "single", name: "Single Product" }, // Assuming a key like 'type_single' for product type
+    { id: "single", name: "Single Product" },
     { id: "bundle", name: "Bundle" },
     { id: "variant", name: "Variant" },
   ];
 
   const statusOptions = [
-    { id: "active", name: "Active" }, // Assuming keys like 'status_active'
+    { id: "active", name: "Active" },
     { id: "inactive", name: "Inactive" },
   ];
 
@@ -130,7 +204,6 @@ export default function ProductForm() {
       </CardHeader>
       <CardContent className="p-6">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {/* ScrollArea for better UI on smaller screens/large forms */}
           <ScrollArea dir="rtl" className="p-4">
             <div className="grid gap-6">
               {/* Product Identifiers: Name, SKU, Barcode */}
@@ -149,14 +222,20 @@ export default function ProductForm() {
                     </p>
                   )}
                 </div>
-                {/* SKU */}
+                {/* SKU - Auto-generated but editable */}
                 <div className="grid gap-2">
-                  <Label htmlFor="sku">{t("sku")}</Label>
+                  <Label htmlFor="sku" className="flex items-center gap-2">
+                    {t("sku")}
+                    <span className="text-muted-foreground text-xs">
+                      (تلقائي)
+                    </span>
+                  </Label>
                   <Input
                     id="sku"
                     type="text"
                     {...register("sku")}
-                    className="text-right"
+                    className="bg-muted/50 text-right"
+                    placeholder="سيتم التوليد تلقائياً"
                   />
                   {errors.sku && (
                     <p className="text-right text-xs text-red-500">
@@ -232,7 +311,6 @@ export default function ProductForm() {
 
               {/* Packaging: Type, Units per Packet, Packets per Carton */}
               <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-                {/* Type */}
                 <div className="grid gap-2">
                   <Label htmlFor="type">{t("type")}</Label>
                   <SelectField
@@ -249,7 +327,6 @@ export default function ProductForm() {
                     </p>
                   )}
                 </div>
-                {/* Units Per Packet */}
                 <div className="grid gap-2">
                   <Label htmlFor="unitsPerPacket">{t("unitsPerPacket")}</Label>
                   <Input
@@ -264,7 +341,6 @@ export default function ProductForm() {
                     </p>
                   )}
                 </div>
-                {/* Packets Per Carton */}
                 <div className="grid gap-2">
                   <Label htmlFor="packetsPerCarton">
                     {t("packetsPerCarton")}
@@ -285,7 +361,6 @@ export default function ProductForm() {
 
               {/* Pricing: Cost, Unit Price, Packet Price */}
               <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-                {/* Cost Price */}
                 <div className="grid gap-2">
                   <Label htmlFor="costPrice">{t("costPrice")}</Label>
                   <Input
@@ -301,7 +376,6 @@ export default function ProductForm() {
                     </p>
                   )}
                 </div>
-                {/* Price Per Unit */}
                 <div className="grid gap-2">
                   <Label htmlFor="pricePerUnit">{t("pricePerUnit")}</Label>
                   <Input
@@ -317,7 +391,6 @@ export default function ProductForm() {
                     </p>
                   )}
                 </div>
-                {/* Price Per Packet */}
                 <div className="grid gap-2">
                   <Label htmlFor="pricePerPacket">{t("pricePerPacket")}</Label>
                   <Input
@@ -337,7 +410,6 @@ export default function ProductForm() {
 
               {/* Wholesale Pricing and Weight/Dimensions */}
               <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-                {/* Price Per Carton */}
                 <div className="grid gap-2">
                   <Label htmlFor="pricePerCarton">{t("pricePerCarton")}</Label>
                   <Input
@@ -353,7 +425,6 @@ export default function ProductForm() {
                     </p>
                   )}
                 </div>
-                {/* Wholesale Price */}
                 <div className="grid gap-2">
                   <Label htmlFor="wholesalePrice">{t("wholesalePrice")}</Label>
                   <Input
@@ -369,7 +440,6 @@ export default function ProductForm() {
                     </p>
                   )}
                 </div>
-                {/* Min Wholesale Quantity */}
                 <div className="grid gap-2">
                   <Label htmlFor="minWholesaleQty">
                     {t("minWholesaleQty")}
@@ -390,22 +460,6 @@ export default function ProductForm() {
 
               {/* Shipping Details and Logistics */}
               <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-                {/* Weight */}
-                <div className="grid gap-2">
-                  <Label htmlFor="weight">{t("weight")}</Label>
-                  <Input
-                    id="weight"
-                    type="number"
-                    {...register("weight")}
-                    className="text-right"
-                  />
-                  {errors.weight && (
-                    <p className="text-right text-xs text-red-500">
-                      {errors.weight.message}
-                    </p>
-                  )}
-                </div>
-                {/* Dimensions */}
                 <div className="grid gap-2">
                   <Label htmlFor="dimensions">{t("dimensions")}</Label>
                   <Input
@@ -420,7 +474,6 @@ export default function ProductForm() {
                     </p>
                   )}
                 </div>
-                {/* Supplier ID */}
                 <div className="grid gap-2">
                   <Label htmlFor="supplierId">{t("supplierId")}</Label>
                   <SelectField
@@ -439,7 +492,6 @@ export default function ProductForm() {
 
               {/* Warehouse and Status */}
               <div className="grid grid-cols-1 gap-6 md:w-2/3 md:grid-cols-2">
-                {/* Warehouse ID */}
                 <div className="grid gap-2">
                   <Label htmlFor="warehouseId">{t("warehouseId")}</Label>
                   <SelectField
@@ -451,23 +503,6 @@ export default function ProductForm() {
                   {errors.warehouseId && (
                     <p className="text-right text-xs text-red-500">
                       {errors.warehouseId.message}
-                    </p>
-                  )}
-                </div>
-                {/* Status */}
-                <div className="grid gap-2">
-                  <Label htmlFor="status">{t("status")}</Label>
-                  <SelectField
-                    options={statusOptions}
-                    value={watchedStatus}
-                    action={(val) =>
-                      setValue("status", val as CreateProductInput["status"])
-                    }
-                    placeholder={t("status") || "Select Status"}
-                  />
-                  {errors.status && (
-                    <p className="text-right text-xs text-red-500">
-                      {errors.status.message}
                     </p>
                   )}
                 </div>
@@ -490,7 +525,3 @@ export default function ProductForm() {
     </Card>
   );
 }
-
-// NOTE: You will need to update your translation file (e.g., in `messages/ar.json` or equivalent)
-// to include the Arabic translations for the new hardcoded options for 'type' and 'status'
-// (e.g., "type_single": "منتج فردي", "status_active": "نشط", etc.)

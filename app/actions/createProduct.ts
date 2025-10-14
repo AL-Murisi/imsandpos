@@ -33,11 +33,10 @@ export async function CreateProduct(data: any, userId: string) {
     pricePerCarton,
     wholesalePrice,
     minWholesaleQty,
-    weight,
+
     dimensions,
     supplierId,
     warehouseId,
-    status,
   } = parsed.data;
   const action = "created product";
   const details = "";
@@ -63,11 +62,10 @@ export async function CreateProduct(data: any, userId: string) {
           pricePerCarton,
           wholesalePrice,
           minWholesaleQty,
-          weight,
+
           dimensions,
           supplierId,
           warehouseId,
-          status,
         },
       });
       const logs = await tx.activityLogs.create({
@@ -77,7 +75,6 @@ export async function CreateProduct(data: any, userId: string) {
           details,
         },
       });
-      console.log(product);
 
       const inventory = await tx.inventory.create({
         data: {
@@ -115,7 +112,6 @@ export async function CreateProduct(data: any, userId: string) {
       return { product, inventory, logs };
     });
 
-    console.log();
     return {
       ...result.product,
       costPrice: Number(result.product.costPrice),

@@ -390,11 +390,10 @@ export async function CreateProduct(data: CreateProductInput) {
     pricePerCarton,
     wholesalePrice,
     minWholesaleQty,
-    weight,
+
     dimensions,
     supplierId,
     warehouseId,
-    status,
   } = parsed.data;
 
   try {
@@ -415,11 +414,10 @@ export async function CreateProduct(data: CreateProductInput) {
         pricePerCarton,
         wholesalePrice,
         minWholesaleQty,
-        weight,
+
         dimensions,
         supplierId,
         warehouseId,
-        status,
       },
     });
 
@@ -460,11 +458,10 @@ export async function UpdateProduct(data: CreateProductInput) {
     pricePerCarton,
     wholesalePrice,
     minWholesaleQty,
-    weight,
+
     dimensions,
     supplierId,
     warehouseId,
-    status,
   } = parsed.data;
 
   try {
@@ -494,7 +491,7 @@ export async function UpdateProduct(data: CreateProductInput) {
         pricePerCarton,
         wholesalePrice,
         minWholesaleQty,
-        weight,
+
         dimensions,
         supplierId,
         warehouseId,

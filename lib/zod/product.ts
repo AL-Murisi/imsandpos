@@ -56,11 +56,10 @@ export const CreateProductSchema = z
       .number()
       .int()
       .min(1, "الحد الأدنى للكمية بالجملة مطلوب"),
-    weight: z.number().nullable().optional(),
     dimensions: z.string().nullable().optional(),
     supplierId: z.string().min(1, "معرّف المورد مطلوب").optional(),
     warehouseId: z.string().min(1, "معرّف المستودع مطلوب"),
-    status: z.enum(["active", "inactive", "discontinued"]),
+    // status: z.enum(["active", "inactive", "discontinued"]),
   })
   .refine((data) => data.pricePerCarton > data.costPrice, {
     message: "سعر البيع يجب أن يكون أكبر من سعر التكلفة",
