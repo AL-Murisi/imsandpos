@@ -495,7 +495,6 @@ export async function UpdateProduct(data: CreateProductInput) {
         dimensions,
         supplierId,
         warehouseId,
-        status,
       },
     });
 
