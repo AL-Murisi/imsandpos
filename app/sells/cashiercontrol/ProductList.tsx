@@ -9,10 +9,11 @@ import { useAppDispatch, useAppSelector } from "@/lib/store";
 import { CashierItem, ProductForSale } from "@/lib/zod";
 import { useEffect, useMemo, useCallback, memo } from "react";
 import { Card } from "../../../components/ui/card";
-import { FormatPrice } from "@/hooks/usePrice";
+
 import { Label } from "@/components/ui/label";
 import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
+import { FormatPrice, useFormatter } from "@/hooks/usePrice";
 
 const ScrollArea = dynamic(
   () => import("@/components/ui/scroll-area").then((m) => m.ScrollArea),
@@ -39,10 +40,12 @@ const ProductCard = memo(
     product,
     onAdd,
     t,
+    formatCurrency,
   }: {
     product: forsale;
     onAdd: (product: forsale) => void;
     t: any;
+    formatCurrency: any;
   }) => {
     if (product.availableCartons <= 0) return null;
 
@@ -62,7 +65,7 @@ const ProductCard = memo(
                 </span>
                 <span className="flex-1 text-center">{t("carton")}</span>
                 <span className="w-16 text-right">
-                  ${FormatPrice(Number(product.pricePerCarton))}
+                  {FormatPrice(Number(product.pricePerCarton))}
                 </span>
               </div>
 
@@ -73,7 +76,7 @@ const ProductCard = memo(
                 </span>
                 <span className="flex-1 text-center">{t("packet")}</span>
                 <span className="w-16 text-right">
-                  ${FormatPrice(Number(product.pricePerPacket))}
+                  {FormatPrice(Number(product.pricePerPacket))}
                 </span>
               </div>
 
@@ -122,7 +125,7 @@ export default function ProductsList({
   const t = useTranslations("cashier");
   const dispatch = useAppDispatch();
   const products = useAppSelector(selectAvailableStock);
-
+  const { formatCurrency, formatPriceK, formatQty } = useFormatter();
   // Memoize the handleAdd function
   const handleAdd = useCallback(
     (products: forsale, search: boolean) => {
@@ -180,6 +183,7 @@ export default function ProductsList({
             product={prod}
             onAdd={(p) => handleAdd(p, false)}
             t={t}
+            formatCurrency={formatCurrency}
           />
         ))}
       </div>

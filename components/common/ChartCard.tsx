@@ -41,6 +41,7 @@ import Link from "next/link";
 import { IconClick } from "@tabler/icons-react";
 import { Label } from "../ui/label";
 import { MoreHorizontal, MoreVertical, Loader2 } from "lucide-react";
+import { useFormatter } from "@/hooks/usePrice";
 
 interface ChartCardProps {
   icon: React.ReactNode;
@@ -74,6 +75,7 @@ export function ChartCard({
   chartData,
   chartConfig,
 }: ChartCardProps) {
+  const { formatCurrency, formatPriceK, formatQty } = useFormatter();
   return (
     <div
       className={`flex flex-col rounded-2xl p-4 ${bg} gap-6 shadow-xl/20 shadow-gray-500`}
@@ -90,7 +92,9 @@ export function ChartCard({
                 <div className="dark:bg-secondary-foreground bg-primary-foreground flex h-20 w-20 items-center justify-center rounded-full">
                   {icon}
                 </div>
-                <div className="text-center text-white">{title || 0}</div>
+                <div className="text-center text-white">
+                  {formatCurrency(Number(title)) || 0}
+                </div>
               </div>
 
               {/* Label */}

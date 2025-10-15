@@ -1,8 +1,6 @@
 "use client";
 import { DataTable } from "@/components/common/test";
 
-import CardContainer from "@/components/common/CardContainer";
-
 import SearchInput from "@/components/common/searchtest";
 import { useTablePrams } from "@/hooks/useTableParams";
 import { SortingState } from "@tanstack/react-table";

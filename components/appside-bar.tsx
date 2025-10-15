@@ -68,10 +68,15 @@ const IMSLogoIcon = ({ className = "", size = 24, color = "currentColor" }) => {
 };
 
 import { useRouter } from "next/navigation";
+import CurrencySwitcher from "./common/CurrencySwitcher";
+import { useCurrency } from "./CurrencyProvider";
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user, hasAnyRole, logoutAndRedirect } = useAuth();
   const pathname = usePathname();
   const t = useTranslations("menu");
+  const { currency } = useCurrency();
+
+  // Format the price according to the selected currency
 
   // If no user, don't render sidebar
   if (!user) {
@@ -356,6 +361,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 );
               })}{" "}
               <LocaleSwitcher />
+              <CurrencySwitcher />
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

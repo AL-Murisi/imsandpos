@@ -2,6 +2,7 @@
 import { deleteProduct } from "@/app/actions/createProduct";
 import ProductEditFormm from "@/app/inventory/products/_components/formEdit";
 import CustomDialog from "@/components/common/Dailog";
+import { useCurrency } from "@/components/CurrencyProvider";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -111,14 +112,7 @@ export const createColumns = (
         <SortableHeader column={column} label={tt("brandId")} />
       ),
     },
-    {
-      accessorKey: "pricePerUnit",
-      header: tt("pricePerUnit"),
-      cell: ({ row }) => {
-        const price = row.getValue("pricePerUnit") as number;
-        return price ? `$${price?.toFixed(2)}` : "N/A";
-      },
-    },
+
     {
       accessorKey: "status",
       header: tt("status"),
@@ -139,13 +133,43 @@ export const createColumns = (
       header: tt("unitsPerPacket"),
     },
     {
+      accessorKey: "pricePerUnit",
+      header: tt("pricePerUnit"),
+      cell: ({ row }) => {
+        const price = row.getValue("pricePerUnit") as number;
+        const { currency } = useCurrency();
+        return price
+          ? new Intl.NumberFormat(currency.locale, {
+              style: "currency",
+              currency: currency.currency,
+              numberingSystem: "latn",
+            }).format(price)
+          : "N/A";
+      },
+    },
+    {
       accessorKey: "pricePerPacket",
       header: tt("pricePerPacket"),
       cell: ({ row }) => {
         const price = row.getValue("pricePerPacket") as number;
-        return `$${price.toFixed(2)}`;
+        const { currency } = useCurrency();
+        return price
+          ? new Intl.NumberFormat(currency.locale, {
+              style: "currency",
+              currency: currency.currency,
+              numberingSystem: "latn",
+            }).format(price)
+          : "N/A";
       },
     },
+    // {
+    //   accessorKey: "pricePerPacket",
+    //   header: tt("pricePerPacket"),
+    //   cell: ({ row }) => {
+    //     const price = row.getValue("pricePerPacket") as number;
+    //     return `$${price.toFixed(2)}`;
+    //   },
+    // },
     {
       accessorKey: "packetsPerCarton",
       header: tt("packetsPerCarton"),
@@ -155,7 +179,14 @@ export const createColumns = (
       header: tt("pricePerCarton"),
       cell: ({ row }) => {
         const price = row.getValue("pricePerCarton") as number;
-        return `$${price.toFixed(2)}`;
+        const { currency } = useCurrency();
+        return price
+          ? new Intl.NumberFormat(currency.locale, {
+              style: "currency",
+              currency: currency.currency,
+              numberingSystem: "latn",
+            }).format(price)
+          : "N/A";
       },
     },
     {
@@ -167,7 +198,14 @@ export const createColumns = (
       header: tt("wholesalePrice"),
       cell: ({ row }) => {
         const price = row.getValue("wholesalePrice") as number;
-        return `$${price.toFixed(2)}`;
+        const { currency } = useCurrency();
+        return price
+          ? new Intl.NumberFormat(currency.locale, {
+              style: "currency",
+              currency: currency.currency,
+              numberingSystem: "latn",
+            }).format(price)
+          : "N/A";
       },
     },
     {
@@ -175,7 +213,14 @@ export const createColumns = (
       header: tt("costPrice"),
       cell: ({ row }) => {
         const price = row.getValue("costPrice") as number;
-        return `$${price.toFixed(2)}`;
+        const { currency } = useCurrency();
+        return price
+          ? new Intl.NumberFormat(currency.locale, {
+              style: "currency",
+              currency: currency.currency,
+              numberingSystem: "latn",
+            }).format(price)
+          : "N/A";
       },
     },
     {

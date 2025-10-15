@@ -23,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "../../../../components/ui/dropdown-menu";
 import ProductEditFormm from "../_components/formEdit";
+import { useCurrency } from "@/components/CurrencyProvider";
 
 type SortableHeaderProps = {
   column: any;
@@ -136,7 +137,15 @@ export const createColumns = (): ColumnDef<ProductFormValues>[] => [
     header: "Price / Unit",
     cell: ({ row }) => {
       const price = row.getValue("pricePerUnit") as number;
-      return price ? `$${price.toFixed(2)}` : "N/A";
+      const { currency } = useCurrency(); // get current currency
+
+      return price
+        ? new Intl.NumberFormat(currency.locale, {
+            style: "currency",
+            currency: currency.currency,
+            numberingSystem: "latn",
+          }).format(price)
+        : "N/A";
     },
   },
   {
@@ -207,7 +216,74 @@ export const createColumns = (): ColumnDef<ProductFormValues>[] => [
       const price = row.getValue("pricePerPacket") as number;
       return `$${price.toFixed(2)}`;
     },
+  }, // Price / Packet
+  {
+    accessorKey: "pricePerPacket",
+    header: "Price / Packet",
+    cell: ({ row }) => {
+      const price = row.getValue("pricePerPacket") as number;
+      const { currency } = useCurrency();
+      return price
+        ? new Intl.NumberFormat(currency.locale, {
+            style: "currency",
+            currency: currency.currency,
+            numberingSystem: "latn",
+          }).format(price)
+        : "N/A";
+    },
   },
+
+  // Price / Carton
+  {
+    accessorKey: "pricePerCarton",
+    header: "Price / Carton",
+    cell: ({ row }) => {
+      const price = row.getValue("pricePerCarton") as number;
+      const { currency } = useCurrency();
+      return price
+        ? new Intl.NumberFormat(currency.locale, {
+            style: "currency",
+            currency: currency.currency,
+            numberingSystem: "latn",
+          }).format(price)
+        : "N/A";
+    },
+  },
+
+  // Wholesale Price
+  {
+    accessorKey: "wholesalePrice",
+    header: "Wholesale Price",
+    cell: ({ row }) => {
+      const price = row.getValue("wholesalePrice") as number;
+      const { currency } = useCurrency();
+      return price
+        ? new Intl.NumberFormat(currency.locale, {
+            style: "currency",
+            currency: currency.currency,
+            numberingSystem: "latn",
+          }).format(price)
+        : "N/A";
+    },
+  },
+
+  // Cost Price
+  {
+    accessorKey: "costPrice",
+    header: "Cost Price",
+    cell: ({ row }) => {
+      const price = row.getValue("costPrice") as number;
+      const { currency } = useCurrency();
+      return price
+        ? new Intl.NumberFormat(currency.locale, {
+            style: "currency",
+            currency: currency.currency,
+            numberingSystem: "latn",
+          }).format(price)
+        : "N/A";
+    },
+  },
+
   {
     accessorKey: "packetsPerCarton",
     header: "Packets / Carton",
@@ -227,28 +303,7 @@ export const createColumns = (): ColumnDef<ProductFormValues>[] => [
     accessorKey: "minWholesaleQty",
     header: "Min Wholesale Qty",
   },
-  {
-    accessorKey: "wholesalePrice",
-    header: "Wholesale Price",
-    enableResizing: true,
-    size: 160,
-    minSize: 100,
-    cell: ({ row }) => {
-      const price = row.getValue("wholesalePrice") as number;
-      return `$${price.toFixed(2)}`;
-    },
-  },
-  {
-    accessorKey: "costPrice",
-    header: "Cost Price",
-    enableResizing: true,
-    size: 160,
-    minSize: 100,
-    cell: ({ row }) => {
-      const price = row.getValue("costPrice") as number;
-      return `$${price.toFixed(2)}`;
-    },
-  },
+
   {
     accessorKey: "weight",
     header: "Weight",

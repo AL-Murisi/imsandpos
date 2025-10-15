@@ -8,6 +8,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { ArrowDown, ArrowUp, ArrowUpDown, EditIcon } from "lucide-react";
 import Debtupdate from "./form";
 import Recitp from "./recitp";
+import { useCurrency } from "@/components/CurrencyProvider";
 
 interface DebtSaleData {
   id: string;
@@ -96,12 +97,32 @@ export const debtSaleColumns: ColumnDef<DebtSaleData>[] = [
   {
     accessorKey: "totalAmount",
     header: ({ column }) => <SortableHeader column={column} label="الإجمالي" />,
-    cell: ({ row }) => <div>{row.getValue("totalAmount")} $</div>,
+    cell: ({ row }) => {
+      const price = row.getValue("totalAmount") as number;
+      const { currency } = useCurrency();
+      return price
+        ? new Intl.NumberFormat(currency.locale, {
+            style: "currency",
+            currency: currency.currency,
+            numberingSystem: "latn",
+          }).format(price)
+        : "N/A";
+    },
   },
   {
     accessorKey: "amountPaid",
     header: ({ column }) => <SortableHeader column={column} label="المدفوع" />,
-    cell: ({ row }) => <div>{row.getValue("amountPaid")} $</div>,
+    cell: ({ row }) => {
+      const price = row.getValue("amountPaid") as number;
+      const { currency } = useCurrency();
+      return price
+        ? new Intl.NumberFormat(currency.locale, {
+            style: "currency",
+            currency: currency.currency,
+            numberingSystem: "latn",
+          }).format(price)
+        : "N/A";
+    },
   },
   {
     accessorKey: "saleNumber",
@@ -113,7 +134,17 @@ export const debtSaleColumns: ColumnDef<DebtSaleData>[] = [
   {
     accessorKey: "amountDue",
     header: ({ column }) => <SortableHeader column={column} label="المتبقي" />,
-    cell: ({ row }) => <div>{row.getValue("amountDue")} $</div>,
+    cell: ({ row }) => {
+      const price = row.getValue("amountDue") as number;
+      const { currency } = useCurrency();
+      return price
+        ? new Intl.NumberFormat(currency.locale, {
+            style: "currency",
+            currency: currency.currency,
+            numberingSystem: "latn",
+          }).format(price)
+        : "N/A";
+    },
   },
   {
     accessorKey: "createdAt",

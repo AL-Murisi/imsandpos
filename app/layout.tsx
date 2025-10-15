@@ -9,6 +9,9 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale } from "next-intl/server";
 import { Toaster } from "@/components/ui/sonner";
+import { currencyConfig } from "@/currency/config";
+import { cookies } from "next/headers";
+import { CurrencyProvider } from "@/components/CurrencyProvider";
 // const inter = Inter({
 //   subsets: ["latin"],
 //   variable: "--font-sans",
@@ -71,7 +74,7 @@ export const metadata: Metadata = {
   //   { rel: "icon", url: "/favicon.ico" },
   // ],
 };
-
+type CurrencyKey = keyof typeof currencyConfig;
 export const viewport: Viewport = {
   themeColor: "#0b142a",
   minimumScale: 1,
@@ -87,6 +90,15 @@ export default async function RootLayout({
 }>) {
   const locale = await getLocale();
   const messages = (await import(`@/messages/${locale}.json`)).default;
+  const cookieStore = cookies();
+  const cookieCurrency = (await cookieStore).get("NEXT_CURRENCY")?.value;
+  type CurrencyKey = keyof typeof currencyConfig; // "YER" | "SAR" | "USD"
+  const validKeys = Object.keys(currencyConfig) as CurrencyKey[];
+
+  const currencyKey: CurrencyKey =
+    cookieCurrency && validKeys.includes(cookieCurrency as CurrencyKey)
+      ? (cookieCurrency as CurrencyKey)
+      : "YER";
 
   return (
     <html lang={locale} className={``} suppressHydrationWarning>
@@ -101,18 +113,6 @@ export default async function RootLayout({
             <link rel="preconnect" href="https://va.vercel-scripts.com" />
             <link rel="dns-prefetch" href="https://va.vercel-scripts.com" />
 
-            {/* <link
-          rel="preload"
-          href="/_next/static/fonts/inter-latin.woff2"
-          as="font"
-          type="font/woff2"
-          crossOrigin="anonymous"
-        /> */}
-            {/* <link
-          rel="stylesheet"
-          href="https://tailwindcss.com"
-          data-precedence="next"
-        /> */}
             <link rel="apple-touch-icon" href="/apple-icon.png" />
             {/* <link rel="icon" type="image/svg+xml" href="/icon0.optimized.svg" /> */}
 
@@ -122,10 +122,12 @@ export default async function RootLayout({
 
           <AuthProvider>
             <NextIntlClientProvider locale={locale} messages={messages[locale]}>
-              <ClientLayoutWrapper>
-                {children} <Analytics /> <SpeedInsights />
-                <Toaster />
-              </ClientLayoutWrapper>
+              <CurrencyProvider currency={currencyConfig[currencyKey]}>
+                <ClientLayoutWrapper>
+                  {children} <Analytics /> <SpeedInsights />
+                  <Toaster />
+                </ClientLayoutWrapper>
+              </CurrencyProvider>
             </NextIntlClientProvider>
           </AuthProvider>
         </ThemeProvider>

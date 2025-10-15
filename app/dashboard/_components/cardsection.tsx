@@ -15,6 +15,7 @@ import Users from "lucide-react/dist/esm/icons/users";
 import ShoppingBag from "lucide-react/dist/esm/icons/shopping-bag";
 import { ReactNode } from "react";
 import { ExportDashboardButtonAPI } from "@/components/ExportDashboardButton";
+import { useFormatter } from "next-intl";
 
 interface SectionCardsProps {
   searchParams: Record<string, string | undefined>;
@@ -96,7 +97,7 @@ export default async function SectionCards({
   const sections = [
     {
       description: "revenue",
-      title: `${salesSummary.revenue.total} ر.س`,
+      title: `${salesSummary.revenue.total} `,
       label: t("revenue"),
       link: "",
       chartData: salesSummary.revenue.chart,
@@ -104,7 +105,7 @@ export default async function SectionCards({
     },
     {
       description: "purchases",
-      title: `${salesSummary.purchases.total?.toFixed(0)} ر.س`,
+      title: `${salesSummary.purchases.total?.toFixed(0)} `,
       label: t("purchases"),
       link: "",
       chartData: salesSummary.purchases.chart,
@@ -112,7 +113,7 @@ export default async function SectionCards({
     },
     {
       description: "debt",
-      title: `${salesSummary.debt.unreceived} ر.س`,
+      title: `${salesSummary.debt.unreceived} `,
       label: t("debt"),
       link: "/sells/debtSell",
       chartData: salesSummary.debt.unreceivedChart,
@@ -120,7 +121,7 @@ export default async function SectionCards({
     },
     {
       description: "receivedDebt",
-      title: `${salesSummary.debt.received} ر.س`,
+      title: `${salesSummary.debt.received} `,
       label: t("receivedDebt"),
       link: "/sells/debtSell",
       chartData: salesSummary.debt.receivedChart,

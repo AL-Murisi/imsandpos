@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Button } from "../ui/button";
+import { useFormatter } from "@/hooks/usePrice";
 
 export interface ReceiptItem {
   id: string;
@@ -55,6 +56,8 @@ export const Receipt: React.FC<ReceiptProps> = ({
         return 0;
     }
   };
+  const { formatCurrency, formatPriceK, formatQty } = useFormatter();
+
   const unitToArabic = (sellingUnit: "unit" | "packet" | "carton") => {
     switch (sellingUnit) {
       case "unit":
@@ -269,19 +272,19 @@ export const Receipt: React.FC<ReceiptProps> = ({
                 <div>
                   <div class="flex gap-4 text-sm my-1 pl">
                     <span class="totals-label">الخصم:</span>
-                    <span class="totals-value">${totals.discount.toFixed(2)} ﷼</span>
+                    <span class="totals-value">${formatCurrency(Number(totals.discount.toFixed(2)))} </span>
                   </div>
                   <div class="flex gap-4 text-sm my-1 l">
                     <span class="totals-label">الإجمالي:</span>
-                    <span class="totals-value">${totals.totalAfter.toFixed(2)} ﷼</span>
+                    <span class="totals-value">${formatCurrency(Number(totals.totalAfter.toFixed(2)))} </span>
                   </div>
                   <div class="flex gap-4 text-sm my-1 pl">
                     <span class="totals-label">المبلغ المدفوع:</span>
-                    <span class="totals-value">${receivedAmount?.toFixed(2) ?? 0} ﷼</span>
+                    <span class="totals-value">${formatCurrency(Number(receivedAmount?.toFixed(2) ?? 0))} </span>
                   </div>
                   <div class="flex gap-4 text-sm my-1 pl> ${calculatedChange > 0 ? "green" : "grey"}">
                     <span class="totals-label">المتبقي للعميل:</span>
-                    <span class="totals-value">${calculatedChange.toFixed(2)} ﷼</span>
+                    <span class="totals-value">${formatCurrency(Number(calculatedChange.toFixed(2)))} </span>
                   </div>
 
                 </div>

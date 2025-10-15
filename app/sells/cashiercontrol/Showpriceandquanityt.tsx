@@ -36,7 +36,7 @@ import {
 } from "@/lib/slices/cartSlice";
 import { ReactNode, useEffect, useRef, useState, useTransition } from "react";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { FormatPrice } from "@/hooks/usePrice";
+import { FormatPrice, useFormatter } from "@/hooks/usePrice";
 import { useTranslations } from "next-intl";
 import { Cashier, CashierItem, type CashierSchema } from "@/lib/zod";
 import {
@@ -110,7 +110,6 @@ export default function CartDisplay({ users }: CustomDialogProps) {
   const [saleNumber, setSaleNumber] = useState(
     () => `SALE-${Date.now().toString().slice(-3)}`,
   );
-
   const getItemPrice = (item: CartItem) => {
     const prices = {
       unit: item.pricePerUnit ?? 0,
@@ -555,7 +554,7 @@ export default function CartDisplay({ users }: CustomDialogProps) {
                   {t("beforeDiscount")}
                 </Label>
                 <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-                  ${FormatPrice(totals.totalBefore)}
+                  {FormatPrice(totals.totalBefore)}
                 </span>
               </div>
               <div className="flex justify-between gap-4">
@@ -563,15 +562,15 @@ export default function CartDisplay({ users }: CustomDialogProps) {
                   {t("discountValue")}
                 </Label>
                 <span className="text-sm font-semibold text-red-600 dark:text-red-400">
-                  ${FormatPrice(totals.discount)}
+                  {FormatPrice(totals.discount)}
                 </span>
               </div>
               <div className="flex justify-between gap-4 border-t border-gray-200 pt-1 dark:border-gray-700">
                 <Label className="text-lg font-bold text-gray-800 dark:text-gray-200">
-                  {t("afterDiscount")}
+                  {t("total")}
                 </Label>
                 <span className="text-lg font-bold text-amber-600 dark:text-amber-400">
-                  Total: ${FormatPrice(totals.totalAfter)}
+                  {FormatPrice(totals.totalAfter)}
                 </span>
               </div>{" "}
               <Input

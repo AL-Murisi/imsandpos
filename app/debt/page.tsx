@@ -70,7 +70,6 @@ export default async function DebtSell({ searchParams }: DashboardProps) {
   );
   return (
     <div dir="rtl">
-      {" "}
       <DebtSells
         data={data}
         total={data.length}

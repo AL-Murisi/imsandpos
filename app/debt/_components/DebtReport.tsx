@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { DialogDescription } from "@radix-ui/react-dialog";
 import { useAuth } from "@/lib/context/AuthContext";
+import { useFormatter } from "@/hooks/usePrice";
 
 interface Debt {
   id: string;
@@ -48,7 +49,7 @@ export default function DebtReport({
   const [loading, setLoading] = useState(false);
   const [expandedRows, setExpandedRows] = useState<string[]>([]);
   const t = useTranslations("debt");
-
+  const { formatCurrency, formatPriceK, formatQty } = useFormatter();
   const handleFetch = async () => {
     setLoading(true);
     const sales = await FetchCustomerDebtReport(customerID);
@@ -167,13 +168,13 @@ export default function DebtReport({
                     )}
                   </TableCell> */}
                         <TableCell className="text-right">
-                          {debt.total.toFixed(2)}
+                          {formatCurrency(debt.total)}
                         </TableCell>
                         <TableCell className="text-right">
-                          {debt.paid.toFixed(2)}
+                          {formatCurrency(debt.paid)}
                         </TableCell>
                         <TableCell className="text-right font-semibold">
-                          {debt.remaining.toFixed(2)}
+                          {formatCurrency(debt.remaining)}
                         </TableCell>
                       </TableRow>
                     );

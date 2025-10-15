@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/context/AuthContext";
+import { useFormatter } from "@/hooks/usePrice";
 
 // This schema needs to be defined for the payment input
 // Example: Create a new schema like PaymentAmountSchema
@@ -30,7 +31,7 @@ interface DebtSaleProps {
   };
   //   onPaymentSuccess?: () => void; // Optional callback to re-fetch data or close dialog
 }
-
+const { formatCurrency, formatPriceK, formatQty } = useFormatter();
 export default function Debtupdate({ debt }: DebtSaleProps) {
   const {
     register,
@@ -67,9 +68,11 @@ export default function Debtupdate({ debt }: DebtSaleProps) {
       <div className="mb-4">
         <h3 className="text-lg font-semibold">تفاصيل الدين</h3>
         {/* <p>اسم الزبون: {debt.customer?.name}</p> */}
-        <p>المبلغ الإجمالي للبيع: {debt.totalAmount} $</p>
-        <p>المبلغ المدفوع سابقاً: {debt.amountPaid} $</p>
-        <p>المبلغ المتبقي حالياً: {debt.amountDue} $</p>
+        <p>
+          المبلغ الإجمالي للبيع: {formatCurrency(Number(debt.totalAmount))}{" "}
+        </p>
+        <p>المبلغ المدفوع سابقاً: {formatCurrency(Number(debt.amountPaid))} </p>
+        <p>المبلغ المتبقي حالياً: {formatCurrency(Number(debt.amountDue))} </p>
       </div>
 
       <div className="grid gap-4">

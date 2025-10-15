@@ -5,6 +5,7 @@ import { Button } from "../../../components/ui/button";
 import { useReactToPrint } from "react-to-print";
 import { useSearchParams } from "next/navigation";
 import { Printer } from "lucide-react";
+import { useFormatter } from "@/hooks/usePrice";
 export interface ReceiptItem {
   id: string;
   name: string;
@@ -63,6 +64,8 @@ export default function Receipt() {
         return "";
     }
   };
+  const { formatCurrency, formatPriceK, formatQty } = useFormatter();
+
   const getItemPrice = (item: ReceiptItem) => {
     switch (item.sellingUnit) {
       case "unit":
@@ -249,10 +252,18 @@ export default function Receipt() {
 
             {/* TOTALS */}
             <div className="section">
-              <div>الخصم: {totals.discount.toFixed(2)} ﷼</div>
-              <div>الإجمالي: {totals.totalAfter.toFixed(2)} ﷼</div>
-              <div>المبلغ المدفوع: {receivedAmount?.toFixed(2) ?? 0} ﷼</div>
-              <div>المتبقي للعميل: {calculatedChange.toFixed(2)} ﷼</div>
+              <div>الخصم: {formatCurrency(totals.discount.toFixed(2))} ﷼</div>
+              <div>
+                الإجمالي: {formatCurrency(totals.totalAfter.toFixed(2))} ﷼
+              </div>
+              <div>
+                المبلغ المدفوع:{" "}
+                {formatCurrency(Number(receivedAmount?.toFixed(2)) ?? 0)} ﷼
+              </div>
+              <div>
+                المتبقي للعميل:{" "}
+                {formatCurrency(Number(calculatedChange.toFixed(2)))} ﷼
+              </div>
               {customerDebt && customerDebt > 0 && (
                 <div>ديون سابقة: {customerDebt} ﷼</div>
               )}
