@@ -108,7 +108,7 @@ export default function CartDisplay({ users }: CustomDialogProps) {
   }, []);
 
   const [saleNumber, setSaleNumber] = useState(
-    () => `SALE-${Date.now().toString().slice(-3)}`,
+    `SALE-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
   );
   const getItemPrice = (item: CartItem) => {
     const prices = {
@@ -162,7 +162,7 @@ export default function CartDisplay({ users }: CustomDialogProps) {
       dispatch(setDiscount({ type: "fixed", value: 0 }));
 
       // 2️⃣ Generate new sale number
-      const newSaleNumber = `SALE-${Date.now().toString().slice(-66)}`;
+      const newSaleNumber = `SALE-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
       setSaleNumber(newSaleNumber);
       dispatch(removeCart(activeCartId ?? ""));
 
@@ -296,7 +296,6 @@ export default function CartDisplay({ users }: CustomDialogProps) {
                           <Minus size={16} />
                         </button>
                         <input
-                          type="number"
                           value={item.selectedQty}
                           onChange={(e) => {
                             const qty = Math.max(
@@ -616,7 +615,7 @@ export default function CartDisplay({ users }: CustomDialogProps) {
                 />
               )}
               <Button
-                disabled={pending && !canPay}
+                disabled={!canPay}
                 onClick={() =>
                   startTransition(async () => {
                     await handelpayment(); // ✅ call the function
@@ -626,7 +625,7 @@ export default function CartDisplay({ users }: CustomDialogProps) {
                   canPay
                     ? "bg-green-600 hover:bg-green-700"
                     : "cursor-not-allowed bg-gray-400"
-                } flex-1 rounded-md border-amber-500 py-3 text-amber-100 shadow-md hover:bg-amber-50`}
+                } flex-1 rounded-md border-amber-500 py-3 text-amber-100 shadow-md hover:bg-amber-500`}
               >
                 {tt("pay_now")}
               </Button>
