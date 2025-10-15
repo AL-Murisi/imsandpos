@@ -14,11 +14,14 @@ export type InventoryUpdateWithTrackingInput = z.infer<
 >;
 
 // 1. Update inventory record (for form submissions)
-export async function updateInventory(data: InventoryUpdateWithTrackingInput) {
+export async function updateInventory(
+  data: InventoryUpdateWithTrackingInput,
+  userid: string,
+) {
   try {
     const {
       id,
-      userId = "cmd5xocl8000juunw1hcxsyre",
+      userId = userid,
       reason = "manual_update",
       notes,
       availableQuantity: inputCartons,
@@ -97,7 +100,7 @@ export async function updateInventory(data: InventoryUpdateWithTrackingInput) {
           data: {
             productId: currentInventory.productId,
             warehouseId: currentInventory.warehouseId,
-            userId,
+            userId: userId,
             movementType: stockDifference > 0 ? "in" : "out",
             quantity: Math.abs(stockDifference),
             reason,

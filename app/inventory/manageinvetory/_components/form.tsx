@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { updateInventory } from "@/app/actions/warehouse";
 import { toast } from "sonner";
 import { UpdateInventorySchema } from "@/lib/zod/inventory";
+import { useEffect } from "react";
+import { useAuth } from "@/lib/context/AuthContext";
 
 type FormValues = z.infer<typeof UpdateInventorySchema>;
 
@@ -32,9 +34,18 @@ export default function InvonteryEditFormm({ inventory }: { inventory: any }) {
       stockQuantity: 0,
       availableQuantity: 0,
       maxStockLevel: inventory.maxStockLevel,
-      lastStockTake: new Date(),
+      lastStockTake: new Date().toISOString(),
     },
   });
+  const { user } = useAuth();
+  useEffect(() => {
+    const now = new Date();
+    // Format for input type="datetime-local" (no timezone “Z”)
+    const localIso = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16);
+    setValue("lastStockTake", localIso);
+  }, [setValue]);
   const onSubmit = async (data: FormValues) => {
     try {
       const payload = {
@@ -42,7 +53,7 @@ export default function InvonteryEditFormm({ inventory }: { inventory: any }) {
         id: inventory.id,
       };
 
-      await updateInventory(payload);
+      await updateInventory(payload, user?.userId ?? "");
       toast("✅ adding Inventory sucessed");
 
       reset();

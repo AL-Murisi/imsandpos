@@ -14,7 +14,6 @@ import {
 import { ColumnDef } from "@tanstack/react-table";
 import { Edit } from "lucide-react";
 import InvonteryEditFormm from "./form";
-import InvonteryAdjustForm from "./manualadjust";
 
 export const StockMovementColumns: ColumnDef<any>[] = [
   {
@@ -305,18 +304,6 @@ export const inventoryColumns: ColumnDef<any>[] = [
           >
             {/* Pass the formKey to force re-render and reset the form */}
             <InvonteryEditFormm inventory={inventory} />{" "}
-          </CustomDialog>
-          <CustomDialog
-            trigger={
-              <Button>
-                <Edit />" منتج"
-              </Button>
-            }
-            title=" منتج"
-            description="أدخل تفاصيل المنتج واحفظه"
-          >
-            {/* Pass the formKey to force re-render and reset the form */}
-            <InvonteryAdjustForm inventory={inventory} />{" "}
           </CustomDialog>
         </div>
       );
