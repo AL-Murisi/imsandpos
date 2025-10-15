@@ -59,7 +59,6 @@ export default function UserActivityTable({
       <div className="flex flex-col gap-x-6 gap-y-6">
         <div className="bg-accent rounded-2xl p-2 shadow-xl/20 shadow-gray-500">
           <DataTable
-            search={<SearchInput placeholder={"search"} paramKey="selas" />}
             data={logs}
             columns={userActivity}
             initialPageSize={pagination.pageSize}
@@ -77,7 +76,6 @@ export default function UserActivityTable({
         <div className="bg-accent rounded-2xl p-2 shadow-xl/20 shadow-gray-500">
           <DataTable
             data={Sales}
-            search={<SearchInput placeholder={"search"} paramKey="selas" />}
             columns={RecentSale}
             initialPageSize={pagination.pageSize}
             pageCount={Math.ceil(totals / pagination.pageSize)}

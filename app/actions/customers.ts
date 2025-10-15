@@ -157,6 +157,13 @@ export async function createCutomer(form: createCusomer) {
   const emailValue = email?.trim() || null;
   const outstanding = outstandingBalance?.toString() ?? 0;
   try {
+    const existingUser = await prisma.customer.findUnique({
+      where: { email },
+    });
+    if (existingUser) {
+      return { error: "هذا البريد الإلكتروني مستخدم بالفعل" };
+    }
+
     const customer = await prisma.customer.create({
       data: {
         name,
@@ -173,7 +180,7 @@ export async function createCutomer(form: createCusomer) {
       },
     });
     revalidatePath("/customer");
-    return customer;
+    return { success: true, customer };
   } catch (error) {
     console.error("Failed to create customer:", error);
     throw error;

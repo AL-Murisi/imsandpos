@@ -177,26 +177,6 @@ export const RecentSale: ColumnDef<DebtSaleData>[] = [
       return <Badge className={color}>{label}</Badge>;
     },
   },
-  {
-    id: "actions",
-    enableHiding: false,
-    cell: ({ row }) => {
-      const debt = row.original;
-      return (
-        <CustomDialog
-          trigger={
-            <Button variant="outline">
-              <Edit className="h-4 w-4" />
-            </Button>
-          }
-          title="إضافة منتج"
-          description="أدخل تفاصيل المنتج واحفظه"
-        >
-          {/* <Debtupdate debt={debt} /> */}
-        </CustomDialog>
-      );
-    },
-  },
 ];
 
 export const userActivity: ColumnDef<any>[] = [
@@ -261,49 +241,5 @@ export const userActivity: ColumnDef<any>[] = [
     accessorKey: "createdAt",
     header: ({ column }) => <SortableHeader column={column} label="التاريخ" />,
     cell: ({ row }) => new Date(row.original.createdAt).toLocaleString(),
-  },
-  {
-    id: "actions",
-    enableHiding: false,
-    cell: ({ row }) => {
-      const log = row.original;
-      return (
-        <CustomDialog
-          trigger={
-            <Button variant="outline">
-              <Edit className="h-4 w-4" />
-            </Button>
-          }
-          title="تفاصيل النشاط"
-          description="عرض تفاصيل النشاط بالكامل"
-        >
-          <div className="space-y-2 p-4">
-            <p>
-              <strong>المستخدم:</strong> {log.user.name}
-            </p>
-            <p>
-              <strong>الأدوار:</strong>{" "}
-              {log?.userRoles?.map((r: any) => r.role.name).join(", ")}
-            </p>
-            <p>
-              <strong>الإجراء:</strong> {log.action}
-            </p>
-            <p>
-              <strong>التفاصيل:</strong> {log.details || "-"}
-            </p>
-            <p>
-              <strong>IP:</strong> {log.ip || "-"}
-            </p>
-            <p>
-              <strong>User Agent:</strong> {log.userAgent || "-"}
-            </p>
-            <p>
-              <strong>التاريخ:</strong>{" "}
-              {new Date(log.createdAt).toLocaleString()}
-            </p>
-          </div>
-        </CustomDialog>
-      );
-    },
   },
 ];

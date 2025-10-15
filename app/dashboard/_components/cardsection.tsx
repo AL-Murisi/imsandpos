@@ -203,17 +203,17 @@ export default async function SectionCards({
         <div className="grid w-80 grid-cols-2 gap-4 py-4 sm:w-sm md:w-md md:grid-cols-4 lg:w-full">
           <ExportDashboardButtonAPI role={"admin"} filters={searchParams} />
           <Button asChild>
-            <Link href="/dashboard/users" prefetch={false}>
+            <Link href="/users" prefetch={false}>
               إدارة المستخدمين
             </Link>
           </Button>
           <Button asChild>
-            <Link href="/inventory" prefetch={false}>
+            <Link href="/inventory/manageinvetory" prefetch={false}>
               إدارة المخزون
             </Link>
           </Button>
           <Button asChild>
-            <Link href="/sells/debtSell" prefetch={false}>
+            <Link href="/debt" prefetch={false}>
               عرض الديون
             </Link>
           </Button>

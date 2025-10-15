@@ -61,14 +61,15 @@ export default function UserForm() {
   }, [setValue]);
 
   const selectedRole = watch("roleId");
-
   const onSubmit = async (data: UserInput) => {
-    console.log("Submitted:", data);
+    const result = await createUser(data);
 
-    await createUser(data);
-    toast("✅ adding user sucessed");
+    if (result.error) {
+      toast.error(result.error);
+      return;
+    }
 
-    // await createUser(data)
+    toast.success("✅ تمت إضافة المستخدم بنجاح");
     reset();
   };
 

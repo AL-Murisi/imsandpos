@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { CreateCustomerSchema } from "@/lib/zod";
 import { createCutomer } from "@/app/actions/customers";
+import { toast } from "sonner";
 
 type CreateCustomer = z.infer<typeof CreateCustomerSchema>;
 
@@ -44,8 +45,14 @@ export default function CustomerForm() {
   });
 
   const onSubmit = async (data: CreateCustomer) => {
-    console.log("Submitted:", data);
-    await createCutomer(data);
+    const result = await createCutomer(data);
+
+    if (result.error) {
+      toast.error(result.error);
+      return;
+    }
+
+    toast.success("✅ تمت إضافة  بنجاح");
     reset();
   };
 

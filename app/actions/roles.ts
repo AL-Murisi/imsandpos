@@ -47,28 +47,44 @@ export async function createRole(input: CreateRoleInput) {
   }
 }
 // app/actions/roles.ts (or any server-side file)
+// app/actions/users.ts
+
 export async function createUser(form: any) {
   const parsed = CreateUserSchema.safeParse(form);
   if (!parsed.success) {
     throw new Error("Invalid user data");
   }
+
   const { email, name, phoneNumber, password, roleId } = parsed.data;
+
   try {
+    // ✅ Check if email already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
+      return { error: "هذا البريد الإلكتروني مستخدم بالفعل" };
+    }
+
     const user = await prisma.user.create({
       data: { email, name, phoneNumber, password },
     });
+
     await prisma.userRole.create({
       data: {
         userId: user.id,
-        roleId: roleId,
+        roleId,
       },
     });
-    return user;
+
+    return { success: true, user };
   } catch (error) {
     console.error("Failed to create user:", error);
-    throw error;
+    return { error: "فشل في إنشاء المستخدم" };
   }
 }
+
 export async function createCategory(form: CreateCategoryInput) {
   const parsed = CreateCategorySchema.safeParse(form);
   if (!parsed.success) {
