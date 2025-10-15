@@ -1,4 +1,4 @@
-"use client"; // This component will be a Client Component
+"use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -31,7 +31,6 @@ interface DebtSaleProps {
   };
   //   onPaymentSuccess?: () => void; // Optional callback to re-fetch data or close dialog
 }
-const { formatCurrency, formatPriceK, formatQty } = useFormatter();
 export default function Debtupdate({ debt }: DebtSaleProps) {
   const {
     register,
@@ -44,6 +43,8 @@ export default function Debtupdate({ debt }: DebtSaleProps) {
       paymentAmount: 0, // Initialize with 0 or a placeholder
     },
   });
+  const { formatCurrency, formatPriceK, formatQty } = useFormatter();
+
   const { user, hasAnyRole, logout } = useAuth();
   const onSubmit = async (data: FormValues) => {
     try {

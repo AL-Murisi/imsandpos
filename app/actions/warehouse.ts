@@ -27,23 +27,22 @@ export async function updateInventory(data: InventoryUpdateWithTrackingInput) {
     } = data;
 
     return await prisma.$transaction(async (tx) => {
-      // Get current inventory
+      // ✅ 1. Fetch current inventory with product + warehouse details
       const currentInventory = await tx.inventory.findUnique({
         where: { id },
         include: { product: true, warehouse: true },
       });
 
-      if (!currentInventory) {
-        throw new Error("Inventory record not found");
-      }
+      if (!currentInventory) throw new Error("Inventory record not found");
 
-      // ✅ Convert cartons to units
+      // ✅ 2. Conversion helpers
       const unitsPerPacket = currentInventory.product.unitsPerPacket || 1;
       const packetsPerCarton = currentInventory.product.packetsPerCarton || 1;
 
       const cartonToUnits = (cartons: number) =>
         cartons * packetsPerCarton * unitsPerPacket;
 
+      // ✅ 3. Convert to base unit (units)
       const availableQuantityInUnits = inputCartons
         ? cartonToUnits(inputCartons)
         : undefined;
@@ -52,33 +51,34 @@ export async function updateInventory(data: InventoryUpdateWithTrackingInput) {
         ? cartonToUnits(inputCartonsStock)
         : undefined;
 
-      // Calculate status if needed
-      let calculatedStatus: "available" | "low" | "out_of_stock" | undefined;
-
+      // ✅ 4. Combine new + old available quantity (accumulate)
       const finalAvailableQty =
-        availableQuantityInUnits ?? currentInventory.availableQuantity;
+        (availableQuantityInUnits ?? 0) + currentInventory.availableQuantity;
+
+      const finalStockQty =
+        (stockQuantityInUnits ?? 0) + currentInventory.stockQuantity;
 
       const finalReorderLevel =
         data.reorderLevel ?? currentInventory.reorderLevel;
 
-      if (finalAvailableQty !== undefined && finalReorderLevel !== undefined) {
-        if (finalAvailableQty === 0) calculatedStatus = "out_of_stock";
-        else if (finalAvailableQty <= finalReorderLevel)
-          calculatedStatus = "low";
-        else calculatedStatus = "available";
+      // ✅ 5. Calculate inventory status with decimals supported
+      let calculatedStatus: "available" | "low" | "out_of_stock" | undefined;
+
+      if (finalAvailableQty <= 0) {
+        calculatedStatus = "out_of_stock";
+      } else if (finalAvailableQty < finalReorderLevel) {
+        calculatedStatus = "low";
+      } else {
+        calculatedStatus = "available";
       }
 
-      // Update inventory
+      // ✅ 6. Update inventory record
       const updatedInventory = await tx.inventory.update({
         where: { id },
         data: {
           ...updateData,
-          ...(availableQuantityInUnits !== undefined && {
-            availableQuantity: availableQuantityInUnits,
-          }),
-          ...(stockQuantityInUnits !== undefined && {
-            stockQuantity: stockQuantityInUnits,
-          }),
+          availableQuantity: finalAvailableQty,
+          stockQuantity: finalStockQty,
           ...(calculatedStatus && { status: calculatedStatus }),
           ...(data.lastStockTake && {
             lastStockTake: new Date(data.lastStockTake),
@@ -90,29 +90,29 @@ export async function updateInventory(data: InventoryUpdateWithTrackingInput) {
         },
       });
 
-      // Create stock movement if stock changed
-      const finalStockQty =
-        stockQuantityInUnits ?? currentInventory.stockQuantity;
-      if (finalStockQty !== currentInventory.stockQuantity) {
-        const difference = finalStockQty - currentInventory.stockQuantity;
-
+      // ✅ 7. Log stock movement if changed
+      const stockDifference = finalStockQty - currentInventory.stockQuantity;
+      if (stockDifference !== 0) {
         await tx.stockMovement.create({
           data: {
             productId: currentInventory.productId,
             warehouseId: currentInventory.warehouseId,
             userId,
-            movementType: difference > 0 ? "in" : "out",
-            quantity: Math.abs(difference),
+            movementType: stockDifference > 0 ? "in" : "out",
+            quantity: Math.abs(stockDifference),
             reason,
             quantityBefore: currentInventory.stockQuantity,
             quantityAfter: finalStockQty,
             notes:
               notes ||
-              `Manual inventory update: ${difference > 0 ? "+" : ""}${difference}`,
+              `Manual inventory update: ${
+                stockDifference > 0 ? "+" : ""
+              }${stockDifference}`,
           },
         });
       }
 
+      // ✅ 8. Revalidate paths
       revalidatePath("/manageinvetory");
       revalidatePath("/cashiercontrol");
 
@@ -536,18 +536,18 @@ export async function getInventoryById(
   where: Prisma.InventoryWhereInput = {},
   from?: string,
   to?: string,
-  page: number = 0, // 0-indexed page number
+  page: number = 0,
   pageSize: number = 5,
   sort: SortState = [],
 ) {
   try {
     const fromatDate = from ? new Date(from).toISOString() : undefined;
     const toDate = to ? new Date(to).toISOString() : undefined;
-    const dateRange: any = { gte: fromatDate, lte: toDate };
-    // Build where clause with optional filters
+
     const combinedWhere: Prisma.InventoryWhereInput = {
-      ...where, // Existing filters (category, warehouse, etc.)
+      ...where,
     };
+
     if (searchQuery) {
       combinedWhere.OR = [
         { product: { name: { contains: searchQuery, mode: "insensitive" } } },
@@ -556,23 +556,15 @@ export async function getInventoryById(
         { productId: { contains: searchQuery, mode: "insensitive" } },
       ];
     }
+
     if (fromatDate || toDate) {
       combinedWhere.createdAt = {
-        ...(fromatDate && {
-          gte: fromatDate,
-        }),
-        ...(toDate && {
-          lte: toDate,
-        }),
+        ...(fromatDate && { gte: fromatDate }),
+        ...(toDate && { lte: toDate }),
       };
     }
 
-    // If you want to support global filter search, add to where using OR on fields:
-
-    // Get total count for pagination
-    const totalCount = await prisma.inventory.count({
-      where,
-    });
+    const totalCount = await prisma.inventory.count({ where });
 
     const inventory = await prisma.inventory.findMany({
       select: {
@@ -581,6 +573,8 @@ export async function getInventoryById(
           select: {
             name: true,
             sku: true,
+            unitsPerPacket: true,
+            packetsPerCarton: true,
           },
         },
         productId: true,
@@ -591,31 +585,60 @@ export async function getInventoryById(
           },
         },
         warehouseId: true,
-
-        // Stock quantities
         stockQuantity: true,
         reservedQuantity: true,
         availableQuantity: true,
         reorderLevel: true,
         maxStockLevel: true,
-
-        // Location in warehouse
         location: true,
-
-        // Status
         status: true,
-
         lastStockTake: true,
         createdAt: true,
         updatedAt: true,
       },
       where: combinedWhere,
-      // orderBy: orderBy.length > 0 ? orderBy : undefined, // Apply sorting if available
       skip: page * pageSize,
       take: pageSize,
     });
 
-    return { inventory, totalCount };
+    // ✅ Convert all unit-based quantities to carton-based
+    function convertFromBaseUnit(product: any, availableUnits: number) {
+      const unitsPerPacket = product.unitsPerPacket || 1;
+      const packetsPerCarton = product.packetsPerCarton || 1;
+
+      const availablePackets = Number(
+        (availableUnits / unitsPerPacket).toFixed(2),
+      );
+      const availableCartons = Number(
+        (availablePackets / packetsPerCarton).toFixed(2),
+      );
+
+      return { availablePackets, availableCartons };
+    }
+
+    const convertedInventory = inventory.map((item) => {
+      const { availableCartons } = convertFromBaseUnit(
+        item.product,
+        item.availableQuantity,
+      );
+      const { availableCartons: stockCartons } = convertFromBaseUnit(
+        item.product,
+        item.stockQuantity,
+      );
+      const { availableCartons: reservedCartons } = convertFromBaseUnit(
+        item.product,
+        item.reservedQuantity,
+      );
+
+      return {
+        ...item,
+        availableQuantity: availableCartons, // 👈 show in cartons
+        stockQuantity: stockCartons,
+        reservedQuantity: reservedCartons,
+      };
+    });
+
+    return { inventory: convertedInventory, totalCount };
   } catch (error) {
     console.error("Error getting inventory by ID:", error);
     throw error;

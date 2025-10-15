@@ -271,9 +271,9 @@ export const inventoryColumns: ColumnDef<any>[] = [
 
     cell: ({ row }) => {
       let color;
-      if (row.original.stockQuantity > row.original.reorderLevel) {
+      if (row.original.availableQuantity > row.original.reorderLevel) {
         return <Badge className="bg-green-600">{row.original.status}</Badge>;
-      } else if (row.original.stockQuantity >= row.original.reorderLevel) {
+      } else if (row.original.availableQuantity == row.original.reorderLevel) {
         return <Badge className="bg-yellow-500">{row.original.status}</Badge>;
       } else {
         return <Badge className="bg-red-500">{row.original.status}</Badge>;

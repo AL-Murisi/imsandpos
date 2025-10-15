@@ -2,8 +2,9 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 import { logActivity } from "./activitylogs";
+import { Prisma } from "@prisma/client";
 
 type CartItem = {
   id: string;
