@@ -101,11 +101,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await logout();
       await deleteSession();
       // Force redirect to login with full page reload
-      window.location.href = `/login`;
+      window.location.href = `/`;
     } catch (err) {
       console.error("Logout and redirect failed:", err);
       // Fallback: force redirect anyway
-      window.location.href = "/login";
+      window.location.href = "/";
     }
   };
 
