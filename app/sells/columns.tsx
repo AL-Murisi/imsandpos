@@ -31,8 +31,8 @@ const SortableHeader: React.FC<SortableHeaderProps> = ({ column, label }) => {
     isSorted === "asc"
       ? ArrowUp
       : isSorted === "desc"
-      ? ArrowDown
-      : ArrowUpDown;
+        ? ArrowDown
+        : ArrowUpDown;
 
   return (
     <Button
@@ -84,17 +84,17 @@ export const debtSale: ColumnDef<DebtSaleData>[] = [
   {
     accessorKey: "totalAmount",
     header: ({ column }) => <SortableHeader column={column} label="الإجمالي" />,
-    cell: ({ row }) => <div>{row.getValue("totalAmount")} ريال</div>,
+    cell: ({ row }) => <div>{row.getValue("totalAmount")} $</div>,
   },
   {
     accessorKey: "amountPaid",
     header: ({ column }) => <SortableHeader column={column} label="المدفوع" />,
-    cell: ({ row }) => <div>{row.getValue("amountPaid")} ريال</div>,
+    cell: ({ row }) => <div>{row.getValue("amountPaid")} $</div>,
   },
   {
     accessorKey: "amountDue",
     header: ({ column }) => <SortableHeader column={column} label="المتبقي" />,
-    cell: ({ row }) => <div>{row.getValue("amountDue")} ريال</div>,
+    cell: ({ row }) => <div>{row.getValue("amountDue")} $</div>,
   },
   {
     accessorKey: "createdAt",
@@ -115,15 +115,15 @@ export const debtSale: ColumnDef<DebtSaleData>[] = [
         status === "paid"
           ? "bg-green-100 text-green-800"
           : status === "partial"
-          ? "bg-yellow-100 text-yellow-800"
-          : "bg-red-100 text-red-800";
+            ? "bg-yellow-100 text-yellow-800"
+            : "bg-red-100 text-red-800";
 
       const label =
         status === "paid"
           ? "مدفوع"
           : status === "partial"
-          ? "جزئي"
-          : "غير مدفوع";
+            ? "جزئي"
+            : "غير مدفوع";
 
       return <Badge className={color}>{label}</Badge>;
     },

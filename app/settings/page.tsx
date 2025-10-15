@@ -37,8 +37,8 @@ export default function ExpensesPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="USD">دولار أمريكي</SelectItem>
-            <SelectItem value="SAR">ريال سعودي</SelectItem>
-            <SelectItem value="YER">ريال يمني</SelectItem>
+            <SelectItem value="SAR">$ سعودي</SelectItem>
+            <SelectItem value="YER">$ يمني</SelectItem>
           </SelectContent>
         </Select>
 

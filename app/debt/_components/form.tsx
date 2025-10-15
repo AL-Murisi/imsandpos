@@ -67,9 +67,9 @@ export default function Debtupdate({ debt }: DebtSaleProps) {
       <div className="mb-4">
         <h3 className="text-lg font-semibold">تفاصيل الدين</h3>
         {/* <p>اسم الزبون: {debt.customer?.name}</p> */}
-        <p>المبلغ الإجمالي للبيع: {debt.totalAmount} ريال</p>
-        <p>المبلغ المدفوع سابقاً: {debt.amountPaid} ريال</p>
-        <p>المبلغ المتبقي حالياً: {debt.amountDue} ريال</p>
+        <p>المبلغ الإجمالي للبيع: {debt.totalAmount} $</p>
+        <p>المبلغ المدفوع سابقاً: {debt.amountPaid} $</p>
+        <p>المبلغ المتبقي حالياً: {debt.amountDue} $</p>
       </div>
 
       <div className="grid gap-4">
