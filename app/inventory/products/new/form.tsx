@@ -244,7 +244,7 @@ export default function ProductForm() {
                   )}
                 </div>
                 {/* Barcode */}
-                <div className="grid gap-2">
+                {/* <div className="grid gap-2">
                   <Label htmlFor="barcode">{t("barcode")}</Label>
                   <Input
                     id="barcode"
@@ -257,12 +257,7 @@ export default function ProductForm() {
                       {errors.barcode.message}
                     </p>
                   )}
-                </div>
-              </div>
-
-              {/* Categorization: Category, Description, Brand */}
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-                {/* Category ID */}
+                </div> */}{" "}
                 <div className="grid gap-2">
                   <Label htmlFor="categoryId">{t("categoryId")}</Label>
                   <SelectField
@@ -277,23 +272,16 @@ export default function ProductForm() {
                     </p>
                   )}
                 </div>
+              </div>
+
+              {/* Categorization: Category, Description, Brand */}
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                {/* Category ID */}
+
                 {/* Description */}
-                <div className="grid gap-2">
-                  <Label htmlFor="description">{t("description")}</Label>
-                  <Input
-                    id="description"
-                    type="text"
-                    {...register("description")}
-                    className="text-right"
-                  />
-                  {errors.description && (
-                    <p className="text-right text-xs text-red-500">
-                      {errors.description.message}
-                    </p>
-                  )}
-                </div>
+
                 {/* Brand ID */}
-                <div className="grid gap-2">
+                {/* <div className="grid gap-2">
                   <Label htmlFor="brandId">{t("brandId")}</Label>
                   <SelectField
                     options={formData.brands}
@@ -306,12 +294,12 @@ export default function ProductForm() {
                       {errors.brandId.message}
                     </p>
                   )}
-                </div>
+                </div> */}
               </div>
 
               {/* Packaging: Type, Units per Packet, Packets per Carton */}
               <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-                <div className="grid gap-2">
+                {/* <div className="grid gap-2">
                   <Label htmlFor="type">{t("type")}</Label>
                   <SelectField
                     options={productTypeOptions}
@@ -324,6 +312,20 @@ export default function ProductForm() {
                   {errors.type && (
                     <p className="text-right text-xs text-red-500">
                       {errors.type.message}
+                    </p>
+                  )}
+                </div> */}
+                <div className="grid gap-2">
+                  <Label htmlFor="description">{t("description")}</Label>
+                  <Input
+                    id="description"
+                    type="text"
+                    {...register("description")}
+                    className="text-right"
+                  />
+                  {errors.description && (
+                    <p className="text-right text-xs text-red-500">
+                      {errors.description.message}
                     </p>
                   )}
                 </div>
@@ -488,10 +490,8 @@ export default function ProductForm() {
                     </p>
                   )}
                 </div>
-              </div>
 
-              {/* Warehouse and Status */}
-              <div className="grid grid-cols-1 gap-6 md:w-2/3 md:grid-cols-2">
+                {/* Warehouse and Status */}
                 <div className="grid gap-2">
                   <Label htmlFor="warehouseId">{t("warehouseId")}</Label>
                   <SelectField

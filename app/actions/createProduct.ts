@@ -20,7 +20,7 @@ export async function CreateProduct(data: any, userId: string) {
   const {
     name,
     sku,
-    barcode,
+
     description,
     categoryId,
     brandId,
@@ -49,7 +49,7 @@ export async function CreateProduct(data: any, userId: string) {
         data: {
           name,
           sku,
-          barcode,
+
           description,
           categoryId,
           brandId,

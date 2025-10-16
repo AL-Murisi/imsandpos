@@ -36,7 +36,6 @@ export const CreateProductSchema = z
   .object({
     name: z.string().min(1, "اسم المنتج مطلوب"),
     sku: z.string().min(1, "رمز المنتج مطلوب"),
-    barcode: z.string().nullable().optional(),
     description: z.string().nullable().optional(),
     categoryId: z.string().min(1, "معرّف الفئة مطلوب"),
     brandId: z.string().nullable().optional(),

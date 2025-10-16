@@ -393,7 +393,7 @@ export async function CreateProduct(data: CreateProductInput) {
   const {
     name,
     sku,
-    barcode,
+
     description,
     categoryId,
     brandId,
@@ -417,7 +417,7 @@ export async function CreateProduct(data: CreateProductInput) {
       data: {
         name,
         sku,
-        barcode,
+
         description,
         categoryId,
         brandId,
@@ -461,7 +461,7 @@ export async function UpdateProduct(data: CreateProductInput) {
   const {
     sku, // required to find product
     name,
-    barcode,
+
     description,
     categoryId,
     brandId,
@@ -494,7 +494,7 @@ export async function UpdateProduct(data: CreateProductInput) {
       where: { sku },
       data: {
         name,
-        barcode,
+
         description,
         categoryId,
         brandId,
