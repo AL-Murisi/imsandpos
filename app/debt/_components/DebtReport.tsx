@@ -49,10 +49,12 @@ export default function DebtReport({
   const [loading, setLoading] = useState(false);
   const [expandedRows, setExpandedRows] = useState<string[]>([]);
   const t = useTranslations("debt");
+  const { user } = useAuth();
+  if (!user) return;
   const { formatCurrency, formatPriceK, formatQty } = useFormatter();
   const handleFetch = async () => {
     setLoading(true);
-    const sales = await FetchCustomerDebtReport(customerID);
+    const sales = await FetchCustomerDebtReport(customerID, user.companyId);
 
     const mapped: Debt[] = sales.map((d: any) => ({
       id: d.id,
@@ -69,7 +71,7 @@ export default function DebtReport({
     setDebts(mapped);
     setLoading(false);
   };
-  const { user } = useAuth();
+
   const totalRemaining = debts.reduce((sum, d) => sum + d.remaining, 0);
 
   const toggleRow = (id: string) => {
