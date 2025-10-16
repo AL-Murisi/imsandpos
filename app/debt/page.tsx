@@ -3,6 +3,8 @@ import { ParsedSort } from "@/hooks/sort";
 import { Prisma } from "@prisma/client";
 import { SortingState } from "@tanstack/react-table";
 import DebtSells from "./_components/table";
+import { use } from "react";
+import { getSession } from "@/lib/session";
 type DashboardProps = {
   searchParams: Promise<{
     from?: string;
@@ -58,8 +60,11 @@ export default async function DebtSell({ searchParams }: DashboardProps) {
       in: ["partial"],
     },
   };
+  const user = await getSession();
+  if (!user) return;
   const parsedSort: SortingState = ParsedSort(sort);
   const data = await FetchDebtSales(
+    user.companyId,
     filter,
     usersquery,
     from,
