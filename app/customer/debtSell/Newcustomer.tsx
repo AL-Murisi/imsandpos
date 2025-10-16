@@ -16,6 +16,7 @@ import {
 import { CreateCustomerSchema } from "@/lib/zod";
 import { createCutomer } from "@/app/actions/customers";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/context/AuthContext";
 
 type CreateCustomer = z.infer<typeof CreateCustomerSchema>;
 
@@ -43,9 +44,10 @@ export default function CustomerForm() {
       taxId: "",
     },
   });
-
+  const { user } = useAuth();
+  if (!user?.companyId) return;
   const onSubmit = async (data: CreateCustomer) => {
-    const result = await createCutomer(data);
+    const result = await createCutomer(data, user.companyId);
 
     if (result.error) {
       toast.error(result.error);

@@ -11,6 +11,7 @@ import { Label } from "../../../../components/ui/label";
 
 import { createCategory, getAllCategories } from "@/app/actions/roles"; // assume you have this
 import { CreateCategorySchema } from "@/lib/zod";
+import { useAuth } from "@/lib/context/AuthContext";
 
 type FormValues = z.infer<typeof CreateCategorySchema>;
 
@@ -36,7 +37,8 @@ export default function CategoryForm() {
       parentId: "", // empty string means no parent
     },
   });
-
+  const { user } = useAuth();
+  if (!user) return;
   // Fetch parent categories on mount
   useEffect(() => {
     async function fetchCategories() {
@@ -51,7 +53,7 @@ export default function CategoryForm() {
       ...data,
       parentId: data.parentId || undefined, // Remove empty string
     };
-    await createCategory(finalData);
+    await createCategory(finalData, user.companyId);
     reset();
   };
 

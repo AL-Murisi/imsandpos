@@ -1,8 +1,11 @@
 import { fetchCategory } from "@/app/actions/roles";
 import CategoryTable from "./_components/tables";
+import { getSession } from "@/lib/session";
 
 export default async function Category() {
-  const data = await fetchCategory();
+  const user = await getSession();
+  if (!user) return;
+  const data = await fetchCategory(user.companyId);
   return (
     <div className="p-4">
       <CategoryTable

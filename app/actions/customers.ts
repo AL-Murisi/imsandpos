@@ -4,10 +4,12 @@ import { createCusomer, CreateCustomerSchema } from "@/lib/zod";
 import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 // app/actions/customers.ts
-export async function getCustomerById(customerId?: string) {
+export async function getCustomerById(companyId: string, customerId?: string) {
+  if (!companyId) return;
+  console.log(companyId);
   try {
     const customers = await prisma.customer.findMany({
-      where: { id: customerId },
+      where: { id: customerId, companyId },
       select: {
         id: true,
         name: true,
@@ -27,10 +29,6 @@ export async function getCustomerById(customerId?: string) {
       },
     });
 
-    if (!customers || customers.length === 0) {
-      throw new Error("Customer not found");
-    }
-
     // Convert Decimal fields to string for client
     const result = customers.map((c) => ({
       ...c,
@@ -38,7 +36,7 @@ export async function getCustomerById(customerId?: string) {
 
       outstandingBalance: Number(c.outstandingBalance),
     }));
-
+    console.log(result);
     return result; // ✅ this is an array now
   } catch (error) {
     console.error("Failed to fetch customer:", error);
@@ -96,10 +94,11 @@ export async function Fetchcustomerbyname(searchQuery?: string) {
 export async function updateCustomerStatus(
   status: boolean,
   customerId: string,
+  companyId: string,
 ) {
   try {
     const updatedCustomer = await prisma.customer.update({
-      where: { id: customerId },
+      where: { id: customerId, companyId: companyId },
       data: { isActive: status },
     });
     revalidatePath("/customer");
@@ -118,10 +117,10 @@ export async function updateCustomerStatus(
  * Delete a customer by ID
  * @param customerId string - ID of the customer
  */
-export async function deleteCustomer(customerId: string) {
+export async function deleteCustomer(customerId: string, companyId: string) {
   try {
     const deletedCustomer = await prisma.customer.delete({
-      where: { id: customerId },
+      where: { id: customerId, companyId: companyId },
     });
     revalidatePath("/customer");
     return {
@@ -135,7 +134,7 @@ export async function deleteCustomer(customerId: string) {
   }
 }
 
-export async function createCutomer(form: createCusomer) {
+export async function createCutomer(form: createCusomer, companyId: string) {
   const pared = CreateCustomerSchema.safeParse(form);
   if (!pared.success) {
     throw new Error("Invalid customer data");
@@ -157,8 +156,17 @@ export async function createCutomer(form: createCusomer) {
   const emailValue = email?.trim() || null;
   const outstanding = outstandingBalance?.toString() ?? 0;
   try {
+    // Assuming 'companyIdValue' is the variable holding the company's ID
+
+    // Assume companyIdValue and email are non-null strings
     const existingUser = await prisma.customer.findUnique({
-      where: { email },
+      where: {
+        // 💡 FIX: Use the compound unique key defined by @@unique([companyId, email])
+        companyId_email: {
+          companyId: companyId, // <-- Provide the company ID
+          email: email ?? "", // <-- Provide the email to search for
+        },
+      },
     });
     if (existingUser) {
       return { error: "هذا البريد الإلكتروني مستخدم بالفعل" };
@@ -166,6 +174,7 @@ export async function createCutomer(form: createCusomer) {
 
     const customer = await prisma.customer.create({
       data: {
+        companyId,
         name,
         ...(emailValue ? { email: emailValue } : {}),
         phoneNumber,

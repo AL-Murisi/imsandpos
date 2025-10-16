@@ -10,6 +10,7 @@ import SellsDashboardClient from "./sellsDasboard";
 import { SortingState } from "@tanstack/react-table";
 import { ParsedSort } from "@/hooks/sort";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { getSession } from "@/lib/session";
 
 type DashboardProps = {
   searchParams: Promise<{
@@ -62,7 +63,8 @@ export default async function SellsDashboard({ searchParams }: DashboardProps) {
   const pageIndex = Number(page) - 1;
   const pageSize = Number(limit);
   const parsedSort: SortingState = ParsedSort(sort);
-
+  const user = await getSession();
+  if (!user) return;
   // 🧩 Verify session and extract role
   const { userId, userRole } = await verifySession();
   const role = userRole?.includes("admin") ? "admin" : "cashier";
@@ -75,8 +77,8 @@ export default async function SellsDashboard({ searchParams }: DashboardProps) {
 
   // 🧩 Fetch data in parallel
   const [salesSummary, productStats, data] = await Promise.all([
-    fetchSalesSummary(role, userId ?? ""),
-    fetchProductStats(role),
+    fetchSalesSummary(user.companyId, role, user.userId),
+    fetchProductStats(role, user.companyId),
     FetchDebtSales(
       filter,
       usersquery,
@@ -87,7 +89,7 @@ export default async function SellsDashboard({ searchParams }: DashboardProps) {
       parsedSort,
     ),
   ]);
-
+  console.log(salesSummary);
   const currentUser = {
     id: userId,
     name: "", // can be fetched if needed

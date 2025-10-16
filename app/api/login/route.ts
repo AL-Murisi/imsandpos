@@ -10,9 +10,15 @@ export async function POST(req: NextRequest) {
 
     const user = await prisma.user.findUnique({
       where: { email },
-      include: { roles: { include: { role: true } } },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        password: true, // Needed for comparison
+        companyId: true, // <-- FETCH THE COMPANY ID
+        roles: { include: { role: true } },
+      },
     });
-
     if (!user) {
       return NextResponse.json(
         { error: "Invalid credentials" },
@@ -36,9 +42,17 @@ export async function POST(req: NextRequest) {
       roles: roleNames,
       name: user.name,
       email: user.email,
+      companyId: user.companyId,
     });
 
-    await logActivity(user.id, "loging", "user loging");
+    await logActivity(
+      user.id,
+      user.companyId,
+      "loging",
+      "user loging",
+      "889",
+      "user agent",
+    );
     return NextResponse.json({
       success: true,
       user: {
@@ -46,6 +60,7 @@ export async function POST(req: NextRequest) {
         name: user.name,
         email: user.email,
         roles: roleNames,
+        companyId: user.companyId,
       },
     });
   } catch (error) {

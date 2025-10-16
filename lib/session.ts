@@ -14,6 +14,7 @@ export interface SessionData {
   roles: string[];
   name: string;
   email: string;
+  companyId: string;
   [key: string]: any; // Add index signature for JWT compatibility
 }
 
@@ -25,19 +26,6 @@ export async function encrypt(payload: SessionData): Promise<string> {
     .sign(encodedKey);
 }
 
-// export async function decrypt(
-//   session: string | undefined = "",
-// ): Promise<SessionData | null> {
-//   try {
-//     const { payload } = await jwtVerify(session, encodedKey, {
-//       algorithms: ["HS256"],
-//     });
-//     return payload as SessionData;
-//   } catch (error) {
-//     console.log("Failed to verify session", error);
-//     return null;
-//   }
-// }
 export async function decrypt(
   session: string | undefined = "",
 ): Promise<SessionData | null> {

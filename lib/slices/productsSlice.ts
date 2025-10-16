@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import type { CashierItem, ProductForSale } from "@/lib/zod";
-import { fetchCategoriesForSelect } from "@/app/actions/roles";
+
 import { SellingUnit, updateQty } from "./cartSlice";
 
 type CategoryItem = { label: string; value: string; checked: boolean };
@@ -47,18 +47,6 @@ const initialState: ProductsState = {
 //     return result as ProductForSale[];
 //   }
 // );
-
-export const fetchCategories = createAsyncThunk(
-  "products/fetchCategories",
-  async () => {
-    const raw = await fetchCategoriesForSelect();
-    return raw.map((cat: any) => ({
-      label: cat.name,
-      value: cat.id,
-      checked: false,
-    }));
-  },
-);
 
 const productsSlice = createSlice({
   name: "products",

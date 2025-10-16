@@ -25,7 +25,7 @@ import SearchInput from "@/components/common/searchtest";
 import CustomerForm from "./Newcustomer";
 
 type Props = {
-  users: any[];
+  users: any;
   total: number;
   role: { id: string; name: string }[];
 };

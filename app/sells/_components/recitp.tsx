@@ -26,6 +26,7 @@ import { ReceiptLaptop } from "@/components/common/receiptforlaptop";
 
 import { PrintButton } from "../cashiercontrol/test";
 import { Receipt } from "@/components/common/receipt";
+import { useAuth } from "@/lib/context/AuthContext";
 
 type Props = {
   id: string;
@@ -35,16 +36,18 @@ export default function Recitp({ id }: Props) {
   const [data, setData] = React.useState<any>(null);
   const [loading, setLoading] = React.useState(false);
   const t = useTranslations("payment");
+  const { user } = useAuth();
   const userAgent =
     typeof window !== "undefined" ? navigator.userAgent.toLowerCase() : "";
   const isMobileUA =
     /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(
       userAgent,
     );
+  if (!user) return;
   const handleFetch = async () => {
     try {
       setLoading(true);
-      const res = await fetchReceipt(id);
+      const res = await fetchReceipt(id, user.companyId);
       setData(res);
       toast.success("تم جلب بيانات الفاتورة بنجاح");
     } catch (error) {

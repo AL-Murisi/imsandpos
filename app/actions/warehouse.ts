@@ -17,6 +17,7 @@ export type InventoryUpdateWithTrackingInput = z.infer<
 export async function updateInventory(
   data: InventoryUpdateWithTrackingInput,
   userid: string,
+  companyId: string,
 ) {
   try {
     const {
@@ -32,7 +33,7 @@ export async function updateInventory(
     return await prisma.$transaction(async (tx) => {
       // ✅ 1. Fetch current inventory with product + warehouse details
       const currentInventory = await tx.inventory.findUnique({
-        where: { id },
+        where: { id, companyId },
         include: { product: true, warehouse: true },
       });
 
@@ -98,6 +99,7 @@ export async function updateInventory(
       if (stockDifference !== 0) {
         await tx.stockMovement.create({
           data: {
+            companyId,
             productId: currentInventory.productId,
             warehouseId: currentInventory.warehouseId,
             userId: userId,
@@ -131,130 +133,6 @@ export async function updateInventory(
   }
 }
 
-// type FormValues = z.infer<typeof UpdateInventorySchema>;
-
-// // // 2. Add stock to warehouse (when receiving inventory) - Updated for form compatibility
-// export async function addStock(data: InventoryUpdateWithTrackingInput) {
-//   try {
-//     // If id is provided, update existing inventory (from form)
-//     if (data.id) {
-//       return await updateInventory(data as any);
-//     }
-
-//     // Otherwise, handle as new stock addition
-//     const {
-//       productId,
-//       warehouseId,
-//       stockQuantity = 0,
-//       userId = "system",
-//       reason = "purchase",
-//       notes,
-//     } = data;
-
-//     if (!productId || !warehouseId) {
-//       throw new Error("Product ID and Warehouse ID are required for new stock");
-//     }
-
-//     return await prisma.$transaction(async (tx) => {
-//       // Get current inventory
-//       const inventory = await tx.inventory.findUnique({
-//         where: {
-//           productId_warehouseId: {
-//             productId,
-//             warehouseId,
-//           },
-//         },
-//       });
-
-//       if (!inventory) {
-//         // Create new inventory record
-//         const newInventory = await tx.inventory.create({
-//           data: {
-//             productId,
-//             warehouseId,
-//             stockQuantity,
-//             availableQuantity: stockQuantity,
-//             reservedQuantity: data.reservedQuantity || 0,
-//             reorderLevel: data.reorderLevel || 10,
-//             maxStockLevel: data.maxStockLevel,
-//             status: data.status || "available",
-//             lastStockTake: data.lastStockTake
-//               ? new Date(data.lastStockTake)
-//               : undefined,
-//           },
-//         });
-
-//         // Create stock movement
-//         await tx.stockMovement.create({
-//           data: {
-//             productId,
-//             warehouseId,
-//             userId,
-//             movementType: "in",
-//             quantity: stockQuantity,
-//             reason,
-//             quantityBefore: 0,
-//             quantityAfter: stockQuantity,
-//             notes,
-//           },
-//         });
-
-//         return { success: true, data: newInventory };
-//       } else {
-//         // Update existing inventory
-//         const newStockQuantity = inventory.stockQuantity + stockQuantity;
-//         const newAvailableQuantity =
-//           inventory.availableQuantity + stockQuantity;
-
-//         const updatedInventory = await tx.inventory.update({
-//           where: {
-//             productId_warehouseId: {
-//               productId,
-//               warehouseId,
-//             },
-//           },
-//           data: {
-//             stockQuantity: newStockQuantity,
-//             availableQuantity: newAvailableQuantity,
-//             reservedQuantity:
-//               data.reservedQuantity ?? inventory.reservedQuantity,
-//             reorderLevel: data.reorderLevel ?? inventory.reorderLevel,
-//             maxStockLevel: data.maxStockLevel ?? inventory.maxStockLevel,
-//             status: data.status || "available",
-//             lastStockTake: data.lastStockTake
-//               ? new Date(data.lastStockTake)
-//               : inventory.lastStockTake,
-//           },
-//         });
-
-//         // Create stock movement
-//         await tx.stockMovement.create({
-//           data: {
-//             productId,
-//             warehouseId,
-//             userId,
-//             movementType: "in",
-//             quantity: stockQuantity,
-//             reason,
-//             quantityBefore: inventory.stockQuantity,
-//             quantityAfter: newStockQuantity,
-//             notes,
-//           },
-//         });
-
-//         return { success: true, data: updatedInventory };
-//       }
-//     });
-//   } catch (error) {
-//     console.error("Error adding/updating stock:", error);
-//     return {
-//       success: false,
-//       error: error instanceof Error ? error.message : "Failed to process stock",
-//     };
-//   }
-// }
-
-// // 3. Manual stock adjustment (for corrections, damage, theft, etc.)
 export async function adjustStock(
   productId: string,
   warehouseId: string,
@@ -262,12 +140,15 @@ export async function adjustStock(
   userId: string,
   reason: string,
   notes?: string,
+  companyId?: string,
 ) {
+  if (!companyId) return;
   try {
     return await prisma.$transaction(async (tx) => {
       const inventory = await tx.inventory.findUnique({
         where: {
-          productId_warehouseId: {
+          companyId_productId_warehouseId: {
+            companyId: companyId ?? "", // <-- ADD THIS FIELD
             productId,
             warehouseId,
           },
@@ -295,7 +176,8 @@ export async function adjustStock(
       // Update inventory
       const updatedInventory = await tx.inventory.update({
         where: {
-          productId_warehouseId: {
+          companyId_productId_warehouseId: {
+            companyId: companyId ?? "", // <-- ADD THIS FIELD
             productId,
             warehouseId,
           },
@@ -310,6 +192,7 @@ export async function adjustStock(
       // Create stock movement
       await tx.stockMovement.create({
         data: {
+          companyId,
           productId,
           warehouseId,
           userId: "cmd5xocl8000juunw1hcxsyre",
@@ -342,7 +225,7 @@ const reserve = CashierSchema.extend({
 type CashierFormValues = z.infer<typeof CashierSchema>;
 
 // 4. Reserve stock (when order is placed but not yet fulfilled)
-export async function reserveStock(data: CashierFormValues) {
+export async function reserveStock(data: CashierFormValues, companyId: string) {
   const { cart } = data;
   try {
     return await prisma.$transaction(async (tx) => {
@@ -351,7 +234,8 @@ export async function reserveStock(data: CashierFormValues) {
 
         const inventory = await tx.inventory.findUnique({
           where: {
-            productId_warehouseId: {
+            companyId_productId_warehouseId: {
+              companyId,
               productId: item.id,
               warehouseId: item.warehouseId,
             },
@@ -373,7 +257,8 @@ export async function reserveStock(data: CashierFormValues) {
 
         const updatedInventory = await tx.inventory.update({
           where: {
-            productId_warehouseId: {
+            companyId_productId_warehouseId: {
+              companyId,
               productId: item.id,
               warehouseId: item.warehouseId,
             },

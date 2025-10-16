@@ -3,6 +3,7 @@ export const baseCashierItem = z.object({
   id: z.string(),
   sku: z.string(),
   name: z.string(),
+
   selectedQty: z.number().min(1),
   sellingUnit: z.enum(["unit", "packet", "carton"]),
   pricePerUnit: z.number().optional(),

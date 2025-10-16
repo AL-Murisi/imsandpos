@@ -65,6 +65,7 @@ export default function ProductEditFormm({ sku }: { sku: string }) {
   });
 
   const { user } = useAuth();
+  if (!user) return;
   const watchedValues = watch();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -72,7 +73,7 @@ export default function ProductEditFormm({ sku }: { sku: string }) {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const data = await fetchAllFormData();
+        const data = await fetchAllFormData(user.companyId);
         setFormData(data);
 
         if (sku) {
@@ -115,7 +116,7 @@ export default function ProductEditFormm({ sku }: { sku: string }) {
     if (!user) return;
 
     try {
-      await UpdateProduct(data);
+      await UpdateProduct(data, user.companyId);
       setIsSubmitting(true);
       await logActivity(user.userId, "Edit Product", "Worker edited a product");
       setIsSubmitting(false);

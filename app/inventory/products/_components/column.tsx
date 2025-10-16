@@ -10,6 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/lib/context/AuthContext";
 import { ProductFormValues } from "@/lib/zod/product";
 import { ColumnDef } from "@tanstack/react-table";
 import {
@@ -260,6 +261,8 @@ export const createColumns = (
       cell: ({ row }) => {
         const product = row.original;
         const id = product.id ?? "";
+        const { user } = useAuth();
+        if (!user) return;
         return (
           <div className="flex gap-2">
             <Button
@@ -293,7 +296,7 @@ export const createColumns = (
               variant="outline"
               size="sm"
               onClick={async () => {
-                (await deleteProduct(id),
+                (await deleteProduct(id, user.companyId),
                   toast("✅ deleteing items successed"));
               }}
               title={tt("deleteProduct")}

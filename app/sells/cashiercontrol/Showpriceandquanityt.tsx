@@ -92,7 +92,7 @@ export default function CartDisplay({ users }: CustomDialogProps) {
       userAgent,
     );
   const hasAddedCart = useRef(false);
-
+  if (!user) return;
   useEffect(() => {
     if (hasAddedCart.current) return; // prevent double
     if (!activeCartId) {
@@ -148,12 +148,13 @@ export default function CartDisplay({ users }: CustomDialogProps) {
       customerId: users?.id,
       saleNumber: saleNumber,
       receivedAmount,
+
       change: calculatedChange,
       paidAt: new Date(),
     };
 
     try {
-      await processSale(payment); // ✅ await server action
+      await processSale(payment, user.companyId); // ✅ await server action
       toast("✅ تم الدفع بنجاح!");
 
       // 1️⃣ Clear current cart

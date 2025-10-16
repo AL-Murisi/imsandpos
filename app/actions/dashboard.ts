@@ -1,15 +1,6 @@
 // app/actions/dashboard.ts
 "use server";
 
-import { getActivityLogs } from "./activitylogs";
-import {
-  FetchDebtSales,
-  fetchProductStats,
-  fetchSalesSummary,
-  Fetchusers,
-  getTopSellingProducts,
-  fetchrevnu,
-} from "./sells";
 import { fetchAllFormData } from "./roles";
 import { ParsedSort } from "@/hooks/sort";
 import { Prisma } from "@prisma/client";
@@ -23,6 +14,7 @@ import { number } from "zod";
 // 🚀 SINGLE OPTIMIZED FUNCTION - uses only Prisma methods
 export const fetchDashboardData = unstable_cache(
   async (
+    companyId: string,
     role: string,
     filters?: {
       allFrom?: string;
@@ -102,6 +94,7 @@ export const fetchDashboardData = unstable_cache(
         by: ["saleDate"],
         _sum: { totalAmount: true },
         where: {
+          companyId: companyId,
           saleDate: {
             ...salesRange,
             gte: salesRange.gte || subDays(new Date(), 30),
@@ -115,7 +108,7 @@ export const fetchDashboardData = unstable_cache(
       // Purchases aggregate
       prisma.product.aggregate({
         _sum: { costPrice: true },
-        where: { createdAt: purchasesRange },
+        where: { createdAt: purchasesRange, companyId: companyId },
       }),
 
       // Purchases grouped by date
@@ -123,6 +116,7 @@ export const fetchDashboardData = unstable_cache(
         by: ["createdAt"],
         _sum: { costPrice: true },
         where: {
+          companyId: companyId,
           createdAt: {
             ...purchasesRange,
           },
@@ -134,7 +128,11 @@ export const fetchDashboardData = unstable_cache(
       // Revenue aggregate
       prisma.payment.aggregate({
         _sum: { amount: true },
-        where: { createdAt: revenueRange, status: "completed" },
+        where: {
+          companyId: companyId,
+          createdAt: revenueRange,
+          status: "completed",
+        },
       }),
 
       // Revenue grouped by date
@@ -142,6 +140,7 @@ export const fetchDashboardData = unstable_cache(
         by: ["createdAt"],
         _sum: { amount: true },
         where: {
+          companyId: companyId,
           createdAt: {
             ...revenueRange,
           },
@@ -154,6 +153,7 @@ export const fetchDashboardData = unstable_cache(
       prisma.sale.aggregate({
         _sum: { amountDue: true },
         where: {
+          companyId: companyId,
           saleDate: debtRange,
           paymentStatus: { in: ["partial", "pending"] },
         },
@@ -164,6 +164,7 @@ export const fetchDashboardData = unstable_cache(
       prisma.payment.aggregate({
         _sum: { amount: true },
         where: {
+          companyId: companyId,
           createdAt: debtRange,
           paymentType: "outstanding_payment",
           status: "completed",
@@ -176,6 +177,7 @@ export const fetchDashboardData = unstable_cache(
         by: ["saleDate"],
         _sum: { amountDue: true },
         where: {
+          companyId: companyId,
           saleDate: debtRange,
           paymentStatus: { in: ["partial", "pending"] },
         },
@@ -187,6 +189,7 @@ export const fetchDashboardData = unstable_cache(
         by: ["createdAt"],
         _sum: { amount: true },
         where: {
+          companyId: companyId,
           createdAt: debtRange,
           paymentType: "outstanding_payment",
           status: "completed",
@@ -199,6 +202,7 @@ export const fetchDashboardData = unstable_cache(
         ? prisma.inventory
             .aggregate({
               _sum: { stockQuantity: true },
+              where: { companyId: companyId },
             })
             .then(async (stock) => {
               const [lowStockCount, zeroStockCount] = await Promise.all([
@@ -227,14 +231,14 @@ export const fetchDashboardData = unstable_cache(
           }),
 
       // User count
-      prisma.user.count({ where: { isActive: true } }),
+      prisma.user.count({ where: { companyId: companyId, isActive: true } }),
 
       // Top selling products (last 30 days)
       prisma.saleItem
         .groupBy({
           by: ["productId"],
           _sum: { quantity: true },
-
+          where: { companyId: companyId },
           orderBy: { _sum: { quantity: "desc" } },
           take: topItems,
         })
@@ -300,6 +304,7 @@ export const fetchDashboardData = unstable_cache(
                       },
                     },
                   ],
+                  companyId: companyId,
                 }
               : {},
             skip: (pagination.page || 0) * (pagination.pageSize || 5),
@@ -316,6 +321,7 @@ export const fetchDashboardData = unstable_cache(
                 select: { name: true },
               },
             },
+            where: { companyId: companyId },
             skip: (pagination.page || 0) * (pagination.pageSize || 5),
             take: pagination.pageSize || 5,
             orderBy: { createdAt: "desc" },

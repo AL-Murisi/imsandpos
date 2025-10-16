@@ -1,4 +1,4 @@
-"use client"; // This component will be a Client Component
+"use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -8,6 +8,18 @@ import { updateSales } from "@/app/actions/debtSells";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { useAuth } from "@/lib/context/AuthContext";
+import { useFormatter } from "@/hooks/usePrice";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { useState } from "react";
 
 // This schema needs to be defined for the payment input
 // Example: Create a new schema like PaymentAmountSchema
@@ -28,7 +40,6 @@ interface DebtSaleProps {
   };
   //   onPaymentSuccess?: () => void; // Optional callback to re-fetch data or close dialog
 }
-
 export default function Debtupdate({ debt }: DebtSaleProps) {
   const {
     register,
@@ -41,18 +52,27 @@ export default function Debtupdate({ debt }: DebtSaleProps) {
       paymentAmount: 0, // Initialize with 0 or a placeholder
     },
   });
+  const { user, hasAnyRole, logout } = useAuth();
+  if (!user) return;
+  const { formatCurrency, formatPriceK, formatQty } = useFormatter();
+  const [open, setOpen] = useState(false);
 
   const onSubmit = async (data: FormValues) => {
     try {
       // **IMPORTANT: Replace with actual cashier ID**
 
-      await updateSales(debt.id, data.paymentAmount);
-
+      await updateSales(
+        user.companyId,
+        debt.id,
+        data.paymentAmount,
+        user.userId,
+      );
+      setOpen(false);
       // Reset the form after successful submission
       reset();
 
       //   }
-      console.log("Payment successfully applied!");
+      toast("Payment successfully applied!");
     } catch (error) {
       console.error("Error updating debt sale:", error);
       // Display an error message to the user (e.g., using a toast notification)
@@ -60,36 +80,57 @@ export default function Debtupdate({ debt }: DebtSaleProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" dir="rtl">
-      {/* Display relevant debt information */}
-      <div className="mb-4">
-        <h3 className="text-lg font-semibold">تفاصيل الدين</h3>
-        {/* <p>اسم الزبون: {debt.customer?.name}</p> */}
-        <p>المبلغ الإجمالي للبيع: {debt.totalAmount} $</p>
-        <p>المبلغ المدفوع سابقاً: {debt.amountPaid} $</p>
-        <p>المبلغ المتبقي حالياً: {debt.amountDue} $</p>
-      </div>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline">تسديد الدين</Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md" dir="rtl">
+        <DialogHeader>
+          <DialogTitle>تأكيد الدفع</DialogTitle>
+          <DialogDescription>
+            قم بإدخال المبلغ الجديد لتسديد جزء أو كل الدين.
+          </DialogDescription>
+        </DialogHeader>
 
-      <div className="grid gap-4">
-        <div className="grid gap-2">
-          <Label htmlFor="paymentAmount">مبلغ الدفع الجديد</Label>
-          <Input
-            id="paymentAmount"
-            type="number"
-            step="0.01" // Allow decimal payments
-            {...register("paymentAmount", { valueAsNumber: true })}
-          />
-          {errors.paymentAmount && (
-            <p className="text-xs text-red-500">
-              {errors.paymentAmount.message}
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          {/* ✅ تفاصيل الدين */}
+          <div className="mb-4">
+            <h3 className="text-lg font-semibold">تفاصيل الدين</h3>
+            <p>
+              المبلغ الإجمالي للبيع: {formatCurrency(Number(debt.totalAmount))}
             </p>
-          )}
-        </div>
-      </div>
+            <p>
+              المبلغ المدفوع سابقاً: {formatCurrency(Number(debt.amountPaid))}
+            </p>
+            <p>
+              المبلغ المتبقي حالياً: {formatCurrency(Number(debt.amountDue))}
+            </p>
+          </div>
 
-      <div className="flex justify-end">
-        <Button type="submit">تأكيد الدفع</Button>
-      </div>
-    </form>
+          {/* ✅ حقل المبلغ */}
+          <div className="grid gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="paymentAmount">مبلغ الدفع الجديد</Label>
+              <Input
+                id="paymentAmount"
+                type="number"
+                step="0.01"
+                {...register("paymentAmount", { valueAsNumber: true })}
+              />
+              {errors.paymentAmount && (
+                <p className="text-xs text-red-500">
+                  {errors.paymentAmount.message}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* ✅ زر التأكيد */}
+          <div className="flex justify-end">
+            <Button type="submit">تأكيد الدفع</Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

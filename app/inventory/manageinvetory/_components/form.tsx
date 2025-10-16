@@ -38,6 +38,7 @@ export default function InvonteryEditFormm({ inventory }: { inventory: any }) {
     },
   });
   const { user } = useAuth();
+  if (!user) return;
   useEffect(() => {
     const now = new Date();
     // Format for input type="datetime-local" (no timezone “Z”)
@@ -53,7 +54,7 @@ export default function InvonteryEditFormm({ inventory }: { inventory: any }) {
         id: inventory.id,
       };
 
-      await updateInventory(payload, user?.userId ?? "");
+      await updateInventory(payload, user.userId, user.companyId);
       toast("✅ adding Inventory sucessed");
 
       reset();

@@ -232,19 +232,11 @@ export const debtSaleColumns: ColumnDef<DebtSaleData>[] = [
     header: "الإجراءات",
     cell: ({ row }) => {
       const debt = row.original;
+      const amountDue = Number(debt.amountDue) || 0; // ✅ convert to number safely
+
       return (
         <div className="flex gap-2">
-          <CustomDialog
-            trigger={
-              <Button variant="outline" className="text-blue-600">
-                <EditIcon className="h-4 w-4" />
-              </Button>
-            }
-            title="تحديث الديون"
-            description="قم بتحديث حالة الدين أو المبلغ المدفوع"
-          >
-            <Debtupdate debt={debt} />
-          </CustomDialog>
+          {amountDue > 0 && <Debtupdate debt={debt} />}
 
           <DebtReport
             customerName={debt.customer?.name}

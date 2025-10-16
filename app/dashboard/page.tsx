@@ -7,6 +7,8 @@ import { verifySession } from "@/lib/dal";
 import { redirect } from "next/navigation";
 import { fetchAllFormData } from "../actions/roles";
 
+import { getSession } from "@/lib/session";
+
 interface DashboardProps {
   searchParams: Promise<Record<string, string | undefined>>;
 }
@@ -38,8 +40,8 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
   const filters = extractFilters(params);
   const topItems = Number(params.topItems || "4");
   const revenue = Number(params.revenue || "5");
-
-  // Pagination for tables
+  const user = await getSession();
+  if (!user) return;
   const pagination = {
     page: Number(params.page || "1") - 1,
     pageSize: Number(params.limit || "5"),
@@ -50,13 +52,14 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
   try {
     // 🚀 SINGLE FUNCTION CALL - replaces 10+ separate database queries
     const dashboardData = await fetchDashboardData(
+      user.companyId,
       "admin", // TODO: Get from session
       filters,
       topItems,
       revenue,
       pagination,
     );
-    const formateddate = await fetchAllFormData();
+    const formateddate = await fetchAllFormData(user.companyId);
     // Split data for components
     const salesSummary = {
       sales: dashboardData.sales,

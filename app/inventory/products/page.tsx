@@ -2,6 +2,7 @@ import { fetchAllFormData, fetchProduct } from "@/app/actions/roles";
 import { Prisma } from "@prisma/client";
 import ProductClient from "./_components/ProductClient";
 import { fetchProductStats, Fetchusers } from "@/app/actions/sells";
+import { getSession } from "@/lib/session";
 
 type DashboardProps = {
   searchParams: Promise<{
@@ -30,14 +31,15 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
     warehouseId,
     categoryId,
   } = param || {};
-
+  const user = await getSession();
+  if (!user) return;
   const pageIndex = Number(page) - 1;
   const pageSize = Number(limit);
 
-  const [formData, productStats, users] = await Promise.all([
-    fetchAllFormData(),
-    fetchProductStats("admin"),
-    Fetchusers(true),
+  const [formData] = await Promise.all([
+    fetchAllFormData(user.companyId),
+    // fetchProductStats("admin", user.companyId),
+    // Fetchusers(true, user.companyId),
   ]);
 
   const where: Prisma.ProductWhereInput = {
@@ -56,6 +58,7 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
     : [];
 
   const { products, totalCount } = await fetchProduct(
+    user.companyId,
     productquery,
     where,
     from,

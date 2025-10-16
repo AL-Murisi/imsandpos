@@ -1,8 +1,11 @@
 import { fetchSuppliers } from "@/app/actions/roles";
 import SuppliersTable from "./table";
+import { getSession } from "@/lib/session";
 
 export default async function suppliers() {
-  const data = await fetchSuppliers();
+  const user = await getSession();
+  if (!user) return;
+  const data = await fetchSuppliers(user.companyId);
   return (
     <div className="p-4">
       <SuppliersTable

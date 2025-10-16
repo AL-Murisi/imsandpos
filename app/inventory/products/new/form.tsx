@@ -109,7 +109,8 @@ export default function ProductForm() {
   });
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
+  const { user } = useAuth();
+  if (!user) return;
   const {
     register,
     handleSubmit,
@@ -132,14 +133,13 @@ export default function ProductForm() {
   const watchedSku = watch("sku");
 
   const t = useTranslations("productForm");
-  const { user } = useAuth();
 
   // Fetch all form data
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const data = await fetchAllFormData();
+        const data = await fetchAllFormData(user.companyId);
         setFormData(data);
       } catch (error) {
         console.error("Error fetching form data:", error);
@@ -172,7 +172,7 @@ export default function ProductForm() {
     try {
       setIsSubmitting(true);
       if (user) {
-        await CreateProduct(data, user.userId);
+        await CreateProduct(data, user.userId, user.companyId);
         toast.success("✅ تم إضافة المنتج بنجاح!");
         reset();
       }

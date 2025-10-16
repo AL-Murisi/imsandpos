@@ -183,19 +183,11 @@ export const debtSaleColumns: ColumnDef<DebtSaleData>[] = [
     enableHiding: false,
     cell: ({ row }) => {
       const debt = row.original;
+      const amountDue = Number(debt.amountDue) || 0; // ✅ convert to number safely
+
       return (
         <>
-          <CustomDialog
-            trigger={
-              <Button variant="outline">
-                <EditIcon />
-              </Button>
-            }
-            title="إضافة منتج"
-            description="أدخل تفاصيل المنتج واحفظه"
-          >
-            <Debtupdate debt={debt} />
-          </CustomDialog>
+          {amountDue > 0 && <Debtupdate debt={debt} />}
           <Recitp id={debt.saleNumber} />
         </>
       );

@@ -8,7 +8,11 @@ import { availableMemory } from "process";
 import { logActivity } from "./activitylogs";
 import { CreateProductSchema } from "@/lib/zod";
 
-export async function CreateProduct(data: any, userId: string) {
+export async function CreateProduct(
+  data: any,
+  userId: string,
+  companyId: string,
+) {
   const parsed = CreateProductSchema.safeParse(data);
   const initialStock = 0;
 
@@ -49,7 +53,7 @@ export async function CreateProduct(data: any, userId: string) {
         data: {
           name,
           sku,
-
+          companyId,
           description,
           categoryId,
           brandId,
@@ -71,6 +75,7 @@ export async function CreateProduct(data: any, userId: string) {
       const logs = await tx.activityLogs.create({
         data: {
           userId,
+          companyId,
           action,
           details,
         },
@@ -78,6 +83,7 @@ export async function CreateProduct(data: any, userId: string) {
 
       const inventory = await tx.inventory.create({
         data: {
+          companyId,
           productId: product.id,
           warehouseId,
           stockQuantity: 0,
@@ -93,6 +99,7 @@ export async function CreateProduct(data: any, userId: string) {
       if (initialStock > 0) {
         await tx.stockMovement.create({
           data: {
+            companyId,
             productId: product.id,
             warehouseId,
             userId: "system", // replace with real user ID
@@ -129,17 +136,15 @@ export async function CreateProduct(data: any, userId: string) {
     throw error;
   }
 }
-export async function deleteProduct(id: string) {
+export async function deleteProduct(id: string, companyId: string) {
   if (!id) {
     throw new Error("Product ID is required.");
   }
 
-  // 1. Delete all inventory records associated with the product ID.
-
-  // 2. Delete the product itself.
   const deletedProduct = await prisma.product.deleteMany({
     where: {
       id: id,
+      companyId,
     },
   });
   revalidatePath("/products");
@@ -150,10 +155,12 @@ import { unstable_cache, revalidateTag } from "next/cache";
 
 export async function getAllActiveProductsForSale(
   where: Prisma.ProductWhereInput,
+  companyId: string,
   searchQuery?: string,
 ) {
   const combinedWhere: Prisma.ProductWhereInput = {
     ...where,
+    companyId,
     isActive: true,
     inventory: {
       some: { availableQuantity: { gt: 0 } },

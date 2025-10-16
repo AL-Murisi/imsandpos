@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 
 import { CreateSupplierSchema } from "@/lib/zod";
 import { createSupplier } from "@/app/actions/roles";
+import { useAuth } from "@/lib/context/AuthContext";
 
 type FormValues = z.infer<typeof CreateSupplierSchema>;
 
@@ -36,12 +37,13 @@ export default function SupplierForm() {
       paymentTerms: "",
     },
   });
-
+  const { user } = useAuth();
+  if (!user) return;
   // Load roles on mount
   const onSubmit = async (data: FormValues) => {
     console.log("Submitted:", data);
 
-    await createSupplier(data);
+    await createSupplier(data, user.companyId);
     // await createUser(data)
     reset();
   };

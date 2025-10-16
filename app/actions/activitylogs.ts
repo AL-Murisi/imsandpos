@@ -4,6 +4,7 @@ import { SortingState } from "@tanstack/react-table";
 
 export async function logActivity(
   userId: string,
+  companyid: string,
   action: string,
   details?: string,
   ip?: string,
@@ -11,7 +12,8 @@ export async function logActivity(
 ) {
   await prisma.activityLogs.create({
     data: {
-      userId,
+      companyId: companyid,
+      userId: userId,
       action,
       details,
       ip,
@@ -24,8 +26,10 @@ export async function getActivityLogs(
   page: number = 0, // 0-indexed page number
   pageSize: number = 7,
   sort?: SortingState,
+  companyId?: string,
 ) {
   const logs = await prisma.activityLogs.findMany({
+    where: { companyId: companyId },
     include: {
       user: {
         include: {

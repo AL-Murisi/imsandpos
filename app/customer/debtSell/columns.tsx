@@ -22,6 +22,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { deleteCustomer, updateCustomerStatus } from "@/app/actions/customers";
+import { useAuth } from "@/lib/context/AuthContext";
 
 // 🔽 Sortable Header Component
 type SortableHeaderProps = {
@@ -157,8 +158,11 @@ export const customerColumns: ColumnDef<any>[] = [
     id: "actions",
     header: "الإجراءات",
     enableHiding: false,
+
     cell: ({ row }) => {
       const customer = row.original;
+      const { user } = useAuth();
+      if (!user) return;
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -177,18 +181,24 @@ export const customerColumns: ColumnDef<any>[] = [
             <DropdownMenuSeparator />
             {customer.isActive ? (
               <DropdownMenuItem
-                onClick={() => updateCustomerStatus(false, customer.id)}
+                onClick={() =>
+                  updateCustomerStatus(false, customer.id, user.companyId)
+                }
               >
                 تعطيل
               </DropdownMenuItem>
             ) : (
               <DropdownMenuItem
-                onClick={() => updateCustomerStatus(true, customer.id)}
+                onClick={() =>
+                  updateCustomerStatus(true, customer.id, user.companyId)
+                }
               >
                 تفعيل
               </DropdownMenuItem>
             )}
-            <DropdownMenuItem onClick={() => deleteCustomer(customer.id)}>
+            <DropdownMenuItem
+              onClick={() => deleteCustomer(customer.id, user.companyId)}
+            >
               حذف العميل
             </DropdownMenuItem>
           </DropdownMenuContent>

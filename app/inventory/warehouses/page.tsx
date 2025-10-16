@@ -1,8 +1,11 @@
 import { fetchWarehouse } from "@/app/actions/roles";
 
 import WarehouseTable from "./_components/tables";
+import { getSession } from "@/lib/session";
 export default async function Warehouses() {
-  const data = await fetchWarehouse();
+  const user = await getSession();
+  if (!user) return;
+  const data = await fetchWarehouse(user.companyId);
   return (
     // <CardContainer
     //   title="Warehouse"

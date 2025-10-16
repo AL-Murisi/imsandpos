@@ -8,10 +8,13 @@ import { Button } from "@/components/ui/button";
 
 import { CreateWarehouseSchema } from "@/lib/zod";
 import { createWarehouse } from "@/app/actions/roles";
+import { useAuth } from "@/lib/context/AuthContext";
 
 type FormValues = z.infer<typeof CreateWarehouseSchema>;
 
 export default function WarehouseForm() {
+  const { user } = useAuth();
+  if (!user) return;
   const warehouse = `warehouse-${Date.now().toString().slice(-2)}`;
   const {
     register,
@@ -38,7 +41,7 @@ export default function WarehouseForm() {
   const onSubmit = async (data: FormValues) => {
     console.log("Submitted:", data);
 
-    await createWarehouse(data);
+    await createWarehouse(data, user.companyId);
 
     reset();
   };
