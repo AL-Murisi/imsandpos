@@ -23,13 +23,13 @@ export async function logActivity(
 }
 
 export async function getActivityLogs(
+  companyId: string,
   page: number = 0, // 0-indexed page number
   pageSize: number = 7,
   sort?: SortingState,
-  companyId?: string,
 ) {
   const logs = await prisma.activityLogs.findMany({
-    where: { companyId: companyId },
+    where: { companyId },
     include: {
       user: {
         include: {

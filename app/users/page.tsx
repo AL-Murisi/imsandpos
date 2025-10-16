@@ -7,6 +7,7 @@ import UserActivityTable from "./_compoent/userActivityLogs";
 import { getActivityLogs } from "../actions/activitylogs";
 import DashboardTabs from "@/components/common/Tabs";
 import RoleTable from "./userRole/roleTable";
+import { getSession } from "@/lib/session";
 
 type Users = {
   searchParams: Promise<{
@@ -39,7 +40,8 @@ export default async function User({ searchParams }: Users) {
   const pageIndex = Number(page) - 1;
   const pageSize = Number(limit);
   const name = (await searchParams).usersquery;
-
+  const user = await getSession();
+  if (!user) return;
   const data = await fetechUser(
     usersquery,
     role,
@@ -49,7 +51,7 @@ export default async function User({ searchParams }: Users) {
     pageSize,
     // parsedSort
   );
-  const logs = await getActivityLogs(pageIndex, pageSize);
+  const logs = await getActivityLogs(user.companyId, pageIndex, pageSize);
 
   // const data = await fetechUser();
   const roless = await fetchRolesForSelect();
