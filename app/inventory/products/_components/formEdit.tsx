@@ -89,7 +89,6 @@ export default function ProductEditFormm({ sku }: { sku: string }) {
             setValue("supplierId", productData.supplierId ?? "");
             setValue("warehouseId", productData.warehouseId ?? "");
             setValue("costPrice", productData.costPrice ?? 0);
-            setValue("barcode", productData.barcode ?? "");
             setValue("pricePerUnit", productData.pricePerUnit ?? 0);
             setValue("pricePerPacket", productData.pricePerPacket ?? 0);
             setValue("pricePerCarton", productData.pricePerCarton ?? 0);
