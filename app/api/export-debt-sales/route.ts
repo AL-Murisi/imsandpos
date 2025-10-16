@@ -4,6 +4,7 @@ import { generateDebtSalesPDF } from "@/lib/debtSalesPdfExport";
 import { FetchDebtSales } from "@/app/actions/sells";
 import { Prisma } from "@prisma/client";
 import { ParsedSort } from "@/hooks/sort";
+import { getSession } from "@/lib/session";
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,7 +12,8 @@ export async function POST(request: NextRequest) {
     const { from, to, usersquery = "" } = body;
 
     console.log("Fetching debt sales data...");
-
+    const user = await getSession();
+    if (!user) return;
     // Build filter
     const filter: Prisma.SaleWhereInput = {
       paymentStatus: {
@@ -23,6 +25,7 @@ export async function POST(request: NextRequest) {
 
     // Fetch all debt sales (no pagination for export)
     const sales = await FetchDebtSales(
+      user.companyId,
       filter,
       usersquery,
       from,
@@ -114,10 +117,12 @@ export async function GET(request: NextRequest) {
         in: ["partial"],
       },
     };
-
+    const user = await getSession();
+    if (!user) return;
     const parsedSort = ParsedSort(sort);
 
     const sales = await FetchDebtSales(
+      user.companyId,
       filter,
       usersquery,
       from,
