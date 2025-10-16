@@ -80,6 +80,7 @@ export default async function SellsDashboard({ searchParams }: DashboardProps) {
     fetchSalesSummary(user.companyId, role, user.userId),
     fetchProductStats(role, user.companyId),
     FetchDebtSales(
+      user.companyId,
       filter,
       usersquery,
       from,
