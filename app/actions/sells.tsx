@@ -28,6 +28,7 @@ import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { SortingState } from "@tanstack/react-table";
 export async function FetchDebtSales(
+  companyId: string,
   where?: Prisma.SaleWhereInput,
   searchQuery: string = "",
   from?: string,
@@ -35,7 +36,6 @@ export async function FetchDebtSales(
   page: number = 1, // 0-indexed page number
   pageSize: number = 7,
   sort?: SortingState,
-  companyId?: string,
 ) {
   const combinedWhere: Prisma.SaleWhereInput = {
     ...where, // Existing filters (category, warehouse, etc.)
