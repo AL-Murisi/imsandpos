@@ -11,6 +11,7 @@ import { Button } from "../../../components/ui/button";
 
 import { CreateBrandSchema } from "@/lib/zod";
 import { createBrand } from "@/app/actions/roles";
+import { useAuth } from "@/lib/context/AuthContext";
 
 type FormValues = z.infer<typeof CreateBrandSchema>;
 
@@ -31,12 +32,13 @@ export default function UserForm() {
       contactInfo: "",
     },
   });
-
+  const { user } = useAuth();
+  if (!user) return;
   // Load roles on mount
   const onSubmit = async (data: FormValues) => {
     console.log("Submitted:", data);
 
-    await createBrand(data);
+    await createBrand(data, user.companyId);
     // await createUser(data)
     reset();
   };

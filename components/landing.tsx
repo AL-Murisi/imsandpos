@@ -87,7 +87,7 @@ export default function LandingPage() {
                 تسجيل الدخول
               </button>
               <button
-                onClick={() => router.push("/login/signup")}
+                onClick={() => router.push("/signup")}
                 className="transform rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-2 text-white transition hover:scale-105 hover:shadow-lg"
               >
                 sign up
