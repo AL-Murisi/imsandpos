@@ -278,35 +278,38 @@ export const fetchDashboardData = unstable_cache(
                 },
               },
             },
-            where: pagination.query
-              ? {
-                  OR: [
-                    {
-                      customer: {
-                        name: {
+            where: {
+              companyId: companyId, // always include company filter
+              ...(pagination.query
+                ? {
+                    OR: [
+                      {
+                        customer: {
+                          name: {
+                            contains: pagination.query,
+                            mode: "insensitive",
+                          },
+                        },
+                      },
+                      {
+                        customer: {
+                          phoneNumber: {
+                            contains: pagination.query,
+                            mode: "insensitive",
+                          },
+                        },
+                      },
+                      {
+                        paymentStatus: {
                           contains: pagination.query,
                           mode: "insensitive",
                         },
                       },
-                    },
-                    {
-                      customer: {
-                        phoneNumber: {
-                          contains: pagination.query,
-                          mode: "insensitive",
-                        },
-                      },
-                    },
-                    {
-                      paymentStatus: {
-                        contains: pagination.query,
-                        mode: "insensitive",
-                      },
-                    },
-                  ],
-                  companyId: companyId,
-                }
-              : {},
+                    ],
+                  }
+                : {}),
+            },
+
             skip: (pagination.page || 0) * (pagination.pageSize || 5),
             take: pagination.pageSize || 5,
             orderBy: { createdAt: "desc" },
