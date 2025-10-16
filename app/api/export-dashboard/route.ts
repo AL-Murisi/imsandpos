@@ -1,6 +1,7 @@
 // app/api/export-dashboard/route.ts
 import { fetchDashboardData } from "@/app/actions/dashboard";
 import { generatePDFFromData } from "@/lib/pdfExport";
+import { getSession } from "@/lib/session";
 import { NextRequest, NextResponse } from "next/server";
 
 // import { auth } from '@/lib/auth'; // Uncomment if you have auth
@@ -65,7 +66,7 @@ export async function GET(request: NextRequest) {
 
     const searchParams = request.nextUrl.searchParams;
     const role = searchParams.get("role") || "user";
-
+    const user = await getSession();
     // Build filters from query params
     const filters = {
       allFrom: searchParams.get("allFrom") || undefined,
@@ -81,9 +82,13 @@ export async function GET(request: NextRequest) {
     };
 
     console.log("Fetching dashboard data...");
-
+    if (!user) return;
     // Fetch dashboard data
-    const dashboardData = await fetchDashboardData(role, filters);
+    const dashboardData = await fetchDashboardData(
+      user.companyId,
+      role,
+      filters,
+    );
 
     console.log("Generating PDF...");
 
