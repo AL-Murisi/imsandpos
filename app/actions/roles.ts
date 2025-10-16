@@ -1328,13 +1328,13 @@ export async function fetchCategory(companyId: string) {
   });
 }
 export async function fetechUser(
+  companyId: string,
   searchQuery: string,
   role: any,
   from?: string,
   to?: string,
   page: number = 1,
   pageSize: number = 5,
-  companyId?: string,
 ) {
   const combinedWhere: any = {
     companyId, // Existing filters (category, warehouse, etc.)

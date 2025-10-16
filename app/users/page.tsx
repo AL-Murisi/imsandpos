@@ -43,6 +43,7 @@ export default async function User({ searchParams }: Users) {
   const user = await getSession();
   if (!user) return;
   const data = await fetechUser(
+    user.companyId,
     usersquery,
     role,
     from,
