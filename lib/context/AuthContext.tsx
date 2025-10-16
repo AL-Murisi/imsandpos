@@ -88,10 +88,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            companyId: user.companyId,
             userId: user.userId,
             action: "logout",
             details: "User logged out",
-            ip: "",
+            ip: "55",
             userAgent: typeof window !== "undefined" ? navigator.userAgent : "",
           }),
         }).catch(console.error); // Don't await - fire and forget

@@ -3,7 +3,10 @@ import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
-  const { userId, action, details } = await req.json();
-  await prisma.activityLogs.create({ data: { userId, action, details } });
+  const { companyId, userId, action, details, ip, userAgent } =
+    await req.json();
+  await prisma.activityLogs.create({
+    data: { companyId, userId, action, details, ip, userAgent },
+  });
   return NextResponse.json({ success: true });
 }
