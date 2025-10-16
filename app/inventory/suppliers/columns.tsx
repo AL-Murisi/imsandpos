@@ -23,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { deleteCustomer } from "@/app/actions/users";
+import { useAuth } from "@/lib/context/AuthContext";
 
 // --------------------------
 // Fetch suppliers from DB
@@ -122,6 +123,8 @@ export const supplierColumns: ColumnDef<any>[] = [
     id: "actions",
     enableHiding: false,
     cell: ({ row }) => {
+      const { user } = useAuth();
+      if (!user) return;
       const supplier = row.original;
 
       return (
@@ -145,7 +148,7 @@ export const supplierColumns: ColumnDef<any>[] = [
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={async () => {
-                await deleteCustomer(supplier.id);
+                await deleteCustomer(supplier.id, user.companyId);
               }}
             >
               <Trash className="mr-2 h-4 w-4" /> مسح

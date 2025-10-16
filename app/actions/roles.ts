@@ -940,13 +940,12 @@ export async function fetchProduct(
     return { products: [], totalCount: 0 };
   }
 }
-export async function createRole(input: CreateRoleInput, companyId: string) {
+export async function createRole(input: CreateRoleInput) {
   const parsed = CreateRoleSchema.safeParse(input);
 
   if (!parsed.success) {
     throw new Error("Invalid role data");
   }
-  if (!companyId) return;
   const { name, description, permissions } = parsed.data;
 
   try {

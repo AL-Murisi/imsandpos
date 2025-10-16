@@ -29,6 +29,7 @@ import { updateUsers } from "@/app/actions/users";
 import { Label } from "@/components/ui/label";
 import { tr } from "date-fns/locale";
 import Changerole from "../_compoent/changerole";
+import { useAuth } from "@/lib/context/AuthContext";
 
 // 🔽 Sortable Header Component
 type SortableHeaderProps = {
@@ -166,7 +167,9 @@ export const columns: ColumnDef<User>[] = [
 
     enableHiding: false,
     cell: ({ row }) => {
-      const user = row.original;
+      const userr = row.original;
+      const { user } = useAuth();
+      if (!user) return;
       let state: boolean;
 
       return (
@@ -180,19 +183,23 @@ export const columns: ColumnDef<User>[] = [
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
             <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(user.id)}
+              onClick={() => navigator.clipboard.writeText(userr?.id)}
             ></DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem>
               <Changerole />
             </DropdownMenuItem>
 
-            {user.isActive ? (
-              <DropdownMenuItem onClick={() => updateUsers(false, user.id)}>
+            {userr.isActive ? (
+              <DropdownMenuItem
+                onClick={() => updateUsers(false, userr.id, user.companyId)}
+              >
                 <Label>Deactivate</Label>
               </DropdownMenuItem>
             ) : (
-              <DropdownMenuItem onClick={() => updateUsers(true, user.id)}>
+              <DropdownMenuItem
+                onClick={() => updateUsers(true, userr.id, user.companyId)}
+              >
                 <Label>Activate</Label>
               </DropdownMenuItem>
             )}

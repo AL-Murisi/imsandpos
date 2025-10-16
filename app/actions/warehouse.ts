@@ -328,6 +328,7 @@ type SortState = {
   desc: boolean;
 }[];
 export async function getStockMovements(
+  companyId: string,
   searchQuery: string = "",
   where: Prisma.StockMovementWhereInput = {},
   from?: string,
@@ -346,6 +347,7 @@ export async function getStockMovements(
     // Build where clause with optional filters
     const combinedWhere: Prisma.StockMovementWhereInput = {
       ...where, // Existing filters (category, warehouse, etc.)
+      companyId,
     };
     if (searchQuery) {
       combinedWhere.OR = [
@@ -420,6 +422,7 @@ export async function getStockMovements(
 
 // 7. Get single inventory item by ID
 export async function getInventoryById(
+  companyId: string,
   searchQuery: string = "",
   where: Prisma.InventoryWhereInput = {},
   from?: string,
@@ -434,6 +437,7 @@ export async function getInventoryById(
 
     const combinedWhere: Prisma.InventoryWhereInput = {
       ...where,
+      companyId,
     };
 
     if (searchQuery) {

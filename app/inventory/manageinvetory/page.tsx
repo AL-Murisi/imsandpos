@@ -7,6 +7,7 @@ import { Prisma } from "@prisma/client";
 import { SortingState } from "@tanstack/react-table";
 import ManagemovementClient from "./_components/getMovementhistry";
 import ManageinvetoryClient from "./_components/manageinvetoryClient";
+import { getSession } from "@/lib/session";
 
 type DashboardProps = {
   searchParams: Promise<{
@@ -49,7 +50,8 @@ export default async function Manageinvetory({ searchParams }: DashboardProps) {
   const where: Prisma.InventoryWhereInput = {
     warehouseId,
   };
-
+  const user = await getSession();
+  if (!user) return;
   const parsedSort: SortingState = ParsedSort(sort);
   const input: any = {
     supplierId,
@@ -58,8 +60,9 @@ export default async function Manageinvetory({ searchParams }: DashboardProps) {
   };
   // ✅ Run all fetches in parallel
   const [formData, inventoryData, movementData] = await Promise.all([
-    fetchAllFormData(),
+    fetchAllFormData(user.companyId),
     getInventoryById(
+      user.companyId,
       inventoreyquery,
       where,
       from,
@@ -68,7 +71,15 @@ export default async function Manageinvetory({ searchParams }: DashboardProps) {
       pageSize,
       parsedSort,
     ),
-    getStockMovements(movementquery, input, from, to, pageIndex, pageSize),
+    getStockMovements(
+      user.companyId,
+      movementquery,
+      input,
+      from,
+      to,
+      pageIndex,
+      pageSize,
+    ),
   ]);
 
   const { inventory: fetchedProducts, totalCount: fetchedTotalCount } =

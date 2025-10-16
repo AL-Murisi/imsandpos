@@ -120,7 +120,7 @@ export async function updateCustomerStatus(
 export async function deleteCustomer(customerId: string, companyId: string) {
   try {
     const deletedCustomer = await prisma.customer.delete({
-      where: { id: customerId, companyId: companyId },
+      where: { id: customerId, companyId },
     });
     revalidatePath("/customer");
     return {

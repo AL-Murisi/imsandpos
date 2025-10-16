@@ -11,6 +11,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { CashierItem, CashierSchema } from "@/lib/zod";
 import { reserveStock } from "@/app/actions/warehouse";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/context/AuthContext";
 
 type CashierFormValues = z.infer<typeof CashierSchema>;
 
@@ -69,11 +70,12 @@ export default function Reservation({
       : 0;
 
   // Use useEffect to update form values when props change, especially when dialog opens
-
+  const { user } = useAuth();
+  if (!user) return;
   // Ensure the onSubmit function matches SubmitHandler<CashierFormValues>
   const onSubmit: SubmitHandler<CashierFormValues> = async (data) => {
     if (data.receivedAmount === 0) {
-      await reserveStock(data);
+      await reserveStock(data, user.companyId);
 
       toast("✅تم الحجز بنجاح");
       onSuccess?.();

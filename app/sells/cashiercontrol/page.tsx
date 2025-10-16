@@ -7,6 +7,7 @@ import { Prisma } from "@prisma/client";
 import ProductListRedux from "./ProductList";
 import CartDisplayRedux from "./Showpriceandquanityt";
 import dynamic from "next/dynamic";
+import { getSession } from "@/lib/session";
 const ScrollArea = dynamic(
   () => import("@/components/ui/scroll-area").then((m) => m.ScrollArea),
   {},
@@ -33,7 +34,8 @@ export default async function Cart({ searchParams }: Props) {
     supplierId,
     warehouseId,
   } = await searchParams;
-
+  const user = await getSession();
+  if (!user) return;
   const searchParam = await searchParams;
   const categories = Array.isArray(categoryId)
     ? categoryId
@@ -51,7 +53,7 @@ export default async function Cart({ searchParams }: Props) {
   const products = await getAllActiveProductsForSale(where, productquery);
 
   const [formData, users] = await Promise.all([
-    fetchAllFormData(),
+    fetchAllFormData(user.companyId),
     Fetchcustomerbyname(usersquery),
     // fetchProductStats("admin"),
     // Fetchusers(true),

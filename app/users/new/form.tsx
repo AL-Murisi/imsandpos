@@ -19,6 +19,7 @@ import { Button } from "../../../components/ui/button";
 import { createUser, fetchRolesForSelect } from "@/app/actions/roles";
 import { toast } from "sonner";
 import { CreateUserSchema, UserInput } from "@/lib/zod";
+import { useAuth } from "@/lib/context/AuthContext";
 
 type Role = {
   id: string;
@@ -45,7 +46,8 @@ export default function UserForm() {
       roleId: "",
     },
   });
-
+  const { user } = useAuth();
+  if (!user) return;
   // Load roles on mount
   useEffect(() => {
     const loadRoles = async () => {
@@ -62,7 +64,7 @@ export default function UserForm() {
 
   const selectedRole = watch("roleId");
   const onSubmit = async (data: UserInput) => {
-    const result = await createUser(data);
+    const result = await createUser(data, user.companyId);
 
     if (result.error) {
       toast.error(result.error);

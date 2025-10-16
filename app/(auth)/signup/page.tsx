@@ -93,14 +93,10 @@ export default function CompanySignup() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 px-4 py-12">
-      <div className="mx-auto max-w-2xl rounded-lg bg-white p-8 shadow-lg">
+      <div className="bg-accent mx-auto max-w-2xl rounded-lg p-8 shadow-lg">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">
-            Create Your Company
-          </h1>
-          <p className="mt-2 text-gray-600">
-            Set up your account and admin credentials
-          </p>
+          <h1 className="text-3xl font-bold">Create Your Company</h1>
+          <p className="mt-2">Set up your account and admin credentials</p>
         </div>
 
         {errorMessage && (
