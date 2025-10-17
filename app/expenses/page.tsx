@@ -10,9 +10,22 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DollarSign } from "lucide-react";
+// import { getExpensesByCompany } from "../actions/exponses";
 
 export default function ExpensesPage() {
   const [expenseType, setExpenseType] = useState<string>("daily");
+  // const [expensesData, categoriesData] = await Promise.all([
+  //           getExpensesByCompany(user.companyId, {
+  //             pageIndex: pagination.pageIndex,
+  //             pageSize: pagination.pageSize,
+  //             categoryId: categoryFilter,
+  //             status: statusFilter,
+  //             from: dateRange.from,
+  //             to: dateRange.to,
+  //             parsedSort: sorting,
+  //           }),
+  //           getExpenseCategories(user.companyId),
+  //         ]);
 
   const handleDownloadExpense = () => {
     // Replace with your API call

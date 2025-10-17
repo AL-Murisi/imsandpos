@@ -44,13 +44,18 @@ export default async function Cart({ searchParams }: Props) {
       : [];
   const where: Prisma.ProductWhereInput = {
     id: id || undefined,
+
     supplierId: supplierId || undefined,
     warehouseId: warehouseId || undefined,
     categoryId: categories.length > 0 ? { in: categories } : undefined,
     // 👆 can extend with other filters later
   };
 
-  const products = await getAllActiveProductsForSale(where, productquery);
+  const products = await getAllActiveProductsForSale(
+    where,
+    user.companyId,
+    productquery,
+  );
 
   const [formData, users] = await Promise.all([
     fetchAllFormData(user.companyId),
