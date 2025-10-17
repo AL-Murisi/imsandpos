@@ -128,7 +128,7 @@ export const customerColumns: ColumnDef<any>[] = [
   },
   {
     accessorKey: "outstandingBalance",
-    header: "رصيد العميل",
+    header: " على العميل",
     cell: ({ row }) => {
       const balance = Number(row.original.outstandingBalance);
 
@@ -150,6 +150,21 @@ export const customerColumns: ColumnDef<any>[] = [
             : balance < 0
               ? `${balance.toFixed(2)} دائن`
               : "0"}
+        </span>
+      );
+    },
+  },
+  {
+    accessorKey: "balance",
+    header: "رصيد العميل",
+    cell: ({ row }) => {
+      const balance = Number(row.original.balance);
+
+      const isCredit = balance < 0; // company owes customer
+
+      return (
+        <span className={`font-bold ${"text-green-600"}`}>
+          ${balance.toFixed(2)}
         </span>
       );
     },

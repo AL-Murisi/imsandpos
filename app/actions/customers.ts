@@ -4,6 +4,32 @@ import { createCusomer, CreateCustomerSchema } from "@/lib/zod";
 import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 // app/actions/customers.ts
+//
+function serializeData<T>(data: T): T {
+  if (data === null || data === undefined) return data;
+  if (typeof data !== "object") return data;
+
+  if (Array.isArray(data)) {
+    return data.map((item) => serializeData(item)) as T;
+  }
+
+  const plainObj: any = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (value instanceof Prisma.Decimal) {
+      plainObj[key] = value.toNumber(); // or value.toString() if you prefer
+    } else if (value instanceof Date) {
+      plainObj[key] = value.toISOString();
+    } else if (typeof value === "bigint") {
+      plainObj[key] = value.toString();
+    } else if (typeof value === "object" && value !== null) {
+      plainObj[key] = serializeData(value);
+    } else {
+      plainObj[key] = value;
+    }
+  }
+
+  return plainObj;
+}
 export async function getCustomerById(companyId: string, customerId?: string) {
   if (!companyId) return;
   console.log(companyId);
@@ -23,6 +49,7 @@ export async function getCustomerById(companyId: string, customerId?: string) {
         taxId: true,
         creditLimit: true,
         outstandingBalance: true,
+        balance: true,
         isActive: true,
         createdAt: true,
         updatedAt: true,
@@ -36,8 +63,9 @@ export async function getCustomerById(companyId: string, customerId?: string) {
 
       outstandingBalance: Number(c.outstandingBalance),
     }));
-    console.log(result);
-    return result; // ✅ this is an array now
+
+    const serialized = serializeData(result);
+    return serialized; // ✅ this is an array now
   } catch (error) {
     console.error("Failed to fetch customer:", error);
     throw error;

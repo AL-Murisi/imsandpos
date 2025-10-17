@@ -36,16 +36,19 @@ export const expenseColumns: ColumnDef<any>[] = [
   },
 
   {
-    accessorKey: "#",
+    id: "index",
     header: "#",
     cell: ({ row }) => row.index + 1,
+    enableSorting: false,
   },
 
   {
     accessorKey: "expenseNumber",
     header: "رقم المصروف",
     cell: ({ row }) => (
-      <span className="font-mono text-sm">{row.original.expenseNumber}</span>
+      <span className="font-mono text-sm text-gray-300">
+        {row.getValue("expenseNumber")}
+      </span>
     ),
   },
 
@@ -53,24 +56,31 @@ export const expenseColumns: ColumnDef<any>[] = [
     accessorKey: "description",
     header: "الوصف",
     cell: ({ row }) => (
-      <div className="max-w-xs truncate">{row.original.description}</div>
+      <div className="max-w-xs truncate text-gray-300">
+        {row.getValue("description")}
+      </div>
     ),
   },
 
   {
-    accessorKey: "category.name",
+    accessorKey: "category",
     header: "الفئة",
-    cell: ({ row }) => (
-      <Badge variant="outline">{row.original.category?.name}</Badge>
-    ),
+    cell: ({ row }) => {
+      const category = row.original.category;
+      return (
+        <Badge variant="outline" className="border-gray-600 bg-gray-800">
+          {category?.name || "غير محدد"}
+        </Badge>
+      );
+    },
   },
 
   {
     accessorKey: "amount",
     header: "المبلغ",
     cell: ({ row }) => (
-      <div className="font-semibold">
-        {Number(row.original.amount).toFixed(2)}
+      <div className="font-semibold text-green-400">
+        {parseFloat(row.getValue("amount")).toFixed(2)}
       </div>
     ),
   },
@@ -81,15 +91,12 @@ export const expenseColumns: ColumnDef<any>[] = [
     cell: ({ row }) => {
       const methods: Record<string, string> = {
         cash: "نقداً",
-        bank_transfer: "تحويل بنكي",
+        bank: "تحويل بنكي",
+        card: "بطاقة",
         check: "شيك",
-        credit: "ائتمان",
       };
-      return (
-        <span>
-          {methods[row.original.paymentMethod] || row.original.paymentMethod}
-        </span>
-      );
+      const method = row.getValue("paymentMethod") as string;
+      return <span className="text-gray-300">{methods[method] || method}</span>;
     },
   },
 
@@ -97,8 +104,10 @@ export const expenseColumns: ColumnDef<any>[] = [
     accessorKey: "expenseDate",
     header: "التاريخ",
     cell: ({ row }) => {
-      const date = new Date(row.original.expenseDate);
-      return <div>{date.toLocaleDateString("ar-EG")}</div>;
+      const date = new Date(row.getValue("expenseDate"));
+      return (
+        <div className="text-gray-300">{date.toLocaleDateString("ar-EG")}</div>
+      );
     },
   },
 
@@ -106,7 +115,7 @@ export const expenseColumns: ColumnDef<any>[] = [
     accessorKey: "status",
     header: "الحالة",
     cell: ({ row }) => {
-      const status = row.original.status;
+      const status = row.getValue("status") as string;
       const colors: Record<string, string> = {
         pending: "bg-yellow-500",
         approved: "bg-green-500",
@@ -120,7 +129,9 @@ export const expenseColumns: ColumnDef<any>[] = [
         paid: "مدفوع",
       };
       return (
-        <Badge className={colors[status]}>{labels[status] || status}</Badge>
+        <Badge className={`${colors[status] || "bg-gray-500"} text-white`}>
+          {labels[status] || status}
+        </Badge>
       );
     },
   },
@@ -132,18 +143,23 @@ export const expenseColumns: ColumnDef<any>[] = [
       <div className="flex gap-2">
         <Dialog>
           <DialogTrigger asChild>
-            <Button variant="outline" size="sm">
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-gray-700 hover:bg-gray-800"
+            >
               <Edit className="h-4 w-4" />
             </Button>
           </DialogTrigger>
-          <DialogContent dir="rtl">
+          <DialogContent dir="rtl" className="border-gray-700 bg-gray-900">
             <DialogHeader>
-              <DialogTitle>تعديل المصروف</DialogTitle>
+              <DialogTitle className="text-gray-100">تعديل المصروف</DialogTitle>
             </DialogHeader>
-            {/* <ExpenseEditForm expense={row.original} /> */}
+            {/* Add your edit form here */}
           </DialogContent>
         </Dialog>
       </div>
     ),
+    enableSorting: false,
   },
 ];

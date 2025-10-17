@@ -179,9 +179,17 @@ export async function processSale(data: any, companyId: string) {
           // Using both id and companyId for multi-tenancy check on update
           where: { id: customerId, companyId },
           data: {
-            outstandingBalance: {
-              increment: amountDue, // increase debt
-            },
+            outstandingBalance: amountDue,
+          },
+        });
+      }
+      if (customerId && receivedAmount > totalAfterDiscount) {
+        const change = receivedAmount - totalAfterDiscount;
+        await tx.customer.update({
+          // Using both id and companyId for multi-tenancy check on update
+          where: { id: customerId, companyId },
+          data: {
+            balance: change,
           },
         });
       }
@@ -222,7 +230,7 @@ export async function processSale(data: any, companyId: string) {
         amountPaid: sale.amountPaid.toString(),
         amountDue: sale.amountDue.toString(),
       };
-
+      console.log(saleForClient);
       return { message: "Sale processed successfully", sale: saleForClient };
     },
     {
