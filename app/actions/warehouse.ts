@@ -14,115 +14,330 @@ export type InventoryUpdateWithTrackingInput = z.infer<
 >;
 
 // 1. Update inventory record (for form submissions)
+// export async function updateInventory(
+//   data: InventoryUpdateWithTrackingInput,
+//   userid: string,
+//   companyId: string,
+// ) {
+//   try {
+//     const {
+//       id,
+//       userId = userid,
+//       reason = "manual_update",
+//       notes,
+//       availableQuantity: inputCartons,
+//       stockQuantity: inputCartonsStock,
+//       ...updateData
+//     } = data;
+
+//     return await prisma.$transaction(async (tx) => {
+//       // ✅ 1. Fetch current inventory with product + warehouse details
+//       const currentInventory = await tx.inventory.findUnique({
+//         where: { id, companyId },
+//         include: { product: true, warehouse: true },
+//       });
+
+//       if (!currentInventory) throw new Error("Inventory record not found");
+
+//       // ✅ 2. Conversion helpers
+//       const unitsPerPacket = currentInventory.product.unitsPerPacket || 1;
+//       const packetsPerCarton = currentInventory.product.packetsPerCarton || 1;
+
+//       const cartonToUnits = (cartons: number) =>
+//         cartons * packetsPerCarton * unitsPerPacket;
+
+//       // ✅ 3. Convert to base unit (units)
+//       const availableQuantityInUnits = inputCartons
+//         ? cartonToUnits(inputCartons)
+//         : undefined;
+
+//       const stockQuantityInUnits = inputCartonsStock
+//         ? cartonToUnits(inputCartonsStock)
+//         : undefined;
+
+//       // ✅ 4. Combine new + old available quantity (accumulate)
+//       const finalAvailableQty =
+//         (availableQuantityInUnits ?? 0) + currentInventory.availableQuantity;
+
+//       const finalStockQty =
+//         (stockQuantityInUnits ?? 0) + currentInventory.stockQuantity;
+
+//       const finalReorderLevel =
+//         data.reorderLevel ?? currentInventory.reorderLevel;
+
+//       // ✅ 5. Calculate inventory status with decimals supported
+//       let calculatedStatus: "available" | "low" | "out_of_stock" | undefined;
+
+//       if (finalAvailableQty <= 0) {
+//         calculatedStatus = "out_of_stock";
+//       } else if (finalAvailableQty < finalReorderLevel) {
+//         calculatedStatus = "low";
+//       } else {
+//         calculatedStatus = "available";
+//       }
+
+//       // ✅ 6. Update inventory record
+//       const updatedInventory = await tx.inventory.update({
+//         where: { id },
+//         data: {
+//           ...updateData,
+//           availableQuantity: finalAvailableQty,
+//           stockQuantity: finalStockQty,
+//           ...(calculatedStatus && { status: calculatedStatus }),
+//           ...(data.lastStockTake && {
+//             lastStockTake: new Date(data.lastStockTake),
+//           }),
+//         },
+//         include: {
+//           product: { select: { name: true, sku: true } },
+//           warehouse: { select: { name: true, location: true } },
+//         },
+//       });
+
+//       // ✅ 7. Log stock movement if changed
+//       const stockDifference = finalStockQty - currentInventory.stockQuantity;
+//       if (stockDifference !== 0) {
+//         await tx.stockMovement.create({
+//           data: {
+//             companyId,
+//             productId: currentInventory.productId,
+//             warehouseId: currentInventory.warehouseId,
+//             userId: userId,
+//             movementType: stockDifference > 0 ? "in" : "out",
+//             quantity: Math.abs(stockDifference),
+//             reason,
+//             quantityBefore: currentInventory.stockQuantity,
+//             quantityAfter: finalStockQty,
+//             notes:
+//               notes ||
+//               `Manual inventory update: ${
+//                 stockDifference > 0 ? "+" : ""
+//               }${stockDifference}`,
+//           },
+//         });
+//       }
+
+//       // ✅ 8. Revalidate paths
+//       revalidatePath("/manageinvetory");
+//       revalidatePath("/cashiercontrol");
+
+//       return { success: true, data: updatedInventory };
+//     });
+//   } catch (error) {
+//     console.error("Error updating inventory:", error);
+//     return {
+//       success: false,
+//       error:
+//         error instanceof Error ? error.message : "Failed to update inventory",
+//     };
+//   }
+// }
+
+// Assuming InventoryUpdateWithTrackingInput is defined elsewhere,
+// but we're enhancing the data type locally for clarity.
+
+// We need to allow for the updateType field to be passed in the data object
+
+// Assuming InventoryUpdateWithTrackingInput is defined elsewhere,
+// but we're enhancing the data type locally for clarity.
+
+// We need to allow for the updateType field to be passed in the data object
+interface ExtendedInventoryUpdateData {
+  id: string;
+  reason?: string;
+  notes?: string;
+  availableQuantity?: number;
+  stockQuantity?: number;
+  supplierId?: string;
+  quantity?: number;
+  unitCost?: number;
+  paymentMethod?: string;
+  paymentAmount?: number;
+  updateType?: "manual" | "supplier"; // <-- Explicitly allow this transient field
+  reorderLevel?: number;
+  maxStockLevel?: number;
+  status?: string;
+  lastStockTake?: string | Date; // 💡 FIX: Allow Date object or string for compatibility with form input/default values
+}
+
+// NOTE: I'm keeping the original function signature for simplicity of the fix,
+// assuming InventoryUpdateWithTrackingInput is the base type.
+
 export async function updateInventory(
-  data: InventoryUpdateWithTrackingInput,
-  userid: string,
+  data: ExtendedInventoryUpdateData,
+  userId: string,
   companyId: string,
 ) {
   try {
     const {
       id,
-      userId = userid,
       reason = "manual_update",
       notes,
+      updateType,
       availableQuantity: inputCartons,
       stockQuantity: inputCartonsStock,
+      quantity: purchaseQty,
+      unitCost,
+      paymentMethod,
+      paymentAmount,
       ...updateData
     } = data;
 
-    return await prisma.$transaction(async (tx) => {
-      // ✅ 1. Fetch current inventory with product + warehouse details
-      const currentInventory = await tx.inventory.findUnique({
-        where: { id, companyId },
-        include: { product: true, warehouse: true },
-      });
-
-      if (!currentInventory) throw new Error("Inventory record not found");
-
-      // ✅ 2. Conversion helpers
-      const unitsPerPacket = currentInventory.product.unitsPerPacket || 1;
-      const packetsPerCarton = currentInventory.product.packetsPerCarton || 1;
-
-      const cartonToUnits = (cartons: number) =>
-        cartons * packetsPerCarton * unitsPerPacket;
-
-      // ✅ 3. Convert to base unit (units)
-      const availableQuantityInUnits = inputCartons
-        ? cartonToUnits(inputCartons)
-        : undefined;
-
-      const stockQuantityInUnits = inputCartonsStock
-        ? cartonToUnits(inputCartonsStock)
-        : undefined;
-
-      // ✅ 4. Combine new + old available quantity (accumulate)
-      const finalAvailableQty =
-        (availableQuantityInUnits ?? 0) + currentInventory.availableQuantity;
-
-      const finalStockQty =
-        (stockQuantityInUnits ?? 0) + currentInventory.stockQuantity;
-
-      const finalReorderLevel =
-        data.reorderLevel ?? currentInventory.reorderLevel;
-
-      // ✅ 5. Calculate inventory status with decimals supported
-      let calculatedStatus: "available" | "low" | "out_of_stock" | undefined;
-
-      if (finalAvailableQty <= 0) {
-        calculatedStatus = "out_of_stock";
-      } else if (finalAvailableQty < finalReorderLevel) {
-        calculatedStatus = "low";
-      } else {
-        calculatedStatus = "available";
-      }
-
-      // ✅ 6. Update inventory record
-      const updatedInventory = await tx.inventory.update({
-        where: { id },
-        data: {
-          ...updateData,
-          availableQuantity: finalAvailableQty,
-          stockQuantity: finalStockQty,
-          ...(calculatedStatus && { status: calculatedStatus }),
-          ...(data.lastStockTake && {
-            lastStockTake: new Date(data.lastStockTake),
-          }),
-        },
-        include: {
-          product: { select: { name: true, sku: true } },
-          warehouse: { select: { name: true, location: true } },
-        },
-      });
-
-      // ✅ 7. Log stock movement if changed
-      const stockDifference = finalStockQty - currentInventory.stockQuantity;
-      if (stockDifference !== 0) {
-        await tx.stockMovement.create({
-          data: {
-            companyId,
-            productId: currentInventory.productId,
-            warehouseId: currentInventory.warehouseId,
-            userId: userId,
-            movementType: stockDifference > 0 ? "in" : "out",
-            quantity: Math.abs(stockDifference),
-            reason,
-            quantityBefore: currentInventory.stockQuantity,
-            quantityAfter: finalStockQty,
-            notes:
-              notes ||
-              `Manual inventory update: ${
-                stockDifference > 0 ? "+" : ""
-              }${stockDifference}`,
-          },
-        });
-      }
-
-      // ✅ 8. Revalidate paths
-      revalidatePath("/manageinvetory");
-      revalidatePath("/cashiercontrol");
-
-      return { success: true, data: updatedInventory };
+    // 1. Fetch current inventory (outside transaction)
+    const currentInventory = await prisma.inventory.findUnique({
+      where: { id, companyId },
+      include: { product: true, warehouse: true },
     });
+
+    if (!currentInventory) throw new Error("Inventory record not found");
+
+    const unitsPerPacket = currentInventory.product.unitsPerPacket || 1;
+    const packetsPerCarton = currentInventory.product.packetsPerCarton || 1;
+    const supplierId = currentInventory.product.supplierId || "";
+    const cartonToUnits = (cartons: number) =>
+      cartons * packetsPerCarton * unitsPerPacket;
+
+    // 2. Calculate final quantities
+    const availableQuantityInUnits = inputCartons
+      ? cartonToUnits(inputCartons)
+      : undefined;
+
+    const stockQuantityInUnits = inputCartonsStock
+      ? cartonToUnits(inputCartonsStock)
+      : undefined;
+
+    const finalAvailableQty =
+      (availableQuantityInUnits ?? 0) + currentInventory.availableQuantity;
+
+    const finalStockQty =
+      (stockQuantityInUnits ?? 0) + currentInventory.stockQuantity;
+
+    const finalReorderLevel =
+      (updateData as any).reorderLevel ?? currentInventory.reorderLevel;
+
+    let calculatedStatus: "available" | "low" | "out_of_stock" | undefined;
+
+    if (finalAvailableQty <= 0) {
+      calculatedStatus = "out_of_stock";
+    } else if (finalAvailableQty < finalReorderLevel) {
+      calculatedStatus = "low";
+    } else {
+      calculatedStatus = "available";
+    }
+    if (!inputCartons) return;
+    // 3. Prepare purchase data if needed
+    let purchaseId: string | null = null;
+
+    const totalCost =
+      inputCartons * (unitCost || Number(currentInventory.product.costPrice));
+
+    // Create purchase in a quick transaction
+    const purchase = await prisma.purchase.create({
+      data: {
+        companyId,
+        supplierId,
+        totalAmount: totalCost,
+        amountDue: totalCost,
+        status: "pending",
+      },
+    });
+
+    await prisma.purchaseItem.create({
+      data: {
+        companyId,
+        purchaseId: purchase.id,
+        productId: currentInventory.productId,
+        quantity: inputCartons,
+        unitCost: unitCost || Number(currentInventory.product.costPrice),
+        totalCost,
+      },
+    });
+
+    purchaseId = purchase.id;
+
+    // Handle payment if provided
+    if (paymentMethod && paymentAmount && paymentAmount > 0) {
+      const newAmountPaid = (Number(purchase.amountPaid) || 0) + paymentAmount;
+      const newAmountDue = totalCost - newAmountPaid;
+
+      if (newAmountPaid > totalCost) {
+        throw new Error("Payment exceeds total purchase amount");
+      }
+
+      await prisma.supplierPayment.create({
+        data: {
+          companyId,
+          supplierId,
+          amount: paymentAmount,
+          paymentMethod,
+          note: notes,
+        },
+      });
+
+      await prisma.purchase.update({
+        where: { id: purchase.id },
+        data: {
+          amountPaid: newAmountPaid,
+          amountDue: Math.max(0, newAmountDue),
+          status: newAmountDue <= 0 ? "paid" : "partial",
+        },
+      });
+    }
+
+    // 4. Update inventory (quick operation)
+    const updatedInventory = await prisma.inventory.update({
+      where: { id },
+      data: {
+        ...updateData,
+        availableQuantity: finalAvailableQty,
+        stockQuantity: finalStockQty,
+        ...(calculatedStatus && { status: calculatedStatus }),
+        ...(data.lastStockTake && {
+          lastStockTake: new Date(data.lastStockTake),
+        }),
+      },
+      include: {
+        product: { select: { name: true, sku: true } },
+        warehouse: { select: { name: true, location: true } },
+      },
+    });
+
+    // 5. Log stock movement (separate operation)
+    const stockDifference = finalStockQty - currentInventory.stockQuantity;
+    if (stockDifference !== 0) {
+      await prisma.stockMovement.create({
+        data: {
+          companyId,
+          productId: currentInventory.productId,
+          warehouseId: currentInventory.warehouseId,
+          userId,
+          movementType: stockDifference > 0 ? "in" : "out",
+          quantity: Math.abs(stockDifference),
+          reason: supplierId ? "purchase_received" : reason,
+          quantityBefore: currentInventory.stockQuantity,
+          quantityAfter: finalStockQty,
+          notes:
+            notes ||
+            `${supplierId ? "Stock from supplier" : "Inventory update"}: ${
+              stockDifference > 0 ? "+" : ""
+            }${stockDifference}`,
+        },
+      });
+    }
+
+    // 6. Log activity (separate operation)
+    await prisma.activityLogs.create({
+      data: {
+        userId,
+        companyId,
+        action: supplierId ? "received supplier stock" : "updated inventory",
+        details: `Product: ${updatedInventory.product.name}, Stock: ${finalStockQty}${
+          paymentAmount ? `, Payment: ${paymentAmount}` : ""
+        }`,
+      },
+    });
+
+    return { success: true, data: updatedInventory };
   } catch (error) {
     console.error("Error updating inventory:", error);
     return {

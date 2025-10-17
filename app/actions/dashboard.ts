@@ -106,15 +106,15 @@ export const fetchDashboardData = unstable_cache(
       }),
 
       // Purchases aggregate
-      prisma.product.aggregate({
-        _sum: { costPrice: true },
-        where: { createdAt: purchasesRange, companyId: companyId },
+      prisma.purchase.aggregate({
+        _sum: { amountPaid: true },
+        where: { createdAt: purchasesRange, companyId },
       }),
 
       // Purchases grouped by date
-      prisma.product.groupBy({
+      prisma.purchase.groupBy({
         by: ["createdAt"],
-        _sum: { costPrice: true },
+        _sum: { amountPaid: true },
         where: {
           companyId: companyId,
           createdAt: {
@@ -381,7 +381,7 @@ export const fetchDashboardData = unstable_cache(
         chart: groupByDay(salesGrouped, "saleDate"),
       },
       purchases: {
-        total: purchasesAgg._sum.costPrice?.toNumber() || 0,
+        total: purchasesAgg._sum.amountPaid?.toNumber() || 0,
         chart: groupByDay(purchasesGrouped, "createdAt"),
       },
       revenue: {
@@ -413,21 +413,6 @@ export const fetchDashboardData = unstable_cache(
 );
 
 // Optional: utility to serialize BigInt for JSON responses (if nee
-function serializeBigInt(obj: any): any {
-  if (obj === null || obj === undefined) return obj;
-  if (typeof obj === "bigint") return obj.toString();
-  if (Array.isArray(obj)) return obj.map(serializeBigInt);
-  if (typeof obj === "object") {
-    const serialized: any = {};
-    for (const key in obj) {
-      if (Object.prototype.hasOwnProperty.call(obj, key)) {
-        serialized[key] = serializeBigInt(obj[key]);
-      }
-    }
-    return serialized;
-  }
-  return obj;
-}
 
 export interface DashboardParams {
   filter?: Prisma.SaleWhereInput;

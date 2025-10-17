@@ -293,18 +293,8 @@ export const inventoryColumns: ColumnDef<any>[] = [
       const inventory = row.original;
       return (
         <div className="flex gap-2 p-2">
-          <CustomDialog
-            trigger={
-              <Button>
-                <Edit />" منتج"
-              </Button>
-            }
-            title=" منتج"
-            description="أدخل تفاصيل المنتج واحفظه"
-          >
-            {/* Pass the formKey to force re-render and reset the form */}
-            <InvonteryEditFormm inventory={inventory} />{" "}
-          </CustomDialog>
+          {/* Pass the formKey to force re-render and reset the form */}
+          <InvonteryEditFormm inventory={inventory} />{" "}
         </div>
       );
     },

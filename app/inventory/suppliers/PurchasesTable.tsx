@@ -1,7 +1,12 @@
 "use client";
 
-import CustomDialog from "@/components/common/Dailog";
-import Form from "@/components/forms/supplierform";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 import dynamic from "next/dynamic";
 const Calendar22 = dynamic(
@@ -24,26 +29,21 @@ import { useTranslations } from "next-intl";
 import { Plus } from "lucide-react";
 import ImportWarehouse from "@/components/uploadwarehouse";
 import SupplierForm from "@/components/forms/supplierform";
-import { supplierColumns } from "./columns";
+
+import { ColumnDef } from "@tanstack/table-core";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { PaymentCreateForm } from "./PaymentCreateForm";
+import { purchaseColumns } from "./columns";
 
 type ProductClientProps = {
   data: any[];
   total: number;
-  formData: {
-    warehouses: { id: string; name: string }[];
-    categories: { id: string; name: string }[];
-    brands: { id: string; name: string }[];
-    suppliers: { id: string; name: string }[];
-  };
 };
 
 // Loading skeleton for table
 
-export default function SuppliersTable({
-  data,
-  total,
-  formData,
-}: ProductClientProps) {
+export default function PurchasesTable({ data, total }: ProductClientProps) {
   const {
     pagination,
     sorting,
@@ -69,24 +69,11 @@ export default function SuppliersTable({
       <div className="flex flex-wrap gap-2 p-1 md:flex-row lg:flex-row">
         <Calendar22 />
         <SearchInput placeholder={"بحث "} paramKey={"product"} />
-
-        <CustomDialog
-          trigger={
-            <Button>
-              <Plus />
-              إضافة
-            </Button>
-          }
-          title="إضافة  جديدة"
-        >
-          <SupplierForm />
-        </CustomDialog>
       </div>
 
       <DataTable
-        search={<ImportWarehouse />}
         data={data}
-        columns={supplierColumns}
+        columns={purchaseColumns}
         initialPageSize={pagination.pageSize}
         pageCount={Math.ceil(total / pagination.pageSize)}
         pageActiom={setPagination}
