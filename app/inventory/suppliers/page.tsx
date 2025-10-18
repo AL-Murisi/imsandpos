@@ -1,4 +1,4 @@
-import { fetchSuppliers } from "@/app/actions/roles";
+import { fetchSuppliers } from "@/app/actions/suppliers";
 import {
   getPurchasesByCompany,
   getSupplierPaymentsByCompany,

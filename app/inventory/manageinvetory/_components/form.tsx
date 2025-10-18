@@ -197,7 +197,7 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
                   <Label htmlFor={field}>
                     {
                       {
-                        stockQuantity: "الكمية في المخزون",
+                        stockQuantity: "الكمية  المستقبلة",
                         reservedQuantity: "الكمية المحجوزة",
                         availableQuantity: "الكمية المتاحة",
                         reorderLevel: "نقطة إعادة الطلب",

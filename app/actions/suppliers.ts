@@ -30,6 +30,99 @@ function serializeData<T>(data: T): T {
 
   return plainObj;
 }
+export async function updateSupplier(
+  supplierId: string,
+  companyId: string,
+  data: {
+    name: string;
+    contactPerson: string;
+    email: string;
+    phoneNumber: string;
+    address: string;
+    city: string;
+    state: string;
+    country: string;
+    postalCode: string;
+    taxId?: string;
+    paymentTerms?: string;
+    isActive: boolean;
+  },
+) {
+  try {
+    // Verify supplier exists and belongs to company
+    const existingSupplier = await prisma.supplier.findUnique({
+      where: { id: supplierId },
+    });
+
+    if (!existingSupplier || existingSupplier.companyId !== companyId) {
+      return { success: false, error: "المورد غير موجود أو غير مصرح له" };
+    }
+
+    // Check if email is already used by another supplier
+    const emailExists = await prisma.supplier.findFirst({
+      where: {
+        email: data.email,
+        companyId: companyId,
+        NOT: { id: supplierId },
+      },
+    });
+
+    if (emailExists) {
+      return { success: false, error: "البريد الإلكتروني مستخدم بالفعل" };
+    }
+
+    // Update supplier
+    const updatedSupplier = await prisma.supplier.update({
+      where: { id: supplierId },
+      data: {
+        name: data.name,
+        contactPerson: data.contactPerson,
+        email: data.email,
+        phoneNumber: data.phoneNumber,
+        address: data.address,
+        city: data.city,
+        state: data.state,
+        country: data.country,
+        postalCode: data.postalCode,
+        taxId: data.taxId || null,
+        paymentTerms: data.paymentTerms || null,
+        isActive: data.isActive,
+      },
+    });
+
+    return { success: true, data: updatedSupplier };
+  } catch (error) {
+    console.error("Error updating supplier:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "فشل تحديث المورد",
+    };
+  }
+}
+export async function fetchSuppliers(companyId: string) {
+  const supplier = await prisma.supplier.findMany({
+    where: { companyId: companyId },
+    select: {
+      id: true,
+      name: true,
+      contactPerson: true,
+      email: true,
+      phoneNumber: true,
+      address: true,
+      city: true,
+      state: true,
+      country: true,
+      postalCode: true,
+      taxId: true,
+      paymentTerms: true,
+      isActive: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+  const serialized = serializeData(supplier);
+  return serialized;
+}
 // ============================================
 export async function getPurchasesByCompany(
   companyId: string,

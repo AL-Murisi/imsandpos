@@ -1319,30 +1319,6 @@ function serializeData<T>(data: T): T {
   return plainObj;
 }
 
-export async function fetchSuppliers(companyId: string) {
-  const supplier = await prisma.supplier.findMany({
-    where: { companyId: companyId },
-    select: {
-      id: true,
-      name: true,
-      contactPerson: true,
-      email: true,
-      phoneNumber: true,
-      address: true,
-      city: true,
-      state: true,
-      country: true,
-      postalCode: true,
-      taxId: true,
-      paymentTerms: true,
-      isActive: true,
-      createdAt: true,
-      updatedAt: true,
-    },
-  });
-  const serialized = serializeData(supplier);
-  return serialized;
-}
 export async function fetchCategory(companyId: string) {
   return prisma.category.findMany({
     where: { companyId: companyId },
