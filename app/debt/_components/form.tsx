@@ -49,7 +49,7 @@ export default function Debtupdate({ debt }: DebtSaleProps) {
   } = useForm<FormValues>({
     resolver: zodResolver(PaymentAmountSchema),
     defaultValues: {
-      paymentAmount: 0, // Initialize with 0 or a placeholder
+      paymentAmount: undefined, // Initialize with 0 or a placeholder
     },
   });
   const { user, hasAnyRole, logout } = useAuth();
@@ -114,7 +114,6 @@ export default function Debtupdate({ debt }: DebtSaleProps) {
               <Input
                 id="paymentAmount"
                 type="number"
-                step="0.01"
                 {...register("paymentAmount", { valueAsNumber: true })}
               />
               {errors.paymentAmount && (

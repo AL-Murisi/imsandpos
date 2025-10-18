@@ -95,14 +95,11 @@ export default function ExpenseForm({
       <DialogContent className="sm:max-w-md" dir="rtl">
         <DialogHeader>
           <DialogTitle>إضافة مصروف جديد</DialogTitle>
-          <DialogDescription>
-            قم بإدخال تفاصيل المصروف مثل الفئة، المبلغ، وطريقة الدفع.
-          </DialogDescription>
         </DialogHeader>
 
         <form
           onSubmit={handleSubmit(onSubmit)}
-          className="mx-auto max-w-lg space-y-6 rounded-lg border border-gray-800 bg-gray-900 p-6 shadow-xl"
+          className="rounded-lg border border-gray-800 bg-gray-900 p-6 shadow-xl"
           dir="rtl"
         >
           <h2 className="border-b border-gray-700 pb-3 text-2xl font-bold text-gray-100">
@@ -164,11 +161,10 @@ export default function ExpenseForm({
           {/* Amount */}
           <div>
             <label className="mb-2 block text-sm font-medium text-gray-200">
-              المبلغ (العملة)
+              المبلغ
             </label>
             <Input
               type="number"
-              step="0.01"
               placeholder="أدخل المبلغ"
               {...register("amount", {
                 required: "يرجى إدخال المبلغ",

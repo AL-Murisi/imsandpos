@@ -26,37 +26,23 @@ export const StockMovementColumns: ColumnDef<any>[] = [
           (table.getIsSomePageRowsSelected() && "indeterminate")
         }
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
+        aria-label="تحديد الكل"
       />
     ),
     cell: ({ row }) => (
       <Checkbox
         checked={row.getIsSelected()}
         onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
+        aria-label="تحديد الصف"
       />
     ),
     enableSorting: false,
     enableHiding: false,
   },
 
-  // {
-  //   accessorKey: "status",
-  //   header: "Status",
-  //   cell: ({ row }) => {
-  //     if (row.original.status === "available") {
-  //       return <Badge>{row.original.status}</Badge>;
-  //     } else if (row.original.status === "low") {
-  //       return <Badge className="bg-yellow-500">{row.original.status}</Badge>;
-  //     } else {
-  //       return <Badge className="bg-red-700">{row.original.status}</Badge>;
-  //     }
-  //   },
-  // },
-
   {
     id: "actions",
-    header: "actions",
+    header: "الإجراءات",
     cell: ({ row }) => {
       const inventory = row.original as any;
       const movementType = inventory.movementType;
@@ -68,93 +54,54 @@ export const StockMovementColumns: ColumnDef<any>[] = [
       return (
         <Dialog>
           <DialogTrigger>
-            {" "}
             <Button>
-              <Edit />" منتج"
+              <Edit className="ml-2" /> عرض المنتج
             </Button>
           </DialogTrigger>
           <DialogContent className="text-foreground overflow-y-auto" dir="rtl">
             <DialogHeader>
-              <DialogTitle className="text-center">منتج</DialogTitle>
-              {/* {description && (
-                    <DialogDescription className="text-center">
-                      {description}
-                    </DialogDescription>
-                  )} */}
+              <DialogTitle className="text-center">تفاصيل المنتج</DialogTitle>
             </DialogHeader>
 
             <div className="relative mx-auto max-w-4xl rounded-lg bg-white p-6 text-black shadow">
-              {/* Ribbon */}
               <div className="absolute -top-3 -left-3">
                 <div className="rotate-[-45deg] bg-blue-500 px-8 py-1 text-white shadow-md">
-                  Adjusted
+                  تعديل
                 </div>
               </div>
 
-              {/* Title */}
               <h1 className="mb-8 text-center text-2xl font-bold">
-                INVENTORY ADJUSTMENT
+                تفاصيل تعديل المخزون
               </h1>
 
-              {/* Details section */}
-              <div className="mb-6 grid grid-cols-2">
-                <div className="space-y-1 text-sm">
+              <div className="mb-6 grid grid-cols-2 text-sm">
+                <div className="space-y-1">
                   <div className="flex justify-between">
-                    <span>Date</span>
-                    <span> {createdAt.toLocaleDateString("ar-EN")}</span>
+                    <span>التاريخ</span>
+                    <span>{createdAt.toLocaleDateString("ar-EG")}</span>
                   </div>
-
                   <div className="flex justify-between">
-                    <span>Reason</span>
+                    <span>السبب</span>
                     <span>{reason}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Account</span>
-                    <span> {movementType}</span>
+                    <span>نوع الحركة</span>
+                    <span>{movementType}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Adjustment Type</span>
+                    <span>نوع التعديل</span>
                     <span>{adjustmentType}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Created By</span>
-                  </div>
-                  <div className="flex justify-between">
+                    <span>الكمية قبل</span>
                     <span>{quantityBefore}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span> {quantityAfter}</span>
+                    <span>الكمية بعد</span>
+                    <span>{quantityAfter}</span>
                   </div>
                 </div>
               </div>
-
-              {/* Table */}
-              {/* <Card className="border border-gray-300">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-gray-800 text-white">
-                    <TableHead className="w-12">#</TableHead>
-                    <TableHead>Item & Description</TableHead>
-                    <TableHead>Quantity Adjusted</TableHead>
-                    <TableHead>Cost Price</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <TableRow key={inventory.id}>
-                    <TableCell>
-                      <div className="font-medium">
-                        {inventory.product.name}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {inventory.description}
-                      </div>
-                    </TableCell>
-                    <TableCell>{inventory.quantity}</TableCell>
-                    <TableCell>{inventory.costPrice}</TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table> 
-            </Card>*/}
             </div>
           </DialogContent>
         </Dialog>
@@ -196,7 +143,7 @@ export const StockMovementColumns: ColumnDef<any>[] = [
   },
   {
     accessorKey: "product.sku",
-    header: "كود المنتج (SKU)",
+    header: "رمز المنتج (SKU)",
   },
   {
     accessorKey: "user.name",
@@ -218,14 +165,14 @@ export const inventoryColumns: ColumnDef<any>[] = [
           (table.getIsSomePageRowsSelected() && "indeterminate")
         }
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
+        aria-label="تحديد الكل"
       />
     ),
     cell: ({ row }) => (
       <Checkbox
         checked={row.getIsSelected()}
         onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
+        aria-label="تحديد الصف"
       />
     ),
     enableSorting: false,
@@ -233,55 +180,53 @@ export const inventoryColumns: ColumnDef<any>[] = [
   },
   {
     accessorKey: "#",
-    header: "#",
+    header: "الرقم",
     cell: ({ row }) => row.index + 1,
   },
   {
     accessorKey: "product.name",
-    header: "name",
+    header: "اسم المنتج",
   },
   {
     accessorKey: "warehouse.name",
-    header: "warehouseId",
+    header: "اسم المستودع",
   },
   {
     accessorKey: "warehouse.location",
-    header: "location",
+    header: "الموقع",
   },
   {
     accessorKey: "stockQuantity",
-    header: "Stock",
+    header: "الكمية في المخزون",
   },
   {
     accessorKey: "reservedQuantity",
-    header: "Reserved",
+    header: "الكمية المحجوزة",
   },
   {
     accessorKey: "availableQuantity",
-    header: "Available",
+    header: "الكمية المتاحة",
   },
   {
     accessorKey: "reorderLevel",
-    header: "Reorder Level",
+    header: "حد إعادة الطلب",
   },
   {
     accessorKey: "status",
-    header: "status",
-
+    header: "الحالة",
     cell: ({ row }) => {
-      let color;
       if (row.original.availableQuantity > row.original.reorderLevel) {
-        return <Badge className="bg-green-600">{row.original.status}</Badge>;
+        return <Badge className="bg-green-600">متوفر</Badge>;
       } else if (row.original.availableQuantity == row.original.reorderLevel) {
-        return <Badge className="bg-yellow-500">{row.original.status}</Badge>;
+        return <Badge className="bg-yellow-500">قريب من النفاد</Badge>;
       } else {
-        return <Badge className="bg-red-500">{row.original.status}</Badge>;
+        return <Badge className="bg-red-500">منخفض</Badge>;
       }
     },
   },
   {
     accessorKey: "createdAt",
-
+    header: "تاريخ الإنشاء",
     cell: ({ row }) => {
       const date = row.getValue("createdAt") as Date;
       return <div>{new Date(date).toLocaleDateString("ar-EG")}</div>;
@@ -289,12 +234,12 @@ export const inventoryColumns: ColumnDef<any>[] = [
   },
   {
     id: "actions",
+    header: "الإجراءات",
     cell: ({ row }) => {
       const inventory = row.original;
       return (
         <div className="flex gap-2 p-2">
-          {/* Pass the formKey to force re-render and reset the form */}
-          <InvonteryEditFormm inventory={inventory} />{" "}
+          <InvonteryEditFormm inventory={inventory} />
         </div>
       );
     },

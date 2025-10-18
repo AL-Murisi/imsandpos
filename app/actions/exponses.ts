@@ -132,8 +132,8 @@ export async function getExpensesByCompany(
       createdAt: expense.created_at,
       updatedAt: expense.updated_at,
     }));
-
-    return { data: serialized, total, pageIndex, pageSize };
+    const result = serializeData(serialized);
+    return { data: result, total, pageIndex, pageSize };
   } catch (error) {
     console.error("Error fetching expenses:", error);
     throw error;

@@ -25,6 +25,7 @@ import { Plus } from "lucide-react";
 import ImportWarehouse from "@/components/uploadwarehouse";
 import SupplierForm from "@/components/forms/supplierform";
 import { paymentColumns, supplierColumns } from "./columns";
+import { PrintPaymentsTable } from "@/components/printItems";
 
 type ProductClientProps = {
   data: any[];
@@ -62,6 +63,7 @@ export default function PaymentsTable({ data, total }: ProductClientProps) {
       </div>
 
       <DataTable
+        search={<PrintPaymentsTable payments={data} />}
         data={data}
         columns={paymentColumns}
         initialPageSize={pagination.pageSize}

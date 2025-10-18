@@ -89,11 +89,7 @@ export function ExpenseEditForm({
           </DialogDescription>
         </DialogHeader>
 
-        <form
-          onSubmit={handleSubmit(onSubmit)}
-          className="bg-accent space-y-4"
-          dir="rtl"
-        >
+        <form onSubmit={handleSubmit(onSubmit)} className="bg-accent" dir="rtl">
           <div className="grid gap-2">
             <Label>الوصف</Label>
             <Input {...register("description")} />

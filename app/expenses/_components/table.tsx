@@ -28,6 +28,7 @@ import { expenseColumns } from "./columns";
 import ExpenseForm from "./ExpenseForm";
 import { useAuth } from "@/lib/context/AuthContext";
 import ExpenseCategoryForm from "./creatCatform";
+import { PrintExpenseTable } from "@/components/printItems";
 
 type ProductClientProps = {
   data: any;
@@ -80,6 +81,7 @@ export default function ExpensesPage({
       </div>
 
       <DataTable
+        search={<PrintExpenseTable expenses={data} />}
         data={data}
         columns={expenseColumns}
         initialPageSize={pagination.pageSize}

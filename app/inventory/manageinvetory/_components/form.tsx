@@ -54,17 +54,26 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
   } = useForm<FormValues>({
     resolver: zodResolver(UpdateInventorySchema),
     defaultValues: {
-      reservedQuantity: inventory.reservedQuantity,
+      reservedQuantity:
+        inventory.reservedQuantity && inventory.reservedQuantity !== 0
+          ? inventory.reservedQuantity
+          : undefined,
       reorderLevel: inventory.reorderLevel,
-      status: inventory.status,
-      stockQuantity: 0,
-      availableQuantity: 0,
-      maxStockLevel: inventory.maxStockLevel,
+      status: inventory.status ?? undefined,
+      stockQuantity: undefined,
+      availableQuantity: undefined,
+      maxStockLevel:
+        inventory.maxStockLevel && inventory.maxStockLevel !== 0
+          ? inventory.maxStockLevel
+          : undefined,
       lastStockTake: new Date().toISOString(),
       updateType: "manual",
-      quantity: 0,
-      unitCost: Number(inventory.product?.costPrice) || 0,
-      paymentAmount: 0,
+      quantity: undefined, // user will type manually
+      unitCost:
+        inventory.product?.costPrice && inventory.product?.costPrice !== 0
+          ? Number(inventory.product.costPrice)
+          : undefined,
+      paymentAmount: undefined,
     },
   });
 
@@ -209,7 +218,7 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
                     </p>
                   )}{" "}
                 </div>
-              ))}{" "}
+              ))}
               {showPayment && (
                 <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="grid gap-2">

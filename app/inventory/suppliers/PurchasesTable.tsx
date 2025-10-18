@@ -35,6 +35,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { PaymentCreateForm } from "./PaymentCreateForm";
 import { purchaseColumns } from "./columns";
+import { PrintPurchasesTable } from "@/components/printItems";
 
 type ProductClientProps = {
   data: any[];
@@ -72,6 +73,7 @@ export default function PurchasesTable({ data, total }: ProductClientProps) {
       </div>
 
       <DataTable
+        search={<PrintPurchasesTable purchases={data} />}
         data={data}
         columns={purchaseColumns}
         initialPageSize={pagination.pageSize}

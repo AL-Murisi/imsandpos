@@ -336,7 +336,7 @@ export async function updateInventory(
         }`,
       },
     });
-
+    revalidatePath("/manageinvetory");
     return { success: true, data: updatedInventory };
   } catch (error) {
     console.error("Error updating inventory:", error);
