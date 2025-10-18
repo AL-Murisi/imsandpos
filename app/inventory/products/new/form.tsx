@@ -845,78 +845,22 @@ export default function ProductForm() {
                 <span className="text-sm font-medium">بيع بالكرتونة فقط</span>
               </label>
             </div>
-
-            {pricingMode === "full" && (
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-                <div className="grid gap-2">
-                  <Label htmlFor="unitsPerPacket">
-                    عدد الوحدات في العبوة الواحدة
-                  </Label>
-                  <Input
-                    id="unitsPerPacket"
-                    type="number"
-                    {...register("unitsPerPacket", { valueAsNumber: true })}
-                    className="text-right"
-                    placeholder="مثال: 10 وحدات"
-                  />
-                  <p className="text-right text-xs text-gray-600">
-                    (الوحدة = أصغر قطعة تباع)
-                  </p>
-                  {errors.unitsPerPacket && (
-                    <p className="text-right text-xs text-red-500">
-                      {errors.unitsPerPacket.message}
-                    </p>
-                  )}
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="packetsPerCarton">
-                    عدد العبوات في الكرتونة
-                  </Label>
-                  <Input
-                    id="packetsPerCarton"
-                    type="number"
-                    {...register("packetsPerCarton", {
-                      valueAsNumber: true,
-                    })}
-                    className="text-right"
-                    placeholder="مثال: 12 عبوة"
-                  />
-                  <p className="text-right text-xs text-gray-600">
-                    (الكرتونة = أكبر وحدة تغليف)
-                  </p>
-                  {errors.packetsPerCarton && (
-                    <p className="text-right text-xs text-red-500">
-                      {errors.packetsPerCarton.message}
-                    </p>
-                  )}
-                </div>
-
-                {unitsPerPacket && packetsPerCarton && (
-                  <div className="grid gap-2 rounded-lg p-3">
-                    <p className="text-right text-sm font-medium text-gray-700">
-                      الإجمالي لكل كرتونة:
-                    </p>
-                    <p className="text-right text-lg font-bold text-blue-600">
-                      {unitsPerPacket * packetsPerCarton} وحدة
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {pricingMode === "cartonUnit" && (
+          </div>
+          {pricingMode === "full" && (
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
               <div className="grid gap-2">
-                <Label htmlFor="unitsPerPacket">عدد الوحدات في الكرتونة</Label>
+                <Label htmlFor="unitsPerPacket">
+                  عدد الوحدات في العبوة الواحدة
+                </Label>
                 <Input
                   id="unitsPerPacket"
                   type="number"
                   {...register("unitsPerPacket", { valueAsNumber: true })}
                   className="text-right"
-                  placeholder="مثال: 120 وحدة"
+                  placeholder="مثال: 10 وحدات"
                 />
                 <p className="text-right text-xs text-gray-600">
-                  (عدد الوحدات الموجودة مباشرة في الكرتونة)
+                  (الوحدة = أصغر قطعة تباع)
                 </p>
                 {errors.unitsPerPacket && (
                   <p className="text-right text-xs text-red-500">
@@ -924,17 +868,71 @@ export default function ProductForm() {
                   </p>
                 )}
               </div>
-            )}
 
-            {pricingMode === "cartonOnly" && (
-              <div className="rounded-lg p-3">
-                <p className="text-right text-sm text-gray-600">
-                  ✓ سيتم بيع المنتج بالكرتونة فقط - لا توجد خيارات بيع أخرى
+              <div className="grid gap-2">
+                <Label htmlFor="packetsPerCarton">
+                  عدد العبوات في الكرتونة
+                </Label>
+                <Input
+                  id="packetsPerCarton"
+                  type="number"
+                  {...register("packetsPerCarton", {
+                    valueAsNumber: true,
+                  })}
+                  className="text-right"
+                  placeholder="مثال: 12 عبوة"
+                />
+                <p className="text-right text-xs text-gray-600">
+                  (الكرتونة = أكبر وحدة تغليف)
                 </p>
+                {errors.packetsPerCarton && (
+                  <p className="text-right text-xs text-red-500">
+                    {errors.packetsPerCarton.message}
+                  </p>
+                )}
               </div>
-            )}
-          </div>
 
+              {unitsPerPacket && packetsPerCarton && (
+                <div className="grid gap-2 rounded-lg p-3">
+                  <p className="text-right text-sm font-medium text-gray-700">
+                    الإجمالي لكل كرتونة:
+                  </p>
+                  <p className="text-right text-lg font-bold text-blue-600">
+                    {unitsPerPacket * packetsPerCarton} وحدة
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {pricingMode === "cartonUnit" && (
+            <div className="grid gap-2">
+              <Label htmlFor="unitsPerPacket">عدد الوحدات في الكرتونة</Label>
+              <Input
+                id="unitsPerPacket"
+                type="number"
+                {...register("unitsPerPacket", { valueAsNumber: true })}
+                className="text-right"
+                placeholder="مثال: 120 وحدة"
+              />
+              <p className="text-right text-xs text-gray-600">
+                (عدد الوحدات الموجودة مباشرة في الكرتونة)
+              </p>
+              {errors.unitsPerPacket && (
+                <p className="text-right text-xs text-red-500">
+                  {errors.unitsPerPacket.message}
+                </p>
+              )}
+            </div>
+          )}
+
+          {pricingMode === "cartonOnly" && (
+            <div className="rounded-lg p-3">
+              <p className="text-right text-sm text-gray-600">
+                ✓ سيتم بيع المنتج بالكرتونة فقط - لا توجد خيارات بيع أخرى
+              </p>
+            </div>
+          )}
           <div className="grid gap-6">
             {/* Product Identifiers */}
             <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
