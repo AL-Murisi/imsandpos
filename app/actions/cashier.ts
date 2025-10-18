@@ -43,8 +43,6 @@ export async function processSale(data: any, companyId: string) {
     receivedAmount,
   } = data;
 
-  // 💡 FIX 1: Increase the transaction timeout to 20 seconds (20000ms).
-  // This directly addresses the P2028 error for long-running loops.
   const result = await prisma.$transaction(
     async (tx) => {
       // 1. Create the main Sale record
@@ -67,18 +65,35 @@ export async function processSale(data: any, companyId: string) {
         },
       });
 
-      // Arrays to collect SaleItem and StockMovement operations for later batch execution
       const saleItemCreates = [];
       const stockMovementCreates = [];
 
+      // ✅ Helper function to convert selling unit to base units
+      function convertToBaseUnits(
+        qty: number,
+        sellingUnit: string,
+        unitsPerPacket: number,
+        packetsPerCarton: number,
+      ): number {
+        if (sellingUnit === "unit") {
+          return qty;
+        } else if (sellingUnit === "packet") {
+          return qty * unitsPerPacket;
+        } else if (sellingUnit === "carton") {
+          return qty * unitsPerPacket * packetsPerCarton;
+        }
+        return qty;
+      }
+
       // 2. Process Cart Items (Must be sequential for inventory check/update)
       for (const item of cart) {
-        const quantityInUnits =
-          item.sellingUnit === "unit"
-            ? item.selectedQty
-            : item.sellingUnit === "packet"
-              ? item.selectedQty * item.unitsPerPacket
-              : item.selectedQty * item.unitsPerPacket * item.packetsPerCarton;
+        // ✅ FIX: Properly convert to base units based on selling unit and product structure
+        const quantityInUnits = convertToBaseUnits(
+          item.selectedQty,
+          item.sellingUnit,
+          item.unitsPerPacket || 1,
+          item.packetsPerCarton || 1,
+        );
 
         // Check inventory within the transaction
         const inventory = await tx.inventory.findUnique({
@@ -92,7 +107,6 @@ export async function processSale(data: any, companyId: string) {
         });
 
         if (!inventory || inventory.availableQuantity < quantityInUnits) {
-          // If stock is insufficient, the transaction rolls back
           throw new Error(
             `Insufficient stock for ${item.name}. Available: ${inventory?.availableQuantity || 0}, Requested: ${quantityInUnits}.`,
           );
@@ -101,7 +115,7 @@ export async function processSale(data: any, companyId: string) {
         const newStock = inventory.stockQuantity - quantityInUnits;
         const newAvailable = inventory.availableQuantity - quantityInUnits;
 
-        // 3. Update Inventory (Must be sequential)
+        // 3. Update Inventory
         await tx.inventory.update({
           where: {
             companyId_productId_warehouseId: {
@@ -122,17 +136,19 @@ export async function processSale(data: any, companyId: string) {
           },
         });
 
-        // Calculate prices once
-        const unitPrice =
-          item.sellingUnit === "unit"
-            ? item.pricePerUnit || 0
-            : item.sellingUnit === "packet"
-              ? item.pricePerPacket || 0
-              : item.pricePerCarton || 0;
+        // ✅ FIX: Get the correct unit price based on selling unit
+        let unitPrice = 0;
+        if (item.sellingUnit === "unit") {
+          unitPrice = item.pricePerUnit || 0;
+        } else if (item.sellingUnit === "packet") {
+          unitPrice = item.pricePerPacket || 0;
+        } else if (item.sellingUnit === "carton") {
+          unitPrice = item.pricePerCarton || 0;
+        }
 
         const totalPrice = unitPrice * item.selectedQty;
 
-        // 4. Collect SaleItem creation promise
+        // 4. Create SaleItem
         saleItemCreates.push(
           tx.saleItem.create({
             data: {
@@ -147,7 +163,7 @@ export async function processSale(data: any, companyId: string) {
           }),
         );
 
-        // 5. Collect StockMovement creation promise
+        // 5. Create StockMovement
         stockMovementCreates.push(
           tx.stockMovement.create({
             data: {
@@ -168,7 +184,6 @@ export async function processSale(data: any, companyId: string) {
       }
 
       // 6. Execute all SaleItem and StockMovement creations in parallel
-      // This reduces the number of sequential database calls
       await Promise.all([...saleItemCreates, ...stockMovementCreates]);
 
       // 7. Update Customer Outstanding Balance (if applicable)
@@ -176,7 +191,6 @@ export async function processSale(data: any, companyId: string) {
         const amountDue = totalAfterDiscount - receivedAmount;
 
         await tx.customer.update({
-          // Using both id and companyId for multi-tenancy check on update
           where: { id: customerId, companyId },
           data: {
             outstandingBalance: amountDue,
@@ -186,7 +200,6 @@ export async function processSale(data: any, companyId: string) {
       if (customerId && receivedAmount > totalAfterDiscount) {
         const change = receivedAmount - totalAfterDiscount;
         await tx.customer.update({
-          // Using both id and companyId for multi-tenancy check on update
           where: { id: customerId, companyId },
           data: {
             balance: change,
@@ -220,7 +233,7 @@ export async function processSale(data: any, companyId: string) {
         "user agent",
       );
 
-      // 10. Prepare response (convert Decimals to string for Next.js API safety)
+      // 10. Prepare response
       const saleForClient = {
         ...sale,
         taxAmount: sale.taxAmount.toString(),
@@ -234,11 +247,9 @@ export async function processSale(data: any, companyId: string) {
       return { message: "Sale processed successfully", sale: saleForClient };
     },
     {
-      timeout: 20000, // 💡 FIX 1: Explicitly set timeout to 20 seconds (20000ms)
+      timeout: 20000,
     },
   );
-
-  // Ensure these functions are imported from 'next/cache' if using Next.js App Router
 
   revalidatePath("/cashiercontrol");
 
