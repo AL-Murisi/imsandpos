@@ -162,7 +162,6 @@ interface ExtendedInventoryUpdateData {
 
 // NOTE: I'm keeping the original function signature for simplicity of the fix,
 // assuming InventoryUpdateWithTrackingInput is the base type.
-
 export async function updateInventory(
   data: ExtendedInventoryUpdateData,
   userId: string,
@@ -180,6 +179,7 @@ export async function updateInventory(
       unitCost,
       paymentMethod,
       paymentAmount,
+      supplierId: providedSupplierId, // ✅ Get from data
       ...updateData
     } = data;
 
@@ -193,7 +193,23 @@ export async function updateInventory(
 
     const unitsPerPacket = currentInventory.product.unitsPerPacket || 1;
     const packetsPerCarton = currentInventory.product.packetsPerCarton || 1;
-    const supplierId = currentInventory.product.supplierId || "";
+    const supplierId =
+      providedSupplierId || currentInventory.product.supplierId;
+
+    // ✅ CRITICAL: Only create purchase if we have a valid supplierId
+    if (!supplierId) {
+      throw new Error("Supplier ID is required for inventory updates");
+    }
+
+    // ✅ Verify supplier exists before creating purchase
+    const supplierExists = await prisma.supplier.findUnique({
+      where: { id: supplierId },
+    });
+
+    if (!supplierExists) {
+      throw new Error(`Supplier with ID ${supplierId} not found`);
+    }
+
     const cartonToUnits = (cartons: number) =>
       cartons * packetsPerCarton * unitsPerPacket;
 
@@ -224,7 +240,9 @@ export async function updateInventory(
     } else {
       calculatedStatus = "available";
     }
+
     if (!inputCartons) return;
+
     // 3. Prepare purchase data if needed
     let purchaseId: string | null = null;
 
@@ -235,7 +253,7 @@ export async function updateInventory(
     const purchase = await prisma.purchase.create({
       data: {
         companyId,
-        supplierId,
+        supplierId, // ✅ Now guaranteed to be valid
         totalAmount: totalCost,
         amountDue: totalCost,
         status: "pending",
@@ -259,10 +277,6 @@ export async function updateInventory(
     if (paymentMethod && paymentAmount && paymentAmount > 0) {
       const newAmountPaid = (Number(purchase.amountPaid) || 0) + paymentAmount;
       const newAmountDue = totalCost - newAmountPaid;
-
-      if (newAmountPaid > totalCost) {
-        throw new Error("Payment exceeds total purchase amount");
-      }
 
       await prisma.supplierPayment.create({
         data: {
@@ -336,6 +350,7 @@ export async function updateInventory(
         }`,
       },
     });
+
     revalidatePath("/manageinvetory");
     return { success: true, data: updatedInventory };
   } catch (error) {

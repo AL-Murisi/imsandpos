@@ -54,10 +54,8 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
   } = useForm<FormValues>({
     resolver: zodResolver(UpdateInventorySchema),
     defaultValues: {
-      reservedQuantity:
-        inventory.reservedQuantity && inventory.reservedQuantity !== 0
-          ? inventory.reservedQuantity
-          : undefined,
+      reservedQuantity: inventory.reservedQuantity ?? 0,
+
       reorderLevel: inventory.reorderLevel,
       status: inventory.status ?? undefined,
       stockQuantity: undefined,
