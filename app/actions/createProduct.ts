@@ -24,7 +24,6 @@ export async function CreateProduct(
   const {
     name,
     sku,
-
     description,
     categoryId,
     brandId,
@@ -37,99 +36,92 @@ export async function CreateProduct(
     pricePerCarton,
     wholesalePrice,
     minWholesaleQty,
-
     dimensions,
     supplierId,
     warehouseId,
   } = parsed.data;
-  const action = "created product";
-  const details = "";
-  const ip = "";
-  const userAgent = "";
+
   try {
-    const result = await prisma.$transaction(async (tx) => {
-      // 1. Create product
-      const product = await tx.product.create({
-        data: {
-          name,
-          sku,
-          companyId,
-          description,
-          categoryId,
-          brandId,
-          type,
-          unitsPerPacket,
-          packetsPerCarton,
-          costPrice,
-          pricePerUnit,
-          pricePerPacket,
-          pricePerCarton,
-          wholesalePrice,
-          minWholesaleQty,
+    // ✅ Create product FIRST (outside transaction to avoid issues)
+    const product = await prisma.product.create({
+      data: {
+        name,
+        sku,
+        companyId,
+        description,
+        categoryId,
+        brandId,
+        type,
+        unitsPerPacket,
+        packetsPerCarton,
+        costPrice,
+        pricePerUnit,
+        pricePerPacket,
+        pricePerCarton,
+        wholesalePrice,
+        minWholesaleQty,
+        dimensions,
+        supplierId,
+        warehouseId,
+      },
+    });
 
-          dimensions,
-          supplierId,
-          warehouseId,
-        },
-      });
-      const logs = await tx.activityLogs.create({
-        data: {
-          userId,
-          companyId,
-          action,
-          details,
-        },
-      });
+    // ✅ Create inventory in separate call
+    const inventory = await prisma.inventory.create({
+      data: {
+        companyId,
+        productId: product.id,
+        warehouseId,
+        stockQuantity: 0,
+        reservedQuantity: 0,
+        availableQuantity: 0,
+        reorderLevel: 10,
+        maxStockLevel: 0,
+        status: "out_of_stock",
+      },
+    });
 
-      const inventory = await tx.inventory.create({
+    // ✅ Log activity separately
+    const logs = await prisma.activityLogs.create({
+      data: {
+        userId,
+        companyId,
+        action: "created product",
+        details: `Product: ${name}, SKU: ${sku}`,
+      },
+    });
+
+    // ✅ Create initial stock movement if needed
+    if (initialStock > 0) {
+      await prisma.stockMovement.create({
         data: {
           companyId,
           productId: product.id,
           warehouseId,
-          stockQuantity: 0,
-          reservedQuantity: 0,
-          availableQuantity: 0,
-          reorderLevel: 10,
-          maxStockLevel: 0,
-          status: "out_of_stock",
+          userId,
+          movementType: "in",
+          quantity: initialStock,
+          reason: "initial_stock",
+          quantityBefore: 0,
+          quantityAfter: initialStock,
+          notes: `Initial stock for product ${name}`,
         },
       });
+    }
 
-      // 3. Optional: create initial stock movement if stock > 0
-      if (initialStock > 0) {
-        await tx.stockMovement.create({
-          data: {
-            companyId,
-            productId: product.id,
-            warehouseId,
-            userId: "system", // replace with real user ID
-            movementType: "in",
-            quantity: initialStock,
-            reason: "initial_stock",
-            quantityBefore: 0,
-            quantityAfter: initialStock,
-            notes: `Initial stock for product ${name}`,
-          },
-        });
-      }
-
-      // 4. Revalidate path for Next.js cache
-      revalidatePath("/products/ProductClient");
-
-      return { product, inventory, logs };
-    });
+    // ✅ Revalidate cache
+    revalidatePath("/products/ProductClient");
 
     return {
-      ...result.product,
-      costPrice: Number(result.product.costPrice),
-      pricePerUnit: result.product.pricePerUnit
-        ? Number(result.product.pricePerUnit)
-        : null,
-      pricePerPacket: Number(result.product.pricePerPacket),
-      pricePerCarton: Number(result.product.pricePerCarton),
-      wholesalePrice: Number(result.product.wholesalePrice),
-      weight: result.product.weight ? Number(result.product.weight) : null,
-      inventory: result.inventory,
+      id: product.id,
+      name: product.name,
+      sku: product.sku,
+      costPrice: Number(product.costPrice),
+      pricePerUnit: product.pricePerUnit ? Number(product.pricePerUnit) : null,
+      pricePerPacket: Number(product.pricePerPacket),
+      pricePerCarton: Number(product.pricePerCarton),
+      wholesalePrice: Number(product.wholesalePrice),
+      inventory,
     };
   } catch (error) {
     console.error("Failed to create product:", error);
@@ -213,12 +205,52 @@ export async function getAllActiveProductsForSale(
     return { availablePackets, availableCartons };
   }
 
+  // ✅ Determine product selling mode
+  function getSellingMode(product: any) {
+    const hasUnit = product.pricePerUnit && product.pricePerUnit > 0;
+    const hasPacket = product.pricePerPacket && product.pricePerPacket > 0;
+    const hasCarton = product.pricePerCarton && product.pricePerCarton > 0;
+
+    // full: unit + packet + carton
+    if (hasUnit && hasPacket && hasCarton) return "full";
+    // cartonUnit: unit + carton (no packet)
+    if (hasUnit && !hasPacket && hasCarton) return "cartonUnit";
+    // cartonOnly: carton only
+    if (!hasUnit && !hasPacket && hasCarton) return "cartonOnly";
+    // fallback
+    return "full";
+  }
+
   return activeProducts.map((product) => {
     const availableUnits = product.inventory[0]?.availableQuantity ?? 0;
     const { availablePackets, availableCartons } = convertFromBaseUnit(
       product,
       availableUnits,
     );
+
+    const sellingMode = getSellingMode(product);
+
+    // ✅ Only return quantities that are actually sold
+    let finalAvailableUnits = 0;
+    let finalAvailablePackets = 0;
+    let finalAvailableCartons = 0;
+
+    if (sellingMode === "full") {
+      // Sell all three levels
+      finalAvailableUnits = availableUnits;
+      finalAvailablePackets = availablePackets;
+      finalAvailableCartons = availableCartons;
+    } else if (sellingMode === "cartonUnit") {
+      // Only sell units and cartons, hide packets
+      finalAvailableUnits = availableUnits;
+      finalAvailableCartons = availableCartons;
+      finalAvailablePackets = 0; // ✅ Don't show packets
+    } else if (sellingMode === "cartonOnly") {
+      // Only sell cartons, hide units and packets
+      finalAvailableCartons = availableCartons;
+      finalAvailableUnits = 0; // ✅ Don't show units
+      finalAvailablePackets = 0; // ✅ Don't show packets
+    }
 
     return {
       id: product.id,
@@ -231,9 +263,10 @@ export async function getAllActiveProductsForSale(
       pricePerCarton: Number(product.pricePerCarton) || 0,
       unitsPerPacket: product.unitsPerPacket,
       packetsPerCarton: product.packetsPerCarton,
-      availableUnits,
-      availablePackets,
-      availableCartons,
+      availableUnits: finalAvailableUnits,
+      availablePackets: finalAvailablePackets,
+      availableCartons: finalAvailableCartons,
+      sellingMode, // ✅ Optional: helpful for debugging
     };
   });
 }

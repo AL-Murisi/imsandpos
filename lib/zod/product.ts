@@ -41,24 +41,40 @@ export const CreateProductSchema = z
     brandId: z.string().nullable().optional(),
     type: z.enum(["single", "bundle", "variant"]).nullable().optional(),
 
-    unitsPerPacket: z.number().int().min(1, "عدد الوحدات في العبوة مطلوب"),
-    packetsPerCarton: z.number().int().min(1, "عدد العبوات في الكرتون مطلوب"),
+    // ✅ Allow 0 for carton-only products
+    unitsPerPacket: z
+      .number()
+      .int()
+      .min(0, "عدد الوحدات في العبوة يجب أن يكون 0 أو أكثر"),
+    packetsPerCarton: z
+      .number()
+      .int()
+      .min(0, "عدد العبوات في الكرتون يجب أن يكون 0 أو أكثر"),
+
     costPrice: z.number().positive("سعر التكلفة يجب أن يكون موجبًا"),
+
+    // ✅ Optional for single-unit products, can be 0 for carton-only
     pricePerUnit: z
       .number()
-      .positive("سعر الوحدة يجب أن يكون موجبًا")
-      .optional(), // Optional if not all products are sold by unit
-    pricePerPacket: z.number().positive("سعر العبوة يجب أن يكون موجبًا"),
+      .min(0, "سعر الوحدة يجب أن يكون 0 أو أكثر")
+      .optional(),
+
+    // ✅ Allow 0 for carton-only products
+    pricePerPacket: z.number().min(0, "سعر العبوة يجب أن يكون 0 أو أكثر"),
+
     pricePerCarton: z.number().positive("سعر الكرتون يجب أن يكون موجبًا"),
+
     wholesalePrice: z.number().positive("سعر الجملة يجب أن يكون موجبًا"),
+
+    // ✅ Allow 0 for carton-only products
     minWholesaleQty: z
       .number()
       .int()
-      .min(1, "الحد الأدنى للكمية بالجملة مطلوب"),
+      .min(0, "الحد الأدنى للكمية بالجملة يجب أن يكون 0 أو أكثر"),
+
     dimensions: z.string().nullable().optional(),
     supplierId: z.string().min(1, "معرّف المورد مطلوب").optional(),
     warehouseId: z.string().min(1, "معرّف المستودع مطلوب"),
-    // status: z.enum(["active", "inactive", "discontinued"]),
   })
   .refine((data) => data.pricePerCarton > data.costPrice, {
     message: "سعر البيع يجب أن يكون أكبر من سعر التكلفة",
@@ -68,7 +84,6 @@ export const CreateProductSchema = z
     message: "سعر الجملة يجب أن يكون أكبر أو يساوي سعر التكلفة",
     path: ["wholesalePrice"],
   });
-
 export type CreateProductInput = z.infer<typeof CreateProductSchema>;
 export const UpdateProductSchema = productSchema.partial();
 export type UpdateProductFormValues = z.infer<typeof UpdateProductSchema>;

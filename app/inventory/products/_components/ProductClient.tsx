@@ -89,10 +89,10 @@ export default function ProductClient({
           paramKey={"supplierId"}
           placeholder="Supplier"
         />
-
-        <Link href={"/inventory/products/new"}>
+        <ProductForm />
+        {/* <Link href={"/inventory/products/new"}>
           <Button>{t("new")}</Button>
-        </Link>
+        </Link> */}
         {/* <CustomDialog
           trigger={}
           title="Add Product"
