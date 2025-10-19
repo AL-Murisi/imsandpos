@@ -16,27 +16,26 @@ import {
 } from "@/components/ui/dialog";
 import { useState, useEffect } from "react";
 import { getExpenseCategories, updateExpense } from "@/app/actions/exponses";
+import { SelectField } from "@/components/common/selectproduct";
+import ExpenseCategoryForm from "./creatCatform";
 
-export function ExpenseEditForm({
-  expense,
-  onClose,
-}: {
-  expense: any;
-  onClose?: () => void;
-}) {
-  const { register, handleSubmit, setValue } = useForm({
+export function ExpenseEditForm({ expense }: { expense: any }) {
+  const { register, handleSubmit, setValue, watch } = useForm({
     defaultValues: {
       description: expense.description,
       amount: Number(expense.amount),
-      paymentMethod: expense.paymentMethod,
+      payment_method: expense.payment_method,
       status: expense.status,
       notes: expense.notes || "",
       expenseDate: new Date(expense.expenseDate).toISOString().slice(0, 16),
       categoryId: expense.categoryId,
     },
   });
-
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const paymentMethod = watch("payment_method");
+  const status = watch("status");
   const { user } = useAuth();
+  if (!user) return;
   const [categories, setCategories] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   useEffect(() => {
@@ -48,7 +47,7 @@ export function ExpenseEditForm({
   const onSubmit = async (data: any) => {
     try {
       if (!user) return;
-
+      setIsSubmitting(true);
       const result = await updateExpense(
         expense.id,
         user.companyId,
@@ -56,7 +55,7 @@ export function ExpenseEditForm({
         {
           description: data.description,
           amount: Number(data.amount),
-          paymentMethod: data.paymentMethod,
+          payment_method: data.payment_method,
           status: data.status,
           notes: data.notes,
           expense_date: new Date(data.expenseDate),
@@ -66,7 +65,8 @@ export function ExpenseEditForm({
 
       if (result.success) {
         toast.success("تم تحديث المصروف بنجاح");
-        onClose?.();
+        setOpen(false);
+        setIsSubmitting(false);
       } else {
         toast.error(result.error || "فشل التحديث");
       }
@@ -75,13 +75,26 @@ export function ExpenseEditForm({
       console.error(error);
     }
   };
+  const paymentMethods = [
+    { id: "cash", name: "نقداً" },
+    { id: "bank_transfer", name: "تحويل بنكي" },
+    { id: "check", name: "شيك" },
+    { id: "credit", name: "ائتمان" },
+  ];
+
+  const statusOptions = [
+    { id: "pending", name: "قيد الانتظار" },
+    { id: "approved", name: "موافق عليه" },
+    { id: "rejected", name: "مرفوض" },
+    { id: "paid", name: "مدفوع" },
+  ];
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={setOpen} modal={false}>
       <DialogTrigger asChild>
         <Button variant="outline">تسديد الدين</Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md" dir="rtl">
+      <DialogContent className="bg-accent sm:max-w-md" dir="rtl">
         <DialogHeader>
           <DialogTitle>تأكيد الدفع</DialogTitle>
           <DialogDescription>
@@ -89,7 +102,7 @@ export function ExpenseEditForm({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="bg-accent" dir="rtl">
+        <form onSubmit={handleSubmit(onSubmit)} className="" dir="rtl">
           <div className="grid gap-2">
             <Label>الوصف</Label>
             <Input {...register("description")} />
@@ -116,21 +129,25 @@ export function ExpenseEditForm({
           </div>
 
           <div className="grid gap-2">
-            <Label>طريقة الدفع</Label>
-            <select
-              {...register("paymentMethod")}
-              className="rounded-md border px-3 py-2"
-            >
-              <option value="cash">نقداً</option>
-              <option value="bank_transfer">تحويل بنكي</option>
-              <option value="check">شيك</option>
-              <option value="credit">ائتمان</option>
-            </select>
+            ` <Label>طريقة الدفع</Label>
+            <SelectField
+              options={paymentMethods}
+              value={paymentMethod}
+              action={(val) => setValue("payment_method", val)}
+              placeholder="اختر الفئة"
+            />
+            `
           </div>
 
           <div className="grid gap-2">
             <Label>الحالة</Label>
-            <select
+            <SelectField
+              options={statusOptions}
+              value={status}
+              action={(val) => setValue("status", val)}
+              placeholder="اختر الفئة"
+            />
+            {/* <select
               {...register("status")}
               className="rounded-md border px-3 py-2"
             >
@@ -138,7 +155,7 @@ export function ExpenseEditForm({
               <option value="approved">موافق عليه</option>
               <option value="rejected">مرفوض</option>
               <option value="paid">مدفوع</option>
-            </select>
+            </select> */}
           </div>
 
           <div className="grid gap-2">
@@ -156,10 +173,16 @@ export function ExpenseEditForm({
           </div>
 
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+            >
               إلغاء
             </Button>
-            <Button type="submit">تحديث</Button>
+            <Button disabled={isSubmitting} type="submit">
+              {isSubmitting ? "جاري الحفظ..." : "تحديث"}
+            </Button>
           </div>
         </form>
       </DialogContent>

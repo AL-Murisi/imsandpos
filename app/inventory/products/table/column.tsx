@@ -381,7 +381,7 @@ export const createColumns = (): ColumnDef<ProductFormValues>[] => [
             description="أدخل تفاصيل المنتج واحفظه"
           >
             {/* Pass the formKey to force re-render and reset the form */}
-            <ProductEditFormm sku={product.sku} />
+            <ProductEditFormm product={product.sku} />
           </CustomDialog>
 
           <Button

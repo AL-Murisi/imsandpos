@@ -1,13 +1,5 @@
 "use client";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-
 import dynamic from "next/dynamic";
 const Calendar22 = dynamic(
   () => import("@/components/common/DatePicker").then((m) => m.Calendar22),
@@ -18,24 +10,14 @@ const Calendar22 = dynamic(
 );
 
 import { DataTable } from "@/components/common/test";
-import { Button } from "@/components/ui/button";
 import { useTablePrams } from "@/hooks/useTableParams";
 
 import SearchInput from "@/components/common/searchtest";
 
-import Link from "next/link";
 import { useTranslations } from "next-intl";
 
-import { Plus } from "lucide-react";
-import ImportWarehouse from "@/components/uploadwarehouse";
-import SupplierForm from "@/components/forms/supplierform";
-
-import { ColumnDef } from "@tanstack/table-core";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
-import { PaymentCreateForm } from "./PaymentCreateForm";
-import { purchaseColumns } from "./columns";
 import { PrintPurchasesTable } from "@/components/printItems";
+import { purchaseColumns } from "./columns";
 
 type ProductClientProps = {
   data: any[];

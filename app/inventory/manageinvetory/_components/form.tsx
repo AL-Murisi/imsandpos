@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { UpdateInventorySchema } from "@/lib/zod/inventory";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/context/AuthContext";
-import { SelectField } from "../../products/_components/selectproduct";
+import { SelectField } from "../../../../components/common/selectproduct";
 import { fetchAllFormData } from "@/app/actions/roles";
 import {
   Dialog,
@@ -83,21 +83,34 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
 
   const [open, setOpen] = useState(false);
   // ✅ Fixed useEffect (cannot be async directly)
+  // ==========================================================
   useEffect(() => {
+    // If the dialog is closing, we reset the form state for the next time.
+    if (!open) {
+      reset();
+      setUpdateType("manual");
+      setShowPayment(false);
+      // Do not continue to load data if closed
+      return;
+    }
+
+    // Dialog is opening (open === true): Load data
     const loadData = async () => {
       const now = new Date();
       const localIso = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
         .toISOString()
         .slice(0, 16);
 
+      // This is the network call that was running on every mount
       const data = await fetchAllFormData(user.companyId);
       setSuppliers(data.suppliers || []);
+
+      // Set the lastStockTake value
       setValue("lastStockTake", localIso);
     };
 
     loadData();
-  }, [setValue, user.companyId]);
-
+  }, [open, user.companyId, reset, setValue]);
   // ✅ Calculate total cost
   const totalCost = (quantity || 0) * (unitCost || 0);
 
@@ -141,7 +154,7 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={setOpen} modal={false}>
       <DialogTrigger asChild>
         <Button variant="outline">
           <Edit /> منتج

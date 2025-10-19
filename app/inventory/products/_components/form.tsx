@@ -1,14 +1,8 @@
 "use client";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useForm } from "react-hook-form";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+
 import {
   Dialog,
   DialogContent,
@@ -22,12 +16,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CreateProduct } from "@/app/actions/createProduct";
 import { fetchAllFormData } from "@/app/actions/roles";
-import { SelectField } from "../_components/selectproduct";
+import { SelectField } from "@/components/common/selectproduct";
 import { useAuth } from "@/lib/context/AuthContext";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { CreateProductInput, CreateProductSchema } from "@/lib/zod";
 import { Edit } from "lucide-react";
+import CategoryForm from "@/components/forms/catigresShortcut";
+import WarehouseForm from "@/components/forms/warehouseShortcut";
+import SupplierForm from "@/components/forms/suppliershortcut";
 
 interface Option {
   id: string;
@@ -91,23 +88,25 @@ const generateSKU = (productName: string, categoryName: string): string => {
   const randomPart = Math.floor(1000 + Math.random() * 9000);
   return `${namePart}-${categoryPart}-${randomPart}`;
 };
-
-export default function ProductForm() {
-  const [formData, setFormData] = useState<{
+interface ExpenseFormProps {
+  formData: {
     warehouses: Option[];
     categories: Option[];
     brands: Option[];
     suppliers: Option[];
-  }>({
-    warehouses: [],
-    categories: [],
-    brands: [],
-    suppliers: [],
-  });
+  };
+}
+export default function ProductForm({ formData }: ExpenseFormProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pricingMode, setPricingMode] = useState<
+    "full" | "cartonUnit" | "cartonOnly"
+  >("full");
+
   const { user } = useAuth();
+  const isUpdatingRef = useRef(false);
+
   if (!user) return;
 
   const {
@@ -130,27 +129,12 @@ export default function ProductForm() {
   const pricePerCarton = watch("pricePerCarton");
   const pricePerUnit = watch("pricePerUnit");
   const pricePerPacket = watch("pricePerPacket");
-  const [pricingMode, setPricingMode] = useState<
-    "full" | "cartonUnit" | "cartonOnly"
-  >("full");
 
   const t = useTranslations("productForm");
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const data = await fetchAllFormData(user.companyId);
-        setFormData(data);
-      } catch (error) {
-        console.error("Error fetching form data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
+  // ✅ Load form options once on mount
 
+  // ✅ Auto-generate SKU when name or category changes
   useEffect(() => {
     if (watchedName && watchedCategoryId) {
       const category = formData.categories.find(
@@ -161,9 +145,12 @@ export default function ProductForm() {
         setValue("sku", generatedSKU);
       }
     }
-  }, [watchedName, watchedCategoryId, formData.categories, setValue]);
+  }, [watchedName, watchedCategoryId, formData.categories]);
 
+  // ✅ Auto-calculate prices for full mode - FIXED
   useEffect(() => {
+    if (isUpdatingRef.current) return;
+
     if (
       pricingMode === "full" &&
       pricePerCarton &&
@@ -171,6 +158,7 @@ export default function ProductForm() {
       packetsPerCarton &&
       pricePerCarton > 0
     ) {
+      isUpdatingRef.current = true;
       const calculatedPricePerPacket = pricePerCarton / packetsPerCarton;
       setValue(
         "pricePerPacket",
@@ -178,20 +166,26 @@ export default function ProductForm() {
       );
       const calculatedPricePerUnit = calculatedPricePerPacket / unitsPerPacket;
       setValue("pricePerUnit", Math.round(calculatedPricePerUnit * 100) / 100);
+      isUpdatingRef.current = false;
     }
-  }, [pricePerCarton, unitsPerPacket, packetsPerCarton, pricingMode, setValue]);
+  }, [pricePerCarton, unitsPerPacket, packetsPerCarton, pricingMode]);
 
+  // ✅ Auto-calculate prices for cartonUnit mode - FIXED
   useEffect(() => {
+    if (isUpdatingRef.current) return;
+
     if (
       pricingMode === "cartonUnit" &&
       pricePerCarton &&
       unitsPerPacket &&
       pricePerCarton > 0
     ) {
+      isUpdatingRef.current = true;
       const calculatedPricePerUnit = pricePerCarton / unitsPerPacket;
       setValue("pricePerUnit", Math.round(calculatedPricePerUnit * 100) / 100);
+      isUpdatingRef.current = false;
     }
-  }, [pricePerCarton, unitsPerPacket, pricingMode, setValue]);
+  }, [pricePerCarton, unitsPerPacket, pricingMode]);
 
   const onSubmit = async (data: CreateProductInput) => {
     try {
@@ -216,15 +210,7 @@ export default function ProductForm() {
           warehouseId: "",
         });
         setOpen(false);
-        setFormData({
-          warehouses: [],
-          categories: [],
-          brands: [],
-          suppliers: [],
-        });
         setPricingMode("full");
-        const newData = await fetchAllFormData(user.companyId);
-        setFormData(newData);
       }
     } catch (error) {
       toast.error("❌ حدث خطأ أثناء إضافة المنتج");
@@ -235,7 +221,7 @@ export default function ProductForm() {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={setOpen} modal={false}>
       <DialogTrigger asChild>
         <Button variant="outline">
           <Edit /> منتج جديد
@@ -262,8 +248,7 @@ export default function ProductForm() {
                   checked={pricingMode === "full"}
                   onChange={() => {
                     setPricingMode("full");
-                    setValue("pricePerUnit", undefined);
-                    setValue("pricePerPacket", 0);
+                    setValue("packetsPerCarton", 0);
                   }}
                   className="cursor-pointer"
                 />
@@ -305,93 +290,6 @@ export default function ProductForm() {
           </div>
 
           {/* Packaging Fields */}
-          {pricingMode === "full" && (
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-              <div className="grid gap-2">
-                <Label htmlFor="unitsPerPacket">
-                  عدد الوحدات في العبوة الواحدة
-                </Label>
-                <Input
-                  id="unitsPerPacket"
-                  type="number"
-                  {...register("unitsPerPacket", { valueAsNumber: true })}
-                  className="text-right"
-                  placeholder="مثال: 10 وحدات"
-                />
-                <p className="text-right text-xs text-gray-600">
-                  (الوحدة = أصغر قطعة تباع)
-                </p>
-                {errors.unitsPerPacket && (
-                  <p className="text-right text-xs text-red-500">
-                    {errors.unitsPerPacket.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="packetsPerCarton">
-                  عدد العبوات في الكرتونة
-                </Label>
-                <Input
-                  id="packetsPerCarton"
-                  type="number"
-                  {...register("packetsPerCarton", {
-                    valueAsNumber: true,
-                  })}
-                  className="text-right"
-                  placeholder="مثال: 12 عبوة"
-                />
-                <p className="text-right text-xs text-gray-600">
-                  (الكرتونة = أكبر وحدة تغليف)
-                </p>
-                {errors.packetsPerCarton && (
-                  <p className="text-right text-xs text-red-500">
-                    {errors.packetsPerCarton.message}
-                  </p>
-                )}
-              </div>
-
-              {unitsPerPacket && packetsPerCarton && (
-                <div className="grid gap-2 rounded-lg p-3">
-                  <p className="text-right text-sm font-medium text-gray-700">
-                    الإجمالي لكل كرتونة:
-                  </p>
-                  <p className="text-right text-lg font-bold text-blue-600">
-                    {unitsPerPacket * packetsPerCarton} وحدة
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {pricingMode === "cartonUnit" && (
-            <div className="grid gap-2">
-              <Label htmlFor="unitsPerPacket">عدد الوحدات في الكرتونة</Label>
-              <Input
-                id="unitsPerPacket"
-                type="number"
-                {...register("unitsPerPacket", { valueAsNumber: true })}
-                className="text-right"
-                placeholder="مثال: 120 وحدة"
-              />
-              <p className="text-right text-xs text-gray-600">
-                (عدد الوحدات الموجودة مباشرة في الكرتونة)
-              </p>
-              {errors.unitsPerPacket && (
-                <p className="text-right text-xs text-red-500">
-                  {errors.unitsPerPacket.message}
-                </p>
-              )}
-            </div>
-          )}
-
-          {pricingMode === "cartonOnly" && (
-            <div className="rounded-lg p-3">
-              <p className="text-right text-sm text-gray-600">
-                ✓ سيتم بيع المنتج بالكرتونة فقط - لا توجد خيارات بيع أخرى
-              </p>
-            </div>
-          )}
 
           {/* Product Details */}
           <div className="grid gap-6">
@@ -439,6 +337,7 @@ export default function ProductForm() {
                   value={watchedCategoryId}
                   action={(val) => setValue("categoryId", val)}
                   placeholder="اختر الفئة"
+                  add={<CategoryForm />}
                 />
                 {errors.categoryId && (
                   <p className="text-right text-xs text-red-500">
@@ -447,6 +346,93 @@ export default function ProductForm() {
                 )}
               </div>
             </div>
+            {pricingMode === "full" && (
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                <div className="grid gap-2">
+                  <Label htmlFor="unitsPerPacket">
+                    عدد الوحدات في العبوة الواحدة
+                  </Label>
+                  <Input
+                    id="unitsPerPacket"
+                    type="number"
+                    {...register("unitsPerPacket", { valueAsNumber: true })}
+                    className="text-right"
+                    placeholder="مثال: 10 وحدات"
+                  />
+                  <p className="text-right text-xs text-gray-600">
+                    (الوحدة = أصغر قطعة تباع)
+                  </p>
+                  {errors.unitsPerPacket && (
+                    <p className="text-right text-xs text-red-500">
+                      {errors.unitsPerPacket.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="packetsPerCarton">
+                    عدد العبوات في الكرتونة
+                  </Label>
+                  <Input
+                    id="packetsPerCarton"
+                    type="number"
+                    {...register("packetsPerCarton", {
+                      valueAsNumber: true,
+                    })}
+                    className="text-right"
+                    placeholder="مثال: 12 عبوة"
+                  />
+                  <p className="text-right text-xs text-gray-600">
+                    (الكرتونة = أكبر وحدة تغليف)
+                  </p>
+                  {errors.packetsPerCarton && (
+                    <p className="text-right text-xs text-red-500">
+                      {errors.packetsPerCarton.message}
+                    </p>
+                  )}
+                </div>
+
+                {unitsPerPacket && packetsPerCarton && (
+                  <div className="grid gap-2 rounded-lg p-3">
+                    <p className="text-right text-sm font-medium text-gray-700">
+                      الإجمالي لكل كرتونة:
+                    </p>
+                    <p className="text-right text-lg font-bold text-blue-600">
+                      {unitsPerPacket * packetsPerCarton} وحدة
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {pricingMode === "cartonUnit" && (
+              <div className="grid gap-2">
+                <Label htmlFor="unitsPerPacket">عدد الوحدات في الكرتونة</Label>
+                <Input
+                  id="unitsPerPacket"
+                  type="number"
+                  {...register("unitsPerPacket", { valueAsNumber: true })}
+                  className="text-right"
+                  placeholder="مثال: 120 وحدة"
+                />
+                <p className="text-right text-xs text-gray-600">
+                  (عدد الوحدات الموجودة مباشرة في الكرتونة)
+                </p>
+                {errors.unitsPerPacket && (
+                  <p className="text-right text-xs text-red-500">
+                    {errors.unitsPerPacket.message}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {pricingMode === "cartonOnly" && (
+              <div className="rounded-lg p-3">
+                <p className="text-right text-sm text-gray-600">
+                  ✓ سيتم بيع المنتج بالكرتونة فقط - لا توجد خيارات بيع أخرى
+                </p>
+              </div>
+            )}
 
             {/* Pricing Grid */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -605,6 +591,7 @@ export default function ProductForm() {
                   value={watchedWarehouseId}
                   action={(val) => setValue("warehouseId", val)}
                   placeholder="اختر المستودع"
+                  add={<WarehouseForm />}
                 />
                 {errors.warehouseId && (
                   <p className="text-right text-xs text-red-500">
@@ -612,7 +599,21 @@ export default function ProductForm() {
                   </p>
                 )}
               </div>
-
+              <div className="grid gap-2">
+                <Label htmlFor="supplierId">المورد</Label>
+                <SelectField
+                  options={formData.suppliers}
+                  value={watchedSupplierId}
+                  action={(val) => setValue("supplierId", val)}
+                  placeholder="اختر المورد"
+                  add={<SupplierForm />}
+                />
+                {errors.supplierId && (
+                  <p className="text-right text-xs text-red-500">
+                    {errors.supplierId.message}
+                  </p>
+                )}
+              </div>
               <div className="grid gap-2">
                 <Label htmlFor="dimensions">الأبعاد</Label>
                 <Input

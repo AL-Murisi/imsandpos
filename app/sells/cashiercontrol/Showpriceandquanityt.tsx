@@ -56,6 +56,7 @@ import { useTablePrams } from "@/hooks/useTableParams";
 import { processSale } from "@/app/actions/cashier";
 import { PrintButton } from "./test";
 import { Receipt } from "@/components/common/receipt";
+import { cn } from "@/lib/utils";
 export type SellingUnit = "carton" | "packet" | "unit";
 export type discountType = "fixed" | "percentage";
 type CartItem = CashierItem & {
@@ -106,7 +107,7 @@ export default function CartDisplay({ users }: CustomDialogProps) {
     }
     hasAddedCart.current = true;
   }, []);
-
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [saleNumber, setSaleNumber] = useState(
     `SALE-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
   );
@@ -155,6 +156,7 @@ export default function CartDisplay({ users }: CustomDialogProps) {
 
     try {
       await processSale(payment, user.companyId); // ✅ await server action
+      setIsSubmitting(false);
       toast("✅ تم الدفع بنجاح!");
 
       // 1️⃣ Clear current cart
@@ -616,19 +618,22 @@ export default function CartDisplay({ users }: CustomDialogProps) {
                 />
               )}
               <Button
-                disabled={!canPay}
-                onClick={() =>
+                disabled={!canPay || isSubmitting}
+                onClick={() => {
                   startTransition(async () => {
-                    await handelpayment(); // ✅ call the function
-                  })
-                }
-                className={`${
-                  canPay
-                    ? "bg-green-600 hover:bg-green-700"
-                    : "cursor-not-allowed bg-gray-400"
-                } flex-1 rounded-md border-amber-500 py-3 text-amber-100 shadow-md hover:bg-amber-500`}
+                    await handelpayment();
+                  });
+                  setIsSubmitting(true);
+                }}
+                className={cn(
+                  "flex-1 rounded-md border-amber-500 py-3 text-amber-100 shadow-md",
+                  {
+                    "bg-green-600 hover:bg-green-700": canPay && !isSubmitting,
+                    "cursor-not-allowed bg-gray-400": !canPay || isSubmitting,
+                  },
+                )}
               >
-                {tt("pay_now")}
+                {isSubmitting ? "جاري الحفظ." : tt("pay_now")}
               </Button>
               <Reservation
                 cart={items}

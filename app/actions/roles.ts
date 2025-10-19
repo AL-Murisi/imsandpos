@@ -1014,7 +1014,8 @@ export async function createCategory(
     const user = await prisma.category.create({
       data: { companyId, name, description, parentId },
     });
-
+    revalidatePath("/products");
+    revalidatePath("/categories");
     return user;
   } catch (error) {
     console.error("Failed to create user:", error);
@@ -1140,6 +1141,7 @@ export async function createWarehouse(
       },
     });
     revalidatePath("warehouses");
+    revalidatePath("/products");
     return warehouse;
   } catch (error) {
     console.error("Failed to create product:", error);
@@ -1229,7 +1231,7 @@ export async function UpdateProduct(
         warehouseId,
       },
     });
-
+    revalidatePath("/products");
     // ✅ Convert Decimal fields to numbers
     return {
       ...updated,
@@ -1247,7 +1249,31 @@ export async function UpdateProduct(
 }
 
 type FormValues = z.infer<typeof UpdateInventorySchema> & { id: string };
+function serializeData<T>(data: T): T {
+  if (data === null || data === undefined) return data;
+  if (typeof data !== "object") return data;
 
+  if (Array.isArray(data)) {
+    return data.map((item) => serializeData(item)) as T;
+  }
+
+  const plainObj: any = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (value instanceof Prisma.Decimal) {
+      plainObj[key] = value.toNumber(); // or value.toString() if you prefer
+    } else if (value instanceof Date) {
+      plainObj[key] = value.toISOString();
+    } else if (typeof value === "bigint") {
+      plainObj[key] = value.toString();
+    } else if (typeof value === "object" && value !== null) {
+      plainObj[key] = serializeData(value);
+    } else {
+      plainObj[key] = value;
+    }
+  }
+
+  return plainObj;
+}
 export async function createSupplier(
   form: CreateSupplierInput,
   companyId: string,
@@ -1287,36 +1313,13 @@ export async function createSupplier(
       },
     });
     revalidatePath("/suppliers");
-    return user;
+    revalidatePath("/products");
+    const users = serializeData(user);
+    return users;
   } catch (error) {
     console.error("Failed to create user:", error);
     throw error;
   }
-}
-function serializeData<T>(data: T): T {
-  if (data === null || data === undefined) return data;
-  if (typeof data !== "object") return data;
-
-  if (Array.isArray(data)) {
-    return data.map((item) => serializeData(item)) as T;
-  }
-
-  const plainObj: any = {};
-  for (const [key, value] of Object.entries(data)) {
-    if (value instanceof Prisma.Decimal) {
-      plainObj[key] = value.toNumber(); // or value.toString() if you prefer
-    } else if (value instanceof Date) {
-      plainObj[key] = value.toISOString();
-    } else if (typeof value === "bigint") {
-      plainObj[key] = value.toString();
-    } else if (typeof value === "object" && value !== null) {
-      plainObj[key] = serializeData(value);
-    } else {
-      plainObj[key] = value;
-    }
-  }
-
-  return plainObj;
 }
 
 export async function fetchCategory(companyId: string) {
@@ -1442,22 +1445,22 @@ export async function fetchAllFormData(companyId: string) {
     const [warehouses, categories, brands, suppliers] = await Promise.all([
       prisma.warehouse.findMany({
         select: { id: true, name: true },
-        where: { isActive: true, companyId: companyId },
+        where: { isActive: true, companyId },
         orderBy: { name: "asc" },
       }),
       prisma.category.findMany({
         select: { id: true, name: true },
-        where: { isActive: true, companyId: companyId },
+        where: { isActive: true, companyId },
         orderBy: { name: "asc" },
       }),
       prisma.brand.findMany({
         select: { id: true, name: true },
-        where: { isActive: true, companyId: companyId },
+        where: { isActive: true, companyId },
         orderBy: { name: "asc" },
       }),
       prisma.supplier.findMany({
         select: { id: true, name: true },
-        where: { isActive: true, companyId: companyId },
+        where: { isActive: true, companyId },
         orderBy: { name: "asc" },
       }),
     ]);

@@ -2,6 +2,10 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useTransition, useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -10,31 +14,33 @@ import {
   DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
+import { CreateWarehouseSchema } from "@/lib/zod";
+import { createWarehouse } from "@/app/actions/roles";
 
-import { CreateSupplierSchema } from "@/lib/zod";
-import { createSupplier } from "@/app/actions/roles";
-import { useAuth } from "@/lib/context/AuthContext";
-import { useState } from "react";
 import { Plus } from "lucide-react";
+import { toast } from "sonner";
+import { useAuth } from "@/lib/context/AuthContext";
 
-type FormValues = z.infer<typeof CreateSupplierSchema>;
+type FormValues = z.infer<typeof CreateWarehouseSchema>;
 
-export default function SupplierForm() {
+export default function WarehouseForm() {
+  const [open, setOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
+
+  const { user } = useAuth();
+  if (!user) return null;
+
+  const warehouse = `warehouse-${Math.random().toString(36).substring(2, 7)}`;
+
   const {
     register,
     handleSubmit,
-    setValue,
     reset,
-    watch,
     formState: { errors },
   } = useForm<FormValues>({
-    resolver: zodResolver(CreateSupplierSchema),
+    resolver: zodResolver(CreateWarehouseSchema),
     defaultValues: {
-      name: "",
-      contactPerson: "",
+      name: warehouse,
       email: "",
       phoneNumber: "",
       address: "",
@@ -42,20 +48,26 @@ export default function SupplierForm() {
       state: "",
       country: "",
       postalCode: "",
-      taxId: "",
-      paymentTerms: "",
     },
   });
-  const [open, setOpen] = useState(false);
-  const { user } = useAuth();
-  if (!user) return;
-  // Load roles on mount
-  const onSubmit = async (data: FormValues) => {
-    console.log("Submitted:", data);
 
-    await createSupplier(data, user.companyId);
-    setOpen(false);
-    reset();
+  const onSubmit = (data: FormValues) => {
+    startTransition(async () => {
+      try {
+        const res = await createWarehouse(data, user.companyId);
+
+        if (res) {
+          toast.success(`تم إنشاء المستودع: ${data.name} بنجاح`);
+          reset();
+          setOpen(false);
+        } else {
+          toast.error(res || "حدث خطأ في إنشاء المستودع");
+        }
+      } catch (error) {
+        toast.error("حدث خطأ في إنشاء المستودع");
+        console.error(error);
+      }
+    });
   };
 
   return (
@@ -67,14 +79,19 @@ export default function SupplierForm() {
         </Button>
       </DialogTrigger>
 
-      <DialogContent dir="rtl" className="sm:w-md">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" dir="rtl">
+      <DialogContent dir="rtl" className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>إضافة مستودع جديد</DialogTitle>
+          <DialogDescription>أدخل تفاصيل المستودع</DialogDescription>
+        </DialogHeader>
+
+        <div className="grid gap-4">
           <div className="grid gap-4">
             <div className="grid grid-cols-2 gap-4">
-              {/* Full Name */}
+              {/* Name */}
               <div className="grid gap-2">
-                <Label htmlFor="name">اسم المورد</Label>
-                <Input id="name" {...register("name")} />
+                <Label htmlFor="name">اسم المستودع</Label>
+                <Input id="name" {...register("name")} disabled={isPending} />
                 {errors.name && (
                   <p className="text-xs text-red-500">{errors.name.message}</p>
                 )}
@@ -82,7 +99,12 @@ export default function SupplierForm() {
               {/* Email */}
               <div className="grid gap-2">
                 <Label htmlFor="email">البريد الإلكتروني</Label>
-                <Input id="email" type="email" {...register("email")} />
+                <Input
+                  id="email"
+                  type="email"
+                  {...register("email")}
+                  disabled={isPending}
+                />
                 {errors.email && (
                   <p className="text-xs text-red-500">{errors.email.message}</p>
                 )}
@@ -90,20 +112,6 @@ export default function SupplierForm() {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              {/* Contact Person */}
-              <div className="grid gap-2">
-                <Label htmlFor="contactPerson">شخص الاتصال</Label>
-                <Input
-                  id="contactPerson"
-                  type="text" // Changed type from tel to text as it's a name
-                  {...register("contactPerson")}
-                />
-                {errors.contactPerson && (
-                  <p className="text-xs text-red-500">
-                    {errors.contactPerson.message}
-                  </p>
-                )}
-              </div>
               {/* Phone Number */}
               <div className="grid gap-2">
                 <Label htmlFor="phoneNumber">رقم الهاتف</Label>
@@ -111,6 +119,7 @@ export default function SupplierForm() {
                   id="phoneNumber"
                   type="tel"
                   {...register("phoneNumber")}
+                  disabled={isPending}
                 />
                 {errors.phoneNumber && (
                   <p className="text-xs text-red-500">
@@ -121,7 +130,12 @@ export default function SupplierForm() {
               {/* Address */}
               <div className="grid gap-2">
                 <Label htmlFor="address">العنوان</Label>
-                <Input id="address" type="text" {...register("address")} />
+                <Input
+                  id="address"
+                  type="text"
+                  {...register("address")}
+                  disabled={isPending}
+                />
                 {errors.address && (
                   <p className="text-xs text-red-500">
                     {errors.address.message}
@@ -129,12 +143,14 @@ export default function SupplierForm() {
                 )}
               </div>
               {/* City */}
-              {/* NOTE: Original code had htmlFor="city" but register("phoneNumber") for this input.
-                     Corrected to htmlFor="city" and register("city").
-                     If it was intended for phoneNumber, please adjust accordingly. */}
               <div className="grid gap-2">
                 <Label htmlFor="city">المدينة</Label>
-                <Input id="city" type="text" {...register("city")} />
+                <Input
+                  id="city"
+                  type="text"
+                  {...register("city")}
+                  disabled={isPending}
+                />
                 {errors.city && (
                   <p className="text-xs text-red-500">{errors.city.message}</p>
                 )}
@@ -142,7 +158,12 @@ export default function SupplierForm() {
               {/* State */}
               <div className="grid gap-2">
                 <Label htmlFor="state">الولاية/المحافظة</Label>
-                <Input id="state" type="text" {...register("state")} />
+                <Input
+                  id="state"
+                  type="text"
+                  {...register("state")}
+                  disabled={isPending}
+                />
                 {errors.state && (
                   <p className="text-xs text-red-500">{errors.state.message}</p>
                 )}
@@ -150,7 +171,12 @@ export default function SupplierForm() {
               {/* Country */}
               <div className="grid gap-2">
                 <Label htmlFor="country">البلد</Label>
-                <Input id="country" type="text" {...register("country")} />
+                <Input
+                  id="country"
+                  type="text"
+                  {...register("country")}
+                  disabled={isPending}
+                />
                 {errors.country && (
                   <p className="text-xs text-red-500">
                     {errors.country.message}
@@ -162,8 +188,9 @@ export default function SupplierForm() {
                 <Label htmlFor="postalCode">الرمز البريدي</Label>
                 <Input
                   id="postalCode"
-                  type="text" // Changed type from postalCode to text
+                  type="text"
                   {...register("postalCode")}
+                  disabled={isPending}
                 />
                 {errors.postalCode && (
                   <p className="text-xs text-red-500">
@@ -171,34 +198,27 @@ export default function SupplierForm() {
                   </p>
                 )}
               </div>
-              {/* Tax ID */}
-              <div className="grid gap-2">
-                <Label htmlFor="taxId">الرقم الضريبي</Label>
-                <Input id="taxId" type="text" {...register("taxId")} />
-                {errors.taxId && (
-                  <p className="text-xs text-red-500">{errors.taxId.message}</p>
-                )}
-              </div>
-              {/* Payment Terms */}
-              <div className="grid gap-2">
-                <Label htmlFor="paymentTerms">شروط الدفع</Label>
-                <Input
-                  id="paymentTerms"
-                  type="text" // Changed type from paymentTerms to text
-                  {...register("paymentTerms")}
-                />
-                {errors.paymentTerms && (
-                  <p className="text-xs text-red-500">
-                    {errors.paymentTerms.message}
-                  </p>
-                )}
-              </div>
             </div>
           </div>
-          <div className="flex justify-end">
-            <Button type="submit">تأكيد</Button>
+
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+              disabled={isPending}
+            >
+              إلغاء
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSubmit(onSubmit)}
+              disabled={isPending}
+            >
+              {isPending ? "جاري الحفظ..." : "تأكيد"}
+            </Button>
           </div>
-        </form>
+        </div>
       </DialogContent>
     </Dialog>
   );

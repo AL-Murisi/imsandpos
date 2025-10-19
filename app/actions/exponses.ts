@@ -263,7 +263,7 @@ export async function updateExpense(
     description?: string;
     amount?: number;
     expense_date?: Date;
-    paymentMethod?: string;
+    payment_method?: string;
     status?: string;
     notes?: string;
   },
@@ -278,7 +278,7 @@ export async function updateExpense(
         ...(data.description && { description: data.description }),
         ...(data.amount && { amount: data.amount }),
         ...(data.expense_date && { expense_date: data.expense_date }),
-        ...(data.paymentMethod && { paymentMethod: data.paymentMethod }),
+        ...(data.payment_method && { payment_method: data.payment_method }),
         ...(data.status && { status: data.status }),
         ...(data.notes && { notes: data.notes }),
       },

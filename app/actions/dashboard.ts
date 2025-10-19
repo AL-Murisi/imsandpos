@@ -12,6 +12,7 @@ import { startOfDay, endOfDay, format, subDays } from "date-fns";
 import { number } from "zod";
 
 // 🚀 SINGLE OPTIMIZED FUNCTION - uses only Prisma methods
+
 export const fetchDashboardData = unstable_cache(
   async (
     companyId: string,
@@ -82,19 +83,23 @@ export const fetchDashboardData = unstable_cache(
       recentSales,
       activityLogs,
     ] = await Promise.all([
-      // Sales aggregate
+      // ✅ Sales aggregate - WITH companyId
       prisma.sale.aggregate({
         _sum: { totalAmount: true },
         _count: { id: true },
-        where: { saleDate: salesRange, status: "completed" },
+        where: {
+          companyId,
+          saleDate: salesRange,
+          status: "completed",
+        },
       }),
 
-      // Sales grouped by date (limit to last 30 days for performance)
+      // ✅ Sales grouped by date - WITH companyId
       prisma.sale.groupBy({
         by: ["saleDate"],
         _sum: { totalAmount: true },
         where: {
-          companyId: companyId,
+          companyId,
           saleDate: {
             ...salesRange,
             gte: salesRange.gte || subDays(new Date(), 30),
@@ -105,18 +110,21 @@ export const fetchDashboardData = unstable_cache(
         take: 30,
       }),
 
-      // Purchases aggregate
+      // ✅ Purchases aggregate - WITH companyId
       prisma.purchase.aggregate({
         _sum: { amountPaid: true },
-        where: { createdAt: purchasesRange, companyId },
+        where: {
+          companyId,
+          createdAt: purchasesRange,
+        },
       }),
 
-      // Purchases grouped by date
+      // ✅ Purchases grouped by date - WITH companyId
       prisma.purchase.groupBy({
         by: ["createdAt"],
         _sum: { amountPaid: true },
         where: {
-          companyId: companyId,
+          companyId,
           createdAt: {
             ...purchasesRange,
           },
@@ -125,22 +133,22 @@ export const fetchDashboardData = unstable_cache(
         take: 50,
       }),
 
-      // Revenue aggregate
+      // ✅ Revenue aggregate - WITH companyId
       prisma.payment.aggregate({
         _sum: { amount: true },
         where: {
-          companyId: companyId,
+          companyId,
           createdAt: revenueRange,
           status: "completed",
         },
       }),
 
-      // Revenue grouped by date
+      // ✅ Revenue grouped by date - WITH companyId
       prisma.payment.groupBy({
         by: ["createdAt"],
         _sum: { amount: true },
         where: {
-          companyId: companyId,
+          companyId,
           createdAt: {
             ...revenueRange,
           },
@@ -149,22 +157,22 @@ export const fetchDashboardData = unstable_cache(
         orderBy: { createdAt: "asc" },
       }),
 
-      // Outstanding debt aggregate
+      // ✅ Outstanding debt aggregate - WITH companyId
       prisma.sale.aggregate({
         _sum: { amountDue: true },
         where: {
-          companyId: companyId,
+          companyId,
           saleDate: debtRange,
           paymentStatus: { in: ["partial", "pending"] },
         },
         orderBy: { createdAt: "asc" },
       }),
 
-      // Received debt aggregate
+      // ✅ Received debt aggregate - WITH companyId
       prisma.payment.aggregate({
         _sum: { amount: true },
         where: {
-          companyId: companyId,
+          companyId,
           createdAt: debtRange,
           paymentType: "outstanding_payment",
           status: "completed",
@@ -172,24 +180,24 @@ export const fetchDashboardData = unstable_cache(
         orderBy: { createdAt: "asc" },
       }),
 
-      // Outstanding debt grouped (monthly for performance)
+      // ✅ Outstanding debt grouped - WITH companyId
       prisma.sale.groupBy({
         by: ["saleDate"],
         _sum: { amountDue: true },
         where: {
-          companyId: companyId,
+          companyId,
           saleDate: debtRange,
           paymentStatus: { in: ["partial", "pending"] },
         },
         orderBy: { saleDate: "asc" },
       }),
 
-      // Received debt grouped (monthly)
+      // ✅ Received debt grouped - WITH companyId
       prisma.payment.groupBy({
         by: ["createdAt"],
         _sum: { amount: true },
         where: {
-          companyId: companyId,
+          companyId,
           createdAt: debtRange,
           paymentType: "outstanding_payment",
           status: "completed",
@@ -197,24 +205,28 @@ export const fetchDashboardData = unstable_cache(
         orderBy: { createdAt: "asc" },
       }),
 
-      // Product stats (only for admin)
+      // ✅ Product stats - WITH companyId (already has it)
       role === "admin"
         ? prisma.inventory
             .aggregate({
               _sum: { stockQuantity: true },
-              where: { companyId: companyId },
+              where: { companyId },
             })
             .then(async (stock) => {
               const [lowStockCount, zeroStockCount] = await Promise.all([
                 prisma.inventory.count({
                   where: {
+                    companyId,
                     stockQuantity: {
                       lte: prisma.inventory.fields.reorderLevel,
                     },
                   },
                 }),
                 prisma.inventory.count({
-                  where: { stockQuantity: 0 },
+                  where: {
+                    companyId,
+                    stockQuantity: 0,
+                  },
                 }),
               ]);
 
@@ -230,22 +242,32 @@ export const fetchDashboardData = unstable_cache(
             zeroProducts: 0,
           }),
 
-      // User count
-      prisma.user.count({ where: { companyId: companyId, isActive: true } }),
+      // ✅ User count - WITH companyId (already has it)
+      prisma.user.count({
+        where: {
+          companyId,
+          isActive: true,
+        },
+      }),
 
-      // Top selling products (last 30 days)
+      // ✅ Top selling products - WITH companyId
       prisma.saleItem
         .groupBy({
           by: ["productId"],
           _sum: { quantity: true },
-          where: { companyId: companyId },
+          where: { companyId },
           orderBy: { _sum: { quantity: "desc" } },
-          take: topItems,
+          take: topItems || 10,
         })
         .then(async (items) => {
+          if (items.length === 0) return [];
+
           const productIds = items.map((item) => item.productId);
           const products = await prisma.product.findMany({
-            where: { id: { in: productIds } },
+            where: {
+              id: { in: productIds },
+              companyId,
+            },
             select: { id: true, name: true },
           });
 
@@ -258,7 +280,7 @@ export const fetchDashboardData = unstable_cache(
           });
         }),
 
-      // Recent sales (paginated)
+      // ✅ Recent sales (paginated) - WITH companyId
       pagination
         ? prisma.sale.findMany({
             select: {
@@ -279,7 +301,7 @@ export const fetchDashboardData = unstable_cache(
               },
             },
             where: {
-              companyId: companyId, // always include company filter
+              companyId,
               ...(pagination.query
                 ? {
                     OR: [
@@ -309,14 +331,13 @@ export const fetchDashboardData = unstable_cache(
                   }
                 : {}),
             },
-
             skip: (pagination.page || 0) * (pagination.pageSize || 5),
             take: pagination.pageSize || 5,
             orderBy: { createdAt: "desc" },
           })
         : Promise.resolve([]),
 
-      // Activity logs (if needed)
+      // ✅ Activity logs - WITH companyId
       pagination
         ? prisma.activityLogs.findMany({
             include: {
@@ -324,7 +345,7 @@ export const fetchDashboardData = unstable_cache(
                 select: { name: true },
               },
             },
-            where: { companyId: companyId },
+            where: { companyId },
             skip: (pagination.page || 0) * (pagination.pageSize || 5),
             take: pagination.pageSize || 5,
             orderBy: { createdAt: "desc" },
@@ -333,28 +354,24 @@ export const fetchDashboardData = unstable_cache(
     ]);
 
     // Helper function to group by day
-    // Updated Helper function to group by day (Apply the BigInt to Number conversion)
     const groupByDay = (data: any[], dateField: string) => {
       const grouped = new Map<string, number>();
 
       data.forEach((item) => {
         const date = item[dateField].toISOString().split("T")[0];
-
-        // 🔥 FIX: Explicitly convert the BigInt value using Number()
         const rawValue = item._sum ? Object.values(item._sum)[0] : 0;
-        const value = rawValue !== undefined ? Number(rawValue) : 0; // Use Number() for BigInt conversion
+        const value = rawValue !== undefined ? Number(rawValue) : 0;
 
         grouped.set(date, (grouped.get(date) || 0) + (value || 0));
       });
 
-      // ... rest of the function remains the same ...
       return Array.from(grouped.entries())
         .map(([date, value]) => ({ date, value }))
         .sort((a, b) => a.date.localeCompare(b.date))
-        .slice(0, 30); // Limit chart points
+        .slice(0, 30);
     };
 
-    // Updated Helper function to group by month (Apply the BigInt to Number conversion)
+    // Helper function to group by month
     const groupByMonth = (data: any[], dateField: string) => {
       const grouped = new Map<string, number>();
 
@@ -362,14 +379,12 @@ export const fetchDashboardData = unstable_cache(
         const dateObj = item[dateField];
         const monthKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, "0")}`;
 
-        // 🔥 FIX: Explicitly convert the BigInt value using Number()
         const rawValue = item._sum ? Object.values(item._sum)[0] : 0;
-        const value = rawValue !== undefined ? Number(rawValue) : 0; // Use Number() for BigInt conversion
+        const value = rawValue !== undefined ? Number(rawValue) : 0;
 
         grouped.set(monthKey, (grouped.get(monthKey) || 0) + (value || 0));
       });
 
-      // ... rest of the function remains the same ...
       return Array.from(grouped.entries())
         .map(([date, value]) => ({ date, value }))
         .sort((a, b) => a.date.localeCompare(b.date));
@@ -378,6 +393,7 @@ export const fetchDashboardData = unstable_cache(
     return {
       sales: {
         total: salesAgg._count.id || 0,
+        totalAmount: salesAgg._sum.totalAmount?.toNumber() || 0,
         chart: groupByDay(salesGrouped, "saleDate"),
       },
       purchases: {
@@ -411,7 +427,6 @@ export const fetchDashboardData = unstable_cache(
   ["dashboard-data"],
   { revalidate: 300, tags: ["dashboard"] },
 );
-
 // Optional: utility to serialize BigInt for JSON responses (if nee
 
 export interface DashboardParams {

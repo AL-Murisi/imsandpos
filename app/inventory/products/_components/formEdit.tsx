@@ -1,41 +1,41 @@
 "use client";
-
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
-
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
-import { logActivity } from "@/app/actions/activitylogs";
-import {
-  UpdateProduct,
-  fetchAllFormData,
-  fetchProductBySku,
-} from "@/app/actions/roles";
-import { SelectField } from "../_components/selectproduct";
+import { UpdateProduct, fetchAllFormData } from "@/app/actions/roles";
+import { SelectField } from "@/components/common/selectproduct";
 import { useAuth } from "@/lib/context/AuthContext";
-import { CreateProductSchema } from "@/lib/zod";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useTranslations } from "next-intl";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { StatFsOptions } from "fs";
-
-type FormValues = z.infer<typeof CreateProductSchema>;
+import { toast } from "sonner";
+import { CreateProductInput, CreateProductSchema } from "@/lib/zod";
+import { Edit } from "lucide-react";
 
 interface Option {
   id: string;
   name: string;
 }
-const productTypeOptions = [
-  { id: "single", name: "Single Product" }, // Assuming a key like 'type_single' for product type
-  { id: "bundle", name: "Bundle" },
-  { id: "variant", name: "Variant" },
-];
 
-export default function ProductEditFormm({ sku }: { sku: string }) {
+interface ProductEditFormProps {
+  product: any;
+  onSuccess?: () => void;
+}
+
+export default function ProductEditForm({
+  product,
+  onSuccess,
+}: ProductEditFormProps) {
   const [formData, setFormData] = useState<{
     warehouses: Option[];
     categories: Option[];
@@ -47,12 +47,19 @@ export default function ProductEditFormm({ sku }: { sku: string }) {
     brands: [],
     suppliers: [],
   });
+
+  const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const t = useTranslations("productForm");
-  const statusOptions = [
-    { id: "active", name: "Active" }, // Assuming keys like 'status_active'
-    { id: "inactive", name: "Inactive" },
-  ];
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pricingMode, setPricingMode] = useState<
+    "full" | "cartonUnit" | "cartonOnly"
+  >("full");
+
+  const { user } = useAuth();
+  const isUpdatingRef = useRef(false);
+
+  if (!user) return null;
+
   const {
     register,
     handleSubmit,
@@ -60,302 +67,393 @@ export default function ProductEditFormm({ sku }: { sku: string }) {
     reset,
     watch,
     formState: { errors },
-  } = useForm<FormValues>({
+  } = useForm<CreateProductInput>({
     resolver: zodResolver(CreateProductSchema),
   });
 
-  const { user } = useAuth();
-  if (!user) return;
-  const watchedValues = watch();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const watchedWarehouseId = watch("warehouseId");
+  const watchedCategoryId = watch("categoryId");
+  const watchedSupplierId = watch("supplierId");
+  const unitsPerPacket = watch("unitsPerPacket");
+  const packetsPerCarton = watch("packetsPerCarton");
+  const pricePerCarton = watch("pricePerCarton");
+  const pricePerUnit = watch("pricePerUnit");
+  const pricePerPacket = watch("pricePerPacket");
 
+  const t = useTranslations("productForm");
+
+  // ✅ Load form options once on mount
   useEffect(() => {
+    if (!open) {
+      return;
+    }
     const fetchData = async () => {
       try {
         setLoading(true);
         const data = await fetchAllFormData(user.companyId);
         setFormData(data);
-
-        if (sku) {
-          const productData = await fetchProductBySku(sku);
-          if (productData) {
-            const safeStatus = statusOptions.includes(productData.status as any)
-              ? (productData.status as "active" | "inactive" | "discontinued")
-              : "active";
-            // ✅ Fill form fields individually — no reset()
-            setValue("name", productData.name ?? "");
-            setValue("sku", productData.sku ?? "");
-            setValue("categoryId", productData.categoryId ?? "");
-            // setValue("brandId", productData.brandId ?? "");
-            setValue("supplierId", productData.supplierId ?? "");
-            setValue("warehouseId", productData.warehouseId ?? "");
-            setValue("costPrice", productData.costPrice ?? 0);
-            setValue("pricePerUnit", productData.pricePerUnit ?? 0);
-            setValue("pricePerPacket", productData.pricePerPacket ?? 0);
-            setValue("pricePerCarton", productData.pricePerCarton ?? 0);
-            setValue("minWholesaleQty", productData.minWholesaleQty ?? 0);
-            setValue("description", productData.description ?? "");
-            setValue("unitsPerPacket", productData.unitsPerPacket ?? "");
-            setValue("packetsPerCarton", productData.packetsPerCarton ?? "");
-            setValue("dimensions", productData.dimensions ?? "");
-            setValue("costPrice", productData.costPrice ?? 0);
-            setValue("wholesalePrice", productData.wholesalePrice ?? 0);
-          }
-        }
       } catch (error) {
         console.error("Error fetching form data:", error);
+        toast.error("خطأ في تحميل البيانات");
       } finally {
         setLoading(false);
       }
     };
-    fetchData();
-  }, [sku, setValue]);
+    if (user?.companyId) fetchData();
+  }, [open]); // ✅ Run only once on mount
 
-  const onSubmit = async (data: FormValues) => {
-    console.log("Submitted:", data);
-    if (!user) return;
+  // ✅ Populate form with product data when product changes
+  useEffect(() => {
+    if (!product) return;
 
+    // Determine pricing mode based on prices
+    const hasUnit = product.pricePerUnit && product.pricePerUnit > 0;
+    const hasPacket = product.pricePerPacket && product.pricePerPacket > 0;
+    const hasCarton = product.pricePerCarton && product.pricePerCarton > 0;
+
+    let mode: "full" | "cartonUnit" | "cartonOnly" = "full";
+    if (hasUnit && hasPacket && hasCarton) mode = "full";
+    else if (hasUnit && !hasPacket && hasCarton) mode = "cartonUnit";
+    else if (!hasUnit && !hasPacket && hasCarton) mode = "cartonOnly";
+
+    setPricingMode(mode);
+
+    reset({
+      name: product.name || "",
+      sku: product.sku || "",
+      categoryId: product.categoryId || "",
+      supplierId: product.supplierId || "",
+      warehouseId: product.warehouseId || "",
+      description: product.description || "",
+      unitsPerPacket: product.unitsPerPacket || undefined,
+      packetsPerCarton: product.packetsPerCarton || undefined,
+      costPrice: product.costPrice || undefined,
+      pricePerUnit: product.pricePerUnit || undefined,
+      pricePerPacket: product.pricePerPacket || undefined,
+      pricePerCarton: product.pricePerCarton || undefined,
+      wholesalePrice: product.wholesalePrice || undefined,
+      minWholesaleQty: product.minWholesaleQty || undefined,
+      dimensions: product.dimensions || "",
+    });
+  }, [product?.id, reset]); // ✅ Only rerun when product changes
+
+  // ✅ Auto-calculate prices for full mode - FIXED
+  useEffect(() => {
+    if (isUpdatingRef.current) return;
+
+    if (
+      pricingMode === "full" &&
+      pricePerCarton &&
+      unitsPerPacket &&
+      packetsPerCarton &&
+      pricePerCarton > 0
+    ) {
+      isUpdatingRef.current = true;
+      const calculatedPricePerPacket = pricePerCarton / packetsPerCarton;
+      setValue(
+        "pricePerPacket",
+        Math.round(calculatedPricePerPacket * 100) / 100,
+      );
+      const calculatedPricePerUnit = calculatedPricePerPacket / unitsPerPacket;
+      setValue("pricePerUnit", Math.round(calculatedPricePerUnit * 100) / 100);
+      isUpdatingRef.current = false;
+    }
+  }, [pricePerCarton, unitsPerPacket, packetsPerCarton, pricingMode]);
+
+  // ✅ Auto-calculate prices for cartonUnit mode - FIXED
+  useEffect(() => {
+    if (isUpdatingRef.current) return;
+
+    if (
+      pricingMode === "cartonUnit" &&
+      pricePerCarton &&
+      unitsPerPacket &&
+      pricePerCarton > 0
+    ) {
+      isUpdatingRef.current = true;
+      const calculatedPricePerUnit = pricePerCarton / unitsPerPacket;
+      setValue("pricePerUnit", Math.round(calculatedPricePerUnit * 100) / 100);
+      isUpdatingRef.current = false;
+    }
+  }, [pricePerCarton, unitsPerPacket, pricingMode]);
+
+  const onSubmit = async (data: CreateProductInput) => {
     try {
-      await UpdateProduct(data, user.companyId);
       setIsSubmitting(true);
-      await logActivity(user.userId, "Edit Product", "Worker edited a product");
-      setIsSubmitting(false);
-      reset(); // optional: clears after save
+      await UpdateProduct(data, user.companyId);
+      toast.success("✅ تم تحديث المنتج بنجاح!");
+      setOpen(false);
+      if (onSuccess) onSuccess();
     } catch (error) {
-      console.error("Error creating product:", error);
+      toast.error("❌ حدث خطأ أثناء تحديث المنتج");
+      console.error(error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  if (loading)
-    return (
-      <div className="flex h-64 items-center justify-center">Loading...</div>
-    );
   return (
-    <ScrollArea>
-      <Card className="shadow-xl">
-        <CardHeader className="bg-primary/5 border-b p-4 text-right">
-          <CardTitle className="text-primary text-2xl font-bold">
-            {t("new")}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-6">
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {/* ScrollArea for better UI on smaller screens/large forms */}
-            <ScrollArea dir="rtl" className="p-4">
-              <div className="grid gap-6">
-                {/* Product Identifiers: Name, SKU, Barcode */}
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-                  {/* Name */}
-                  <div className="grid gap-2">
-                    <Label htmlFor="name">{t("name")}</Label>
-                    <Input
-                      id="name"
-                      {...register("name")}
-                      className="text-right"
-                    />
-                    {errors.name && (
-                      <p className="text-right text-xs text-red-500">
-                        {errors.name.message}
-                      </p>
-                    )}
-                  </div>
-                  {/* SKU */}
-                  {/* <div className="grid gap-2">
-                  <Label htmlFor="sku">{t("sku")}</Label>
-                  {/* <Input
-                    id="sku"
-                    type="text"
-                    {...register("sku")}
-                    className="text-right"
-                  /> 
-                  {errors.sku && (
-                    <p className="text-right text-xs text-red-500">
-                      {errors.sku.message}
-                    </p>
-                  )}
-                </div> 
-                {/* Barcode 
+    <Dialog open={open} onOpenChange={setOpen} modal={false}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          <Edit className="mr-2 h-4 w-4" />
+          تعديل
+        </Button>
+      </DialogTrigger>
+
+      <DialogContent
+        dir="rtl"
+        className="max-h-[90vh] w-full max-w-[1400px] overflow-y-auto rounded-lg p-6 xl:max-w-[1600px]"
+      >
+        <DialogHeader>
+          <DialogTitle>تعديل المنتج: {product?.name}</DialogTitle>
+          <DialogDescription>قم بتحديث تفاصيل المنتج</DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit(onSubmit)} className="w-full space-y-6">
+          {/* Pricing Mode Selection */}
+          <div className="rounded-lg border p-4">
+            <h3 className="mb-4 text-right font-semibold">نموذج البيع</h3>
+            <div className="mb-4 flex flex-col gap-3 md:flex-row">
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="radio"
+                  checked={pricingMode === "full"}
+                  onChange={() => {
+                    setPricingMode("full");
+                    setValue("packetsPerCarton", 0);
+                    setValue("pricePerPacket", 0);
+                  }}
+                  className="cursor-pointer"
+                />
+                <span className="text-sm font-medium">
+                  بيع متعدد المستويات (وحدة + عبوة + كرتونة)
+                </span>
+              </label>
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="radio"
+                  checked={pricingMode === "cartonUnit"}
+                  onChange={() => {
+                    setPricingMode("cartonUnit");
+                    setValue("packetsPerCarton", 0);
+                    setValue("pricePerPacket", 0);
+                  }}
+                  className="cursor-pointer"
+                />
+                <span className="text-sm font-medium">
+                  بيع بالوحدة والكرتونة فقط
+                </span>
+              </label>
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="radio"
+                  checked={pricingMode === "cartonOnly"}
+                  onChange={() => {
+                    setPricingMode("cartonOnly");
+                    setValue("unitsPerPacket", 0);
+                    setValue("packetsPerCarton", 0);
+                    setValue("pricePerUnit", 0);
+                    setValue("pricePerPacket", 0);
+                  }}
+                  className="cursor-pointer"
+                />
+                <span className="text-sm font-medium">بيع بالكرتونة فقط</span>
+              </label>
+            </div>
+          </div>
+
+          {/* Packaging Fields */}
+          {pricingMode === "full" && (
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+              <div className="grid gap-2">
+                <Label htmlFor="unitsPerPacket">
+                  عدد الوحدات في العبوة الواحدة
+                </Label>
+                <Input
+                  id="unitsPerPacket"
+                  type="number"
+                  {...register("unitsPerPacket", { valueAsNumber: true })}
+                  className="text-right"
+                />
+                {errors.unitsPerPacket && (
+                  <p className="text-right text-xs text-red-500">
+                    {errors.unitsPerPacket.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="packetsPerCarton">
+                  عدد العبوات في الكرتونة
+                </Label>
+                <Input
+                  id="packetsPerCarton"
+                  type="number"
+                  {...register("packetsPerCarton", { valueAsNumber: true })}
+                  className="text-right"
+                />
+                {errors.packetsPerCarton && (
+                  <p className="text-right text-xs text-red-500">
+                    {errors.packetsPerCarton.message}
+                  </p>
+                )}
+              </div>
+
+              {unitsPerPacket && packetsPerCarton && (
+                <div className="grid gap-2 rounded-lg p-3">
+                  <p className="text-right text-sm font-medium text-gray-700">
+                    الإجمالي لكل كرتونة:
+                  </p>
+                  <p className="text-right text-lg font-bold text-blue-600">
+                    {unitsPerPacket * packetsPerCarton} وحدة
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {pricingMode === "cartonUnit" && (
+            <div className="grid gap-2">
+              <Label htmlFor="unitsPerPacket">عدد الوحدات في الكرتونة</Label>
+              <Input
+                id="unitsPerPacket"
+                type="number"
+                {...register("unitsPerPacket", { valueAsNumber: true })}
+                className="text-right"
+              />
+              {errors.unitsPerPacket && (
+                <p className="text-right text-xs text-red-500">
+                  {errors.unitsPerPacket.message}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Product Details */}
+          <div className="grid gap-6">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+              <div className="grid gap-2">
+                <Label htmlFor="name">اسم المنتج</Label>
+                <Input id="name" {...register("name")} className="text-right" />
+                {errors.name && (
+                  <p className="text-right text-xs text-red-500">
+                    {errors.name.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="sku">الرمز (SKU)</Label>
+                <Input
+                  id="sku"
+                  type="text"
+                  {...register("sku")}
+                  disabled
+                  className="bg-gray-100 text-right"
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="categoryId">الفئة</Label>
+                <SelectField
+                  options={formData.categories}
+                  value={watchedCategoryId}
+                  action={(val) => setValue("categoryId", val)}
+                  placeholder="اختر الفئة"
+                />
+                {errors.categoryId && (
+                  <p className="text-right text-xs text-red-500">
+                    {errors.categoryId.message}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Pricing Grid */}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+              {/* Cost Price */}
+              <div className="rounded-lg border border-green-100 p-4">
+                <h3 className="mb-4 text-right font-semibold text-green-900">
+                  سعر الشراء من المورد
+                </h3>
                 <div className="grid gap-2">
-                  <Label htmlFor="barcode">{t("barcode")}</Label>
+                  <Label htmlFor="costPrice">سعر الشراء للوحدة</Label>
                   <Input
-                    id="barcode"
-                    type="text"
-                    {...register("barcode")}
+                    id="costPrice"
+                    type="number"
+                    step="0.01"
+                    {...register("costPrice", { valueAsNumber: true })}
                     className="text-right"
                   />
-                  {errors.barcode && (
+                  {errors.costPrice && (
                     <p className="text-right text-xs text-red-500">
-                      {errors.barcode.message}
+                      {errors.costPrice.message}
                     </p>
                   )}
-                </div>*/}
                 </div>
+              </div>
 
-                {/* Categorization: Category, Description, Brand */}
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-                  {/* Category ID */}
-                  <div className="grid gap-2">
-                    <Label htmlFor="categoryId">{t("categoryId")}</Label>
-                    <SelectField
-                      options={formData.categories}
-                      value={watchedValues.categoryId}
-                      action={(val) => setValue("categoryId", val)}
-                      placeholder={t("categoryId") || "Select Category"}
-                    />
-                    {errors.categoryId && (
-                      <p className="text-right text-xs text-red-500">
-                        {errors.categoryId.message}
-                      </p>
-                    )}
-                  </div>
-                  {/* Description */}
-                  <div className="grid gap-2">
-                    <Label htmlFor="description">{t("description")}</Label>
-                    <Input
-                      id="description"
-                      type="text"
-                      {...register("description")}
-                      className="text-right"
-                    />
-                    {errors.description && (
-                      <p className="text-right text-xs text-red-500">
-                        {errors.description.message}
-                      </p>
-                    )}
-                  </div>
-                  {/* Brand ID */}
-                  <div className="grid gap-2">
-                    <Label htmlFor="brandId">{t("brandId")}</Label>
-                    <SelectField
-                      options={formData.brands}
-                      value={watchedValues.brandId}
-                      action={(val) => setValue("brandId", val)}
-                      placeholder={t("brandId") || "Select Brand"}
-                    />
-                    {errors.brandId && (
-                      <p className="text-right text-xs text-red-500">
-                        {errors.brandId.message}
-                      </p>
-                    )}
-                  </div>
-                </div>
+              {/* Retail Pricing */}
+              <div className="rounded-lg border border-amber-100 p-4">
+                <h3 className="mb-4 text-right font-semibold text-amber-900">
+                  أسعار البيع بالتجزئة
+                </h3>
+                {pricingMode === "full" && (
+                  <div className="space-y-3">
+                    <div className="grid gap-2">
+                      <Label htmlFor="pricePerUnit">سعر الوحدة</Label>
+                      <Input
+                        id="pricePerUnit"
+                        type="number"
+                        step="0.01"
+                        disabled
+                        value={pricePerUnit || ""}
+                        className="bg-gray-100 text-right"
+                      />
+                    </div>
 
-                {/* Packaging: Type, Units per Packet, Packets per Carton */}
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-                  {/* Type */}
-                  <div className="grid gap-2">
-                    <Label htmlFor="type">{t("type")}</Label>
-                    <SelectField
-                      options={productTypeOptions}
-                      value={watchedValues.type}
-                      action={(val) =>
-                        setValue("type", val as FormValues["type"])
-                      }
-                      placeholder={t("type") || "Select Type"}
-                    />
-                    {errors.type && (
-                      <p className="text-right text-xs text-red-500">
-                        {errors.type.message}
-                      </p>
-                    )}
+                    <div className="grid gap-2">
+                      <Label htmlFor="pricePerPacket">سعر العبوة</Label>
+                      <Input
+                        id="pricePerPacket"
+                        type="number"
+                        step="0.01"
+                        disabled
+                        value={pricePerPacket || ""}
+                        className="bg-gray-100 text-right"
+                      />
+                    </div>
                   </div>
-                  {/* Units Per Packet */}
+                )}
+                {pricingMode === "cartonUnit" && (
                   <div className="grid gap-2">
-                    <Label htmlFor="unitsPerPacket">
-                      {t("unitsPerPacket")}
-                    </Label>
-                    <Input
-                      id="unitsPerPacket"
-                      type="number"
-                      {...register("unitsPerPacket", { valueAsNumber: true })}
-                      className="text-right"
-                    />
-                    {errors.unitsPerPacket && (
-                      <p className="text-right text-xs text-red-500">
-                        {errors.unitsPerPacket.message}
-                      </p>
-                    )}
-                  </div>
-                  {/* Packets Per Carton */}
-                  <div className="grid gap-2">
-                    <Label htmlFor="packetsPerCarton">
-                      {t("packetsPerCarton")}
-                    </Label>
-                    <Input
-                      id="packetsPerCarton"
-                      type="number"
-                      {...register("packetsPerCarton", { valueAsNumber: true })}
-                      className="text-right"
-                    />
-                    {errors.packetsPerCarton && (
-                      <p className="text-right text-xs text-red-500">
-                        {errors.packetsPerCarton.message}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Pricing: Cost, Unit Price, Packet Price */}
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-                  {/* Cost Price */}
-                  <div className="grid gap-2">
-                    <Label htmlFor="costPrice">{t("costPrice")}</Label>
-                    <Input
-                      id="costPrice"
-                      type="number"
-                      step="0.01"
-                      {...register("costPrice", { valueAsNumber: true })}
-                      className="text-right"
-                    />
-                    {errors.costPrice && (
-                      <p className="text-right text-xs text-red-500">
-                        {errors.costPrice.message}
-                      </p>
-                    )}
-                  </div>
-                  {/* Price Per Unit */}
-                  <div className="grid gap-2">
-                    <Label htmlFor="pricePerUnit">{t("pricePerUnit")}</Label>
+                    <Label htmlFor="pricePerUnit">سعر الوحدة</Label>
                     <Input
                       id="pricePerUnit"
                       type="number"
                       step="0.01"
-                      {...register("pricePerUnit", { valueAsNumber: true })}
-                      className="text-right"
+                      disabled
+                      value={pricePerUnit || ""}
+                      className="bg-gray-100 text-right"
                     />
-                    {errors.pricePerUnit && (
-                      <p className="text-right text-xs text-red-500">
-                        {errors.pricePerUnit.message}
-                      </p>
-                    )}
                   </div>
-                  {/* Price Per Packet */}
-                  <div className="grid gap-2">
-                    <Label htmlFor="pricePerPacket">
-                      {t("pricePerPacket")}
-                    </Label>
-                    <Input
-                      id="pricePerPacket"
-                      type="number"
-                      step="0.01"
-                      {...register("pricePerPacket", { valueAsNumber: true })}
-                      className="text-right"
-                    />
-                    {errors.pricePerPacket && (
-                      <p className="text-right text-xs text-red-500">
-                        {errors.pricePerPacket.message}
-                      </p>
-                    )}
-                  </div>
-                </div>
+                )}
+                {pricingMode === "cartonOnly" && (
+                  <p className="text-right text-sm text-gray-600">
+                    بيع بالكرتونة فقط
+                  </p>
+                )}
+              </div>
 
-                {/* Wholesale Pricing and Weight/Dimensions */}
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-                  {/* Price Per Carton */}
+              {/* Bulk Pricing */}
+              <div className="rounded-lg border border-purple-100 p-4">
+                <h3 className="mb-4 text-right font-semibold text-purple-900">
+                  أسعار البيع بالجملة
+                </h3>
+                <div className="space-y-3">
                   <div className="grid gap-2">
-                    <Label htmlFor="pricePerCarton">
-                      {t("pricePerCarton")}
-                    </Label>
+                    <Label htmlFor="pricePerCarton">سعر الكرتونة</Label>
                     <Input
                       id="pricePerCarton"
                       type="number"
@@ -369,11 +467,9 @@ export default function ProductEditFormm({ sku }: { sku: string }) {
                       </p>
                     )}
                   </div>
-                  {/* Wholesale Price */}
+
                   <div className="grid gap-2">
-                    <Label htmlFor="wholesalePrice">
-                      {t("wholesalePrice")}
-                    </Label>
+                    <Label htmlFor="wholesalePrice">السعر الجملي</Label>
                     <Input
                       id="wholesalePrice"
                       type="number"
@@ -387,11 +483,9 @@ export default function ProductEditFormm({ sku }: { sku: string }) {
                       </p>
                     )}
                   </div>
-                  {/* Min Wholesale Quantity */}
+
                   <div className="grid gap-2">
-                    <Label htmlFor="minWholesaleQty">
-                      {t("minWholesaleQty")}
-                    </Label>
+                    <Label htmlFor="minWholesaleQty">الحد الأدنى</Label>
                     <Input
                       id="minWholesaleQty"
                       type="number"
@@ -405,77 +499,93 @@ export default function ProductEditFormm({ sku }: { sku: string }) {
                     )}
                   </div>
                 </div>
+              </div>
+            </div>
 
-                {/* Shipping Details and Logistics */}
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-                  {/* Weight */}
-
-                  {/* Dimensions */}
-                  <div className="grid gap-2">
-                    <Label htmlFor="dimensions">{t("dimensions")} di</Label>
-                    <Input
-                      id="dimensions"
-                      type="text"
-                      {...register("dimensions")}
-                      className="text-right"
-                    />
-                    {errors.dimensions && (
-                      <p className="text-right text-xs text-red-500">
-                        {errors.dimensions.message}
-                      </p>
-                    )}
-                  </div>
-                  {/* Supplier ID */}
-                  <div className="grid gap-2">
-                    <Label htmlFor="supplierId">{t("supplierId")}</Label>
-                    <SelectField
-                      options={formData.suppliers}
-                      value={watchedValues.supplierId}
-                      action={(val) => setValue("supplierId", val)}
-                      placeholder={t("supplierId") || "Select Supplier"}
-                    />
-                    {errors.supplierId && (
-                      <p className="text-right text-xs text-red-500">
-                        {errors.supplierId.message}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Warehouse and Status */}
-                <div className="grid grid-cols-1 gap-6 md:w-2/3 md:grid-cols-2">
-                  {/* Warehouse ID */}
-                  <div className="grid gap-2">
-                    <Label htmlFor="warehouseId">{t("warehouseId")}</Label>
-                    <SelectField
-                      options={formData.warehouses}
-                      value={watchedValues.warehouseId}
-                      action={(val) => setValue("warehouseId", val)}
-                      placeholder={t("warehouseId") || "Select Warehouse"}
-                    />
-                    {errors.warehouseId && (
-                      <p className="text-right text-xs text-red-500">
-                        {errors.warehouseId.message}
-                      </p>
-                    )}
-                  </div>
-                </div>
+            {/* Additional Fields */}
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="warehouseId">المستودع</Label>
+                <SelectField
+                  options={formData.warehouses}
+                  value={watchedWarehouseId}
+                  action={(val) => setValue("warehouseId", val)}
+                  placeholder="اختر المستودع"
+                />
+                {errors.warehouseId && (
+                  <p className="text-right text-xs text-red-500">
+                    {errors.warehouseId.message}
+                  </p>
+                )}
               </div>
 
-              {/* Submit Button */}
-              <div className="flex justify-end">
-                <Button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="min-w-[100px]"
-                >
-                  {isSubmitting || loading ? t("loading") : t("save")}
-                </Button>
+              <div className="grid gap-2">
+                <Label htmlFor="supplierId">المورد</Label>
+                <SelectField
+                  options={formData.suppliers}
+                  value={watchedSupplierId}
+                  action={(val) => setValue("supplierId", val)}
+                  placeholder="اختر المورد"
+                />
+                {errors.supplierId && (
+                  <p className="text-right text-xs text-red-500">
+                    {errors.supplierId.message}
+                  </p>
+                )}
               </div>
-            </ScrollArea>
-          </form>
-        </CardContent>
-      </Card>
-    </ScrollArea>
+
+              <div className="grid gap-2">
+                <Label htmlFor="dimensions">الأبعاد</Label>
+                <Input
+                  id="dimensions"
+                  type="text"
+                  {...register("dimensions")}
+                  className="text-right"
+                />
+                {errors.dimensions && (
+                  <p className="text-right text-xs text-red-500">
+                    {errors.dimensions.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="description">الوصف</Label>
+                <Input
+                  id="description"
+                  type="text"
+                  {...register("description")}
+                  className="text-right"
+                />
+                {errors.description && (
+                  <p className="text-right text-xs text-red-500">
+                    {errors.description.message}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Submit Buttons */}
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+              disabled={isSubmitting}
+            >
+              إلغاء
+            </Button>
+            <Button
+              type="submit"
+              disabled={isSubmitting || loading}
+              className="min-w-[120px] bg-green-600 hover:bg-green-700"
+            >
+              {isSubmitting || loading ? "جاري الحفظ..." : "حفظ التعديلات"}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

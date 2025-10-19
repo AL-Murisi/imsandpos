@@ -1,7 +1,6 @@
 "use client";
 import { deleteProduct } from "@/app/actions/createProduct";
 import ProductEditFormm from "@/app/inventory/products/_components/formEdit";
-import CustomDialog from "@/components/common/Dailog";
 import { useCurrency } from "@/components/CurrencyProvider";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,13 +16,8 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
-  CheckCircle,
-  Clock,
   CopyIcon,
-  EditIcon,
-  EyeIcon,
   Trash2,
-  XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -273,25 +267,9 @@ export const createColumns = (
             >
               <CopyIcon className="h-4 w-4" />
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => console.log("View product:", product)}
-              title={tt("viewProduct")}
-            >
-              <EyeIcon className="h-4 w-4" />
-            </Button>
-            <CustomDialog
-              trigger={
-                <Button variant="outline">
-                  <EditIcon />
-                </Button>
-              }
-              title={tt("editProduct")}
-              description="Enter product details and save"
-            >
-              <ProductEditFormm sku={product.sku} />
-            </CustomDialog>
+
+            <ProductEditFormm product={product} />
+
             <Button
               variant="outline"
               size="sm"

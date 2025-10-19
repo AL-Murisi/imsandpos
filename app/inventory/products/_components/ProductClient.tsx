@@ -17,7 +17,7 @@ import { useTablePrams } from "@/hooks/useTableParams";
 
 import SearchInput from "@/components/common/searchtest";
 import { createColumns } from "./column";
-import ProductForm from "../new/form";
+import ProductForm from "./form";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import ImportProductsPage from "@/components/uploadItesm";
@@ -89,7 +89,7 @@ export default function ProductClient({
           paramKey={"supplierId"}
           placeholder="Supplier"
         />
-        <ProductForm />
+        <ProductForm formData={formData} />
         {/* <Link href={"/inventory/products/new"}>
           <Button>{t("new")}</Button>
         </Link> */}

@@ -67,7 +67,7 @@ export function PaymentCreateForm({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={setIsOpen} modal={false}>
       <DialogTrigger asChild>
         <Button size="sm" variant="outline">
           <Edit className="h-4 w-4" />

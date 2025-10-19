@@ -1,15 +1,8 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Edit, Trash2 } from "lucide-react";
+
+import { ExpenseEditForm } from "./ExpenseEditForm";
 
 export const expenseColumns: ColumnDef<any>[] = [
   {
@@ -135,31 +128,13 @@ export const expenseColumns: ColumnDef<any>[] = [
       );
     },
   },
-
   {
     id: "actions",
     header: "الإجراءات",
-    cell: ({ row }) => (
-      <div className="flex gap-2">
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-gray-700 hover:bg-gray-800"
-            >
-              <Edit className="h-4 w-4" />
-            </Button>
-          </DialogTrigger>
-          <DialogContent dir="rtl" className="border-gray-700 bg-gray-900">
-            <DialogHeader>
-              <DialogTitle className="text-gray-100">تعديل المصروف</DialogTitle>
-            </DialogHeader>
-            {/* Add your edit form here */}
-          </DialogContent>
-        </Dialog>
-      </div>
-    ),
+    cell: ({ row }) => {
+      const exponses = row.original;
+      return <ExpenseEditForm expense={exponses} />;
+    },
     enableSorting: false,
   },
 ];

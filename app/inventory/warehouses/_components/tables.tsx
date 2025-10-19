@@ -74,17 +74,7 @@ export default function WarehouseTable({
         <Calendar22 />
         <SearchInput placeholder={"بحث "} paramKey={"product"} />
 
-        <CustomDialog
-          trigger={
-            <Button>
-              <Plus />
-              إضافة
-            </Button>
-          }
-          title="إضافة مستودع جديدة"
-        >
-          <WarehouseForm />
-        </CustomDialog>
+        <WarehouseForm />
       </div>
 
       <DataTable

@@ -4,7 +4,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Button } from "../../../../components/ui/button";
 import { Input } from "../../../../components/ui/input";
 import { Label } from "../../../../components/ui/label";
@@ -12,6 +19,7 @@ import { Label } from "../../../../components/ui/label";
 import { createCategory, getAllCategories } from "@/app/actions/roles"; // assume you have this
 import { CreateCategorySchema } from "@/lib/zod";
 import { useAuth } from "@/lib/context/AuthContext";
+import { Plus } from "lucide-react";
 
 type FormValues = z.infer<typeof CreateCategorySchema>;
 
@@ -22,7 +30,7 @@ type Category = {
 
 export default function CategoryForm() {
   const [categories, setCategories] = useState<Category[]>([]);
-
+  const [open, setOpen] = useState(false);
   const {
     register,
     handleSubmit,
@@ -40,13 +48,6 @@ export default function CategoryForm() {
   const { user } = useAuth();
   if (!user) return;
   // Fetch parent categories on mount
-  useEffect(() => {
-    async function fetchCategories() {
-      const data = await getAllCategories(); // You need to implement this
-      setCategories(data);
-    }
-    fetchCategories();
-  }, []);
 
   const onSubmit = async (data: FormValues) => {
     const finalData = {
@@ -54,53 +55,67 @@ export default function CategoryForm() {
       parentId: data.parentId || undefined, // Remove empty string
     };
     await createCategory(finalData, user.companyId);
+    setOpen(false);
     reset();
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" dir="rtl">
-      <div className="grid gap-4">
-        <div className="grid grid-cols-3 gap-4">
-          {/* Name */}
-          <div className="grid gap-2">
-            <Label htmlFor="name">الاسم</Label>
-            <Input id="name" {...register("name")} />
-            {errors.name && (
-              <p className="text-xs text-red-500">{errors.name.message}</p>
-            )}
+    <Dialog open={open} onOpenChange={setOpen} modal={false}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          <Plus className="mr-2 h-4 w-4" />
+          جديد
+        </Button>
+      </DialogTrigger>
+
+      <DialogContent dir="rtl" className="sm:w-md">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" dir="rtl">
+          <div className="grid gap-4">
+            <div className="grid grid-cols-3 gap-4">
+              {/* Name */}
+              <div className="grid gap-2">
+                <Label htmlFor="name">الاسم</Label>
+                <Input id="name" {...register("name")} />
+                {errors.name && (
+                  <p className="text-xs text-red-500">{errors.name.message}</p>
+                )}
+              </div>
+
+              {/* Description */}
+              <div className="grid gap-2">
+                <Label htmlFor="description">الوصف</Label>
+                <Input id="description" {...register("description")} />
+              </div>
+
+              {/* Parent Category Dropdown */}
+              <div className="grid gap-2">
+                <Label htmlFor="parentId">فئة رئيسية</Label>
+                <select
+                  id="parentId"
+                  {...register("parentId")}
+                  className="rounded border px-2 py-1"
+                >
+                  <option value="">لا يوجد</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+                {errors.parentId && (
+                  <p className="text-xs text-red-500">
+                    {errors.parentId.message}
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
 
-          {/* Description */}
-          <div className="grid gap-2">
-            <Label htmlFor="description">الوصف</Label>
-            <Input id="description" {...register("description")} />
+          <div className="flex justify-end">
+            <Button type="submit">تأكيد</Button>
           </div>
-
-          {/* Parent Category Dropdown */}
-          <div className="grid gap-2">
-            <Label htmlFor="parentId">فئة رئيسية</Label>
-            <select
-              id="parentId"
-              {...register("parentId")}
-              className="rounded border px-2 py-1"
-            >
-              <option value="">لا يوجد</option>
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
-            {errors.parentId && (
-              <p className="text-xs text-red-500">{errors.parentId.message}</p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="flex justify-end">
-        <Button type="submit">تأكيد</Button>
-      </div>
-    </form>
+        </form>{" "}
+      </DialogContent>
+    </Dialog>
   );
 }

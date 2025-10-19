@@ -167,6 +167,7 @@ export async function updateInventory(
   userId: string,
   companyId: string,
 ) {
+  console.log("here");
   try {
     const {
       id,
