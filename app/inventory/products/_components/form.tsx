@@ -644,10 +644,10 @@ export default function ProductForm({ formData }: ExpenseFormProps) {
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting || loading}
+              disabled={isSubmitting}
               className="min-w-[120px] bg-green-600 hover:bg-green-700"
             >
-              {isSubmitting || loading ? "جاري الحفظ..." : "حفظ المنتج"}
+              {isSubmitting ? "جاري الحفظ..." : "حفظ المنتج"}
             </Button>
           </div>
         </form>
