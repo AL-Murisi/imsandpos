@@ -47,6 +47,7 @@ export default function CustomerForm() {
   });
   const { user } = useAuth();
   if (!user?.companyId) return;
+  const customerTypes = watch("customerType");
   const onSubmit = async (data: CreateCustomer) => {
     const result = await createCutomer(data, user.companyId);
 
@@ -143,6 +144,7 @@ export default function CustomerForm() {
               action={(value) =>
                 setValue("customerType", value as "individual" | "business")
               }
+              value={customerTypes}
               placeholder="اختر النوع"
             />
 
