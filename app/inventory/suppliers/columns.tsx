@@ -64,14 +64,14 @@ export const supplierColumns: ColumnDef<any>[] = [
           (table.getIsSomePageRowsSelected() && "indeterminate")
         }
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
+        aria-label="تحديد الكل"
       />
     ),
     cell: ({ row }) => (
       <Checkbox
         checked={row.getIsSelected()}
         onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
+        aria-label="تحديد الصف"
       />
     ),
     enableSorting: false,
@@ -79,7 +79,7 @@ export const supplierColumns: ColumnDef<any>[] = [
   },
   {
     accessorKey: "isActive",
-    header: "Status",
+    header: "الحالة",
     cell: ({ row }) => {
       const status = row.original.isActive;
       const color = status
@@ -90,7 +90,7 @@ export const supplierColumns: ColumnDef<any>[] = [
       ) : (
         <Clock className="mr-1 h-4 w-4" />
       );
-      const label = status ? "Active" : "Not Active";
+      const label = status ? "نشط" : "غير نشط";
 
       return (
         <div
@@ -104,19 +104,23 @@ export const supplierColumns: ColumnDef<any>[] = [
   },
   {
     accessorKey: "name",
-    header: ({ column }) => <SortableHeader column={column} label="Name" />,
+    header: ({ column }) => <SortableHeader column={column} label="الاسم" />,
     cell: ({ row }) => (
       <div className="font-medium">{row.getValue("name")}</div>
     ),
   },
   {
     accessorKey: "email",
-    header: ({ column }) => <SortableHeader column={column} label="Email" />,
+    header: ({ column }) => (
+      <SortableHeader column={column} label="البريد الإلكتروني" />
+    ),
     cell: ({ row }) => <div>{row.getValue("email") || "-"}</div>,
   },
   {
     accessorKey: "phoneNumber",
-    header: ({ column }) => <SortableHeader column={column} label="Phone" />,
+    header: ({ column }) => (
+      <SortableHeader column={column} label="رقم الهاتف" />
+    ),
     cell: ({ row }) => <div>{row.getValue("phoneNumber") || "-"}</div>,
   },
   {
@@ -131,20 +135,20 @@ export const supplierColumns: ColumnDef<any>[] = [
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
+              <span className="sr-only">فتح القائمة</span>
               <MoreHorizontal />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
             <DropdownMenuItem
               onClick={() => navigator.clipboard.writeText(supplier.id)}
             >
-              Copy Supplier ID
+              نسخ معرف المورد
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => console.log("Edit", supplier.id)}>
-              <Edit2 className="mr-2 h-4 w-4" /> Edit
+            <DropdownMenuItem onClick={() => console.log("تعديل", supplier.id)}>
+              <Edit2 className="mr-2 h-4 w-4" /> تعديل
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={async () => {

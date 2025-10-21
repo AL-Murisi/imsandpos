@@ -2,9 +2,12 @@
 
 // import { Pie, PieChart } from "recharts";
 
-const Pie = dynamic(() => import("recharts").then((m) => m.Pie));
-
-const PieChart = dynamic(() => import("recharts").then((m) => m.PieChart));
+const PieChart = dynamic(() => import("recharts").then((m) => m.PieChart), {
+  ssr: false,
+  loading: () => (
+    <div className="mx-auto aspect-square max-h-[300px] animate-pulse rounded-lg bg-gray-200" />
+  ),
+});
 import {
   Card,
   CardContent,
@@ -14,6 +17,8 @@ import {
 } from "@/components/ui/card";
 import { ChartConfig, ChartContainer } from "@/components/ui/chart";
 import dynamic from "next/dynamic";
+import { Suspense } from "react";
+import { Pie } from "recharts";
 
 export const description = "A pie chart with a legend";
 const chartData = [
@@ -61,18 +66,20 @@ export function ChartPieLegend({ chartData }: Piechart) {
         <CardDescription>January - June 2024</CardDescription>
       </CardHeader>
       <CardContent className="flex-1 pb-0">
-        <ChartContainer
-          config={chartConfig}
-          className="mx-auto aspect-square max-h-[300px]"
-        >
-          <PieChart>
-            <Pie data={chartData} dataKey="visitors" />
-            {/* <ChartLegend
+        <Suspense>
+          <ChartContainer
+            config={chartConfig}
+            className="mx-auto aspect-square max-h-[300px]"
+          >
+            <PieChart>
+              <Pie data={chartData} dataKey="visitors" />
+              {/* <ChartLegend
               content={<ChartLegendContent nameKey="browser" />}
               className="-translate-y-2 flex-wrap gap-2 *:basis-1/4 *:justify-center"
             /> */}
-          </PieChart>
-        </ChartContainer>
+            </PieChart>
+          </ChartContainer>
+        </Suspense>
       </CardContent>
     </Card>
   );

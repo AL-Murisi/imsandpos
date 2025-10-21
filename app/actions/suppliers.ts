@@ -5,6 +5,7 @@ import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { revalidate } from "../dashboard/page";
 import { revalidatePath } from "next/cache";
+import { CreateSupplierInput, CreateSupplierSchema } from "@/lib/zod";
 function serializeData<T>(data: T): T {
   if (data === null || data === undefined) return data;
   if (typeof data !== "object") return data;
@@ -123,6 +124,54 @@ export async function fetchSuppliers(companyId: string) {
   const serialized = serializeData(supplier);
   return serialized;
 }
+export async function createSupplier(
+  form: CreateSupplierInput,
+  companyId: string,
+) {
+  const parsed = CreateSupplierSchema.safeParse(form);
+  if (!parsed.success) {
+    throw new Error("Invalid user data");
+  }
+  const {
+    name,
+    contactPerson,
+    email,
+    phoneNumber,
+    address,
+    city,
+    state,
+    country,
+    postalCode,
+    taxId,
+    paymentTerms,
+  } = parsed.data;
+  try {
+    const user = await prisma.supplier.create({
+      data: {
+        name,
+        companyId,
+        contactPerson,
+        email,
+        phoneNumber,
+        address,
+        city,
+        state,
+        country,
+        postalCode,
+        taxId,
+        paymentTerms,
+      },
+    });
+    revalidatePath("/suppliers");
+    revalidatePath("/products");
+    const users = serializeData(user);
+    return users;
+  } catch (error) {
+    console.error("Failed to create user:", error);
+    throw error;
+  }
+}
+
 // ============================================
 export async function getPurchasesByCompany(
   companyId: string,

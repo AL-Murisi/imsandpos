@@ -40,7 +40,7 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
   const [updateType, setUpdateType] = useState<"manual" | "supplier">("manual");
   const [showPayment, setShowPayment] = useState(false);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuth();
   if (!user) return null;
 
@@ -117,6 +117,7 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
   // ✅ Submit handler
   const onSubmit = async (data: FormValues) => {
     try {
+      setIsSubmitting(true);
       if (updateType === "supplier") {
         if (!supplierId) return toast.error("الرجاء اختيار المورد");
         if (!quantity || quantity <= 0)
@@ -142,7 +143,7 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
           ? "✅ تم استقبال المخزون من المورد بنجاح"
           : "✅ تم تحديث المخزون بنجاح",
       );
-
+      setIsSubmitting(false);
       reset();
       setOpen(false);
       setUpdateType("manual");
@@ -377,8 +378,12 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
             >
               إلغاء
             </Button>
-            <Button type="submit" className="bg-green-600 hover:bg-green-700">
-              تأكيد
+            <Button
+              disabled={isSubmitting}
+              type="submit"
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {isSubmitting ? "جاري الحفظ..." : "تأكيد"}
             </Button>
           </div>
         </form>

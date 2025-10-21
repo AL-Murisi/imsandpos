@@ -149,7 +149,6 @@ export function DataTable<T>({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
-            {/* Align to the start (right) for RTL */}
             {table
               .getAllColumns()
               .filter((column) => column.getCanHide())
@@ -160,7 +159,6 @@ export function DataTable<T>({
                   checked={column.getIsVisible()}
                   onCheckedChange={(value) => column.toggleVisibility(!!value)}
                 >
-                  {/* You might want to map column.id to Arabic names if possible */}
                   {column.id}
                 </DropdownMenuCheckboxItem>
               ))}

@@ -16,7 +16,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 
-import { createCategory, getAllCategories } from "@/app/actions/roles";
+import { createCategory } from "@/app/actions/category"; // assume you have this
 import { CreateCategorySchema } from "@/lib/zod";
 import { useAuth } from "@/lib/context/AuthContext";
 import { Plus } from "lucide-react";

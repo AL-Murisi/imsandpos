@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown, TrendingUp } from "lucide-react";
 
@@ -28,23 +28,27 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { useTablePrams } from "@/hooks/useTableParams";
+import { XAxis, YAxis, Bar, LabelList } from "recharts";
 
 // Dynamic imports for Recharts components (client-side only)
 const BarChart = dynamic(() => import("recharts").then((m) => m.BarChart), {
   ssr: false,
+  loading: () => (
+    <div className="h-60 w-full animate-pulse rounded-lg bg-gray-700" />
+  ),
 });
-const XAxis = dynamic(() => import("recharts").then((m) => m.XAxis), {
-  ssr: false,
-});
-const YAxis = dynamic(() => import("recharts").then((m) => m.YAxis), {
-  ssr: false,
-});
-const Bar = dynamic(() => import("recharts").then((m) => m.Bar), {
-  ssr: false,
-});
-const LabelList = dynamic(() => import("recharts").then((m) => m.LabelList), {
-  ssr: false,
-});
+// const XAxis = dynamic(() => import("recharts").then((m) => m.XAxis), {
+//   ssr: false,
+// });
+// const YAxis = dynamic(() => import("recharts").then((m) => m.YAxis), {
+//   ssr: false,
+// });
+// const Bar = dynamic(() => import("recharts").then((m) => m.Bar), {
+//   ssr: false,
+// });
+// const LabelList = dynamic(() => import("recharts").then((m) => m.LabelList), {
+//   ssr: false,
+// });
 
 type ProductClientProps = {
   data: any[];
@@ -161,32 +165,35 @@ export default function UniversalChart({
         )}
       </CardHeader>
       <CardContent className={width}>
-        <ChartContainer config={chartConfig} className={`h-60 ${widthco}`}>
-          <BarChart data={data} margin={{ right: 5, left: 5 }}>
-            <XAxis dataKey={xKey} />
-            <YAxis tickFormatter={formatNumber} />
-            <ChartTooltip
-              content={
-                <ChartTooltipContent
-                  indicator="dashed"
-                  formatter={(value: any) => [formatNumber(Number(value))]}
-                />
-              }
-              cursor={false}
-              defaultIndex={1}
-            />
-            <Bar dataKey={dataKey} fill={color} radius={[4, 4, 4, 4]}>
-              <LabelList
-                dataKey={dataKey}
-                position="top"
-                offset={3}
-                fontSize={13}
-                fontWeight="bold"
-                formatter={(value: any) => formatNumber(Number(value))}
+        {" "}
+        <Suspense>
+          <ChartContainer config={chartConfig} className={`h-60 ${widthco}`}>
+            <BarChart data={data} margin={{ right: 5, left: 5 }}>
+              <XAxis dataKey={xKey} />
+              <YAxis tickFormatter={formatNumber} />
+              <ChartTooltip
+                content={
+                  <ChartTooltipContent
+                    indicator="dashed"
+                    formatter={(value: any) => [formatNumber(Number(value))]}
+                  />
+                }
+                cursor={false}
+                defaultIndex={1}
               />
-            </Bar>
-          </BarChart>
-        </ChartContainer>
+              <Bar dataKey={dataKey} fill={color} radius={[4, 4, 4, 4]}>
+                <LabelList
+                  dataKey={dataKey}
+                  position="top"
+                  offset={3}
+                  fontSize={13}
+                  fontWeight="bold"
+                  formatter={(value: any) => formatNumber(Number(value))}
+                />
+              </Bar>
+            </BarChart>
+          </ChartContainer>{" "}
+        </Suspense>
       </CardContent>
       <CardFooter className="flex-col items-start gap-2 p-3 text-sm">
         <div className="flex items-center gap-2 leading-none">

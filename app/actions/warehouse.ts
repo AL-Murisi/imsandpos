@@ -7,7 +7,12 @@ import prisma from "@/lib/prisma";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { SortingState } from "@tanstack/react-table";
-import { CashierSchema, InventoryUpdateWithTrackingSchema } from "@/lib/zod";
+import {
+  CashierSchema,
+  CreateWarehouseSchema,
+  InventoryUpdateWithTrackingSchema,
+  WarehouseInput,
+} from "@/lib/zod";
 
 export type InventoryUpdateWithTrackingInput = z.infer<
   typeof InventoryUpdateWithTrackingSchema
@@ -764,6 +769,68 @@ export async function getInventoryById(
     return { inventory: convertedInventory, totalCount };
   } catch (error) {
     console.error("Error getting inventory by ID:", error);
+    throw error;
+  }
+}
+
+export async function fetchWarehouse(companyId: string) {
+  return await prisma.warehouse.findMany({
+    where: { companyId },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      phoneNumber: true,
+      address: true,
+      city: true,
+      state: true,
+      country: true,
+      postalCode: true,
+      isActive: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+}
+export async function createWarehouse(
+  input: WarehouseInput,
+  companyId: string,
+) {
+  const parsed = CreateWarehouseSchema.safeParse(input);
+  if (!parsed.success) {
+    throw new Error("Invalid warehouse data");
+  }
+  const {
+    name,
+    location,
+    address,
+    city,
+    state,
+    country,
+    postalCode,
+    phoneNumber,
+    email,
+  } = parsed.data;
+  try {
+    const warehouse = await prisma.warehouse.create({
+      data: {
+        companyId,
+        name,
+        location,
+        address,
+        city,
+        state,
+        country,
+        postalCode,
+        phoneNumber,
+        email,
+      },
+    });
+    revalidatePath("warehouses");
+    revalidatePath("/products");
+    return warehouse;
+  } catch (error) {
+    console.error("Failed to create product:", error);
     throw error;
   }
 }

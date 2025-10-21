@@ -1,19 +1,7 @@
 "use server";
 import prisma from "@/lib/prisma";
-import Product from "../inventory/products/page";
 import { revalidatePath } from "next/cache";
-import {
-  startOfDay,
-  endOfDay,
-  startOfMonth,
-  endOfMonth,
-  startOfWeek,
-  endOfWeek,
-} from "date-fns";
-import { Prisma } from "@prisma/client";
-import { create } from "domain";
-import type { SortingState } from "@tanstack/react-table";
-import { fetchProductStats } from "./sells";
+import { fetchProductStats } from "./Product";
 
 export async function updateSales(
   companyId: string,

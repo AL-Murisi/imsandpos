@@ -19,9 +19,9 @@ import { Plus } from "lucide-react";
 import CustomDialog from "@/components/common/Dailog";
 // import SearchInput from "@/components/common/SearchInput";
 
-import { columns } from "./columns";
+import { columns } from "../_compoent/columns";
 import SearchInput from "@/components/common/searchtest";
-import UserForm from "../new/form";
+import UserForm from "../_compoent/form";
 import CustomerForm from "../../customer/debtSell/Newcustomer";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -57,8 +57,7 @@ export default function UserClinet({ users, total, role }: ProductClientProps) {
         <CustomDialog
           trigger={
             <Button>
-              <Plus className="ml-1" />{" "}
-              {/* Change mr-1 to ml-1 for RTL icon placement */}
+              <Plus className="ml-1" />
               إضافة مستخدم
             </Button>
           }
@@ -66,19 +65,6 @@ export default function UserClinet({ users, total, role }: ProductClientProps) {
           description="أدخل تفاصيل المستخدم أدناه."
         >
           <UserForm />
-        </CustomDialog>
-        <CustomDialog
-          trigger={
-            <Button>
-              <Plus className="ml-1" />{" "}
-              {/* Change mr-1 to ml-1 for RTL icon placement */}
-              إضافة عميل
-            </Button>
-          }
-          title="إضافة مستخدم"
-          description="أدخل تفاصيل المستخدم أدناه."
-        >
-          <CustomerForm />
         </CustomDialog>
       </div>
 

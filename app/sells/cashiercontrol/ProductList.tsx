@@ -22,6 +22,7 @@ const ScrollArea = dynamic(
 
 type forsale = ProductForSale & {
   warehousename: string;
+  sellingMode: string;
 };
 
 type prop = {
@@ -49,28 +50,39 @@ const ProductCard = memo(
   }) => {
     if (product.availableCartons <= 0) return null;
 
+    // Determine selling mode automatically
+    const isCartonOnly =
+      product.availablePackets === 0 && product.availableUnits === 0;
+    const isCartonUnit =
+      product.availablePackets === 0 && product.availableUnits > 0;
+
+    const showPacket = !isCartonOnly && !isCartonUnit; // only for full mode
+    const showUnit = !isCartonOnly; // for all except carton-only
+
     return (
-      <div className="border-primary rounded-2xl border-2 shadow-xl/20 shadow-gray-500">
+      <div className="border-primary rounded-2xl border-2 shadow-xl/20 shadow-gray-500 transition hover:scale-[1.02] hover:shadow-lg">
         <Card
           onClick={() => onAdd(product)}
-          className="group relative h-40 cursor-pointer overflow-hidden p-2"
+          className="group relative flex h-44 cursor-pointer flex-col justify-between overflow-hidden p-2"
         >
-          {/* Header (qty / label / price) */}
-          <div className="bg-primary text-background absolute top-0 right-0 left-0 flex text-xs font-bold">
-            <div className="flex w-full flex-col px-4">
-              {/* Carton */}
-              <div className="flex items-center justify-between gap-2 p-1">
-                <span className="w-8 text-left">
-                  {FormatPrice(Number(product.availableCartons))}
-                </span>
-                <span className="flex-1 text-center">{t("carton")}</span>
-                <span className="w-16 text-right">
-                  {FormatPrice(Number(product.pricePerCarton))}
-                </span>
-              </div>
+          {/* Product header (quantities and prices) */}
+          <div className="bg-primary text-background flex flex-col rounded-md px-3 py-1 text-xs font-bold">
+            {/* Carton */}
+            <div className="flex items-center justify-between py-1">
+              <span className="w-8 text-left">
+                {FormatPrice(Number(product.availableCartons))}
+              </span>
+              <span className="flex-1 text-center">
+                {isCartonOnly ? " كرتون " : t("carton")}
+              </span>
+              <span className="w-16 text-right">
+                {FormatPrice(Number(product.pricePerCarton))}
+              </span>
+            </div>
 
-              {/* Packet */}
-              <div className="flex items-center justify-between gap-2 p-1">
+            {/* Packet */}
+            {showPacket && (
+              <div className="flex items-center justify-between py-1">
                 <span className="w-8 text-left">
                   {FormatPrice(product.availablePackets)}
                 </span>
@@ -79,39 +91,44 @@ const ProductCard = memo(
                   {FormatPrice(Number(product.pricePerPacket))}
                 </span>
               </div>
+            )}
 
-              {/* Unit */}
-              {product.pricePerUnit !== undefined && (
-                <div className="flex items-center justify-between gap-2 p-1">
-                  <span className="w-8 text-left">
-                    {FormatPrice(product.availableUnits)}
-                  </span>
-                  <span className="flex-1 text-center">{t("unit")}</span>
-                  <span className="w-16 text-right">
-                    ${FormatPrice(Number(product.pricePerUnit))}
-                  </span>
-                </div>
-              )}
-            </div>
+            {/* Unit */}
+            {showUnit && product.pricePerUnit !== undefined && (
+              <div className="flex items-center justify-between py-1">
+                <span className="w-8 text-left">
+                  {FormatPrice(product.availableUnits)}
+                </span>
+                <span className="flex-1 text-center">{t("unit")}</span>
+                <span className="w-16 text-right">
+                  {FormatPrice(Number(product.pricePerUnit))}
+                </span>
+              </div>
+            )}
+
+            {/* Fillers (for consistent height) */}
+            {isCartonOnly && (
+              <>
+                <div className="h-[24px]" />
+                <div className="h-[24px]" />
+              </>
+            )}
+            {isCartonUnit && <div className="h-[24px]" />}
           </div>
 
           {/* Product Name */}
-          <div className="bg-primary-foreground absolute right-0 bottom-0 left-0 flex h-[86px] items-center justify-center">
-            <div className="text-foreground mt-2 mb-3 line-clamp-2 px-2 text-center text-sm font-medium sm:pb-6">
-              <Label>{product.name}</Label>
-            </div>
+          <div className="bg-primary-foreground text-foreground flex h-[60px] items-center justify-center rounded-md">
+            <Label className="line-clamp-2 px-2 text-center text-sm font-medium">
+              {product.name}
+            </Label>
           </div>
         </Card>
       </div>
     );
   },
-  (prev, next) => {
-    // Custom comparison for better performance
-    return (
-      prev.product.id === next.product.id &&
-      prev.product.availableCartons === next.product.availableCartons
-    );
-  },
+  (prev, next) =>
+    prev.product.id === next.product.id &&
+    prev.product.availableCartons === next.product.availableCartons,
 );
 
 ProductCard.displayName = "ProductCard";
@@ -124,11 +141,21 @@ export default function ProductsList({
 }: prop) {
   const t = useTranslations("cashier");
   const dispatch = useAppDispatch();
-  const products = useAppSelector(selectAvailableStock);
+  // const products = useAppSelector(selectAvailableStock);
   const { formatCurrency, formatPriceK, formatQty } = useFormatter();
   // Memoize the handleAdd function
   const handleAdd = useCallback(
     (products: forsale, search: boolean) => {
+      // Determine initial selling unit based on available quantities
+      // and the selling mode from backend
+      let sellingUnit: "unit" | "carton" = "unit";
+
+      if (products.sellingMode === "cartonOnly") {
+        sellingUnit = "carton";
+      } else {
+        sellingUnit = "unit"; // default for full & cartonUnit
+      }
+
       dispatch(
         addItem({
           id: products.id,
@@ -139,9 +166,10 @@ export default function ProductsList({
           pricePerCarton: products.pricePerCarton ?? 0,
           action: "",
           warehousename: products.warehousename,
-          sellingUnit: "unit",
+          sellingUnit,
           warehouseId: products.warehouseId,
           selectedQty: 0,
+          sellingMode: products.sellingMode,
           originalStockQuantity: products.availableCartons,
           packetsPerCarton: products.packetsPerCarton,
           unitsPerPacket: products.unitsPerPacket,
@@ -152,7 +180,7 @@ export default function ProductsList({
         dispatch(
           updateQty({
             id: products.id,
-            sellingUnit: "unit",
+            sellingUnit,
             quantity: 1,
             action: "plus",
           }),
@@ -177,7 +205,7 @@ export default function ProductsList({
   const productGrid = useMemo(
     () => (
       <div className="grid auto-rows-fr grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-x-5 gap-y-4">
-        {products.map((prod) => (
+        {product.map((prod) => (
           <ProductCard
             key={prod.id}
             product={prod}
@@ -188,7 +216,7 @@ export default function ProductsList({
         ))}
       </div>
     ),
-    [products, handleAdd, t],
+    [product, handleAdd, t],
   );
 
   return (

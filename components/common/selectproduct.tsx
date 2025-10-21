@@ -15,6 +15,7 @@ import {
 import { Check, ChevronDown, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ReactNode, useState } from "react";
+import { ScrollArea } from "../ui/scroll-area";
 
 interface Option {
   id: string;
@@ -55,31 +56,34 @@ export function SelectField({
           <ChevronDown className="text-muted-foreground h-4 w-4" />
         </button>
       </PopoverTrigger>
+
       <PopoverContent className="p-0" align="end">
         <Command>
           <CommandInput placeholder="ابحث..." />
-          <CommandEmpty>لا توجد نتائج</CommandEmpty>
-          <CommandGroup>
-            {options.map((opt) => (
-              <CommandItem
-                key={opt.id}
-                value={opt.name}
-                onSelect={() => {
-                  setOpen(false);
-                  action(opt.id);
-                }}
-              >
-                <Check
-                  className={cn(
-                    "mr-2 h-4 w-4",
-                    value === opt.id ? "opacity-100" : "opacity-0",
-                  )}
-                />
-                {opt.name}
-              </CommandItem>
-            ))}
-            {add}
-          </CommandGroup>
+          <ScrollArea className="h-36">
+            <CommandEmpty>لا توجد نتائج</CommandEmpty>
+            <CommandGroup>
+              {options.map((opt) => (
+                <CommandItem
+                  key={opt.id}
+                  value={opt.name}
+                  onSelect={() => {
+                    setOpen(false);
+                    action(opt.id);
+                  }}
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      value === opt.id ? "opacity-100" : "opacity-0",
+                    )}
+                  />
+                  {opt.name}
+                </CommandItem>
+              ))}
+              {add}
+            </CommandGroup>
+          </ScrollArea>
         </Command>
       </PopoverContent>
     </Popover>

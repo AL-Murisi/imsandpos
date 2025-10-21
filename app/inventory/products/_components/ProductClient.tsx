@@ -64,30 +64,25 @@ export default function ProductClient({
       className="bg-accent w-full rounded-2xl p-2 shadow-xl/20 shadow-gray-500 group-data-[[state=pending]]:animate-pulse"
       dir="rtl"
     >
-      {/* <SearchInput
-        placeholder={"search"}
-        value={globalFilter}
-        onSearchChange={(value) => setParam("search", value)}
-      /> */}
       <div className="flex flex-wrap gap-2 p-1 md:flex-row lg:flex-row">
         <Calendar22 />
         <SearchInput placeholder={"بحث "} paramKey={"product"} />
         <SelectField
           options={formData.warehouses}
           paramKey="warehouseId"
-          placeholder="warehouseId"
+          placeholder={tt("warehouseId")}
         />
 
         <SelectField
           options={formData.categories}
           paramKey="categoryId"
-          placeholder="الفئة"
+          placeholder={tt("categoryId")}
         />
 
         <SelectField
           options={formData.suppliers}
           paramKey={"supplierId"}
-          placeholder="Supplier"
+          placeholder={tt("supplierId")}
         />
         <ProductForm formData={formData} />
         {/* <Link href={"/inventory/products/new"}>

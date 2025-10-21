@@ -6,6 +6,7 @@ import { SellingUnit, updateQty } from "./cartSlice";
 type CategoryItem = { label: string; value: string; checked: boolean };
 type forsale = ProductForSale & {
   warehousename: string;
+  sellingMode: string;
 };
 export interface CartItem extends CashierItem {
   id: string;
@@ -13,6 +14,7 @@ export interface CartItem extends CashierItem {
   sellingUnit: SellingUnit;
   selectedQty: number;
   warehouseName?: string;
+
   originalStockQuantity: number;
   unitsPerPacket: number;
   packetsPerCarton: number;

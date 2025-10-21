@@ -12,11 +12,6 @@ const AreaChart = dynamic(
 
   {
     ssr: false,
-    loading: () => (
-      <div className="w-full">
-        <div className="h-[324px] animate-ping bg-gray-800" />
-      </div>
-    ),
   },
 );
 const Area = dynamic(() => import("recharts").then((m) => m.Area), {

@@ -17,6 +17,7 @@ import { CreateCustomerSchema } from "@/lib/zod";
 import { createCutomer } from "@/app/actions/customers";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/context/AuthContext";
+import { SelectField } from "@/components/common/selectproduct";
 
 type CreateCustomer = z.infer<typeof CreateCustomerSchema>;
 
@@ -57,6 +58,10 @@ export default function CustomerForm() {
     toast.success("✅ تمت إضافة  بنجاح");
     reset();
   };
+  const customerType = [
+    { id: "individual ", name: "فردي" },
+    { id: "business ", name: "تجاري" },
+  ];
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" dir="rtl">
@@ -133,20 +138,14 @@ export default function CustomerForm() {
 
           <div className="grid gap-2">
             <Label htmlFor="customerType">نوع العميل</Label>
-            <Select
-              onValueChange={(value) =>
+            <SelectField
+              options={customerType}
+              action={(value) =>
                 setValue("customerType", value as "individual" | "business")
               }
-              defaultValue={watch("customerType")}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="اختر النوع" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="individual">فردي</SelectItem>
-                <SelectItem value="business">تجاري</SelectItem>
-              </SelectContent>
-            </Select>
+              placeholder="اختر النوع"
+            />
+
             {errors.customerType && (
               <p className="text-xs text-red-500">
                 {errors.customerType.message}

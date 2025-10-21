@@ -1,160 +1,3 @@
-// import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-// import type { CashierItem } from "@/lib/zod";
-
-// export type SellingUnit = "carton" | "packet" | "unit";
-// // type CartItem = {
-// //   productId: number
-// //   name: string
-// //   quantity: number
-// //   unit: string
-// //   unitPrice: number
-// //   maxStock: number
-// //   pricePerCarton?: number
-// //   packetsPerCarton?: number
-// //   unitsPerPacket?: number
-// // }
-
-// export interface CartItem extends CashierItem {
-//   id: string;
-//   name: string;
-//   sellingUnit: SellingUnit;
-//   selectedQty: number;
-//   action: string;
-//   warehousename: string;
-//   originalStockQuantity: number;
-//   unitsPerPacket: number;
-//   packetsPerCarton: number;
-// }
-
-// interface Payment extends CartItem {
-//   discountType: "fixed" | "percentage";
-//   discountValue: number;
-// }
-// interface CartState {
-//   items: CartItem[];
-//   discountType: "fixed" | "percentage";
-//   discountValue: number;
-// }
-
-// const initialState: CartState = {
-//   items: [],
-//   discountType: "fixed",
-//   discountValue: 0,
-// };
-
-// const cartSlice = createSlice({
-//   name: "cart",
-//   initialState,
-//   reducers: {
-//     addToCart: (state, action: PayloadAction<CartItem>) => {
-//       const existing = state.items.find(
-//         (i) =>
-//           i.id === action.payload.id &&
-//           i.sellingUnit === action.payload.sellingUnit
-//       );
-//       if (!existing) state.items.push(action.payload);
-//     },
-//     removeFromCart: (
-//       state,
-//       action: PayloadAction<{ id: string; sellingUnit: SellingUnit }>
-//     ) => {
-//       state.items = state.items.filter(
-//         (i) =>
-//           !(
-//             i.id === action.payload.id &&
-//             i.sellingUnit === action.payload.sellingUnit
-//           )
-//       );
-//     },
-
-//     updateQty: (
-//       state,
-//       action: PayloadAction<{
-//         id: string;
-//         sellingUnit: SellingUnit;
-//         qty: number;
-//         action: string;
-//       }>
-//     ) => {
-//       const item = state.items.find(
-//         (i) =>
-//           i.id === action.payload.id &&
-//           i.sellingUnit === action.payload.sellingUnit
-//       );
-//       if (action.payload.action === "plus") {
-//         if (item) item.selectedQty += Math.max(0, action.payload.qty);
-//       } else if (action.payload.action === "mins") {
-//         if (item) item.selectedQty -= Math.max(0, action.payload.qty);
-//       } else {
-//       }
-//     },
-//     changeSellingUnit: (
-//       state,
-//       action: PayloadAction<{
-//         id: string;
-//         from: SellingUnit;
-//         to: SellingUnit;
-//         product: { packetsPerCarton: number; unitsPerPacket: number };
-//         qty: number;
-//       }>
-//     ) => {
-//       const item = state.items.find(
-//         (i) =>
-//           i.id === action.payload.id && i.sellingUnit === action.payload.from
-//       );
-//       if (!item) return;
-//       const { from, to, product, qty } = action.payload;
-//       let newQty = qty;
-//       if (from === "carton" && to === "packet")
-//         newQty = qty * product.packetsPerCarton;
-//       else if (from === "carton" && to === "unit")
-//         newQty = qty * product.packetsPerCarton * product.unitsPerPacket;
-//       else if (from === "packet" && to === "carton")
-//         newQty = Math.floor(qty / product.packetsPerCarton);
-//       else if (from === "packet" && to === "unit")
-//         newQty = qty * product.unitsPerPacket;
-//       else if (from === "unit" && to === "packet")
-//         newQty = Math.floor(qty / product.unitsPerPacket);
-//       else if (from === "unit" && to === "carton")
-//         newQty = Math.floor(
-//           qty / (product.unitsPerPacket * product.packetsPerCarton)
-//         );
-
-//       item.sellingUnit = to;
-//       item.selectedQty = newQty;
-//     },
-//     setDiscount: (
-//       state,
-//       action: PayloadAction<{ type: "fixed" | "percentage"; value: number }>
-//     ) => {
-//       state.discountType = action.payload.type;
-//       state.discountValue = action.payload.value;
-//     },
-//     addtoPayment: (state, action: PayloadAction<Payment>) => {
-//       const existing = state.items.find(
-//         (i) =>
-//           i.id === action.payload.id &&
-//           i.sellingUnit === action.payload.sellingUnit
-//       );
-//       if (!existing) state.items.push(action.payload);
-//     },
-//     clearCart: (state) => {
-//       state.items = [];
-//       state.discountValue = 0;
-//       state.discountType = "fixed";
-//     },
-//   },
-// });
-
-// export const {
-//   addToCart,
-//   removeFromCart,
-//   updateQty,
-//   changeSellingUnit,
-//   setDiscount,
-//   clearCart,
-// } = cartSlice.actions;
-// export default cartSlice.reducer;
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { CashierItem } from "@/lib/zod";
 
@@ -172,6 +15,7 @@ export interface CartItem extends CashierItem {
   selectedQty: number;
   action: string;
   warehousename: string;
+  sellingMode: string;
   originalStockQuantity: number;
   unitsPerPacket: number;
   packetsPerCarton: number;
@@ -225,43 +69,13 @@ const cartSlice = createSlice({
       }
     },
     //     removeFromCart: (
-    //       state,
-    //       action: PayloadAction<{ id: string; sellingUnit: SellingUnit }>
-    //     ) => {
-    //       state.items = state.items.filter(
-    //         (i) =>
-    //           !(
-    //             i.id === action.payload.id &&
-    //             i.sellingUnit === action.payload.sellingUnit
-    //           )
-    //       );
-    //     },
+
     removeFromCart: (state, action: PayloadAction<string>) => {
       const cart = state.carts.find((c) => c.id === state.activeCartId);
       if (!cart) return;
       cart.items = cart.items.filter((i) => i.id !== action.payload);
     },
-    //updateQty: (
-    //       state,
-    //       action: PayloadAction<{
-    //         id: string;
-    //         sellingUnit: SellingUnit;
-    //         qty: number;
-    //         action: string;
-    //       }>
-    //     ) => {
-    //       const item = state.items.find(
-    //         (i) =>
-    //           i.id === action.payload.id &&
-    //           i.sellingUnit === action.payload.sellingUnit
-    //       );
-    //       if (action.payload.action === "plus") {
-    //         if (item) item.selectedQty += Math.max(0, action.payload.qty);
-    //       } else if (action.payload.action === "mins") {
-    //         if (item) item.selectedQty -= Math.max(0, action.payload.qty);
-    //       } else {
-    //       }
-    //     },
+
     updateQty(
       state,
       action: PayloadAction<{

@@ -7,9 +7,8 @@ import { DollarSignIcon, ShoppingBagIcon, WalletIcon } from "lucide-react"; // E
 import Link from "next/link";
 import { useRouter } from "next/navigation"; // For refreshing data or navigation
 import dynamic from "next/dynamic";
-import { DataTable } from "@/components/common/Table";
-import { debtSale } from "./columns";
-import DebtSells from "./_components/table";
+import DebtSells from "./table";
+
 const ScrollArea = dynamic(
   () => import("@/components/ui/scroll-area").then((m) => m.ScrollArea),
   {

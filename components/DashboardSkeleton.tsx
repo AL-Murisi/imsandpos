@@ -45,12 +45,12 @@ export function DashboardSkeleton() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="flex flex-col gap-5 lg:col-span-2">
-          <div className="col-span-2 h-[40vh] animate-pulse rounded-lg bg-gray-200" />
-          <div className="col-span-1 h-[40vh] animate-pulse rounded-lg bg-gray-200" />
+          <div className="col-span-2 h-[50vh] animate-pulse rounded-lg bg-gray-200" />
+          <div className="col-span-1 h-[50vh] animate-pulse rounded-lg bg-gray-200" />
         </div>
         <div className="flex flex-col gap-6 lg:col-span-1">
-          <div className="h-[40vh] animate-pulse rounded-lg bg-gray-200" />
-          <div className="h-[40vh] animate-pulse rounded-lg bg-gray-200" />
+          <div className="h-[50vh] animate-pulse rounded-lg bg-gray-200" />
+          <div className="h-[50vh] animate-pulse rounded-lg bg-gray-200" />
         </div>
       </div>
     </div>

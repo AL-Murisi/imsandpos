@@ -185,11 +185,11 @@ export const inventoryColumns: ColumnDef<any>[] = [
   },
   {
     accessorKey: "product.name",
-    header: "اسم المنتج",
+    header: "المنتج",
   },
   {
     accessorKey: "warehouse.name",
-    header: "اسم المستودع",
+    header: "المستودع",
   },
   {
     accessorKey: "warehouse.location",

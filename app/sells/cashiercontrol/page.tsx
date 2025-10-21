@@ -1,5 +1,5 @@
 // // Cart.tsx
-import { getAllActiveProductsForSale } from "@/app/actions/createProduct";
+import { getAllActiveProductsForSale } from "@/app/actions/cashier";
 import { Fetchcustomerbyname } from "@/app/actions/customers";
 import { fetchAllFormData } from "@/app/actions/roles";
 import { Prisma } from "@prisma/client";
@@ -78,7 +78,7 @@ export default async function Cart({ searchParams }: Props) {
           queryr={productquery}
         />
 
-        <CartDisplayRedux users={users} />
+        <CartDisplayRedux users={users} product={products} />
       </div>
     </ScrollArea>
   );

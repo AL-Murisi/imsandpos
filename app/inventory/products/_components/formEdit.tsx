@@ -14,13 +14,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UpdateProduct, fetchAllFormData } from "@/app/actions/roles";
+import { fetchAllFormData } from "@/app/actions/roles";
 import { SelectField } from "@/components/common/selectproduct";
 import { useAuth } from "@/lib/context/AuthContext";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { CreateProductInput, CreateProductSchema } from "@/lib/zod";
 import { Edit } from "lucide-react";
+import { UpdateProduct } from "@/app/actions/Product";
 
 interface Option {
   id: string;
@@ -125,8 +126,8 @@ export default function ProductEditForm({
       supplierId: product.supplierId || "",
       warehouseId: product.warehouseId || "",
       description: product.description || "",
-      unitsPerPacket: product.unitsPerPacket || undefined,
-      packetsPerCarton: product.packetsPerCarton || undefined,
+      unitsPerPacket: product.unitsPerPacket || 0,
+      packetsPerCarton: product.packetsPerCarton || 0,
       costPrice: product.costPrice || undefined,
       pricePerUnit: product.pricePerUnit || undefined,
       pricePerPacket: product.pricePerPacket || undefined,
@@ -180,7 +181,7 @@ export default function ProductEditForm({
   const onSubmit = async (data: CreateProductInput) => {
     try {
       setIsSubmitting(true);
-      await UpdateProduct(data, user.companyId);
+      await UpdateProduct(data, user.companyId, user.userId);
       toast.success("✅ تم تحديث المنتج بنجاح!");
       setOpen(false);
       if (onSuccess) onSuccess();

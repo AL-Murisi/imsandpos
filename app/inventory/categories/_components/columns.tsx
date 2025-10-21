@@ -65,7 +65,6 @@ export type User = z.infer<typeof CategorySchema>;
 export const columns: ColumnDef<User>[] = [
   {
     id: "select",
-
     header: ({ table }) => (
       <Checkbox
         checked={
@@ -73,14 +72,16 @@ export const columns: ColumnDef<User>[] = [
           (table.getIsSomePageRowsSelected() && "indeterminate")
         }
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
+        // 🔹 Translation: "Select all" -> "تحديد الكل"
+        aria-label="تحديد الكل"
       />
     ),
     cell: ({ row }) => (
       <Checkbox
         checked={row.getIsSelected()}
         onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
+        // 🔹 Translation: "Select row" -> "تحديد الصف"
+        aria-label="تحديد الصف"
       />
     ),
     enableSorting: false,
@@ -88,7 +89,8 @@ export const columns: ColumnDef<User>[] = [
   },
   {
     accessorKey: "isActive",
-    header: "Status",
+    // 🔹 Translation: "Status" -> "الحالة"
+    header: "الحالة",
 
     cell: ({ row }) => {
       const status = row.original.isActive;
@@ -99,12 +101,14 @@ export const columns: ColumnDef<User>[] = [
       switch (status) {
         case true:
           color = "bg-green-100 text-green-800";
-          label = "Active";
+          // 🔹 Translation: "Active" -> "نشط"
+          label = "نشط";
           icon = <CheckCircle className="mr-1 h-4 w-4" />;
           break;
         default:
           color = "bg-yellow-100 text-yellow-800";
-          label = "Not Active";
+          // 🔹 Translation: "Not Active" -> "غير نشط"
+          label = "غير نشط";
           icon = <Clock className="mr-1 h-4 w-4" />;
           break;
       }
@@ -121,24 +125,24 @@ export const columns: ColumnDef<User>[] = [
   },
   {
     accessorKey: "name",
-
-    header: ({ column }) => <SortableHeader column={column} label="Name" />,
+    // 🔹 Translation: "Name" -> "الاسم"
+    header: ({ column }) => <SortableHeader column={column} label="الاسم" />,
     cell: ({ row }) => <div className="lowercase">{row.getValue("name")}</div>,
   },
   {
     accessorKey: "description",
-
-    header: ({ column }) => (
-      <SortableHeader column={column} label="description" />
-    ),
+    // 🔹 Translation: "description" -> "الوصف"
+    header: ({ column }) => <SortableHeader column={column} label="الوصف" />,
     cell: ({ row }) => (
       <div className="lowercase">{row.getValue("description")}</div>
     ),
   },
   {
     accessorKey: "parentId",
-
-    header: ({ column }) => <SortableHeader column={column} label="parentid" />,
+    // 🔹 Translation: "parentid" -> "معرّف الأصل" or "المعرّف الأب"
+    header: ({ column }) => (
+      <SortableHeader column={column} label="المعرّف الأب" />
+    ),
     cell: ({ row }) => (
       <div className="font-medium">{row.getValue("parentId")}</div>
     ),
@@ -146,7 +150,6 @@ export const columns: ColumnDef<User>[] = [
 
   {
     id: "actions",
-
     enableHiding: false,
     cell: ({ row }) => {
       const user = row.original;
@@ -155,20 +158,25 @@ export const columns: ColumnDef<User>[] = [
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
+              {/* 🔹 Translation: "Open menu" -> "فتح القائمة" */}
+              <span className="sr-only">فتح القائمة</span>
               <MoreHorizontal />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            {/* 🔹 Translation: "Actions" -> "الإجراءات" */}
+            <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
             <DropdownMenuItem
               onClick={() => navigator.clipboard.writeText(user.id)}
             >
-              Copy User ID
+              {/* 🔹 Translation: "Copy User ID" -> "نسخ معرّف المستخدم" */}
+              نسخ معرّف المستخدم
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>View Profile</DropdownMenuItem>
-            <DropdownMenuItem>Deactivate</DropdownMenuItem>
+            {/* 🔹 Translation: "View Profile" -> "عرض الملف الشخصي" */}
+            <DropdownMenuItem>عرض الملف الشخصي</DropdownMenuItem>
+            {/* 🔹 Translation: "Deactivate" -> "تعطيل" */}
+            <DropdownMenuItem>تعطيل</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       );

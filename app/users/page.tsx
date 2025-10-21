@@ -1,13 +1,15 @@
-import { TabsContent } from "../../components/ui/tabs";
+import { TabsContent } from "@/components/ui/tabs";
 
-import { fetchRoles, fetchRolesForSelect, fetechUser } from "../actions/roles";
-import UserClinet from "./dashborad/Table";
+import { fetechUser } from "../actions/users";
+import UserClinet from "./_compoent/Table";
 
 import UserActivityTable from "./_compoent/userActivityLogs";
 import { getActivityLogs } from "../actions/activitylogs";
 import DashboardTabs from "@/components/common/Tabs";
-import RoleTable from "./userRole/roleTable";
+
 import { getSession } from "@/lib/session";
+import { fetchRoles, fetchRolesForSelect } from "../actions/roles";
+import Role from "./_compoent/roleTable";
 
 type Users = {
   searchParams: Promise<{
@@ -59,22 +61,21 @@ export default async function User({ searchParams }: Users) {
   const roles = await fetchRoles(pageIndex, pageSize);
   return (
     <DashboardTabs
-      defualt={"useractivity"}
+      defualt={"userDashboard"}
       tabs={[
-        { value: "useractivity", label: "أنشطة المستخدمين" },
         { value: "userDashboard", label: "المستخدمين" },
+        { value: "useractivity", label: "أنشطة المستخدمين" },
         { value: "userroles", label: "أدوار المستخدمين" },
       ]}
     >
-      {" "}
-      <TabsContent value={"useractivity"}>
-        <UserActivityTable logs={logs} total={logs.length} sort={[]} />
-      </TabsContent>
       <TabsContent value="userDashboard">
         <UserClinet users={data} total={0} role={roless} />
       </TabsContent>
+      <TabsContent value={"useractivity"}>
+        <UserActivityTable logs={logs} total={logs.length} sort={[]} />
+      </TabsContent>
       <TabsContent value={"userroles"}>
-        <RoleTable role={roles} total={logs.length} sort={[]} />
+        <Role Role={roles} />
       </TabsContent>
     </DashboardTabs>
   );

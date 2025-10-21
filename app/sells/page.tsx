@@ -1,16 +1,13 @@
-import {
-  FetchDebtSales,
-  fetchProductStats,
-  fetchSalesSummary,
-} from "@/app/actions/sells";
+import { FetchDebtSales, fetchSalesSummary } from "@/app/actions/sells";
 import { verifySession } from "@/lib/dal";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
-import SellsDashboardClient from "./sellsDasboard";
+import SellsDashboardClient from "./_components/sellsDasboard";
 import { SortingState } from "@tanstack/react-table";
 import { ParsedSort } from "@/hooks/sort";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getSession } from "@/lib/session";
+import { fetchProductStats } from "../actions/Product";
 
 type DashboardProps = {
   searchParams: Promise<{

@@ -15,16 +15,21 @@ const ResponsiveContainer = dynamic(
   () => import("recharts").then((m) => m.ResponsiveContainer),
   {
     ssr: false,
+    loading: () => (
+      <div className="h-24 animate-pulse rounded-2xl bg-gray-600" />
+    ),
   },
 );
 
 // Dynamic imports with better performance
 const AreaChart = dynamic(() => import("recharts").then((m) => m.AreaChart), {
   ssr: false,
+  loading: () => <div className="h-24 animate-pulse rounded-2xl bg-gray-700" />,
 });
 
 const Area = dynamic(() => import("recharts").then((m) => m.Area), {
   ssr: false,
+  loading: () => <div className="h-24 animate-pulse rounded-2xl bg-gray-700" />,
 });
 
 const CartesianGrid = dynamic(
@@ -42,6 +47,7 @@ import { IconClick } from "@tabler/icons-react";
 import { Label } from "../ui/label";
 import { MoreHorizontal, MoreVertical, Loader2 } from "lucide-react";
 import { useFormatter } from "@/hooks/usePrice";
+import { Suspense } from "react";
 
 interface ChartCardProps {
   icon: React.ReactNode;
@@ -104,44 +110,45 @@ export function ChartCard({
 
               <div className="mt-2 h-24 w-full flex-1 rounded-3xl">
                 {chartData && chartData.length > 0 ? (
-                  // <Suspense
-                  //   fallback={
-                  //     <div className="h-20 animate-pulse rounded-2xl bg-gray-200" />
-                  //   }
-                  // >
-                  <ResponsiveContainer
-                    width="100%"
-                    height="100%"
-                    className="dark:bg-accent bg-accent-foreground rounded-2xl"
-                  >
-                    <AreaChart data={chartData}>
-                      <XAxis
-                        dataKey="date"
-                        hide={false}
-                        tickFormatter={(dateStr) =>
-                          chartConfig?.dateFormat
-                            ? format(new Date(dateStr), chartConfig.dateFormat)
-                            : dateStr
-                        }
-                      />
-                      <YAxis hide domain={["auto", "auto"]} />
-                      <Tooltip
-                        content={
-                          <CustomTooltip labelName={chartConfig?.label || ""} />
-                        }
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="value"
-                        stroke={chartConfig.stroke || "#4ade80"}
-                        fill={chartConfig.fill || "#4ade80"}
-                        strokeWidth={2}
-                        fillOpacity={0.3}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                  <Suspense>
+                    <ResponsiveContainer
+                      width="100%"
+                      height="100%"
+                      className="dark:bg-accent bg-accent-foreground rounded-2xl"
+                    >
+                      <AreaChart data={chartData}>
+                        <XAxis
+                          dataKey="date"
+                          hide={false}
+                          tickFormatter={(dateStr) =>
+                            chartConfig?.dateFormat
+                              ? format(
+                                  new Date(dateStr),
+                                  chartConfig.dateFormat,
+                                )
+                              : dateStr
+                          }
+                        />
+                        <YAxis hide domain={["auto", "auto"]} />
+                        <Tooltip
+                          content={
+                            <CustomTooltip
+                              labelName={chartConfig?.label || ""}
+                            />
+                          }
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="value"
+                          stroke={chartConfig.stroke || "#4ade80"}
+                          fill={chartConfig.fill || "#4ade80"}
+                          strokeWidth={2}
+                          fillOpacity={0.3}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </Suspense>
                 ) : (
-                  // </Suspense>
                   <Label className="h-full w-full bg-transparent">
                     no data in {chartConfig?.dateFormat}
                   </Label>

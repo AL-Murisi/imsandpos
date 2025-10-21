@@ -18,6 +18,7 @@ import { Plus } from "lucide-react";
 import SearchInput from "@/components/common/searchtest";
 import { inventoryColumns } from "./columnsMovment";
 import InvonteryEditFormm from "./form";
+import { useTranslations } from "next-intl";
 
 type ProductClientProps = {
   products: any[];
@@ -47,7 +48,7 @@ export default function ManageinvetoryClient({
     categoryId,
     setParam,
   } = useTablePrams();
-
+  const t = useTranslations("productColumns");
   return (
     <div className="bg-accent w-full rounded-2xl border border-amber-500 p-2">
       {/* <SearchInput
@@ -61,19 +62,19 @@ export default function ManageinvetoryClient({
         <SelectField
           options={formData.warehouses}
           paramKey="warehouseId"
-          placeholder="warehouseId"
+          placeholder={t("warehouseId")}
         />
 
         <SelectField
           options={formData.categories}
           paramKey="categoryId"
-          placeholder="الفئة"
+          placeholder={t("categoryId")}
         />
 
         <SelectField
           options={formData.suppliers}
           paramKey={"supplierId"}
-          placeholder="Supplier"
+          placeholder={t("supplierId")}
         />
       </div>
 

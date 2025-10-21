@@ -2,6 +2,7 @@
 // import TopSellingChartWrapper from "./test";
 
 import dynamic from "next/dynamic";
+import { fa } from "zod/v4/locales";
 
 // import Chart from "../_components/chart";
 type chart = {

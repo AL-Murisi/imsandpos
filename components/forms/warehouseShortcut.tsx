@@ -15,7 +15,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { CreateWarehouseSchema } from "@/lib/zod";
-import { createWarehouse } from "@/app/actions/roles";
+import { createWarehouse } from "@/app/actions/warehouse";
 
 import { Plus } from "lucide-react";
 import { toast } from "sonner";

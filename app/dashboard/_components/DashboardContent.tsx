@@ -1,12 +1,38 @@
-import { ReusableAreaChart } from "@/components/common/Chart";
+"use client";
+// import { ReusableAreaChart } from "@/components/common/Chart";
 import { useMemo, lazy, Suspense } from "react";
 import Charts from "./overview";
-import TopSellingChartWrapper from "@/components/common/Barchart";
-import { ChartPieLegend } from "@/components/common/PieChart";
+// import TopSellingChartWrapper from "@/components/common/Barchart";
+// import { ChartPieLegend } from "@/components/common/PieChart";
 import { LazySection } from "@/components/common/LazySection";
 import UserActivityTable from "./userActivityTable";
+import dynamic from "next/dynamic";
+import React from "react";
 // Lazy load heavy chart components
-
+const ChartPieLegend = dynamic(
+  () => import("@/components/common/PieChart").then((m) => m.ChartPieLegend),
+  {
+    ssr: false,
+  },
+);
+const TopSellingChartWrapper = dynamic(
+  () => import("@/components/common/Barchart"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="col-span-1 h-[50vh] animate-pulse rounded-lg bg-gray-200" />
+    ),
+  },
+);
+const ReusableAreaChart = dynamic(
+  () => import("@/components/common/Chart").then((m) => m.ReusableAreaChart),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="col-span-2 h-[50vh] animate-pulse rounded-lg bg-gray-200" />
+    ),
+  },
+);
 // Lightweight skeletons
 const ChartSkeleton = () => (
   <div className="bg-card h-[400px] rounded-lg border p-6">
@@ -43,7 +69,7 @@ interface DashboardContentClientProps {
   };
 }
 
-export default function DashboardContentClient({
+function DashboardContentClient({
   result,
   salesSummary,
 }: DashboardContentClientProps) {
@@ -157,3 +183,4 @@ export default function DashboardContentClient({
     </div>
   );
 }
+export default React.memo(DashboardContentClient);

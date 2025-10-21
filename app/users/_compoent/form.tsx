@@ -16,10 +16,12 @@ import { Input } from "../../../components/ui/input";
 import { Label } from "../../../components/ui/label";
 import { Button } from "../../../components/ui/button";
 
-import { createUser, fetchRolesForSelect } from "@/app/actions/roles";
+import { fetchRolesForSelect } from "@/app/actions/roles";
 import { toast } from "sonner";
 import { CreateUserSchema, UserInput } from "@/lib/zod";
 import { useAuth } from "@/lib/context/AuthContext";
+import { createUser } from "@/app/actions/users";
+import { SelectField } from "@/components/common/selectproduct";
 
 type Role = {
   id: string;
@@ -118,23 +120,13 @@ export default function UserForm() {
         {/* Role select */}
         <div className="grid gap-2">
           <Label htmlFor="role">الدور</Label>
-          <Select
+
+          <SelectField
+            options={roles}
+            action={(value) => setValue("roleId", value)}
             value={selectedRole}
-            onValueChange={(value) => setValue("roleId", value)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="اختر الدور" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {roles.map((r) => (
-                  <SelectItem key={r.id} value={r.id}>
-                    {r.name}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+          />
+
           {errors.roleId && (
             <p className="text-xs text-red-500">{errors.roleId.message}</p>
           )}
