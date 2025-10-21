@@ -31,7 +31,7 @@ export default function CustomDialog({
 }: CustomDialogProps) {
   const [open, setOpen] = useState(false);
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={setOpen} modal={false}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent
         className="bg-popover h-[90vh] w-2xs overflow-y-auto md:w-md lg:w-full"
