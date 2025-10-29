@@ -6,12 +6,7 @@ import { SelectField } from "@/components/common/selection";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import dynamic from "next/dynamic";
-const Calendar22 = dynamic(
-  () => import("@/components/common/DatePicker").then((m) => m.Calendar22),
-  {
-    ssr: false,
-  },
-);
+
 // import SearchInput from "@/components/common/SearchInput";
 const DataTable = dynamic(
   () => import("@/components/common/test").then((m) => m.DataTable),
@@ -29,6 +24,7 @@ const CustomerForm = dynamic(() => import("./Newcustomer"), {
 import SearchInput from "@/components/common/searchtest";
 import { customerColumns } from "./columns";
 import TableSkeleton from "@/components/common/TableSkeleton";
+import { Calendar22 } from "@/components/common/DatePicker";
 
 type Props = {
   users: any;

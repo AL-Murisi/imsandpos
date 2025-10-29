@@ -62,6 +62,7 @@ export default function DashboardTabs({
       <div className="mb-3 flex flex-wrap gap-2">
         {tabs.map((t) => (
           <Button
+            className="rounded-lg shadow-xl/20 shadow-gray-900"
             key={t.value}
             onClick={() => handleTabChange(t.value)}
             variant={optimisticTab === t.value ? "default" : "outline"}

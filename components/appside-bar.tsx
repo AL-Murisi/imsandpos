@@ -288,122 +288,129 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarGroupLabel className="dark:text-foreground text-sidebar mb-2 text-xs">
           {t("role")} {user.roles.join(", ")}
         </SidebarGroupLabel>
-      </SidebarHeader>
-      <SidebarContent className="dark:bg-accent dark:text-foreground text-sidebar bg-[#0b142a]">
-        <ScrollArea className="max-h-[100vh]" dir="rtl">
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {visibleMenuItems.map((item) => {
-                  if (item.isDropdown && item.subItems) {
-                    const visibleSubItems = filterSubItems(item.subItems);
+      </SidebarHeader>{" "}
+      <div className="dark:bg-accent dark:text-foreground text-sidebar flex h-[calc(100vh-8rem)] flex-col justify-between bg-[#0b142a]">
+        {/* Scrollable menu area */}
+        <ScrollArea className="h-full pr-2" dir="rtl">
+          <SidebarContent className="dark:bg-accent dark:text-foreground text-sidebar bg-[#0b142a]">
+            {" "}
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {visibleMenuItems.map((item) => {
+                    if (item.isDropdown && item.subItems) {
+                      const visibleSubItems = filterSubItems(item.subItems);
 
-                    if (visibleSubItems.length === 0) {
-                      return null; // Don't show dropdown if no sub-items are visible
+                      if (visibleSubItems.length === 0) {
+                        return null; // Don't show dropdown if no sub-items are visible
+                      }
+
+                      return (
+                        <Collapsible
+                          key={item.title}
+                          asChild
+                          defaultOpen={false}
+                        >
+                          <SidebarMenuItem>
+                            <CollapsibleTrigger asChild>
+                              <SidebarMenuButton
+                                tooltip={item.title}
+                                className="text-[18px]"
+                              >
+                                <item.icon />
+                                <span>{item.title}</span>
+                                <ChevronDown className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-180" />
+                              </SidebarMenuButton>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                              <SidebarMenuSub>
+                                {visibleSubItems.map((subItem) => (
+                                  <SidebarMenuItem
+                                    key={subItem.title}
+                                    className="text-[15px]"
+                                  >
+                                    <SidebarMenuButton
+                                      asChild
+                                      className={` ${
+                                        pathname === subItem.url
+                                          ? "w-40 rounded-l-lg border-r-4 border-r-orange-600 bg-orange-400 text-white"
+                                          : "text-white hover:bg-orange-300/20"
+                                      } !justify-start !pr-4 !pl-8`}
+                                    >
+                                      <Link href={subItem.url || "#"} dir="rtl">
+                                        {subItem.icon}
+                                        <span>{subItem.title}</span>
+                                      </Link>
+                                    </SidebarMenuButton>
+                                  </SidebarMenuItem>
+
+                                  // <SidebarMenuSubItem key={subItem.title}>
+                                  //   <SidebarMenuButton asChild isActive>
+                                  //     <Link href={subItem.url}>
+                                  //       {subItem.icon}
+                                  //       <span>{subItem.title}</span>
+                                  //     </Link>
+                                  //   </SidebarMenuButton>
+                                  // </SidebarMenuSubItem>
+                                ))}
+                              </SidebarMenuSub>
+                            </CollapsibleContent>
+                          </SidebarMenuItem>
+                        </Collapsible>
+                      );
                     }
 
                     return (
-                      <Collapsible key={item.title} asChild defaultOpen={false}>
-                        <SidebarMenuItem>
-                          <CollapsibleTrigger asChild>
-                            <SidebarMenuButton
-                              tooltip={item.title}
-                              className="text-[18px]"
-                            >
-                              <item.icon />
-                              <span>{item.title}</span>
-                              <ChevronDown className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-180" />
-                            </SidebarMenuButton>
-                          </CollapsibleTrigger>
-                          <CollapsibleContent>
-                            <SidebarMenuSub>
-                              {visibleSubItems.map((subItem) => (
-                                <SidebarMenuItem
-                                  key={subItem.title}
-                                  className="text-[15px]"
-                                >
-                                  <SidebarMenuButton
-                                    asChild
-                                    className={` ${
-                                      pathname === subItem.url
-                                        ? "w-40 rounded-l-lg border-r-4 border-r-orange-600 bg-orange-400 text-white"
-                                        : "text-white hover:bg-orange-300/20"
-                                    } !justify-start !pr-4 !pl-8`}
-                                  >
-                                    <Link href={subItem.url || "#"} dir="rtl">
-                                      {subItem.icon}
-                                      <span>{subItem.title}</span>
-                                    </Link>
-                                  </SidebarMenuButton>
-                                </SidebarMenuItem>
+                      <SidebarMenuItem key={item.title} className="text-[20px]">
+                        <SidebarMenuButton
+                          asChild
+                          className={` ${
+                            pathname === item.url
+                              ? "w-52 rounded-l-lg border-r-4 border-r-orange-600 bg-orange-400 text-white"
+                              : "text-white hover:bg-orange-300/20"
+                          } !justify-start !pr-4 !pl-8 text-[18px]`}
+                        >
+                          <Link href={item.url || "#"}>
+                            <item.icon />
+                            <span>{item.title}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
 
-                                // <SidebarMenuSubItem key={subItem.title}>
-                                //   <SidebarMenuButton asChild isActive>
-                                //     <Link href={subItem.url}>
-                                //       {subItem.icon}
-                                //       <span>{subItem.title}</span>
-                                //     </Link>
-                                //   </SidebarMenuButton>
-                                // </SidebarMenuSubItem>
-                              ))}
-                            </SidebarMenuSub>
-                          </CollapsibleContent>
-                        </SidebarMenuItem>
-                      </Collapsible>
+                      // <SidebarMenuItem key={item.title}>
+                      //   <SidebarMenuButton asChild isActive>
+                      //     <Link href={item.url || "#"}>
+                      //       <item.icon />
+                      //       <span>{item.title}</span>
+                      //     </Link>
+                      //   </SidebarMenuButton>
+                      // </SidebarMenuItem>
                     );
-                  }
-
-                  return (
-                    <SidebarMenuItem key={item.title} className="text-[20px]">
-                      <SidebarMenuButton
-                        asChild
-                        className={` ${
-                          pathname === item.url
-                            ? "w-52 rounded-l-lg border-r-4 border-r-orange-600 bg-orange-400 text-white"
-                            : "text-white hover:bg-orange-300/20"
-                        } !justify-start !pr-4 !pl-8 text-[18px]`}
-                      >
-                        <Link href={item.url || "#"}>
-                          <item.icon />
-                          <span>{item.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-
-                    // <SidebarMenuItem key={item.title}>
-                    //   <SidebarMenuButton asChild isActive>
-                    //     <Link href={item.url || "#"}>
-                    //       <item.icon />
-                    //       <span>{item.title}</span>
-                    //     </Link>
-                    //   </SidebarMenuButton>
-                    // </SidebarMenuItem>
-                  );
-                })}{" "}
-                <LocaleSwitcher />
-                <CurrencySwitcher />
+                  })}{" "}
+                  <LocaleSwitcher />
+                  <CurrencySwitcher />
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+            <SidebarFooter>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    onClick={() => {
+                      logoutAndRedirect();
+                    }}
+                    className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950"
+                  >
+                    <LogOut />
+                    <span>{t("logout")}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
               </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-
-          <SidebarFooter>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  onClick={() => {
-                    logoutAndRedirect();
-                  }}
-                  className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950"
-                >
-                  <LogOut />
-                  <span>{t("logout")}</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-            <ModeToggle />
-          </SidebarFooter>
+              <ModeToggle />
+            </SidebarFooter>{" "}
+          </SidebarContent>
         </ScrollArea>
-      </SidebarContent>
+      </div>
     </Sidebar>
   );
 }

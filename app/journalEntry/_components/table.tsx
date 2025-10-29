@@ -19,6 +19,7 @@ import { use, useState } from "react";
 import { SelectField } from "@/components/common/selection";
 import { BulkPostButton } from "./selection";
 import { setRowSelection } from "@/lib/slices/table";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const Calendar22 = dynamic(
   () => import("@/components/common/DatePicker").then((m) => m.Calendar22),
@@ -82,19 +83,19 @@ export default function JournalEntriesTable({
   }
 
   return (
-    <div className="rounded-2xl p-2" dir="rtl">
+    <ScrollArea className="h-[95vh] p-4" dir="rtl">
+      {" "}
       {/* Header */}
-      <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold">قيود اليومية</h1>
-          <p className="text-md mt-1">سجل القيود المحاسبية اليومية</p>
+          <p className="mt-1 text-lg">سجل القيود المحاسبية اليومية</p>
         </div>
       </div>
-
       {/* Summary Cards */}
-      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 rounded-3xl p-2 sm:grid-cols-2 md:grid-cols-4">
         <div className="rounded-lg bg-gradient-to-r from-cyan-500 to-cyan-700 p-4">
-          <p className="text-md font-medium">إجمالي المدين</p>
+          <p className="text-lg font-medium">إجمالي المدين</p>
           <p className="mt-1 font-mono text-2xl font-bold">
             {new Intl.NumberFormat("ar-IQ", {
               style: "currency",
@@ -104,8 +105,8 @@ export default function JournalEntriesTable({
           </p>
         </div>
 
-        <div className="rounded-lg bg-gradient-to-r from-pink-700 to-pink-900 p-4">
-          <p className="text-md font-medium">إجمالي الدائن</p>
+        <div className="rounded-2xl bg-gradient-to-r from-pink-700 to-pink-900 p-4 shadow-xl/20 shadow-gray-900">
+          <p className="text-lg font-medium">إجمالي الدائن</p>
           <p className="mt-1 font-mono text-2xl font-bold">
             {new Intl.NumberFormat("ar-YE", {
               style: "currency",
@@ -116,9 +117,9 @@ export default function JournalEntriesTable({
         </div>
 
         <div
-          className={`rounded-lg p-4 ${isBalanced ? "bg-gradient-to-r from-green-500 to-cyan-700" : "bg-gradient-to-r from-red-500 to-red-700"}`}
+          className={`rounded-2xl p-4 shadow-xl/20 shadow-gray-900 ${isBalanced ? "bg-gradient-to-r from-green-500 to-cyan-700" : "bg-gradient-to-r from-red-500 to-red-700"}`}
         >
-          <p className={`text-md } font-medium`}>الفرق</p>
+          <p className={`} text-lg font-medium`}>الفرق</p>
           <p className={`mt-1 font-mono text-2xl font-bold`}>
             {new Intl.NumberFormat("ar-YE", {
               style: "currency",
@@ -129,8 +130,8 @@ export default function JournalEntriesTable({
           {isBalanced && <p className="mt-1 text-xs">✓ متوازن</p>}
         </div>
 
-        <div className="rounded-lg bg-gradient-to-r from-yellow-500 to-yellow-700 p-4">
-          <p className="text-md font-medium">عدد القيود</p>
+        <div className="rounded-2xl bg-gradient-to-r from-yellow-500 to-yellow-700 p-4 shadow-xl/20 shadow-gray-900">
+          <p className="text-lg font-medium">عدد القيود</p>
           <p className="mt-1 text-2xl font-bold">{data.length}قيد</p>
         </div>
       </div>
@@ -140,58 +141,63 @@ export default function JournalEntriesTable({
         }))}
         onSuccess={() => {}}
       />
+      <div className="bg-accent rounded-2xl p-2 shadow-xl/20 shadow-gray-900">
+        {/* Data Table */}
+        <DataTable
+          search={
+            <div className="flex flex-col gap-3 rounded-2xl md:flex-row">
+              <Calendar22 />
 
-      {/* Data Table */}
-      <DataTable
-        search={
-          <div className="flex flex-col gap-3 md:flex-row">
-            <Calendar22 />
+              <SearchInput
+                placeholder="بحث في القيود (رقم، وصف...)"
+                paramKey="search"
+              />
 
-            <SearchInput
-              placeholder="بحث في القيود (رقم، وصف...)"
-              paramKey="search"
-            />
+              <Select
+                value={"all"}
+                onValueChange={(value) => setParam("entryType", value)}
+              >
+                <SelectTrigger className="w-full md:w-[200px]">
+                  <SelectValue placeholder="نوع القيد" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">جميع الأنواع</SelectItem>
+                  <SelectItem value="automated">تلقائي</SelectItem>
+                  <SelectItem value="manual">يدوي</SelectItem>
+                </SelectContent>
+              </Select>
 
-            <Select
-              value={"all"}
-              onValueChange={(value) => setParam("entryType", value)}
-            >
-              <SelectTrigger className="w-full md:w-[200px]">
-                <SelectValue placeholder="نوع القيد" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">جميع الأنواع</SelectItem>
-                <SelectItem value="automated">تلقائي</SelectItem>
-                <SelectItem value="manual">يدوي</SelectItem>
-              </SelectContent>
-            </Select>
+              <SelectField
+                options={optines}
+                paramKey="accountType"
+                placeholder="نوع الحساب"
+              />
 
-            <SelectField
-              options={optines}
-              paramKey="accountType"
-              placeholder="نوع الحساب"
-            />
-
-            <Button variant="outline" onClick={handleExport} className="gap-2">
-              <Download className="h-4 w-4" />
-              تصدير
-            </Button>
-          </div>
-        }
-        data={data}
-        columns={journalEntryColumns}
-        initialPageSize={pagination.pageSize}
-        pageCount={Math.ceil(data.length / pagination.pageSize)}
-        pageActiom={setPagination}
-        onSortingChange={setSorting}
-        onGlobalFilterChange={setGlobalFilter}
-        globalFilter={globalFilter}
-        sorting={[]}
-        onRowSelectionChange={setSelectedRows}
-        highet="h-[57vh]"
-        pagination={pagination}
-        totalCount={data.length}
-      />
-    </div>
+              <Button
+                variant="outline"
+                onClick={handleExport}
+                className="gap-2"
+              >
+                <Download className="h-4 w-4" />
+                تصدير
+              </Button>
+            </div>
+          }
+          data={data}
+          columns={journalEntryColumns}
+          initialPageSize={pagination.pageSize}
+          pageCount={Math.ceil(data.length / pagination.pageSize)}
+          pageActiom={setPagination}
+          onSortingChange={setSorting}
+          onGlobalFilterChange={setGlobalFilter}
+          globalFilter={globalFilter}
+          sorting={[]}
+          onRowSelectionChange={setSelectedRows}
+          highet="h-[57vh]"
+          pagination={pagination}
+          totalCount={data.length}
+        />
+      </div>
+    </ScrollArea>
   );
 }

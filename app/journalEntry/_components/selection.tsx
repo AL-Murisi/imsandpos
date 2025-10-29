@@ -43,7 +43,7 @@ export function BulkPostButton({
       onClick={handleBulkPost}
       disabled={loading || selectedEntries.length === 0}
       variant="default"
-      className="bg-green-600 text-white hover:bg-green-700"
+      className="p-x-4 bg-green-600 text-white hover:bg-green-700"
     >
       {loading ? "جاري الترحيل..." : "ترحيل المحدد"}
     </Button>

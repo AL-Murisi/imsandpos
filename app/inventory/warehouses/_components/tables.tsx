@@ -1,29 +1,27 @@
 "use client";
 
-import CustomDialog from "@/components/common/Dailog";
-
+import { useTablePrams } from "@/hooks/useTableParams";
 import dynamic from "next/dynamic";
 const Calendar22 = dynamic(
   () => import("@/components/common/DatePicker").then((m) => m.Calendar22),
   {
     ssr: false,
-    loading: () => <input type="date" className="..." />,
   },
 );
-import { SelectField } from "@/components/common/selection";
-import { DataTable } from "@/components/common/test";
-import { Button } from "@/components/ui/button";
-import { useTablePrams } from "@/hooks/useTableParams";
-
+const DataTable = dynamic(
+  () => import("@/components/common/test").then((m) => m.DataTable),
+  {
+    ssr: false,
+    loading: () => <TableSkeleton />,
+  },
+);
 import SearchInput from "@/components/common/searchtest";
 import { columns } from "./columns";
 
-import Link from "next/link";
-import { useTranslations } from "next-intl";
-import ImportProductsPage from "@/components/uploadItesm";
+import TableSkeleton from "@/components/common/TableSkeleton";
 import WarehouseForm from "@/components/forms/form";
-import { Plus } from "lucide-react";
 import ImportWarehouse from "@/components/uploadwarehouse";
+import { useTranslations } from "next-intl";
 
 type ProductClientProps = {
   products: any[];

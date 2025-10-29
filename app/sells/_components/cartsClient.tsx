@@ -229,7 +229,7 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
     (isCash && receivedAmount >= totals.totalAfter) || (!isCash && users?.name);
 
   return (
-    <div className="bg-background flex h-[50hv] flex-col rounded-2xl p-2 shadow-xl/20 shadow-gray-500 lg:col-span-1">
+    <div className="bg-accent flex h-[50hv] flex-col rounded-2xl p-2 shadow-xl/20 shadow-gray-500 lg:col-span-1">
       {/* Header & Cart Tabs */}
       <div className="flex justify-between">
         <div className="flex justify-between gap-1">
@@ -279,7 +279,7 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
         <ScrollArea className="h-[60vh] w-full rounded-2xl border border-amber-300 p-2">
           <Table className="w-full">
             <TableHeader className="sticky top-0 z-10">
-              <TableRow className="border-amber-300">
+              <TableRow className="border-amber-300 shadow-xl/20 shadow-gray-900">
                 <TableHead>{t("product")}</TableHead>
                 <TableHead>{t("sku")}</TableHead>
                 <TableHead>{t("product")}</TableHead>

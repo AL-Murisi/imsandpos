@@ -46,9 +46,7 @@ export const expenseColumns: ColumnDef<any>[] = [
     accessorKey: "expenseNumber",
     header: "رقم المصروف",
     cell: ({ row }) => (
-      <span className="font-mono text-sm text-gray-300">
-        {row.getValue("expenseNumber")}
-      </span>
+      <span className="font-mono text-sm">{row.getValue("expenseNumber")}</span>
     ),
   },
 
@@ -56,9 +54,7 @@ export const expenseColumns: ColumnDef<any>[] = [
     accessorKey: "description",
     header: "الوصف",
     cell: ({ row }) => (
-      <div className="max-w-xs truncate text-gray-300">
-        {row.getValue("description")}
-      </div>
+      <div className="max-w-xs truncate">{row.getValue("description")}</div>
     ),
   },
 
@@ -68,7 +64,7 @@ export const expenseColumns: ColumnDef<any>[] = [
     cell: ({ row }) => {
       const category = row.original.category;
       return (
-        <Badge variant="outline" className="border-gray-600 bg-gray-800">
+        <Badge variant="outline" className="">
           {category?.name || "غير محدد"}
         </Badge>
       );
@@ -79,7 +75,7 @@ export const expenseColumns: ColumnDef<any>[] = [
     accessorKey: "amount",
     header: "المبلغ",
     cell: ({ row }) => (
-      <div className="font-semibold text-green-400">
+      <div className="font-semibold">
         {parseFloat(row.getValue("amount")).toFixed(2)}
       </div>
     ),
@@ -96,7 +92,7 @@ export const expenseColumns: ColumnDef<any>[] = [
         check: "شيك",
       };
       const method = row.getValue("paymentMethod") as string;
-      return <span className="text-gray-300">{methods[method] || method}</span>;
+      return <span className="">{methods[method] || method}</span>;
     },
   },
 
@@ -105,9 +101,7 @@ export const expenseColumns: ColumnDef<any>[] = [
     header: "التاريخ",
     cell: ({ row }) => {
       const date = new Date(row.getValue("expenseDate"));
-      return (
-        <div className="text-gray-300">{date.toLocaleDateString("ar-EG")}</div>
-      );
+      return <div className="">{date.toLocaleDateString("ar-EG")}</div>;
     },
   },
 

@@ -8,6 +8,26 @@ const ChartCard = dynamic(
   () => import("@/components/common/ChartCard").then((m) => m.ChartCard),
   {
     ssr: false,
+    loading: () => (
+      <div className="grid grid-cols-1 gap-4 px-2 py-2 sm:grid-cols-2 xl:grid-cols-4">
+        {Array(4)
+          .fill(0)
+          .map((_, i) => (
+            <div
+              key={i}
+              className="h-72 animate-pulse rounded-lg bg-gray-200"
+            />
+          ))}
+        {Array(4)
+          .fill(0)
+          .map((_, i) => (
+            <div
+              key={i}
+              className="h-40 animate-pulse rounded-lg bg-gray-200"
+            />
+          ))}
+      </div>
+    ),
   },
 );
 const ExportDashboardButtonAPI = dynamic(

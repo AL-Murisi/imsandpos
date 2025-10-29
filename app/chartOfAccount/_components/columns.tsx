@@ -119,7 +119,7 @@ export const accountColumns: ColumnDef<any>[] = [
         <div className="flex items-center gap-2">
           <span className="font-medium">{nameAr || nameEn}</span>
           {isSystem && (
-            <Badge className="bg-blue-100 text-xs text-blue-800">نظام</Badge>
+            <Badge className="bg-blue-100 text-lg text-blue-800">نظام</Badge>
           )}
         </div>
       );
@@ -138,7 +138,7 @@ export const accountColumns: ColumnDef<any>[] = [
         EXPENSE: "مصروفات",
         COST_OF_GOODS: "تكلفة البضاعة",
       };
-      return <span>{typeMap[type] || type}</span>;
+      return <span className="text-lg">{typeMap[type] || type}</span>;
     },
   },
   {
@@ -160,7 +160,7 @@ export const accountColumns: ColumnDef<any>[] = [
         OPERATING_EXPENSES: "مصاريف تشغيلية",
       };
       return (
-        <span className="text-sm text-gray-600">
+        <span className="text-lg">
           {categoryMap[category] || category.replace(/_/g, " ")}
         </span>
       );
@@ -179,7 +179,7 @@ export const accountColumns: ColumnDef<any>[] = [
             : "text-gray-600";
 
       return (
-        <div className={`font-mono font-semibold ${color}`}>
+        <div className={`font-mono text-lg font-semibold ${color}`}>
           {new Intl.NumberFormat("ar-YE", {
             style: "currency",
             currency: "YER",
@@ -208,8 +208,8 @@ export const accountColumns: ColumnDef<any>[] = [
         <Badge
           className={
             isActive
-              ? "bg-green-100 text-green-800"
-              : "bg-gray-100 text-gray-800"
+              ? "bg-green-100 text-lg text-green-800"
+              : "bg-gray-100 text-lg text-gray-800"
           }
         >
           {isActive ? "نشط" : "غير نشط"}

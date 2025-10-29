@@ -96,15 +96,15 @@ export default function ChartOfAccountsTable({
     { id: "ACCOUNTS_PAYABLE", name: "ذمم دائنة" },
   ];
   return (
-    <ScrollArea className="p-2" dir="rtl">
+    <ScrollArea className="h-[95vh] p-3" dir="rtl">
       {/* Header Section */}
       <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold">دليل الحسابات</h1>
-          <p className="mt-1 text-sm">إدارة هيكل الحسابات المحاسبية</p>
+          <p className="mt-1 text-lg">إدارة هيكل الحسابات المحاسبية</p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 rounded-2xl shadow-xl/20 shadow-gray-900">
           <AccountFormDialog mode="create" />
 
           {data.length === 0 && (
@@ -121,91 +121,96 @@ export default function ChartOfAccountsTable({
       </div>
 
       {/* Summary Cards */}
-      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-6">
+      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
         {/* إجمالي الأصول */}
-        <div className="rounded-lg border bg-gradient-to-r from-cyan-500 to-cyan-700 p-3">
-          <p className="text-sm font-medium">إجمالي الأصول</p>
+        <div className="rounded-2xl border bg-gradient-to-r from-cyan-500 to-cyan-700 p-3 shadow-xl/20 shadow-gray-900">
+          <p className="text-md font-medium">إجمالي الأصول</p>
           <p className="mt-1 text-2xl font-bold">
             {totals.totalAssets.toFixed(2)}{" "}
           </p>
         </div>
         {/* إجمالي الخصوم */}
-        <div className="rounded-lg bg-gradient-to-r from-red-500 to-red-700 p-3">
-          <p className="text-sm font-medium">إجمالي الخصوم</p>
+        <div className="rounded-lg bg-gradient-to-r from-red-500 to-red-700 p-3 shadow-xl/20 shadow-gray-900">
+          <p className="text-lg font-medium">إجمالي الخصوم</p>
           <p className="mt-1 text-2xl font-bold">
             {totals.totalLiabilities.toFixed(2)}{" "}
           </p>
         </div>
         {/* إجمالي الإيرادات */}
-        <div className="rounded-lg bg-gradient-to-r from-purple-500 to-purple-700 p-4">
+        <div className="rounded-2xl bg-gradient-to-r from-purple-500 to-purple-700 p-4 shadow-xl/20 shadow-gray-900">
           <p className="text-sm font-medium">إجمالي الإيرادات</p>
           <p className="\ mt-1 text-2xl font-bold">
             {totals.totalRevenue.toFixed(2)}{" "}
           </p>
         </div>
-        <div className="rounded-lg bg-gradient-to-r from-green-400 to-green-700 p-4">
+        <div className="rounded-2xl bg-gradient-to-r from-green-400 to-green-700 p-4 shadow-xl/20 shadow-gray-900">
           <p className="text-sm font-medium">صافي الربح</p>
           <p className="\ mt-1 text-2xl font-bold">
             {totals.netIncome.toFixed(2)}{" "}
           </p>
         </div>
-        <div className="rounded-lg bg-gradient-to-r from-green-700 to-purple-700 p-4">
+        <div className="rounded-2xl bg-gradient-to-r from-green-700 to-purple-700 p-4 shadow-xl/20 shadow-gray-900">
           <p className="text-sm font-medium">إجمالي المصروفات </p>
           <p className="\ mt-1 text-2xl font-bold">
             {totals.totalExpenses.toFixed(2)}{" "}
           </p>
         </div>
         {/* الحسابات النشطة */}
-        <div className="rounded-lg bg-gradient-to-r from-blue-500 to-blue-700 p-4">
+        <div className="rounded-2xl bg-gradient-to-r from-blue-500 to-blue-700 p-4 shadow-xl/20 shadow-gray-900">
           <p className="text-sm font-medium">الحسابات النشطة</p>
           <p className="mt-1 text-2xl font-bold">
             {totals.activeAccountsCount}
           </p>
         </div>
       </div>
+      <div className="bg-accent rounded-2xl p-2 shadow-xl/20 shadow-gray-900">
+        {/* Data Table */}
+        <DataTable
+          search={
+            <div className="grid grid-rows-1 gap-3 md:grid-cols-4">
+              <SearchInput
+                placeholder="بحث في الحسابات (رمز، اسم...)"
+                paramKey="search"
+              />
 
-      {/* Data Table */}
-      <DataTable
-        search={
-          <div className="grid grid-rows-1 gap-3 md:grid-cols-4">
-            <SearchInput
-              placeholder="بحث في الحسابات (رمز، اسم...)"
-              paramKey="search"
-            />
+              <SelectField
+                placeholder="نوع الحساب"
+                value={accountType || "all"}
+                action={(value) => setParam("accountType", value)}
+                options={optines}
+              />
 
-            <SelectField
-              placeholder="نوع الحساب"
-              value={accountType || "all"}
-              action={(value) => setParam("accountType", value)}
-              options={optines}
-            />
+              <SelectField
+                placeholder="الفئة"
+                options={accountCategories}
+                value={accountCategory || "all"}
+                action={(value) => setParam("accountCategory", value)}
+              />
 
-            <SelectField
-              placeholder="الفئة"
-              options={accountCategories}
-              value={accountCategory || "all"}
-              action={(value) => setParam("accountCategory", value)}
-            />
-
-            <Button variant="outline" onClick={handleExport} className="gap-2">
-              <Download className="h-4 w-4" />
-              تصدير
-            </Button>
-          </div>
-        }
-        data={data}
-        columns={accountColumns}
-        initialPageSize={pagination.pageSize}
-        pageCount={Math.ceil(total / pagination.pageSize)}
-        pageActiom={setPagination}
-        onSortingChange={setSorting}
-        onGlobalFilterChange={setGlobalFilter}
-        globalFilter={globalFilter}
-        sorting={sort}
-        highet="h-[58vh]"
-        pagination={pagination}
-        totalCount={total}
-      />
+              <Button
+                variant="outline"
+                onClick={handleExport}
+                className="gap-2"
+              >
+                <Download className="h-4 w-4" />
+                تصدير
+              </Button>
+            </div>
+          }
+          data={data}
+          columns={accountColumns}
+          initialPageSize={pagination.pageSize}
+          pageCount={Math.ceil(total / pagination.pageSize)}
+          pageActiom={setPagination}
+          onSortingChange={setSorting}
+          onGlobalFilterChange={setGlobalFilter}
+          globalFilter={globalFilter}
+          sorting={sort}
+          highet="h-[60vh]"
+          pagination={pagination}
+          totalCount={total}
+        />
+      </div>
     </ScrollArea>
   );
 }

@@ -3,18 +3,24 @@
 // import ProductForm from "./form";
 
 import { SelectField } from "@/components/common/selection";
-import { DataTable } from "@/components/common/test";
+const DataTable = dynamic(
+  () => import("@/components/common/test").then((m) => m.DataTable),
+  {
+    ssr: false,
+    loading: () => <TableSkeleton />,
+  },
+);
 const Calendar22 = dynamic(
   () => import("@/components/common/DatePicker").then((m) => m.Calendar22),
   {
     ssr: false,
-    loading: () => <input type="date" className="..." />,
   },
 );
 import SearchInput from "@/components/common/searchtest";
 import { useTablePrams } from "@/hooks/useTableParams";
 import { StockMovementColumns } from "./columnsMovment";
 import dynamic from "next/dynamic";
+import TableSkeleton from "@/components/common/TableSkeleton";
 
 type DateRange = {
   from: Date | null;

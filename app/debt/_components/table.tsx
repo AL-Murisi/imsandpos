@@ -7,12 +7,8 @@ import { debtSaleColumns } from "./columns";
 import { ExportDebtSalesButton } from "@/components/ExportDebtSalesButton";
 import dynamic from "next/dynamic";
 import TableSkeleton from "@/components/common/TableSkeleton";
-const Calendar22 = dynamic(
-  () => import("@/components/common/DatePicker").then((m) => m.Calendar22),
-  {
-    ssr: false,
-  },
-);
+import { Calendar22 } from "@/components/common/DatePicker";
+
 const DataTable = dynamic(
   () => import("@/components/common/test").then((m) => m.DataTable),
   {

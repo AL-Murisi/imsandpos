@@ -164,7 +164,10 @@ export const journalEntryColumns: ColumnDef<JournalEntryData>[] = [
     accessorKey: "description",
     header: ({ column }) => <SortableHeader column={column} label="الوصف" />,
     cell: ({ row }) => (
-      <div className="max-w-xs truncate" title={row.getValue("description")}>
+      <div
+        className="text-md max-w-xs truncate"
+        title={row.getValue("description")}
+      >
         {row.getValue("description")}
       </div>
     ),
@@ -175,7 +178,7 @@ export const journalEntryColumns: ColumnDef<JournalEntryData>[] = [
     cell: ({ row }) => {
       const debit = row.getValue("debit") as number;
       return debit > 0 ? (
-        <span className="font-mono font-semibold text-green-600">
+        <span className="font-mono text-lg font-semibold text-green-600">
           {new Intl.NumberFormat("ar-YE", {
             style: "currency",
             currency: "YER",
@@ -205,7 +208,7 @@ export const journalEntryColumns: ColumnDef<JournalEntryData>[] = [
           }).format(credit)}
         </span>
       ) : (
-        <span className="text-gray-400">-</span>
+        <span className="text-lg text-gray-400">-</span>
       );
     },
   },
@@ -219,8 +222,8 @@ export const journalEntryColumns: ColumnDef<JournalEntryData>[] = [
         <Badge
           className={
             isAutomated
-              ? "bg-blue-100 text-blue-800"
-              : "bg-purple-100 text-purple-800"
+              ? "bg-blue-100 text-lg text-blue-800"
+              : "bg-purple-100 text-lg text-purple-800"
           }
         >
           {isAutomated ? "تلقائي" : "يدوي"}
@@ -237,8 +240,8 @@ export const journalEntryColumns: ColumnDef<JournalEntryData>[] = [
         <Badge
           className={
             isPosted
-              ? "bg-green-100 text-green-800"
-              : "bg-yellow-100 text-yellow-800"
+              ? "bg-green-100 text-lg text-green-800"
+              : "bg-yellow-100 text-lg text-yellow-800"
           }
         >
           {isPosted ? "مرحّل" : "قيد الإنشاء"}
@@ -251,7 +254,7 @@ export const journalEntryColumns: ColumnDef<JournalEntryData>[] = [
     header: ({ column }) => <SortableHeader column={column} label="المرجع" />,
     cell: ({ row }) => {
       const refType = row.getValue("reference_type") as string | null;
-      if (!refType) return <span className="text-gray-400">-</span>;
+      if (!refType) return <span className="text-lg">-</span>;
 
       const typeMap: Record<string, string> = {
         sale: "بيع",
@@ -262,7 +265,7 @@ export const journalEntryColumns: ColumnDef<JournalEntryData>[] = [
         opening_balance: "رصيد افتتاحي",
       };
 
-      return <span className="text-sm">{typeMap[refType] || refType}</span>;
+      return <span className="text-lg">{typeMap[refType] || refType}</span>;
     },
   },
   {

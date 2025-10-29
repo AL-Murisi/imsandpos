@@ -16,7 +16,7 @@ export default async function Home() {
     ]);
 
     return (
-      <div className="space-y-8 p-6">
+      <div className="p-4">
         <ExpensesPage
           data={expensesData.data}
           total={expensesData.total}

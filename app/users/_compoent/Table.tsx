@@ -49,28 +49,33 @@ export default function UserClinet({ users, total, role }: ProductClientProps) {
   } = useTablePrams();
 
   return (
-    <div className="bg-accent flex flex-col p-3" dir="rtl">
+    <div
+      className="bg-accent border-primary flex flex-col rounded-2xl border p-3 shadow-xl/20 shadow-gray-900"
+      dir="rtl"
+    >
       {/* Add dir="rtl" for proper RTL layout */}
-      <div className="flex flex-wrap gap-2">
-        <Calendar22 />
-        <SearchInput placeholder={"بحث"} paramKey={"users"} />{" "}
-        {/* Translate placeholder */}
-        <SelectField options={role} paramKey="role" placeholder="الفئة" />
-        <CustomDialog
-          trigger={
-            <Button>
-              <Plus className="ml-1" />
-              إضافة مستخدم
-            </Button>
-          }
-          title="إضافة مستخدم"
-          description="أدخل تفاصيل المستخدم أدناه."
-        >
-          <UserForm />
-        </CustomDialog>
-      </div>
 
       <DataTable
+        search={
+          <div className="flex flex-wrap gap-2">
+            <Calendar22 />
+            <SearchInput placeholder={"بحث"} paramKey={"users"} />{" "}
+            {/* Translate placeholder */}
+            <SelectField options={role} paramKey="role" placeholder="الفئة" />
+            <CustomDialog
+              trigger={
+                <Button>
+                  <Plus className="ml-1" />
+                  إضافة مستخدم
+                </Button>
+              }
+              title="إضافة مستخدم"
+              description="أدخل تفاصيل المستخدم أدناه."
+            >
+              <UserForm />
+            </CustomDialog>
+          </div>
+        }
         data={users}
         columns={columns}
         initialPageSize={pagination.pageSize}

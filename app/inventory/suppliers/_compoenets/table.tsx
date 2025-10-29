@@ -5,7 +5,6 @@ const Calendar22 = dynamic(
   () => import("@/components/common/DatePicker").then((m) => m.Calendar22),
   {
     ssr: false,
-    loading: () => <input type="date" className="..." />,
   },
 );
 
@@ -13,6 +12,7 @@ const DataTable = dynamic(
   () => import("@/components/common/test").then((m) => m.DataTable),
   {
     ssr: false,
+    loading: () => <TableSkeleton />,
   },
 );
 import { useTablePrams } from "@/hooks/useTableParams";
@@ -22,6 +22,7 @@ import SearchInput from "@/components/common/searchtest";
 import { useTranslations } from "next-intl";
 
 import { supplierColumns } from "./columns";
+import TableSkeleton from "@/components/common/TableSkeleton";
 const SupplierForm = dynamic(() => import("@/components/forms/supplierform"), {
   ssr: false,
 });

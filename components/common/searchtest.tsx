@@ -35,7 +35,7 @@ export default function SearchInput({ placeholder, paramKey }: InputProps) {
   return (
     <form
       onSubmit={(e) => e.preventDefault()} // 🧠 Prevent page reload
-      className="relative flex flex-col gap-2"
+      className="bg-accent relative flex flex-col gap-2 rounded-2xl shadow-xl/20 shadow-gray-900"
       dir="rtl"
     >
       <div className="relative w-full">

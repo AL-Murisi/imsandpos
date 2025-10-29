@@ -5,13 +5,13 @@ const Calendar22 = dynamic(
   () => import("@/components/common/DatePicker").then((m) => m.Calendar22),
   {
     ssr: false,
-    loading: () => <input type="date" className="..." />,
   },
 );
 const DataTable = dynamic(
   () => import("@/components/common/test").then((m) => m.DataTable),
   {
     ssr: false,
+    loading: () => <TableSkeleton />,
   },
 );
 import { SelectField } from "@/components/common/selection";
@@ -26,11 +26,11 @@ import { createColumns } from "./column";
 
 import { useTranslations } from "next-intl";
 import TableSkeleton from "@/components/common/TableSkeleton";
+import { Suspense } from "react";
 const PrintProductTable = dynamic(
   () => import("@/components/printItems").then((m) => m.PrintProductTable),
   {
     ssr: false,
-    loading: () => <TableSkeleton />,
   },
 );
 const ImportProductsPage = dynamic(() => import("@/components/uploadItesm"), {
@@ -74,10 +74,10 @@ export default function ProductClient({
   const columns = createColumns(tt);
   return (
     <div
-      className="bg-accent w-full rounded-2xl p-2 shadow-xl/20 shadow-gray-500 group-data-[[state=pending]]:animate-pulse"
+      className="bg-accent w-full rounded-2xl p-3 shadow-xl/20 shadow-gray-500 group-data-[[state=pending]]:animate-pulse"
       dir="rtl"
     >
-      <div className="flex flex-wrap gap-2 p-1 md:flex-row lg:flex-row">
+      <div className="flex flex-wrap gap-2 md:flex-row lg:flex-row">
         <Calendar22 />
         <SearchInput placeholder={"بحث "} paramKey={"product"} />
         <SelectField
@@ -109,26 +109,27 @@ export default function ProductClient({
           <ProductForm />
         </CustomDialog> */}
       </div>
-
-      <DataTable
-        search={
-          <>
-            <ImportProductsPage /> <PrintProductTable products={products} />
-          </>
-        }
-        data={products}
-        columns={columns}
-        initialPageSize={pagination.pageSize}
-        pageCount={Math.ceil(total / pagination.pageSize)}
-        pageActiom={setPagination}
-        onSortingChange={setSorting}
-        onGlobalFilterChange={setGlobalFilter}
-        globalFilter={globalFilter}
-        sorting={sorting}
-        pagination={pagination}
-        highet="h-[70vh]"
-        totalCount={total}
-      />
+      <Suspense>
+        <DataTable
+          search={
+            <>
+              <ImportProductsPage /> <PrintProductTable products={products} />
+            </>
+          }
+          data={products}
+          columns={columns}
+          initialPageSize={pagination.pageSize}
+          pageCount={Math.ceil(total / pagination.pageSize)}
+          pageActiom={setPagination}
+          onSortingChange={setSorting}
+          onGlobalFilterChange={setGlobalFilter}
+          globalFilter={globalFilter}
+          sorting={sorting}
+          pagination={pagination}
+          highet="h-[72vh]"
+          totalCount={total}
+        />
+      </Suspense>
     </div>
   );
 }

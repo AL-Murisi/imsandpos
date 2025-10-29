@@ -1,12 +1,6 @@
 "use client";
 
 import dynamic from "next/dynamic";
-const Calendar22 = dynamic(
-  () => import("@/components/common/DatePicker").then((m) => m.Calendar22),
-  {
-    ssr: false,
-  },
-);
 
 const DataTable = dynamic(
   () => import("@/components/common/test").then((m) => m.DataTable),
@@ -33,6 +27,7 @@ const ExpenseForm = dynamic(() => import("./ExpenseForm"), {
 import { useAuth } from "@/lib/context/AuthContext";
 import { expenseColumns } from "./columns";
 import TableSkeleton from "@/components/common/TableSkeleton";
+import { Calendar22 } from "@/components/common/DatePicker";
 
 const ExpenseCategoryForm = dynamic(() => import("./creatCatform"), {
   ssr: false,

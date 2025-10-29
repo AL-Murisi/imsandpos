@@ -1,24 +1,25 @@
 "use client";
 
-import CustomDialog from "@/components/common/Dailog";
+import { SelectField } from "@/components/common/selection";
+import { useTablePrams } from "@/hooks/useTableParams";
 import dynamic from "next/dynamic";
 const Calendar22 = dynamic(
   () => import("@/components/common/DatePicker").then((m) => m.Calendar22),
   {
     ssr: false,
-    loading: () => <input type="date" className="..." />,
   },
 );
-import { SelectField } from "@/components/common/selection";
-import { DataTable } from "@/components/common/test";
-import { Button } from "@/components/ui/button";
-import { useTablePrams } from "@/hooks/useTableParams";
-import { Plus } from "lucide-react";
-// import SearchInput from "@/components/common/SearchInput";
+const DataTable = dynamic(
+  () => import("@/components/common/test").then((m) => m.DataTable),
+  {
+    ssr: false,
+    loading: () => <TableSkeleton />,
+  },
+); // import SearchInput from "@/components/common/SearchInput";
 import SearchInput from "@/components/common/searchtest";
-import { inventoryColumns } from "./columnsMovment";
-import InvonteryEditFormm from "./form";
+import TableSkeleton from "@/components/common/TableSkeleton";
 import { useTranslations } from "next-intl";
+import { inventoryColumns } from "./columnsMovment";
 
 type ProductClientProps = {
   products: any[];

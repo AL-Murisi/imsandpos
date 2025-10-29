@@ -39,23 +39,25 @@ export function SelectField({
   );
 
   return (
-    <Select value={value} onValueChange={setValue}>
-      <SelectTrigger
-        className="border-primary rounded-md border-2"
-        disabled={isPending}
-      >
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectGroup>
-          <SelectItem value="all">الكل</SelectItem>
-          {options.map((option) => (
-            <SelectItem key={option.id} value={option.id}>
-              {option.name}
-            </SelectItem>
-          ))}
-        </SelectGroup>
-      </SelectContent>
-    </Select>
+    <div className="bg-accent rounded-2xl shadow-xl/20 shadow-gray-900">
+      <Select value={value} onValueChange={setValue}>
+        <SelectTrigger
+          className="border-primary rounded-md border-2"
+          disabled={isPending}
+        >
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectGroup>
+            <SelectItem value="all">الكل</SelectItem>
+            {options.map((option) => (
+              <SelectItem key={option.id} value={option.id}>
+                {option.name}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        </SelectContent>
+      </Select>
+    </div>
   );
 }

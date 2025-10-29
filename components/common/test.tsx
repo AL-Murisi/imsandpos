@@ -192,7 +192,7 @@ export function DataTable<T>({
           <DropdownMenuTrigger asChild>
             <Button
               variant="secondary"
-              className="border-primary mr-auto border-2" // Use mr-auto for right alignment
+              className="border-primary mr-auto border-2 shadow-xl/20 shadow-gray-900" // Use mr-auto for right alignment
             >
               {initialPageSize} {t("rowsPerPage")}
               <ChevronDown className="mr-2 h-4 w-4" />{" "}
@@ -219,6 +219,7 @@ export function DataTable<T>({
         <div className="space-x-2">
           {/* space-x-2 works for RTL, but you might consider space-x-reverse for explicit control */}
           <Button
+            className="shadow-xl/20 shadow-gray-900"
             aria-label=""
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
@@ -226,6 +227,7 @@ export function DataTable<T>({
             {t("prev")}
           </Button>
           <Button
+            className="shadow-xl/20 shadow-gray-900"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >
@@ -235,11 +237,11 @@ export function DataTable<T>({
       </div>
 
       <ScrollArea
-        className={` ${highet ?? "h-190"} min-h-[30vh] w-full rounded-2xl pl-1`}
+        className={` ${highet ?? "h-190"} min-h-[30vh] w-full rounded-2xl pl-3`}
         dir="rtl"
       >
         <Table className="min-w-full">
-          <TableHeader className="bg-background sticky top-0 z-10">
+          <TableHeader className="bg-background sticky top-0 z-10 shadow-xl/20 shadow-gray-900">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (

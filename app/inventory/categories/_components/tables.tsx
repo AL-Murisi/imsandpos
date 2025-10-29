@@ -1,14 +1,12 @@
 "use client";
 
-import dynamic from "next/dynamic";
-const Calendar22 = dynamic(
-  () => import("@/components/common/DatePicker").then((m) => m.Calendar22),
+const DataTable = dynamic(
+  () => import("@/components/common/test").then((m) => m.DataTable),
   {
     ssr: false,
+    loading: () => <TableSkeleton />,
   },
 );
-
-import { DataTable } from "@/components/common/test";
 import { useTablePrams } from "@/hooks/useTableParams";
 
 import SearchInput from "@/components/common/searchtest";
@@ -18,6 +16,9 @@ import { useTranslations } from "next-intl";
 
 import ImportWarehouse from "@/components/uploadwarehouse";
 import CategoryForm from "./form";
+import { Calendar22 } from "@/components/common/DatePicker";
+import TableSkeleton from "@/components/common/TableSkeleton";
+import dynamic from "next/dynamic";
 
 type ProductClientProps = {
   data: any[];
