@@ -197,111 +197,152 @@ export const selectCartTotals = createSelector(
 // );
 
 // ✅ Selector to dynamically compute remaining stock
+// export const selectAvailableStock = createSelector(
+//   [selectProducts, selectCarts],
+//   (products, carts) => {
+//     function convertToBaseUnits(
+//       qty: number,
+//       sellingUnit: string,
+//       unitsPerPacket: number,
+//       packetsPerCarton: number,
+//     ): number {
+//       if (sellingUnit === "carton")
+//         return qty * unitsPerPacket * packetsPerCarton;
+//       if (sellingUnit === "packet") return qty * unitsPerPacket;
+//       if (sellingUnit === "unit") return qty;
+//       return qty;
+//     }
+
+//     function convertFromBaseUnit(product: any, availableUnits: number) {
+//       const unitsPerPacket = product.unitsPerPacket || 1;
+//       const packetsPerCarton = product.packetsPerCarton || 1;
+
+//       const availablePackets = Math.floor(availableUnits / unitsPerPacket);
+//       const availableCartons = Math.floor(availablePackets / packetsPerCarton);
+
+//       return { availablePackets, availableCartons };
+//     }
+
+//     return products.map((p) => {
+//       const { unitsPerPacket, packetsPerCarton } = p;
+
+//       const totalBaseUnits = carts.reduce((sum, cart) => {
+//         return (
+//           sum +
+//           cart.items
+//             .filter((i) => i.id === p.id)
+//             .reduce(
+//               (subSum, item) =>
+//                 subSum +
+//                 convertToBaseUnits(
+//                   item.selectedQty,
+//                   item.sellingUnit,
+//                   unitsPerPacket,
+//                   packetsPerCarton,
+//                 ),
+//               0,
+//             )
+//         );
+//       }, 0);
+
+//       const { availablePackets, availableCartons } = convertFromBaseUnit(
+//         p,
+//         totalBaseUnits,
+//       );
+
+//       return {
+//         ...p,
+//         availableCartons,
+//         availablePackets,
+//         availableUnits: totalBaseUnits,
+//       };
+//     });
+//   },
+// );
 export const selectAvailableStock = createSelector(
   [selectProducts, selectCarts],
   (products, carts) => {
-    // 🔹 Convert to base units
-    function convertToBaseUnits(
-      qty: number,
-      sellingUnit: string,
-      unitsPerPacket: number,
-      packetsPerCarton: number,
-    ): number {
-      if (sellingUnit === "unit") return qty;
-      if (sellingUnit === "packet") return qty * unitsPerPacket;
-      if (sellingUnit === "carton")
-        return qty * unitsPerPacket * packetsPerCarton;
-      return qty;
-    }
-
     return products.map((p) => {
-      const { unitsPerPacket, packetsPerCarton } = p;
-
-      // 🔸 Total base units already added to cart for this product
-      const totalBaseUnits = carts.reduce((sum, cart) => {
+      // 🔸 Calculate total quantity in cart for this product
+      const totalInCart = carts.reduce((sum, cart) => {
         return (
           sum +
           cart.items
             .filter((i) => i.id === p.id)
-            .reduce(
-              (subSum, item) =>
-                subSum +
-                convertToBaseUnits(
-                  item.selectedQty,
-                  item.sellingUnit,
-                  unitsPerPacket,
-                  packetsPerCarton,
-                ),
-              0,
-            )
+            .reduce((subSum, item) => subSum + item.selectedQty, 0)
         );
       }, 0);
 
-      // 🔸 Convert product’s full stock to base units
-      const availableBaseUnits =
-        convertToBaseUnits(
-          p.availableUnits,
-          "unit",
-          unitsPerPacket,
-          packetsPerCarton,
-        ) +
-        convertToBaseUnits(
-          p.availablePackets,
-          "packet",
-          unitsPerPacket,
-          packetsPerCarton,
-        ) +
-        convertToBaseUnits(
-          p.availableCartons,
-          "carton",
-          unitsPerPacket,
-          packetsPerCarton,
-        );
+      // 🔸 Subtract from already available quantities
+      const availableUnits = Math.max(p.availableUnits - totalInCart, 0);
+      const availablePackets = Math.max(p.availablePackets - totalInCart, 0); // optionally adjust
+      const availableCartons = Math.max(p.availableCartons - totalInCart, 0); // optionally adjust
 
-      // 🔸 Remaining after cart usage
-      const remainingBaseUnits = Math.max(
-        0,
-        availableBaseUnits - totalBaseUnits,
-      );
-
-      function convertFromBaseUnit(product: any, availableUnits: number) {
-        const unitsPerPacket = product.unitsPerPacket || 1;
-        const packetsPerCarton = product.packetsPerCarton || 1;
-
-        const availablePackets = Number(
-          (availableUnits / unitsPerPacket).toFixed(2),
-        );
-        const availableCartons = Number(
-          (availablePackets / packetsPerCarton).toFixed(2),
-        );
-
-        return { availablePackets, availableCartons };
-      }
-      // 🔸 Convert back from base units to structured quantities
-      const remainingCartons = Math.floor(
-        remainingBaseUnits / (packetsPerCarton * unitsPerPacket),
-      );
-      const remainingAfterCartons =
-        remainingBaseUnits % (packetsPerCarton * unitsPerPacket);
-
-      const remainingPackets = Math.floor(
-        remainingAfterCartons / unitsPerPacket,
-      );
-      const remainingUnits = remainingAfterCartons % unitsPerPacket;
-
-      // 🔹 Return updated stock per unit type
       return {
         ...p,
-        availableCartons: remainingCartons,
-        availablePackets: remainingPackets,
-        availableUnits: remainingUnits,
-        // Optional: mark which ones are sold out for easy UI disabling
-        isCartonAvailable: remainingCartons > 0,
-        isPacketAvailable: remainingPackets > 0,
-        isUnitAvailable: remainingUnits > 0,
+        availableUnits,
+        availablePackets,
+        availableCartons,
       };
     });
   },
 );
 
+// export const selectAvailableStock = createSelector(
+//   [selectProducts, selectCarts],
+//   (products, carts) => {
+//     return products.map((p) => {
+//       const { unitsPerPacket, packetsPerCarton } = p;
+
+//       // Calculate total items in cart for this product (in base units)
+//       const totalBaseUnits = carts.reduce((sum, cart) => {
+//         return (
+//           sum +
+//           cart.items
+//             .filter((i) => i.id === p.id)
+//             .reduce((subSum, item) => {
+//               if (item.sellingUnit === "carton")
+//                 return (
+//                   subSum + item.selectedQty * packetsPerCarton * unitsPerPacket
+//                 );
+//               if (item.sellingUnit === "packet")
+//                 return subSum + item.selectedQty * unitsPerPacket;
+//               return subSum + item.selectedQty; // unit
+//             }, 0)
+//         );
+//       }, 0);
+
+//       // Convert product's available stock to base units
+//       const availableBaseUnits =
+//         p.availableUnits +
+//         p.availablePackets * unitsPerPacket +
+//         p.availableCartons * packetsPerCarton * unitsPerPacket;
+
+//       // Subtract cart totals
+//       const remainingBaseUnits = Math.max(
+//         0,
+//         availableBaseUnits - totalBaseUnits,
+//       );
+
+//       // Convert back to structured quantities
+//       const remainingCartons = Math.floor(
+//         remainingBaseUnits / (packetsPerCarton * unitsPerPacket),
+//       );
+//       const remainingAfterCartons =
+//         remainingBaseUnits % (packetsPerCarton * unitsPerPacket);
+
+//       const remainingPackets = Math.floor(
+//         remainingAfterCartons / unitsPerPacket,
+//       );
+//       const remainingUnits = remainingAfterCartons % unitsPerPacket;
+
+//       return {
+//         ...p,
+//         availableCartons: remainingCartons,
+//         availablePackets: remainingPackets,
+//         availableUnits: remainingUnits,
+//       };
+//     });
+//   },
+// );
 export const selectCartItems = (state: RootState) => state.cart.carts;

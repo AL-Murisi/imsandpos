@@ -1,15 +1,10 @@
-import { TabsContent } from "@/components/ui/tabs";
-
 import { fetechUser } from "../actions/users";
-import UserClinet from "./_compoent/Table";
 
-import UserActivityTable from "./_compoent/userActivityLogs";
 import { getActivityLogs } from "../actions/activitylogs";
-import DashboardTabs from "@/components/common/Tabs";
 
 import { getSession } from "@/lib/session";
 import { fetchRoles, fetchRolesForSelect } from "../actions/roles";
-import Role from "./_compoent/roleTable";
+import UserTab from "./_compoent/tabs";
 
 type Users = {
   searchParams: Promise<{
@@ -44,39 +39,22 @@ export default async function User({ searchParams }: Users) {
   const name = (await searchParams).usersquery;
   const user = await getSession();
   if (!user) return;
-  const data = await fetechUser(
-    user.companyId,
-    usersquery,
-    role,
-    from,
-    to,
-    pageIndex,
-    pageSize,
-    // parsedSort
-  );
-  const logs = await getActivityLogs(user.companyId, pageIndex, pageSize);
+  const [data, logs, roless, roles] = await Promise.all([
+    fetechUser(
+      user.companyId,
+      usersquery,
+      role,
+      from,
+      to,
+      pageIndex,
+      pageSize,
+      // parsedSort
+    ),
+    getActivityLogs(user.companyId, pageIndex, pageSize),
 
-  // const data = await fetechUser();
-  const roless = await fetchRolesForSelect();
-  const roles = await fetchRoles(pageIndex, pageSize);
-  return (
-    <DashboardTabs
-      defualt={"userDashboard"}
-      tabs={[
-        { value: "userDashboard", label: "المستخدمين" },
-        { value: "useractivity", label: "أنشطة المستخدمين" },
-        { value: "userroles", label: "أدوار المستخدمين" },
-      ]}
-    >
-      <TabsContent value="userDashboard">
-        <UserClinet users={data} total={0} role={roless} />
-      </TabsContent>
-      <TabsContent value={"useractivity"}>
-        <UserActivityTable logs={logs} total={logs.length} sort={[]} />
-      </TabsContent>
-      <TabsContent value={"userroles"}>
-        <Role Role={roles} />
-      </TabsContent>
-    </DashboardTabs>
-  );
+    // const data = await fetechUser();
+    fetchRolesForSelect(),
+    fetchRoles(pageIndex, pageSize),
+  ]);
+  return <UserTab data={data} roless={roless} logs={logs} roles={roles} />;
 }

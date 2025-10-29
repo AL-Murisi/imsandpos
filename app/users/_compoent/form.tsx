@@ -1,27 +1,18 @@
 "use client";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../../../components/ui/select";
+import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { Label } from "../../../components/ui/label";
-import { Button } from "../../../components/ui/button";
 
 import { fetchRolesForSelect } from "@/app/actions/roles";
-import { toast } from "sonner";
-import { CreateUserSchema, UserInput } from "@/lib/zod";
-import { useAuth } from "@/lib/context/AuthContext";
 import { createUser } from "@/app/actions/users";
 import { SelectField } from "@/components/common/selectproduct";
+import { useAuth } from "@/lib/context/AuthContext";
+import { CreateUserSchema, UserInput } from "@/lib/zod";
+import { toast } from "sonner";
 
 type Role = {
   id: string;

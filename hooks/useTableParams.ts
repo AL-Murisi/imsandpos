@@ -1,6 +1,6 @@
 "use client";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
-import { subDays } from "date-fns";
+
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useMemo } from "react";
 export function useTablePrams() {
@@ -48,7 +48,7 @@ export function useTablePrams() {
     globalFilter: search,
 
     setPagination: (
-      updater: PaginationState | ((old: PaginationState) => PaginationState)
+      updater: PaginationState | ((old: PaginationState) => PaginationState),
     ) => {
       const state =
         typeof updater === "function"
@@ -60,7 +60,7 @@ export function useTablePrams() {
     },
 
     setSorting: (
-      updater: SortingState | ((old: SortingState) => SortingState)
+      updater: SortingState | ((old: SortingState) => SortingState),
     ) => {
       const state = typeof updater === "function" ? updater([]) : updater;
       const sortState = state[0];
@@ -74,7 +74,7 @@ export function useTablePrams() {
     },
 
     setGlobalFilter: (value: string) => {
-      setParam("search", value), setParam("page", 1);
+      (setParam("search", value), setParam("page", 1));
     },
     supplierId,
     warehouseId,

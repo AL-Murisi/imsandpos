@@ -10,7 +10,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ReactNode, useState } from "react";
+import { Children, ReactNode, useState } from "react";
+import { description } from "./PieChart";
 
 interface CustomDialogProps {
   title?: string;

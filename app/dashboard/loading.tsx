@@ -7,9 +7,9 @@ export default function Loading() {
   return (
     // <div className="flex flex-col p-3">
 
-    <div className="flex flex-col p-3">
+    <ScrollArea className="flex h-[95vh] flex-col p-3" dir="rtl">
       <DashboardHeader sections={[]} chartConfigs={[]} />
       <DashboardSkeleton />
-    </div>
+    </ScrollArea>
   );
 }

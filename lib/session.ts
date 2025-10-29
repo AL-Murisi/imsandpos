@@ -1,10 +1,9 @@
 // lib/session.ts
 "use server";
-import { logActivity } from "@/app/actions/activitylogs";
+
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { useAuth } from "./context/AuthContext";
-import { redirect } from "next/navigation";
 
 const secretKey = process.env.ENCRYPTION_SECRET;
 const encodedKey = new TextEncoder().encode(secretKey);

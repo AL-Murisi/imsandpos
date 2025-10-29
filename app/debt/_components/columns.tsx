@@ -1,20 +1,13 @@
 "use client";
 
-import CustomDialog from "@/components/common/Dailog";
+import { useCurrency } from "@/components/CurrencyProvider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ColumnDef } from "@tanstack/react-table";
-import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
-  EditIcon,
-  FileText,
-} from "lucide-react";
-import Debtupdate from "./form";
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import DebtReport from "./DebtReport";
-import { useCurrency } from "@/components/CurrencyProvider";
+import Debtupdate from "./form";
 
 interface DebtSaleData {
   id: string;

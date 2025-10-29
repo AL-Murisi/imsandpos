@@ -91,17 +91,6 @@ CREATE TABLE "warehouses" (
 );
 
 -- CreateTable
-CREATE TABLE "user_warehouses" (
-    "id" TEXT NOT NULL,
-    "user_id" TEXT NOT NULL,
-    "warehouse_id" TEXT NOT NULL,
-    "is_default" BOOLEAN NOT NULL DEFAULT false,
-    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "user_warehouses_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
 CREATE TABLE "categories" (
     "id" TEXT NOT NULL,
     "company_id" TEXT NOT NULL,
@@ -245,6 +234,7 @@ CREATE TABLE "customers" (
     "is_active" BOOLEAN NOT NULL DEFAULT true,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
+    "balance" DECIMAL(10,2) DEFAULT 0,
 
     CONSTRAINT "customers_pkey" PRIMARY KEY ("id")
 );
@@ -268,6 +258,7 @@ CREATE TABLE "sales" (
     "sale_date" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
+    "point_of_sale_id" TEXT,
 
     CONSTRAINT "sales_pkey" PRIMARY KEY ("id")
 );
@@ -366,6 +357,58 @@ CREATE TABLE "offline_operations" (
     CONSTRAINT "offline_operations_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "expense_categories" (
+    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+    "company_id" TEXT NOT NULL,
+    "name" VARCHAR(255) NOT NULL,
+    "description" TEXT,
+    "is_active" BOOLEAN DEFAULT true,
+    "created_at" TIMESTAMP(6) DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(6) DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "expense_categories_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "expenses" (
+    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+    "company_id" TEXT NOT NULL,
+    "user_id" TEXT NOT NULL,
+    "category_id" UUID,
+    "expense_number" VARCHAR(255) NOT NULL,
+    "description" TEXT NOT NULL,
+    "amount" DECIMAL(12,2) NOT NULL,
+    "expense_date" DATE NOT NULL,
+    "payment_method" VARCHAR(50),
+    "reference_number" VARCHAR(255),
+    "receipt_url" TEXT,
+    "notes" TEXT,
+    "status" VARCHAR(50) DEFAULT 'pending',
+    "is_active" BOOLEAN DEFAULT true,
+    "created_at" TIMESTAMP(6) DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(6) DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "expenses_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "points_of_sale" (
+    "id" TEXT NOT NULL DEFAULT gen_random_uuid(),
+    "company_id" TEXT NOT NULL,
+    "name" VARCHAR(100) NOT NULL,
+    "location" VARCHAR(255),
+    "manager_id" TEXT NOT NULL,
+    "is_active" BOOLEAN DEFAULT true,
+    "created_at" TIMESTAMP(6) DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(6) DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "points_of_sale_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateIndex
+CREATE UNIQUE INDEX "unique_company_email" ON "companies"("email");
+
 -- CreateIndex
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 
@@ -413,9 +456,6 @@ CREATE INDEX "warehouses_is_active_idx" ON "warehouses"("is_active");
 
 -- CreateIndex
 CREATE INDEX "warehouses_created_at_idx" ON "warehouses"("created_at");
-
--- CreateIndex
-CREATE UNIQUE INDEX "user_warehouses_user_id_warehouse_id_key" ON "user_warehouses"("user_id", "warehouse_id");
 
 -- CreateIndex
 CREATE INDEX "categories_company_id_idx" ON "categories"("company_id");
@@ -515,12 +555,6 @@ CREATE INDEX "customers_is_active_idx" ON "customers"("is_active");
 
 -- CreateIndex
 CREATE INDEX "customers_created_at_idx" ON "customers"("created_at");
-
--- CreateIndex
-CREATE INDEX "idx_customer_name_trgm" ON "customers" USING GIN ("name" gin_trgm_ops);
-
--- CreateIndex
-CREATE INDEX "idx_customer_phone_trgm" ON "customers" USING GIN ("phone_number" gin_trgm_ops);
 
 -- CreateIndex
 CREATE UNIQUE INDEX "customers_company_id_email_key" ON "customers"("company_id", "email");
@@ -633,6 +667,39 @@ CREATE INDEX "supplier_payments_created_at_idx" ON "supplier_payments"("created_
 -- CreateIndex
 CREATE INDEX "offline_operations_company_id_idx" ON "offline_operations"("company_id");
 
+-- CreateIndex
+CREATE INDEX "idx_expense_category_company" ON "expense_categories"("company_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "unique_expense_category_name" ON "expense_categories"("company_id", "name");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "expenses_expense_number_key" ON "expenses"("expense_number");
+
+-- CreateIndex
+CREATE INDEX "idx_expense_category" ON "expenses"("category_id");
+
+-- CreateIndex
+CREATE INDEX "idx_expense_company" ON "expenses"("company_id");
+
+-- CreateIndex
+CREATE INDEX "idx_expense_company_date" ON "expenses"("company_id", "expense_date");
+
+-- CreateIndex
+CREATE INDEX "idx_expense_created_at" ON "expenses"("created_at");
+
+-- CreateIndex
+CREATE INDEX "idx_expense_date" ON "expenses"("expense_date");
+
+-- CreateIndex
+CREATE INDEX "idx_expense_status" ON "expenses"("status");
+
+-- CreateIndex
+CREATE INDEX "idx_expense_status_date" ON "expenses"("status", "expense_date");
+
+-- CreateIndex
+CREATE INDEX "idx_expense_user" ON "expenses"("user_id");
+
 -- AddForeignKey
 ALTER TABLE "users" ADD CONSTRAINT "users_company_id_fkey" FOREIGN KEY ("company_id") REFERENCES "companies"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
@@ -652,12 +719,6 @@ ALTER TABLE "user_roles" ADD CONSTRAINT "user_roles_user_id_fkey" FOREIGN KEY ("
 ALTER TABLE "warehouses" ADD CONSTRAINT "warehouses_company_id_fkey" FOREIGN KEY ("company_id") REFERENCES "companies"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "user_warehouses" ADD CONSTRAINT "user_warehouses_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "user_warehouses" ADD CONSTRAINT "user_warehouses_warehouse_id_fkey" FOREIGN KEY ("warehouse_id") REFERENCES "warehouses"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "categories" ADD CONSTRAINT "categories_company_id_fkey" FOREIGN KEY ("company_id") REFERENCES "companies"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -670,13 +731,13 @@ ALTER TABLE "brands" ADD CONSTRAINT "brands_company_id_fkey" FOREIGN KEY ("compa
 ALTER TABLE "suppliers" ADD CONSTRAINT "suppliers_company_id_fkey" FOREIGN KEY ("company_id") REFERENCES "companies"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "products" ADD CONSTRAINT "products_company_id_fkey" FOREIGN KEY ("company_id") REFERENCES "companies"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "products" ADD CONSTRAINT "products_brand_id_fkey" FOREIGN KEY ("brand_id") REFERENCES "brands"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "products" ADD CONSTRAINT "products_category_id_fkey" FOREIGN KEY ("category_id") REFERENCES "categories"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "products" ADD CONSTRAINT "products_brand_id_fkey" FOREIGN KEY ("brand_id") REFERENCES "brands"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "products" ADD CONSTRAINT "products_company_id_fkey" FOREIGN KEY ("company_id") REFERENCES "companies"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "products" ADD CONSTRAINT "products_supplier_id_fkey" FOREIGN KEY ("supplier_id") REFERENCES "suppliers"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -709,13 +770,16 @@ ALTER TABLE "stock_movements" ADD CONSTRAINT "stock_movements_warehouse_id_fkey"
 ALTER TABLE "customers" ADD CONSTRAINT "customers_company_id_fkey" FOREIGN KEY ("company_id") REFERENCES "companies"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "sales" ADD CONSTRAINT "sales_company_id_fkey" FOREIGN KEY ("company_id") REFERENCES "companies"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "sales" ADD CONSTRAINT "sales_cashier_id_fkey" FOREIGN KEY ("cashier_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "sales" ADD CONSTRAINT "sales_company_id_fkey" FOREIGN KEY ("company_id") REFERENCES "companies"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "sales" ADD CONSTRAINT "sales_customer_id_fkey" FOREIGN KEY ("customer_id") REFERENCES "customers"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "sales" ADD CONSTRAINT "sales_point_of_sale_id_fkey" FOREIGN KEY ("point_of_sale_id") REFERENCES "points_of_sale"("id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- AddForeignKey
 ALTER TABLE "sale_items" ADD CONSTRAINT "sale_items_company_id_fkey" FOREIGN KEY ("company_id") REFERENCES "companies"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -727,10 +791,10 @@ ALTER TABLE "sale_items" ADD CONSTRAINT "sale_items_product_id_fkey" FOREIGN KEY
 ALTER TABLE "sale_items" ADD CONSTRAINT "sale_items_sale_id_fkey" FOREIGN KEY ("sale_id") REFERENCES "sales"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "payments" ADD CONSTRAINT "payments_company_id_fkey" FOREIGN KEY ("company_id") REFERENCES "companies"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "payments" ADD CONSTRAINT "payments_cashier_id_fkey" FOREIGN KEY ("cashier_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "payments" ADD CONSTRAINT "payments_cashier_id_fkey" FOREIGN KEY ("cashier_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "payments" ADD CONSTRAINT "payments_company_id_fkey" FOREIGN KEY ("company_id") REFERENCES "companies"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "payments" ADD CONSTRAINT "payments_customer_id_fkey" FOREIGN KEY ("customer_id") REFERENCES "customers"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -748,13 +812,32 @@ ALTER TABLE "purchases" ADD CONSTRAINT "purchases_supplier_id_fkey" FOREIGN KEY 
 ALTER TABLE "purchase_items" ADD CONSTRAINT "purchase_items_company_id_fkey" FOREIGN KEY ("company_id") REFERENCES "companies"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "purchase_items" ADD CONSTRAINT "purchase_items_purchase_id_fkey" FOREIGN KEY ("purchase_id") REFERENCES "purchases"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "purchase_items" ADD CONSTRAINT "purchase_items_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "products"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "purchase_items" ADD CONSTRAINT "purchase_items_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "products"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "purchase_items" ADD CONSTRAINT "purchase_items_purchase_id_fkey" FOREIGN KEY ("purchase_id") REFERENCES "purchases"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "supplier_payments" ADD CONSTRAINT "supplier_payments_company_id_fkey" FOREIGN KEY ("company_id") REFERENCES "companies"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "supplier_payments" ADD CONSTRAINT "supplier_payments_supplier_id_fkey" FOREIGN KEY ("supplier_id") REFERENCES "suppliers"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "expense_categories" ADD CONSTRAINT "fk_expense_category_company" FOREIGN KEY ("company_id") REFERENCES "companies"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
+
+-- AddForeignKey
+ALTER TABLE "expenses" ADD CONSTRAINT "fk_expense_category" FOREIGN KEY ("category_id") REFERENCES "expense_categories"("id") ON DELETE SET NULL ON UPDATE NO ACTION;
+
+-- AddForeignKey
+ALTER TABLE "expenses" ADD CONSTRAINT "fk_expense_company" FOREIGN KEY ("company_id") REFERENCES "companies"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
+
+-- AddForeignKey
+ALTER TABLE "expenses" ADD CONSTRAINT "fk_expense_user" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE NO ACTION;
+
+-- AddForeignKey
+ALTER TABLE "points_of_sale" ADD CONSTRAINT "points_of_sale_company_id_fkey" FOREIGN KEY ("company_id") REFERENCES "companies"("id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+
+-- AddForeignKey
+ALTER TABLE "points_of_sale" ADD CONSTRAINT "points_of_sale_manager_id_fkey" FOREIGN KEY ("manager_id") REFERENCES "users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+

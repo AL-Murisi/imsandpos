@@ -1,44 +1,42 @@
 "use client";
 
-import * as React from "react";
 import { ChevronDownIcon, X } from "lucide-react";
 import { DateRange } from "react-day-picker";
 
 import { Button } from "@/components/ui/button";
 
-import dynamic from "next/dynamic";
-const Calendar = dynamic(
-  () => import("@/components/ui/calendar").then((m) => m.Calendar),
-  {
-    ssr: false,
-    loading: () => <input type="date" className="..." />,
-  },
-);
-import { Label } from "@/components/ui/label";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import dynamic from "next/dynamic";
+const Calendar = dynamic(
+  () => import("@/components/ui/calendar").then((m) => m.Calendar),
+  {
+    ssr: false,
+  },
+);
 
 import {
-  format,
-  startOfMonth,
-  endOfMonth,
-  startOfDay,
-  endOfDay,
-  subDays,
   addDays,
+  endOfDay,
+  endOfMonth,
+  format,
+  startOfDay,
+  startOfMonth,
+  subDays,
 } from "date-fns";
 
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 export function Calendar22() {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const { replace } = useRouter();
 
-  const [open, setOpen] = React.useState(false);
-  const [date, setDate] = React.useState<DateRange | undefined>({
+  const [open, setOpen] = useState(false);
+  const [date, setDate] = useState<DateRange | undefined>({
     from: undefined,
     to: undefined,
   });
@@ -51,7 +49,7 @@ export function Calendar22() {
       : `from ${format(date.from, "yyyy-MM-dd")}`
     : " اختر تاريخًا ";
   // Sync date state with URL params on every change
-  React.useEffect(() => {
+  useEffect(() => {
     const fromParam = searchParams.get("from");
     const toParam = searchParams.get("to");
     setDate({
@@ -61,7 +59,7 @@ export function Calendar22() {
   }, [searchParams]);
 
   // Debounced URL update effect stays same
-  React.useEffect(() => {
+  useEffect(() => {
     const debounce = setTimeout(() => {
       const params = new URLSearchParams(searchParams.toString());
 

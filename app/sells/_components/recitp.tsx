@@ -22,9 +22,8 @@ import {
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
-import { ReceiptLaptop } from "@/components/common/receiptforlaptop";
 
-import { PrintButton } from "../cashiercontrol/test";
+import { PrintButton } from "./test";
 import { Receipt } from "@/components/common/receipt";
 import { useAuth } from "@/lib/context/AuthContext";
 

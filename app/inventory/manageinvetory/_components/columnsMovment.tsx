@@ -192,6 +192,11 @@ export const inventoryColumns: ColumnDef<any>[] = [
     header: "المستودع",
   },
   {
+    accessorKey: "product.supplier.name",
+    header: "المورد",
+  },
+
+  {
     accessorKey: "warehouse.location",
     header: "الموقع",
   },
@@ -217,10 +222,13 @@ export const inventoryColumns: ColumnDef<any>[] = [
     cell: ({ row }) => {
       if (row.original.availableQuantity > row.original.reorderLevel) {
         return <Badge className="bg-green-600">متوفر</Badge>;
-      } else if (row.original.availableQuantity == row.original.reorderLevel) {
+      } else if (
+        row.original.availableQuantity == row.original.reorderLevel ||
+        row.original.availableQuantity > 0
+      ) {
         return <Badge className="bg-yellow-500">قريب من النفاد</Badge>;
-      } else {
-        return <Badge className="bg-red-500">منخفض</Badge>;
+      } else if (row.original.availableQuantity == 0) {
+        return <Badge className="bg-red-500">نفد</Badge>;
       }
     },
   },

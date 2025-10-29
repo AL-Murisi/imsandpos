@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useOptimistic, useState, useTransition } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
   Select,
@@ -41,11 +41,13 @@ export default function CardSelector({
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  const t = useTranslations("selection");
-  const params = new URLSearchParams(searchParams.toString());
+  const [isPending, startTransition] = useTransition();
 
+  const t = useTranslations("selection");
+  const [optimisticParam, setOptimisticParam] = useOptimistic(
+    searchParams.get("card") || "all",
+  );
   // Controlled selected card state synced with URL
-  const [selectedCard, setSelectedCard] = useState("all");
 
   // Sync selectedCard from URL param
   function handleChange(value: string) {
@@ -67,32 +69,36 @@ export default function CardSelector({
       "purchasesFrom",
       "purchasesTo",
     ].forEach((param) => params.delete(param));
-
-    router.replace(`?${params.toString()}`);
+    startTransition(() => {
+      setOptimisticParam(value);
+      if (params.toString() !== searchParams.toString()) {
+        router.push(`${pathname}?${params.toString()}`);
+      }
+    });
   }
 
-  const card = searchParams.get("card") || "all";
-
   return (
-    <Select value={card} onValueChange={handleChange}>
-      <SelectTrigger
-        aria-label="chose"
-        className="border-primary rounded-md border-2"
-      >
-        <SelectValue placeholder={card ?? "اختر بطاقة"} />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectGroup>
-          <SelectItem value="all">{t("all")}</SelectItem>
-          {sections
-            .filter((s) => s.chartData)
-            .map((s) => (
-              <SelectItem key={s.description} value={s.description}>
-                {chartConfigs[s.description]?.label || s.label}
-              </SelectItem>
-            ))}
-        </SelectGroup>
-      </SelectContent>
-    </Select>
+    <div data-pending={isPending ? "" : undefined}>
+      <Select value={optimisticParam} onValueChange={handleChange}>
+        <SelectTrigger
+          aria-label="chose"
+          className="border-primary rounded-md border-2"
+        >
+          <SelectValue placeholder={optimisticParam ?? "اختر بطاقة"} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectGroup>
+            <SelectItem value="all">{t("all")}</SelectItem>
+            {sections
+              .filter((s) => s.chartData)
+              .map((s) => (
+                <SelectItem key={s.description} value={s.description}>
+                  {chartConfigs[s.description]?.label || s.label}
+                </SelectItem>
+              ))}
+          </SelectGroup>
+        </SelectContent>
+      </Select>
+    </div>
   );
 }

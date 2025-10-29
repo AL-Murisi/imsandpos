@@ -5,23 +5,38 @@ const Calendar22 = dynamic(
   () => import("@/components/common/DatePicker").then((m) => m.Calendar22),
   {
     ssr: false,
-    loading: () => <input type="date" className="..." />,
   },
 );
 
-import { DataTable } from "@/components/common/test";
+const DataTable = dynamic(
+  () => import("@/components/common/test").then((m) => m.DataTable),
+  {
+    ssr: false,
+    loading: () => <TableSkeleton />,
+  },
+);
 import { useTablePrams } from "@/hooks/useTableParams";
 
 import SearchInput from "@/components/common/searchtest";
 
 import { useTranslations } from "next-intl";
 
-import { PrintExpenseTable } from "@/components/printItems";
+const PrintExpenseTable = dynamic(
+  () => import("@/components/printItems").then((m) => m.PrintExpenseTable),
+  {
+    ssr: false,
+  },
+);
+const ExpenseForm = dynamic(() => import("./ExpenseForm"), {
+  ssr: false,
+});
 import { useAuth } from "@/lib/context/AuthContext";
 import { expenseColumns } from "./columns";
-import ExpenseCategoryForm from "./creatCatform";
-import ExpenseForm from "./ExpenseForm";
+import TableSkeleton from "@/components/common/TableSkeleton";
 
+const ExpenseCategoryForm = dynamic(() => import("./creatCatform"), {
+  ssr: false,
+});
 type ProductClientProps = {
   data: any;
   total: number;

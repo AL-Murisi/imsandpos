@@ -1,3 +1,4 @@
+"use client";
 import React from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
 
@@ -16,15 +17,15 @@ export default function CardContainer({
 }: CardContainerProps) {
   return (
     // <div className="flex flex-col ">
-    <Card className=" border-none bg-background overflow-y h-[100vh]  ">
-      <CardHeader className="border-nonep-2 mt-3 flex justify-between items-center">
+    <Card className="bg-background overflow-y h-[100vh] border-none">
+      <CardHeader className="border-nonep-2 mt-3 flex items-center justify-between">
         <div>
           <CardTitle>{title}</CardTitle>
           {total !== undefined && <p>Total: {total}</p>}
         </div>
         {action}
       </CardHeader>
-      <CardContent className="border-none overflow-y-auto ">
+      <CardContent className="overflow-y-auto border-none">
         {children}
       </CardContent>
       {/* <CardFooter /> */}

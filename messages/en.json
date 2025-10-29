@@ -37,7 +37,10 @@
     "new": "New Product",
     "expenses": "Expenses",
     "customer": "customer",
-    "edit": "Edit Product"
+    "edit": "Edit Product",
+    "pos": "pos",
+    "chartofaccount": "chart of account",
+    "journalEntry": "journalEntry"
   },
   "selection": {
     "all": "All"

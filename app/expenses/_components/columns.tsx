@@ -1,9 +1,16 @@
+"use client";
 import { ColumnDef } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 
-import { ExpenseEditForm } from "./ExpenseEditForm";
-
+import { useTranslations } from "next-intl";
+import dynamic from "next/dynamic";
+const ExpenseEditForm = dynamic(
+  () => import("./ExpenseEditForm").then((m) => m.ExpenseEditForm),
+  {
+    ssr: false,
+  },
+);
 export const expenseColumns: ColumnDef<any>[] = [
   {
     id: "select",

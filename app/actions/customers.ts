@@ -32,7 +32,7 @@ function serializeData<T>(data: T): T {
 }
 export async function getCustomerById(companyId: string, customerId?: string) {
   if (!companyId) return;
-  console.log(companyId);
+  console.log("getCustomerById");
   try {
     const customers = await prisma.customer.findMany({
       where: { id: customerId, companyId },

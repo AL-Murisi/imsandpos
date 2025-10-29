@@ -16,10 +16,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ChartConfig, ChartContainer } from "@/components/ui/chart";
+
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
-import { Pie } from "recharts";
 
+const Pie = dynamic(() => import("recharts").then((m) => m.Pie), {
+  ssr: false,
+});
 export const description = "A pie chart with a legend";
 const chartData = [
   { browser: "chrome", visitors: 275, fill: "var(--color-chrome)" },

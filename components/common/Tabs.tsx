@@ -1,84 +1,93 @@
 "use client";
-
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useRouter, useSearchParams } from "next/navigation";
-import { ReactNode } from "react";
+import {
+  useTransition,
+  useState,
+  ReactNode,
+  useEffect,
+  useOptimistic,
+} from "react";
+import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 
 type TabItem = {
   value: string;
   label: string;
-  content?: ReactNode; // 👈 allow passing content for each tab
+  content: ReactNode;
 };
 
-type DashboardTabsProps = {
-  currentTab?: string;
-  defualt?: string;
+type ReusableTabsProps = {
+  /** List of tab items with label and content */
   tabs: TabItem[];
-  children?: ReactNode; // 👈 optional children (if you want manual control)
+
+  /** Optional default active tab value */
+  defaultTab?: string;
+
+  /** Optional flag to disable transitions (for instant tab changes) */
+  disableTransition?: boolean;
+
+  /** Optional custom loader to show during transition */
+  loader?: ReactNode;
 };
-
 export default function DashboardTabs({
-  currentTab,
   tabs,
-  defualt,
-  children,
-}: DashboardTabsProps) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  defaultTab,
+  disableTransition = false,
+  loader,
+}: ReusableTabsProps) {
+  const [tab, setTab] = useState<string>(defaultTab || tabs[0]?.value);
+  const [isPending, startTransition] = useTransition();
+  const [optimisticTab, setOptimisticTab] = useOptimistic(tab);
+  useEffect(() => {
+    if (!tab && tabs.length > 0) {
+      setTab(defaultTab || tabs[0].value);
+    }
+  }, [tabs, defaultTab, tab]);
 
-  function handleChange(value: string) {
-    const params = new URLSearchParams(searchParams.toString());
+  const handleTabChange = (nextTab: string) => {
+    if (nextTab === tab) return;
 
-    // set the new tab
-    params.set("tab", value);
+    // Optimistically switch UI instantly
 
-    // delete filters
-    [
-      "from",
-      "to",
-      "sort",
-      "query",
-      "limit",
-      "supplierId",
-      "warehouseId",
-      "categoryId",
-    ].forEach((param) => params.delete(param));
-
-    router.replace(`?${params.toString()}`);
-  }
+    // Defer real state update (simulate async transition)
+    startTransition(() => {
+      setOptimisticTab(nextTab);
+      setTab(nextTab); // optional delay for realism
+    });
+  };
+  const currentContent = tabs.find((t) => t.value === tab)?.content;
 
   return (
-    <Tabs
-      defaultValue={defualt}
-      value={currentTab}
-      onValueChange={handleChange}
-      className="px-2 py-2"
-      dir="rtl"
-    >
-      <TabsList>
-        {tabs.map((tab) => (
-          <TabsTrigger
-            key={tab.value}
-            value={tab.value}
-            className="data-[state=active]:border-b-2 data-[state=active]:border-amber-500"
+    <div className="p-2">
+      {/* --- Tab Buttons --- */}
+      <div className="mb-3 flex flex-wrap gap-2">
+        {tabs.map((t) => (
+          <Button
+            key={t.value}
+            onClick={() => handleTabChange(t.value)}
+            variant={optimisticTab === t.value ? "default" : "outline"}
+            disabled={isPending}
           >
-            {tab.label}
-          </TabsTrigger>
+            {t.label}
+          </Button>
         ))}
-      </TabsList>
+      </div>
 
-      {/* Render children if passed manually */}
-      {children}
+      {/* --- Loader --- */}
+      {isPending &&
+        (loader || (
+          <div className="flex justify-center py-6">
+            <Loader2 className="text-muted-foreground h-5 w-5 animate-spin" />
+          </div>
+        ))}
 
-      {/* Or auto-render content from tabs prop */}
-      {tabs.map(
-        (tab) =>
-          tab.content && (
-            <TabsContent key={tab.value} value={tab.value}>
-              {tab.content}
-            </TabsContent>
-          ),
-      )}
-    </Tabs>
+      {/* --- Tab Content --- */}
+      <div
+        className={`transition-opacity ${
+          disableTransition ? "" : "duration-300"
+        } ${isPending ? "opacity-0" : "opacity-100"}`}
+      >
+        {!isPending && currentContent}
+      </div>
+    </div>
   );
 }

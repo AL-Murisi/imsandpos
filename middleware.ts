@@ -23,7 +23,7 @@ const routePermissions: Record<string, string[]> = {
 
   // Cashier specific routes
   "/sells": ["admin", "cashier"],
-  "/sells/debtSell": ["admin", "cashier"],
+
   "/sells/cashiercontrol": ["admin", "cashier"],
 
   // Supplier specific routes

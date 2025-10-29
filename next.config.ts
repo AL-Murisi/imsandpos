@@ -81,63 +81,65 @@ const nextConfig: NextConfig = {
 
   serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core"],
 
-  optimizePackageImports: ["zod"],
-
   experimental: {
     inlineCss: true,
+    staleTimes: {
+      dynamic: 30,
+    },
     optimizePackageImports: [
       "lucide-react",
       "@radix-ui/react-icons",
       "recharts",
       "@tabler/icons-react",
       "react-icons",
+      "zod",
     ],
   },
 
   productionBrowserSourceMaps: true,
 
-  webpack: (config, { isServer }) => {
-    if (!isServer) {
-      config.optimization = config.optimization || {};
-      config.optimization.splitChunks = {
-        chunks: "all",
-        cacheGroups: {
-          recharts: {
-            test: /[\\/]node_modules[\\/]recharts[\\/]/,
-            name: "recharts",
-            priority: 20,
-            reuseExistingChunk: true,
-          },
-          reactIcons: {
-            test: /[\\/]node_modules[\\/]react-icons[\\/]/,
-            name: "react-icons",
-            priority: 20,
-            reuseExistingChunk: true,
-          },
-          radix: {
-            test: /[\\/]node_modules[\\/]@radix-ui[\\/]/,
-            name: "radix-ui",
-            priority: 15,
-            reuseExistingChunk: true,
-          },
-          intl: {
-            test: /[\\/]node_modules[\\/](next-intl|@formatjs)[\\/]/,
-            name: "intl",
-            priority: 15,
-            reuseExistingChunk: true,
-          },
-          vendor: {
-            test: /[\\/]node_modules[\\/]/,
-            name: "vendor",
-            priority: 10,
-            reuseExistingChunk: true,
-          },
-        },
-      };
-    }
+  // webpack: (config, { isServer }) => {
+  //   if (!isServer) {
+  //     config.optimization = config.optimization || {};
+  //     config.optimization.splitChunks = {
+  //       chunks: "all",
+  //       cacheGroups: {
+  //         recharts: {
+  //           test: /[\\/]node_modules[\\/]recharts[\\/]/,
+  //           name: "recharts",
+  //           priority: 20,
+  //           reuseExistingChunk: true,
+  //         },
+  //         reactIcons: {
+  //           test: /[\\/]node_modules[\\/]react-icons[\\/]/,
+  //           name: "react-icons",
+  //           priority: 20,
+  //           reuseExistingChunk: true,
+  //         },
+  //         radix: {
+  //           test: /[\\/]node_modules[\\/]@radix-ui[\\/]/,
+  //           name: "radix-ui",
+  //           priority: 15,
+  //           reuseExistingChunk: true,
+  //         },
+  //         intl: {
+  //           test: /[\\/]node_modules[\\/](next-intl|@formatjs)[\\/]/,
+  //           name: "intl",
+  //           priority: 15,
+  //           reuseExistingChunk: true,
+  //         },
+  //         vendor: {
+  //           test: /[\\/]node_modules[\\/]/,
+  //           name: "vendor",
+  //           priority: 10,
+  //           reuseExistingChunk: true,
+  //         },
+  //       },
+  //     };
+  //   }
 
-    return config;
-  },
+  //   return config;
+  // },
 
   ...(process.env.NODE_ENV === "production" && {
     headers: async () => [

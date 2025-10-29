@@ -4,8 +4,10 @@
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { revalidate } from "../dashboard/page";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, unstable_noStore } from "next/cache";
 import { CreateSupplierInput, CreateSupplierSchema } from "@/lib/zod";
+import { cache } from "react";
+import { getSession } from "@/lib/session";
 function serializeData<T>(data: T): T {
   if (data === null || data === undefined) return data;
   if (typeof data !== "object") return data;
@@ -17,7 +19,7 @@ function serializeData<T>(data: T): T {
   const plainObj: any = {};
   for (const [key, value] of Object.entries(data)) {
     if (value instanceof Prisma.Decimal) {
-      plainObj[key] = value.toNumber(); // or value.toString() if you prefer
+      plainObj[key] = Number(value);
     } else if (value instanceof Date) {
       plainObj[key] = value.toISOString();
     } else if (typeof value === "bigint") {
@@ -31,26 +33,45 @@ function serializeData<T>(data: T): T {
 
   return plainObj;
 }
+async function getUserCompany() {
+  const session = await getSession();
+  if (!session?.userId) throw new Error("Unauthorized");
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.userId },
+    select: { companyId: true },
+  });
+
+  if (!user) throw new Error("User not found");
+  return { userId: session.userId, companyId: user.companyId };
+}
 export async function updateSupplier(
   supplierId: string,
-  companyId: string,
-  data: {
-    name: string;
-    contactPerson: string;
-    email: string;
-    phoneNumber: string;
-    address: string;
-    city: string;
-    state: string;
-    country: string;
-    postalCode: string;
-    taxId?: string;
-    paymentTerms?: string;
-    isActive: boolean;
-  },
+
+  data: Partial<
+    Omit<
+      {
+        name: string;
+        contactPerson: string;
+        email: string;
+        phoneNumber: string;
+        address: string;
+        city: string;
+        state: string;
+        country: string;
+        postalCode: string;
+        taxId?: string;
+        paymentTerms?: string;
+        isActive?: boolean;
+      },
+      "companyId"
+    >
+  >,
 ) {
   try {
-    // Verify supplier exists and belongs to company
+    const { companyId } = await getUserCompany();
+
+    // 🔹 Verify supplier belongs to the same company
     const existingSupplier = await prisma.supplier.findUnique({
       where: { id: supplierId },
     });
@@ -59,48 +80,60 @@ export async function updateSupplier(
       return { success: false, error: "المورد غير موجود أو غير مصرح له" };
     }
 
-    // Check if email is already used by another supplier
-    const emailExists = await prisma.supplier.findFirst({
-      where: {
-        email: data.email,
-        companyId: companyId,
-        NOT: { id: supplierId },
-      },
-    });
+    // 🔹 Check if email already exists for another supplier
+    if (data.email) {
+      const emailExists = await prisma.supplier.findFirst({
+        where: {
+          email: data.email,
+          companyId: companyId,
+          NOT: { id: supplierId },
+        },
+      });
 
-    if (emailExists) {
-      return { success: false, error: "البريد الإلكتروني مستخدم بالفعل" };
+      if (emailExists) {
+        return { success: false, error: "البريد الإلكتروني مستخدم بالفعل" };
+      }
     }
 
-    // Update supplier
+    // 🔹 Update supplier
     const updatedSupplier = await prisma.supplier.update({
       where: { id: supplierId },
       data: {
-        name: data.name,
-        contactPerson: data.contactPerson,
-        email: data.email,
-        phoneNumber: data.phoneNumber,
-        address: data.address,
-        city: data.city,
-        state: data.state,
-        country: data.country,
-        postalCode: data.postalCode,
-        taxId: data.taxId || null,
-        paymentTerms: data.paymentTerms || null,
-        isActive: data.isActive,
+        name: data.name ?? existingSupplier.name,
+        contactPerson: data.contactPerson ?? existingSupplier.contactPerson,
+        email: data.email ?? existingSupplier.email,
+        phoneNumber: data.phoneNumber ?? existingSupplier.phoneNumber,
+        address: data.address ?? existingSupplier.address,
+        city: data.city ?? existingSupplier.city,
+        state: data.state ?? existingSupplier.state,
+        country: data.country ?? existingSupplier.country,
+        postalCode: data.postalCode ?? existingSupplier.postalCode,
+        taxId: data.taxId ?? existingSupplier.taxId,
+        paymentTerms: data.paymentTerms ?? existingSupplier.paymentTerms,
+        isActive: data.isActive ?? existingSupplier.isActive,
       },
     });
 
+    // 🔹 Revalidate suppliers list
+    revalidatePath("/suppliers");
+    revalidatePath("/admin");
+
     return { success: true, data: updatedSupplier };
   } catch (error) {
-    console.error("Error updating supplier:", error);
+    console.error("❌ Error updating supplier:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "فشل تحديث المورد",
     };
   }
 }
-export async function fetchSuppliers(companyId: string) {
+export async function slow(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export const fetchSuppliers = cache(async (companyId: string) => {
+  console.log("fetchSuppliers");
+  await slow(1000);
   const supplier = await prisma.supplier.findMany({
     where: { companyId: companyId },
     select: {
@@ -123,7 +156,7 @@ export async function fetchSuppliers(companyId: string) {
   });
   const serialized = serializeData(supplier);
   return serialized;
-}
+});
 export async function createSupplier(
   form: CreateSupplierInput,
   companyId: string,
@@ -173,141 +206,150 @@ export async function createSupplier(
 }
 
 // ============================================
-export async function getPurchasesByCompany(
-  companyId: string,
-  {
-    productQuery,
-    where,
-    from,
-    to,
-    pageIndex = 0,
-    pageSize = 10,
-    parsedSort,
-  }: {
-    productQuery?: string;
-    where?: string;
-    from?: string;
-    to?: string;
-    pageIndex?: number;
-    pageSize?: number;
-    parsedSort?: { id: string; desc: boolean }[];
-  } = {},
-) {
-  try {
-    const filters: any = { companyId };
+export const getPurchasesByCompany = cache(
+  async (
+    companyId: string,
+    {
+      productQuery,
+      where,
+      from,
+      to,
+      pageIndex = 0,
+      pageSize = 13,
+      parsedSort,
+    }: {
+      productQuery?: string;
+      where?: string;
+      from?: string;
+      to?: string;
+      pageIndex?: number;
+      pageSize?: number;
+      parsedSort?: { id: string; desc: boolean }[];
+    } = {},
+  ) => {
+    try {
+      const filters: any = { companyId };
 
-    // Status filter
-    if (where && where !== "all") {
-      filters.status = where;
-    }
+      // Status filter
+      if (where && where !== "all") {
+        filters.status = where;
+      }
 
-    // Date range filter
-    if (from || to) {
-      filters.createdAt = {};
-      if (from) filters.createdAt.gte = new Date(from);
-      if (to) filters.createdAt.lte = new Date(to);
-    }
+      // Date range filter
+      if (from || to) {
+        filters.createdAt = {};
+        if (from) filters.createdAt.gte = new Date(from);
+        if (to) filters.createdAt.lte = new Date(to);
+      }
 
-    // Product name/SKU filter
-    if (productQuery) {
-      const items = await prisma.purchaseItem.findMany({
-        where: {
-          companyId,
-          product: {
-            OR: [
-              { name: { contains: productQuery, mode: "insensitive" } },
-              { sku: { contains: productQuery, mode: "insensitive" } },
-            ],
-          },
-        },
-        select: { purchaseId: true },
-        distinct: ["purchaseId"],
-      });
-
-      const purchaseIds = items.map((i) => i.purchaseId);
-      if (purchaseIds.length === 0) return { data: [], total: 0 };
-      filters.id = { in: purchaseIds };
-    }
-
-    // Count total
-    const total = await prisma.purchase.count({ where: filters });
-
-    // Sorting
-
-    // Fetch data
-    const purchases = await prisma.purchase.findMany({
-      where: filters,
-      include: {
-        purchaseItems: {
-          include: {
+      // Product name/SKU filter
+      if (productQuery) {
+        const items = await prisma.purchaseItem.findMany({
+          where: {
+            companyId,
             product: {
-              select: { id: true, name: true, sku: true, costPrice: true },
+              OR: [
+                { name: { contains: productQuery, mode: "insensitive" } },
+                { sku: { contains: productQuery, mode: "insensitive" } },
+              ],
             },
           },
+          select: { purchaseId: true },
+          distinct: ["purchaseId"],
+        });
+
+        const purchaseIds = items.map((i) => i.purchaseId);
+        if (purchaseIds.length === 0) return { data: [], total: 0 };
+        filters.id = { in: purchaseIds };
+      }
+
+      // Count total
+      const total = await prisma.purchase.count({ where: filters });
+
+      // Sorting
+
+      await slow(1000);
+
+      // Fetch data
+      const purchases = await prisma.purchase.findMany({
+        where: filters,
+        include: {
+          purchaseItems: {
+            include: {
+              product: {
+                select: { id: true, name: true, sku: true, costPrice: true },
+              },
+            },
+          },
+          supplier: { select: { id: true, name: true } },
         },
-        supplier: true,
-      },
 
-      skip: pageIndex * pageSize,
-      take: pageSize,
-    });
-    const serialized = serializeData(purchases);
-    return { data: serialized, total, pageIndex, pageSize };
-  } catch (error) {
-    console.error("Error fetching company purchases:", error);
-    throw error;
-  }
-}
+        skip: pageIndex * pageSize,
+        take: pageSize,
+      });
+      const serialized = serializeData(purchases);
 
-export async function getSupplierPaymentsByCompany(
-  companyId: string,
-  {
-    from,
-    to,
-    pageIndex = 0,
-    pageSize = 10,
-    parsedSort,
-  }: {
-    from?: string;
-    to?: string;
-    pageIndex?: number;
-    pageSize?: number;
-    parsedSort?: { id: string; desc: boolean }[];
-  } = {},
-) {
-  try {
-    const filters: any = { companyId };
-
-    // Date range
-    if (from || to) {
-      filters.paymentDate = {};
-      if (from) filters.paymentDate.gte = new Date(from);
-      if (to) filters.paymentDate.lte = new Date(to);
+      return { data: serialized, total, pageIndex, pageSize };
+    } catch (error) {
+      console.error("Error fetching company purchases:", error);
+      throw error;
     }
+  },
+);
 
-    // Count total
-    const total = await prisma.supplierPayment.count({ where: filters });
+export const getSupplierPaymentsByCompany = cache(
+  async (
+    companyId: string,
+    {
+      from,
+      to,
+      pageIndex = 0,
+      pageSize = 13,
+      parsedSort,
+    }: {
+      from?: string;
+      to?: string;
+      pageIndex?: number;
+      pageSize?: number;
+      parsedSort?: { id: string; desc: boolean }[];
+    } = {},
+  ) => {
+    try {
+      const filters: any = { companyId };
 
-    // Sort
+      // Date range
+      if (from || to) {
+        filters.paymentDate = {};
+        if (from) filters.paymentDate.gte = new Date(from);
+        if (to) filters.paymentDate.lte = new Date(to);
+      }
 
-    // Fetch
-    const payments = await prisma.supplierPayment.findMany({
-      where: filters,
-      include: {
-        supplier: true,
-        company: true,
-      },
+      // Count total
+      const total = await prisma.supplierPayment.count({ where: filters });
 
-      skip: pageIndex * pageSize,
-      take: pageSize,
-    });
-    const serialized = serializeData(payments);
-    return { data: serialized, total, pageIndex, pageSize };
-  } catch (error) {
-    console.error("Error fetching company payments:", error);
-    throw error;
-  }
-}
+      // Sort
+
+      // Fetch
+
+      await slow(1000);
+      const payments = await prisma.supplierPayment.findMany({
+        where: filters,
+        include: {
+          supplier: { select: { id: true, name: true } },
+          company: true,
+        },
+
+        skip: pageIndex * pageSize,
+        take: pageSize,
+      });
+      const serialized = serializeData(payments);
+      return { data: serialized, total, pageIndex, pageSize };
+    } catch (error) {
+      console.error("Error fetching company payments:", error);
+      throw error;
+    }
+  },
+);
 
 export async function updateSupplierPayment(
   paymentId: string,
@@ -412,10 +454,143 @@ export async function updateSupplierPayment(
 // ============================================
 // Create Supplier Payment and Apply to Purchases
 // ============================================
+// export async function createSupplierPaymentFromPurchases(
+//   userId: string,
+//   companyId: string,
+//   data: {
+//     createdBy: string;
+//     supplierId: string;
+//     amount: number;
+//     paymentMethod: string;
+//     note?: string;
+//     paymentDate?: Date;
+//   },
+// ) {
+//   try {
+//     const { createdBy, supplierId, amount, paymentMethod, note, paymentDate } =
+//       data;
+
+//     if (!supplierId || !amount || amount <= 0) {
+//       throw new Error("Supplier ID and valid payment amount are required");
+//     }
+
+//     // 1. Fetch purchases (outside transaction)
+//     const purchases = await prisma.purchase.findMany({
+//       where: {
+//         companyId,
+//         supplierId,
+//         status: { in: ["pending", "partial"] },
+//       },
+//       orderBy: { createdAt: "asc" },
+//     });
+
+//     if (!purchases.length) {
+//       throw new Error(
+//         "No pending or partial purchases found for this supplier",
+//       );
+//     }
+
+//     // 2. Calculate payment allocation (in memory)
+//     let remainingAmount = amount;
+//     const purchaseUpdates: Array<{
+//       id: string;
+//       amountPaid: number;
+//       amountDue: number;
+//       status: "pending" | "partial" | "paid";
+//     }> = [];
+
+//     for (const purchase of purchases) {
+//       if (remainingAmount <= 0) break;
+
+//       const amountDue = Number(purchase.amountDue);
+//       const amountToApply = Math.min(amountDue, remainingAmount);
+
+//       const newAmountPaid = Number(purchase.amountPaid) + amountToApply;
+//       const newAmountDue = Math.max(0, amountDue - amountToApply);
+
+//       purchaseUpdates.push({
+//         id: purchase.id,
+//         amountPaid: newAmountPaid,
+//         amountDue: newAmountDue,
+//         status:
+//           newAmountDue <= 0
+//             ? "paid"
+//             : amountToApply > 0
+//               ? "partial"
+//               : "pending",
+//       });
+
+//       remainingAmount -= amountToApply;
+//     }
+
+//     // 3. Quick transaction - only update purchases
+//     const updatedPurchases = await prisma.$transaction(
+//       async (tx) => {
+//         return Promise.all(
+//           purchaseUpdates.map((update) =>
+//             tx.purchase.update({
+//               where: { id: update.id },
+//               data: {
+//                 amountPaid: Number(update.amountPaid),
+//                 amountDue: Number(update.amountDue),
+//                 status: update.status,
+//               },
+//             }),
+//           ),
+//         );
+//       },
+//       { timeout: 5000 },
+//     );
+//     // 4. Create payment record (separate operation)
+//     const supplierPayment = await prisma.supplierPayment.create({
+//       data: {
+//         companyId,
+//         supplierId,
+//         amount,
+
+//         paymentMethod,
+//         note,
+//         createdBy,
+
+//         paymentDate: paymentDate ?? new Date(),
+//       },
+//       include: { supplier: true },
+//     });
+
+//     // 5. Log activity (separate operation)
+//     await prisma.activityLogs.create({
+//       data: {
+//         userId,
+//         companyId,
+//         action: "created supplier payment",
+//         details: `Supplier: ${supplierPayment.supplier.name}, Payment: ${amount}, Applied to ${updatedPurchases.length} purchase(s).`,
+//       },
+//     });
+
+//     revalidatePath("/suppliers");
+
+//     return {
+//       success: true,
+//       payment: supplierPayment,
+//       updatedPurchases,
+//       remainingAmount,
+//     };
+//   } catch (error) {
+//     console.error("Error creating supplier payment:", error);
+//     return {
+//       success: false,
+//       error:
+//         error instanceof Error
+//           ? error.message
+//           : "Failed to create supplier payment",
+//     };
+//   }
+// }
 export async function createSupplierPaymentFromPurchases(
   userId: string,
   companyId: string,
   data: {
+    createdBy: string;
     supplierId: string;
     amount: number;
     paymentMethod: string;
@@ -424,13 +599,15 @@ export async function createSupplierPaymentFromPurchases(
   },
 ) {
   try {
-    const { supplierId, amount, paymentMethod, note, paymentDate } = data;
+    const { createdBy, supplierId, amount, paymentMethod, note, paymentDate } =
+      data;
 
+    // --- Validation ---
     if (!supplierId || !amount || amount <= 0) {
       throw new Error("Supplier ID and valid payment amount are required");
     }
 
-    // 1. Fetch purchases (outside transaction)
+    // --- 1. Fetch purchases with pending/partial status ---
     const purchases = await prisma.purchase.findMany({
       where: {
         companyId,
@@ -446,7 +623,7 @@ export async function createSupplierPaymentFromPurchases(
       );
     }
 
-    // 2. Calculate payment allocation (in memory)
+    // --- 2. Calculate allocation logic (in memory) ---
     let remainingAmount = amount;
     const purchaseUpdates: Array<{
       id: string;
@@ -479,10 +656,17 @@ export async function createSupplierPaymentFromPurchases(
       remainingAmount -= amountToApply;
     }
 
-    // 3. Quick transaction - only update purchases
-    const updatedPurchases = await prisma.$transaction(
+    if (!purchaseUpdates.length) {
+      throw new Error("No applicable purchases found for this payment.");
+    }
+
+    console.log("Applying payment to", purchaseUpdates.length, "purchase(s)");
+
+    // --- 3. Transaction: Update purchases + create payment ---
+    const result = await prisma.$transaction(
       async (tx) => {
-        return Promise.all(
+        // Update all purchases
+        const updatedPurchases = await Promise.all(
           purchaseUpdates.map((update) =>
             tx.purchase.update({
               where: { id: update.id },
@@ -494,43 +678,49 @@ export async function createSupplierPaymentFromPurchases(
             }),
           ),
         );
+
+        // Create supplier payment record
+        const supplierPayment = await tx.supplierPayment.create({
+          data: {
+            companyId,
+            supplierId,
+            amount,
+            paymentMethod,
+            note,
+            createdBy,
+            paymentDate: paymentDate ?? new Date(),
+          },
+          include: { supplier: true },
+        });
+
+        return { updatedPurchases, supplierPayment };
       },
-      { timeout: 5000 },
+      { timeout: 30000 },
     );
 
-    // 4. Create payment record (separate operation)
-    const supplierPayment = await prisma.supplierPayment.create({
-      data: {
-        companyId,
-        supplierId,
-        amount,
-        paymentMethod,
-        note,
-        paymentDate: paymentDate ?? new Date(),
-      },
-      include: { supplier: true },
-    });
+    const { updatedPurchases, supplierPayment } = result;
 
-    // 5. Log activity (separate operation)
+    // --- 4. Log activity (outside transaction) ---
     await prisma.activityLogs.create({
       data: {
         userId,
         companyId,
-        action: "created supplier payment",
+        action: "Created supplier payment",
         details: `Supplier: ${supplierPayment.supplier.name}, Payment: ${amount}, Applied to ${updatedPurchases.length} purchase(s).`,
       },
     });
 
     revalidatePath("/suppliers");
-
+    // --- 5. Serialize & return ---
     return {
       success: true,
-      payment: supplierPayment,
-      updatedPurchases,
+      payment: serializeData(supplierPayment),
+      updatedPurchases: serializeData(updatedPurchases),
       remainingAmount,
     };
   } catch (error) {
-    console.error("Error creating supplier payment:", error);
+    console.error("❌ Error creating supplier payment:", error);
+
     return {
       success: false,
       error:
@@ -540,7 +730,6 @@ export async function createSupplierPaymentFromPurchases(
     };
   }
 }
-
 // ============================================
 // 4. GET SUPPLIER SUMMARY (Purchases + Payments)
 // ============================================

@@ -1,28 +1,34 @@
 "use client";
 
 import { useTablePrams } from "@/hooks/useTableParams";
-import { DataTable } from "@/components/common/test";
-import { Suspense, useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
 
+import { SelectField } from "@/components/common/selection";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 import dynamic from "next/dynamic";
 const Calendar22 = dynamic(
   () => import("@/components/common/DatePicker").then((m) => m.Calendar22),
   {
     ssr: false,
-    loading: () => <input type="date" className="..." />,
   },
 );
-import { SelectField } from "@/components/common/selection";
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
-import CustomDialog from "@/components/common/Dailog";
 // import SearchInput from "@/components/common/SearchInput";
-
-import { customerColumns } from "./columns";
+const DataTable = dynamic(
+  () => import("@/components/common/test").then((m) => m.DataTable),
+  {
+    ssr: false,
+    loading: () => <TableSkeleton />,
+  },
+);
+const CustomDialog = dynamic(() => import("@/components/common/Dailog"), {
+  ssr: false,
+});
+const CustomerForm = dynamic(() => import("./Newcustomer"), {
+  ssr: false,
+});
 import SearchInput from "@/components/common/searchtest";
-
-import CustomerForm from "./Newcustomer";
+import { customerColumns } from "./columns";
+import TableSkeleton from "@/components/common/TableSkeleton";
 
 type Props = {
   users: any;

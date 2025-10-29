@@ -21,6 +21,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { WarehouseSchema } from "@/lib/zod";
 import { z } from "zod";
+import { WarehouseUpdateDialog } from "./editform";
+import { deleteWarehouse } from "@/app/actions/warehouse";
 
 // 🔽 Sortable Header Component
 type SortableHeaderProps = {
@@ -192,25 +194,40 @@ export const columns: ColumnDef<Warehouse>[] = [
     cell: ({ row }) => {
       const user = row.original;
       return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">فتح القائمة</span>
-              <MoreHorizontal />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>إجراءات</DropdownMenuLabel>
-            <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(user.id)}
-            >
-              نسخ رقم المعرف
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>عرض الملف الشخصي</DropdownMenuItem>
-            <DropdownMenuItem>تعطيل</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <>
+          <></>
+          <>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-8 w-8 p-0">
+                  <span className="sr-only">فتح القائمة</span>
+                  <MoreHorizontal />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>إجراءات</DropdownMenuLabel>
+                <DropdownMenuItem
+                  onClick={() => navigator.clipboard.writeText(user.id)}
+                >
+                  نسخ رقم المعرف
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={async () => {
+                    if (confirm("هل أنت متأكد من حذف هذه الفئة؟")) {
+                      await deleteWarehouse(user.id);
+                    }
+                  }}
+                >
+                  حذف
+                </DropdownMenuItem>
+
+                <DropdownMenuItem>تعطيل</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <WarehouseUpdateDialog warehouse={user} />
+          </>
+        </>
       );
     },
   },

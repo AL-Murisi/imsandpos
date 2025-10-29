@@ -1,25 +1,18 @@
 "use client";
 
-import * as React from "react";
 import {
-  SortingState,
   ColumnFiltersState,
+  SortingState,
   VisibilityState,
+  flexRender,
   getCoreRowModel,
+  getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
-  getFilteredRowModel,
   useReactTable,
-  flexRender,
 } from "@tanstack/react-table";
 
-import {
-  ChevronDown,
-  Clock,
-  Loader2,
-  CheckCircle,
-  XCircle,
-} from "lucide-react";
+import { ChevronDown } from "lucide-react";
 
 import { Button } from "../ui/button";
 import {
@@ -30,7 +23,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-import { Input } from "../ui/input";
 import {
   Table,
   TableBody,
@@ -39,7 +31,7 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table";
-import { Badge } from "../ui/badge";
+import { useState } from "react";
 
 interface DataTableProps<T> {
   data: T[];
@@ -49,7 +41,7 @@ interface DataTableProps<T> {
   // filterOptions?: {
   //   value: string;
   //   label: string;
-  //   icon?: React.ReactNode;
+  //   icon?: ReactNode;
   //   className?: string;
   // }[];
 }
@@ -61,14 +53,11 @@ export function DataTable<T>({
   filterColumnId,
 }: // filterOptions = [],
 DataTableProps<T>) {
-  const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    [],
-  );
-  const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({});
-  const [rowSelection, setRowSelection] = React.useState({});
-  const [globalFilter, setGlobalFilter] = React.useState<any>();
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [rowSelection, setRowSelection] = useState({});
+  const [globalFilter, setGlobalFilter] = useState<any>();
 
   const table = useReactTable({
     data,

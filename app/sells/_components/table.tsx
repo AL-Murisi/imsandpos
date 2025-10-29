@@ -1,12 +1,16 @@
 "use client";
-import { DataTable } from "@/components/common/test";
 
-import CardContainer from "@/components/common/CardContainer";
-
+const DataTable = dynamic(
+  () => import("@/components/common/test").then((m) => m.DataTable),
+  {
+    ssr: false,
+  },
+);
 import SearchInput from "@/components/common/searchtest";
 import { useTablePrams } from "@/hooks/useTableParams";
 import { SortingState } from "@tanstack/react-table";
 import { debtSaleColumns } from "./columns";
+import dynamic from "next/dynamic";
 type ProductClientProps = {
   data: any[];
   total: number;

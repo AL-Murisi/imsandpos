@@ -40,7 +40,7 @@ const CartesianGrid = dynamic(
 const XAxis = dynamic(() => import("recharts").then((m) => m.XAxis), {
   ssr: false,
 });
-import { format } from "date-fns";
+import { format } from "date-fns/format";
 import Link from "next/link";
 
 import { IconClick } from "@tabler/icons-react";

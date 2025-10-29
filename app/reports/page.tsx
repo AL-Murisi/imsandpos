@@ -12,7 +12,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { CalendarIcon, DownloadIcon } from "lucide-react";
-import { format } from "date-fns";
+import { format } from "date-fns/format";
 
 const reports = [
   { value: "sales", label: "Sales Report" },

@@ -28,8 +28,19 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { useTablePrams } from "@/hooks/useTableParams";
-import { XAxis, YAxis, Bar, LabelList } from "recharts";
 
+const XAxis = dynamic(() => import("recharts").then((m) => m.XAxis), {
+  ssr: false,
+});
+const YAxis = dynamic(() => import("recharts").then((m) => m.YAxis), {
+  ssr: false,
+});
+const Bar = dynamic(() => import("recharts").then((m) => m.Bar), {
+  ssr: false,
+});
+const LabelList = dynamic(() => import("recharts").then((m) => m.LabelList), {
+  ssr: false,
+});
 // Dynamic imports for Recharts components (client-side only)
 const BarChart = dynamic(() => import("recharts").then((m) => m.BarChart), {
   ssr: false,

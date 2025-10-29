@@ -1,6 +1,5 @@
 "use client";
 
-import { DataTable } from "@/components/common/test";
 import { useTablePrams } from "@/hooks/useTableParams";
 
 import dynamic from "next/dynamic";
@@ -11,9 +10,17 @@ const Calendar22 = dynamic(
     loading: () => <input type="date" className="..." />,
   },
 );
+const DataTable = dynamic(
+  () => import("@/components/common/test").then((m) => m.DataTable),
+  {
+    ssr: false,
+    loading: () => <TableSkeleton />,
+  },
+);
 // import SearchInput from "@/components/common/SearchInput";
 
 import { role } from "../_compoent/columns";
+import TableSkeleton from "@/components/common/TableSkeleton";
 
 type ProductClientProps = {
   Role: any[];

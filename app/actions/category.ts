@@ -1,11 +1,13 @@
 "use server";
+
 import prisma from "@/lib/prisma";
 import { CreateCategoryInput, CreateCategorySchema } from "@/lib/zod";
 import { revalidatePath } from "next/cache";
 
+// Fetch categories
 export async function fetchCategory(companyId: string) {
   return prisma.category.findMany({
-    where: { companyId: companyId },
+    where: { companyId },
     select: {
       id: true,
       name: true,
@@ -15,24 +17,58 @@ export async function fetchCategory(companyId: string) {
     },
   });
 }
+
+// Create category
 export async function createCategory(
   form: CreateCategoryInput,
   companyId: string,
 ) {
   const parsed = CreateCategorySchema.safeParse(form);
-  if (!parsed.success) {
-    throw new Error("Invalid user data");
-  }
+  if (!parsed.success) throw new Error("Invalid data");
+
   const { name, description, parentId } = parsed.data;
-  try {
-    const user = await prisma.category.create({
-      data: { companyId, name, description, parentId },
-    });
-    revalidatePath("/products");
-    revalidatePath("/categories");
-    return user;
-  } catch (error) {
-    console.error("Failed to create user:", error);
-    throw error;
-  }
+  const category = await prisma.category.create({
+    data: { companyId, name, description, parentId },
+  });
+
+  revalidatePath("/products");
+  revalidatePath("/categories");
+  return category;
+}
+
+// Update category
+export async function updateCategory(id: string, form: CreateCategoryInput) {
+  const parsed = CreateCategorySchema.safeParse(form);
+  if (!parsed.success) throw new Error("Invalid data");
+
+  const { name, description, parentId } = parsed.data;
+  const category = await prisma.category.update({
+    where: { id },
+    data: { name, description, parentId },
+  });
+
+  revalidatePath("/products");
+  revalidatePath("/categories");
+  return category;
+}
+
+// Delete category
+export async function deleteCategory(id: string) {
+  const category = await prisma.category.delete({ where: { id } });
+
+  revalidatePath("/products");
+  revalidatePath("/categories");
+  return category;
+}
+
+// Toggle activate/deactivate
+export async function toggleCategoryActive(id: string, isActive: boolean) {
+  const category = await prisma.category.update({
+    where: { id },
+    data: { isActive },
+  });
+
+  revalidatePath("/products");
+  revalidatePath("/categories");
+  return category;
 }

@@ -59,7 +59,7 @@ export default function ClientLayoutWrapper({
     >
       <SidebarInset>
         <div className="flex flex-col">
-          <ScrollArea className="@container/main flex flex-col" dir="rtl">
+          <ScrollArea className="group @container/main flex flex-col" dir="rtl">
             <Appheader />
             <NuqsAdapter>
               <Provider store={store}> {children}</Provider>

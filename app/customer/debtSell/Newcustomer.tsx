@@ -1,23 +1,16 @@
 "use client";
 
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { createCutomer } from "@/app/actions/customers";
+import { SelectField } from "@/components/common/selectproduct";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { CreateCustomerSchema } from "@/lib/zod";
-import { createCutomer } from "@/app/actions/customers";
-import { toast } from "sonner";
 import { useAuth } from "@/lib/context/AuthContext";
-import { SelectField } from "@/components/common/selectproduct";
+import { CreateCustomerSchema } from "@/lib/zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import { z } from "zod";
 
 type CreateCustomer = z.infer<typeof CreateCustomerSchema>;
 

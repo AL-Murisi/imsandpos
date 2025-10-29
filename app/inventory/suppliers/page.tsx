@@ -1,17 +1,12 @@
-import { fetchSuppliers } from "@/app/actions/suppliers";
 import {
   getPurchasesByCompany,
   getSupplierPaymentsByCompany,
+  fetchSuppliers,
 } from "@/app/actions/suppliers";
-import SuppliersTable from "./table";
-
 import { getSession } from "@/lib/session";
-import { TabsContent } from "@/components/ui/tabs";
-import DashboardTabs from "@/components/common/Tabs";
 import { ParsedSort } from "@/hooks/sort";
 import { SortingState } from "@tanstack/react-table";
-import PaymentsTable from "./paymentsTable";
-import PurchasesTable from "./PurchasesTable";
+import { TabsController } from "./_compoenets/UseTransaction";
 
 type DashboardProps = {
   searchParams: Promise<{
@@ -37,105 +32,47 @@ export default async function Suppliers({ searchParams }: DashboardProps) {
   const {
     from,
     to,
-    query = "",
-    purchaseQuery = "",
-    paymentQuery = "",
     page = "1",
-    limit = "10",
+    limit = "13",
     sort,
     purchaseSort,
     paymentSort,
     status,
-    paymentMethod,
     supplierId,
-    tab = "suppliers",
   } = params || {};
 
-  // Pagination
   const pageIndex = Number(page) - 1;
   const pageSize = Number(limit);
 
-  // Sorting
   const parsedSort: SortingState = ParsedSort(sort);
-  const parsedPurchaseSort: SortingState = ParsedSort(purchaseSort);
   const parsedPaymentSort: SortingState = ParsedSort(paymentSort);
 
-  // Get user session
   const user = await getSession();
-  if (!user) return;
+  if (!user) return null;
 
-  // Build filters for purchases
-  const purchaseWhere: any = {
-    companyId: user.companyId,
-  };
-  if (supplierId) {
-    purchaseWhere.supplierId = supplierId;
-  }
-  if (status && status !== "all") {
-    purchaseWhere.status = status;
-  }
+  // 🧩 Don't await — pass promises to client
+  const suppliersPromise = fetchSuppliers(user.companyId);
+  const purchasesPromise = getPurchasesByCompany(user.companyId, {
+    pageIndex,
+    pageSize,
+    from,
+    to,
+    parsedSort,
+  });
+  const paymentsPromise = getSupplierPaymentsByCompany(user.companyId, {
+    from,
+    to,
+    pageIndex,
+    pageSize,
+    parsedSort: parsedPaymentSort,
+  });
 
-  // Build filters for payments
-  const paymentInput: any = {
-    supplierId: supplierId || "",
-  };
-
-  // ✅ Run all fetches in parallel
-  const [suppliers, purchases, payments] = await Promise.all([
-    // Fetch form data (warehouses, categories, brands, etc)
-    fetchSuppliers(user.companyId),
-
-    // Fetch suppliers list
-
-    // Fetch purchases (only if supplierId selected or purchases tab active)
-    getPurchasesByCompany(user.companyId, {
-      from,
-      to,
-      parsedSort,
-    }),
-
-    getSupplierPaymentsByCompany(user.companyId, {
-      from,
-      to,
-      pageIndex,
-      pageSize,
-      parsedSort: parsedPaymentSort,
-    }),
-  ]);
-
-  const { data: fetchedPurchases, total: purchasesTotal } = purchases;
-
-  const { data: fetchedPayments, total: paymentsTotal } = payments;
-
+  // ✅ Pass promises directly (React 19 pattern)
   return (
-    <DashboardTabs
-      currentTab={tab}
-      tabs={[
-        { value: "suppliers", label: "المورّدون" },
-        { value: "purchases", label: "الطلبات" },
-        { value: "payments", label: "الدفعات" },
-      ]}
-    >
-      <TabsContent value="suppliers">
-        <SuppliersTable
-          data={suppliers}
-          total={0}
-          formData={{
-            warehouses: [],
-            categories: [],
-            brands: [],
-            suppliers: [],
-          }}
-        />
-      </TabsContent>
-
-      <TabsContent value="purchases">
-        <PurchasesTable data={fetchedPurchases} total={purchasesTotal} />
-      </TabsContent>
-
-      <TabsContent value="payments">
-        <PaymentsTable data={fetchedPayments} total={paymentsTotal} />
-      </TabsContent>
-    </DashboardTabs>
+    <TabsController
+      suppliersPromise={suppliersPromise}
+      purchasesPromise={purchasesPromise}
+      paymentsPromise={paymentsPromise}
+    />
   );
 }

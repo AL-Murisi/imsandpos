@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { CategorySchema } from "@/lib/zod";
 import { z } from "zod";
+import { deleteCategory, toggleCategoryActive } from "@/app/actions/category";
 
 // 🔽 Sortable Header Component
 type SortableHeaderProps = {
@@ -152,34 +153,57 @@ export const columns: ColumnDef<User>[] = [
     id: "actions",
     enableHiding: false,
     cell: ({ row }) => {
-      const user = row.original;
-
+      const category = row.original;
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="h-8 w-8 p-0">
-              {/* 🔹 Translation: "Open menu" -> "فتح القائمة" */}
               <span className="sr-only">فتح القائمة</span>
               <MoreHorizontal />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            {/* 🔹 Translation: "Actions" -> "الإجراءات" */}
             <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
+
+            {/* Copy ID */}
             <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(user.id)}
+              onClick={() => navigator.clipboard.writeText(category.id)}
             >
-              {/* 🔹 Translation: "Copy User ID" -> "نسخ معرّف المستخدم" */}
-              نسخ معرّف المستخدم
+              نسخ معرّف الفئة
             </DropdownMenuItem>
+
             <DropdownMenuSeparator />
-            {/* 🔹 Translation: "View Profile" -> "عرض الملف الشخصي" */}
-            <DropdownMenuItem>عرض الملف الشخصي</DropdownMenuItem>
-            {/* 🔹 Translation: "Deactivate" -> "تعطيل" */}
-            <DropdownMenuItem>تعطيل</DropdownMenuItem>
+
+            {/* Edit */}
+            <DropdownMenuItem onClick={() => openEditDialog(category)}>
+              تعديل
+            </DropdownMenuItem>
+
+            {/* Delete */}
+            <DropdownMenuItem
+              onClick={async () => {
+                if (confirm("هل أنت متأكد من حذف هذه الفئة؟")) {
+                  await deleteCategory(category.id);
+                }
+              }}
+            >
+              حذف
+            </DropdownMenuItem>
+
+            {/* Activate / Deactivate */}
+            <DropdownMenuItem
+              onClick={async () => {
+                await toggleCategoryActive(category.id, !category.isActive);
+              }}
+            >
+              {category.isActive ? "تعطيل" : "تفعيل"}
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       );
     },
   },
 ];
+function openEditDialog(category: any): void {
+  throw new Error("Function not implemented.");
+}

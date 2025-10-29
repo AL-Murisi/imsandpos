@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import * as XLSX from "xlsx";
+
 import prisma from "@/lib/prisma"; // ✅ make sure this path is correct
 import { CreateProductSchema } from "@/lib/zod";
+import { read, utils } from "xlsx";
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,10 +14,10 @@ export async function POST(req: NextRequest) {
     }
 
     const arrayBuffer = await file.arrayBuffer();
-    const workbook = XLSX.read(arrayBuffer, { type: "buffer" });
+    const workbook = read(arrayBuffer, { type: "buffer" });
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
-    const json = XLSX.utils.sheet_to_json<Record<string, any>>(sheet);
+    const json = utils.sheet_to_json<Record<string, any>>(sheet);
 
     console.log("📄 Parsed Excel JSON:", json);
 

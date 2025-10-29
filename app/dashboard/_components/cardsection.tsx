@@ -1,9 +1,27 @@
-import { ChartCard } from "@/components/common/ChartCard";
+"use client";
+// import { ChartCard } from "@/components/common/ChartCard";
 import DashboardHeader from "@/components/common/dashboradheader";
-import { getTranslations } from "next-intl/server";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
+const ChartCard = dynamic(
+  () => import("@/components/common/ChartCard").then((m) => m.ChartCard),
+  {
+    ssr: false,
+  },
+);
+const ExportDashboardButtonAPI = dynamic(
+  () =>
+    import("@/components/ExportDashboardButton").then(
+      (m) => m.ExportDashboardButtonAPI,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-60 animate-pulse rounded-lg bg-gray-200" />
+    ),
+  },
+);
 // ✅ Individual icon imports (saves ~180KB)
 import DollarSign from "lucide-react/dist/esm/icons/dollar-sign";
 import ShoppingCart from "lucide-react/dist/esm/icons/shopping-cart";
@@ -14,8 +32,8 @@ import AlertTriangle from "lucide-react/dist/esm/icons/alert-triangle";
 import Users from "lucide-react/dist/esm/icons/users";
 import ShoppingBag from "lucide-react/dist/esm/icons/shopping-bag";
 import { ReactNode } from "react";
-import { ExportDashboardButtonAPI } from "@/components/ExportDashboardButton";
-import { useFormatter } from "next-intl";
+import dynamic from "next/dynamic";
+import { useTranslations } from "next-intl";
 
 interface SectionCardsProps {
   searchParams: Record<string, string | undefined>;
@@ -38,13 +56,13 @@ interface SectionCardsProps {
   users: { users: number };
 }
 
-export default async function SectionCards({
+export default function SectionCards({
   searchParams,
   salesSummary,
   productStats,
   users,
 }: SectionCardsProps) {
-  const t = await getTranslations("cards");
+  const t = useTranslations("cards");
 
   // Icon map - using individual imports (saves ~180KB!)
   const iconMap: Record<string, ReactNode> = {
@@ -115,7 +133,7 @@ export default async function SectionCards({
       description: "debt",
       title: `${salesSummary.debt.unreceived} `,
       label: t("debt"),
-      link: "/sells/debtSell",
+      link: "/debt",
       chartData: salesSummary.debt.unreceivedChart,
       bg: "bg-gradient-to-r dark:from-red-500 dark:to-orange-700 from-chart-4 to-chart-1",
     },
@@ -123,7 +141,7 @@ export default async function SectionCards({
       description: "receivedDebt",
       title: `${salesSummary.debt.received} `,
       label: t("receivedDebt"),
-      link: "/sells/debtSell",
+      link: "/debt",
       chartData: salesSummary.debt.receivedChart,
       bg: "bg-gradient-to-r dark:from-pink-500 dark:to-rose-700 from-chart-1 to-chart-3",
     },
@@ -166,7 +184,7 @@ export default async function SectionCards({
     <>
       <DashboardHeader sections={sections} chartConfigs={chartConfigs} />
 
-      <div className="flex flex-col items-center">
+      <div className="flex flex-col items-center group-has-[[data-pending]]:animate-pulse">
         <div className="grid w-full grid-cols-1 gap-6 p-2 sm:grid-cols-2 xl:grid-cols-4">
           {sections.map((item, idx) => (
             <ChartCard

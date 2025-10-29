@@ -33,6 +33,7 @@ const ReusableAreaChart = dynamic(
     ),
   },
 );
+
 // Lightweight skeletons
 const ChartSkeleton = () => (
   <div className="bg-card h-[400px] rounded-lg border p-6">

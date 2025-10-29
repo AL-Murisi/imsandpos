@@ -13,6 +13,7 @@ import {
   InventoryUpdateWithTrackingSchema,
   WarehouseInput,
 } from "@/lib/zod";
+import { recordSupplierPaymentWithJournalEntries } from "./Journal Entry";
 
 export type InventoryUpdateWithTrackingInput = z.infer<
   typeof InventoryUpdateWithTrackingSchema
@@ -162,21 +163,219 @@ interface ExtendedInventoryUpdateData {
   reorderLevel?: number;
   maxStockLevel?: number;
   status?: string;
+  warehouseId: string;
   lastStockTake?: string | Date; // 💡 FIX: Allow Date object or string for compatibility with form input/default values
 }
 
-// NOTE: I'm keeping the original function signature for simplicity of the fix,
-// assuming InventoryUpdateWithTrackingInput is the base type.
+//   companyId: string,
+// ) {
+//   console.log("here");
+//   try {
+//     const {
+//       id,
+//       reason = "manual_update",
+//       notes,
+//       updateType,
+//       availableQuantity: inputCartons,
+//       stockQuantity: inputCartonsStock,
+//       quantity: purchaseQty,
+//       unitCost,
+//       paymentMethod,
+//       paymentAmount,
+//       supplierId: providedSupplierId, // ✅ Get from data
+//       ...updateData
+//     } = data;
+
+//     // 1. Fetch current inventory (outside transaction)
+//     const currentInventory = await prisma.inventory.findUnique({
+//       where: { id, companyId },
+//       include: { product: true, warehouse: true },
+//     });
+
+//     if (!currentInventory) throw new Error("Inventory record not found");
+
+//     const unitsPerPacket = currentInventory.product.unitsPerPacket || 1;
+//     const packetsPerCarton = currentInventory.product.packetsPerCarton || 1;
+//     const supplierId =
+//       providedSupplierId || currentInventory.product.supplierId;
+
+//     // ✅ CRITICAL: Only create purchase if we have a valid supplierId
+//     if (!supplierId) {
+//       throw new Error("Supplier ID is required for inventory updates");
+//     }
+
+//     // ✅ Verify supplier exists before creating purchase
+//     const supplierExists = await prisma.supplier.findUnique({
+//       where: { id: supplierId },
+//     });
+
+//     if (!supplierExists) {
+//       throw new Error(`Supplier with ID ${supplierId} not found`);
+//     }
+
+//     const cartonToUnits = (cartons: number) =>
+//       cartons * packetsPerCarton * unitsPerPacket;
+
+//     // 2. Calculate final quantities
+//     const availableQuantityInUnits = inputCartons
+//       ? cartonToUnits(inputCartons)
+//       : undefined;
+
+//     const stockQuantityInUnits = inputCartonsStock
+//       ? cartonToUnits(inputCartonsStock)
+//       : undefined;
+
+//     const finalAvailableQty =
+//       (availableQuantityInUnits ?? 0) + currentInventory.availableQuantity;
+
+//     const finalStockQty =
+//       (stockQuantityInUnits ?? 0) + currentInventory.stockQuantity;
+
+//     const finalReorderLevel =
+//       (updateData as any).reorderLevel ?? currentInventory.reorderLevel;
+
+//     let calculatedStatus: "available" | "low" | "out_of_stock" | undefined;
+
+//     if (finalAvailableQty <= 0) {
+//       calculatedStatus = "out_of_stock";
+//     } else if (finalAvailableQty < finalReorderLevel) {
+//       calculatedStatus = "low";
+//     } else {
+//       calculatedStatus = "available";
+//     }
+
+//     if (!inputCartons) return;
+
+//     // 3. Prepare purchase data if needed
+//     let purchaseId: string | null = null;
+
+//     const totalCost =
+//       inputCartons * (unitCost || Number(currentInventory.product.costPrice));
+
+//     // Create purchase in a quick transaction
+//     const purchase = await prisma.purchase.create({
+//       data: {
+//         companyId,
+//         supplierId, // ✅ Now guaranteed to be valid
+//         totalAmount: totalCost,
+//         amountDue: totalCost,
+//         status: "pending",
+//       },
+//     });
+
+//     await prisma.purchaseItem.create({
+//       data: {
+//         companyId,
+//         purchaseId: purchase.id,
+//         productId: currentInventory.productId,
+//         quantity: inputCartons,
+//         unitCost: unitCost || Number(currentInventory.product.costPrice),
+//         totalCost,
+//       },
+//     });
+
+//     purchaseId = purchase.id;
+
+//     // Handle payment if provided
+//     if (paymentMethod && paymentAmount && paymentAmount > 0) {
+//       const newAmountPaid = (Number(purchase.amountPaid) || 0) + paymentAmount;
+//       const newAmountDue = totalCost - newAmountPaid;
+
+//       await prisma.supplierPayment.create({
+//         data: {
+//           companyId,
+//           supplierId,
+//           amount: paymentAmount,
+//           paymentMethod,
+//           note: notes,
+//         },
+//       });
+
+//       await prisma.purchase.update({
+//         where: { id: purchase.id },
+//         data: {
+//           amountPaid: newAmountPaid,
+//           amountDue: Math.max(0, newAmountDue),
+//           status: newAmountDue <= 0 ? "paid" : "partial",
+//         },
+//       });
+//     }
+
+//     // 4. Update inventory (quick operation)
+//     const updatedInventory = await prisma.inventory.update({
+//       where: { id },
+//       data: {
+//         ...updateData,
+//         availableQuantity: finalAvailableQty,
+//         stockQuantity: finalStockQty,
+//         ...(calculatedStatus && { status: calculatedStatus }),
+//         ...(data.lastStockTake && {
+//           lastStockTake: new Date(data.lastStockTake),
+//         }),
+//       },
+//       include: {
+//         product: { select: { name: true, sku: true } },
+//         warehouse: { select: { name: true, location: true } },
+//       },
+//     });
+
+//     // 5. Log stock movement (separate operation)
+//     const stockDifference = finalStockQty - currentInventory.stockQuantity;
+//     if (stockDifference !== 0) {
+//       await prisma.stockMovement.create({
+//         data: {
+//           companyId,
+//           productId: currentInventory.productId,
+//           warehouseId: currentInventory.warehouseId,
+//           userId,
+//           movementType: stockDifference > 0 ? "in" : "out",
+//           quantity: Math.abs(stockDifference),
+//           reason: supplierId ? "purchase_received" : reason,
+//           quantityBefore: currentInventory.stockQuantity,
+//           quantityAfter: finalStockQty,
+//           notes:
+//             notes ||
+//             `${supplierId ? "Stock from supplier" : "Inventory update"}: ${
+//               stockDifference > 0 ? "+" : ""
+//             }${stockDifference}`,
+//         },
+//       });
+//     }
+
+//     // 6. Log activity (separate operation)
+//     await prisma.activityLogs.create({
+//       data: {
+//         userId,
+//         companyId,
+//         action: supplierId ? "received supplier stock" : "updated inventory",
+//         details: `Product: ${updatedInventory.product.name}, Stock: ${finalStockQty}${
+//           paymentAmount ? `, Payment: ${paymentAmount}` : ""
+//         }`,
+//       },
+//     });
+
+//     revalidatePath("/manageinvetory");
+//     return { success: true, data: updatedInventory };
+//   } catch (error) {
+//     console.error("Error updating inventory:", error);
+//     return {
+//       success: false,
+//       error:
+//         error instanceof Error ? error.message : "Failed to update inventory",
+//     };
+//   }
+
+// purchase_received → تم استلام المخزون من المورد
+
 export async function updateInventory(
   data: ExtendedInventoryUpdateData,
   userId: string,
   companyId: string,
 ) {
-  console.log("here");
   try {
     const {
       id,
-      reason = "manual_update",
+
       notes,
       updateType,
       availableQuantity: inputCartons,
@@ -185,133 +384,142 @@ export async function updateInventory(
       unitCost,
       paymentMethod,
       paymentAmount,
-      supplierId: providedSupplierId, // ✅ Get from data
+      supplierId: providedSupplierId,
+      warehouseId: targetWarehouseId, // المستودع المستهدف
       ...updateData
     } = data;
-
-    // 1. Fetch current inventory (outside transaction)
+    console.log(data);
+    // 1️⃣ جلب السجل الحالي للمخزون
     const currentInventory = await prisma.inventory.findUnique({
       where: { id, companyId },
       include: { product: true, warehouse: true },
     });
+    if (!currentInventory) throw new Error("سجل المخزون غير موجود");
 
-    if (!currentInventory) throw new Error("Inventory record not found");
+    const product = currentInventory.product;
+    const unitsPerPacket = product.unitsPerPacket || 1;
+    const packetsPerCarton = product.packetsPerCarton || 1;
+    const supplierId = providedSupplierId || product.supplierId;
 
-    const unitsPerPacket = currentInventory.product.unitsPerPacket || 1;
-    const packetsPerCarton = currentInventory.product.packetsPerCarton || 1;
-    const supplierId =
-      providedSupplierId || currentInventory.product.supplierId;
+    if (!supplierId) throw new Error("يجب تحديد المورد");
 
-    // ✅ CRITICAL: Only create purchase if we have a valid supplierId
-    if (!supplierId) {
-      throw new Error("Supplier ID is required for inventory updates");
-    }
-
-    // ✅ Verify supplier exists before creating purchase
+    // 2️⃣ التحقق من وجود المورد
     const supplierExists = await prisma.supplier.findUnique({
       where: { id: supplierId },
     });
-
-    if (!supplierExists) {
-      throw new Error(`Supplier with ID ${supplierId} not found`);
-    }
+    if (!supplierExists) throw new Error("المورد غير موجود");
 
     const cartonToUnits = (cartons: number) =>
       cartons * packetsPerCarton * unitsPerPacket;
 
-    // 2. Calculate final quantities
-    const availableQuantityInUnits = inputCartons
-      ? cartonToUnits(inputCartons)
-      : undefined;
+    const availableUnits = inputCartons ? cartonToUnits(inputCartons) : 0;
+    const stockUnits = inputCartonsStock ? cartonToUnits(inputCartonsStock) : 0;
 
-    const stockQuantityInUnits = inputCartonsStock
-      ? cartonToUnits(inputCartonsStock)
-      : undefined;
-
-    const finalAvailableQty =
-      (availableQuantityInUnits ?? 0) + currentInventory.availableQuantity;
-
-    const finalStockQty =
-      (stockQuantityInUnits ?? 0) + currentInventory.stockQuantity;
-
-    const finalReorderLevel =
-      (updateData as any).reorderLevel ?? currentInventory.reorderLevel;
-
-    let calculatedStatus: "available" | "low" | "out_of_stock" | undefined;
-
-    if (finalAvailableQty <= 0) {
-      calculatedStatus = "out_of_stock";
-    } else if (finalAvailableQty < finalReorderLevel) {
-      calculatedStatus = "low";
+    // 3️⃣ تحديد المخزون المستهدف (نفس المستودع أو مستودع جديد)
+    let inventoryTarget;
+    if (targetWarehouseId === currentInventory.warehouseId) {
+      // تحديث المخزون الحالي
+      inventoryTarget = currentInventory;
     } else {
-      calculatedStatus = "available";
+      // التحقق من وجود المخزون لنفس المنتج في المستودع الجديد
+      const existingInTarget = await prisma.inventory.findFirst({
+        where: {
+          productId: product.id,
+          warehouseId: targetWarehouseId,
+          companyId,
+        },
+      });
+
+      if (existingInTarget) {
+        inventoryTarget = existingInTarget;
+      } else {
+        // إنشاء سجل جديد للمخزون
+        inventoryTarget = await prisma.inventory.create({
+          data: {
+            companyId,
+            productId: product.id,
+            warehouseId: targetWarehouseId!,
+            availableQuantity: 0,
+            stockQuantity: 0,
+            reorderLevel: currentInventory.reorderLevel,
+            maxStockLevel: currentInventory.maxStockLevel,
+            status: "متوفر",
+            lastStockTake: new Date(),
+          },
+        });
+      }
     }
 
-    if (!inputCartons) return;
+    // 4️⃣ حساب الكميات النهائية
+    const finalAvailableQty =
+      inventoryTarget.availableQuantity + availableUnits;
+    const finalStockQty = inventoryTarget.stockQuantity + stockUnits;
+    const finalReorderLevel = inventoryTarget.reorderLevel;
 
-    // 3. Prepare purchase data if needed
+    let calculatedStatus: "available" | "low" | "out_of_stock" = "available";
+    if (finalAvailableQty <= 0) calculatedStatus = "out_of_stock";
+    else if (finalAvailableQty < finalReorderLevel) calculatedStatus = "low";
+
+    // 5️⃣ إنشاء عملية شراء إذا كانت الكمية من المورد
     let purchaseId: string | null = null;
+    if (updateType === "supplier" && inputCartons && unitCost) {
+      const totalCost = inputCartons * unitCost;
 
-    const totalCost =
-      inputCartons * (unitCost || Number(currentInventory.product.costPrice));
-
-    // Create purchase in a quick transaction
-    const purchase = await prisma.purchase.create({
-      data: {
-        companyId,
-        supplierId, // ✅ Now guaranteed to be valid
-        totalAmount: totalCost,
-        amountDue: totalCost,
-        status: "pending",
-      },
-    });
-
-    await prisma.purchaseItem.create({
-      data: {
-        companyId,
-        purchaseId: purchase.id,
-        productId: currentInventory.productId,
-        quantity: inputCartons,
-        unitCost: unitCost || Number(currentInventory.product.costPrice),
-        totalCost,
-      },
-    });
-
-    purchaseId = purchase.id;
-
-    // Handle payment if provided
-    if (paymentMethod && paymentAmount && paymentAmount > 0) {
-      const newAmountPaid = (Number(purchase.amountPaid) || 0) + paymentAmount;
-      const newAmountDue = totalCost - newAmountPaid;
-
-      await prisma.supplierPayment.create({
+      const purchase = await prisma.purchase.create({
         data: {
           companyId,
           supplierId,
-          amount: paymentAmount,
-          paymentMethod,
-          note: notes,
+          totalAmount: totalCost,
+          amountDue: totalCost,
+          status: "pending",
         },
       });
 
-      await prisma.purchase.update({
-        where: { id: purchase.id },
+      await prisma.purchaseItem.create({
         data: {
-          amountPaid: newAmountPaid,
-          amountDue: Math.max(0, newAmountDue),
-          status: newAmountDue <= 0 ? "paid" : "partial",
+          companyId,
+          purchaseId: purchase.id,
+          productId: product.id,
+          quantity: inputCartons,
+          unitCost,
+          totalCost,
         },
       });
+
+      purchaseId = purchase.id;
+
+      // تسجيل الدفع إذا وجد
+      if (paymentMethod && paymentAmount && paymentAmount > 0) {
+        await prisma.supplierPayment.create({
+          data: {
+            companyId,
+            supplierId,
+            createdBy: userId,
+            amount: paymentAmount,
+            paymentMethod,
+            note: notes,
+          },
+        });
+
+        await prisma.purchase.update({
+          where: { id: purchase.id },
+          data: {
+            amountPaid: paymentAmount,
+            amountDue: Math.max(0, totalCost - paymentAmount),
+            status: paymentAmount >= totalCost ? "paid" : "partial",
+          },
+        });
+      }
     }
 
-    // 4. Update inventory (quick operation)
+    // 6️⃣ تحديث المخزون النهائي
     const updatedInventory = await prisma.inventory.update({
-      where: { id },
+      where: { id: inventoryTarget.id },
       data: {
         ...updateData,
         availableQuantity: finalAvailableQty,
         stockQuantity: finalStockQty,
-        ...(calculatedStatus && { status: calculatedStatus }),
+        status: calculatedStatus,
         ...(data.lastStockTake && {
           lastStockTake: new Date(data.lastStockTake),
         }),
@@ -322,37 +530,38 @@ export async function updateInventory(
       },
     });
 
-    // 5. Log stock movement (separate operation)
-    const stockDifference = finalStockQty - currentInventory.stockQuantity;
+    // 7️⃣ تسجيل حركة المخزون
+    const stockDifference = finalStockQty - inventoryTarget.stockQuantity;
     if (stockDifference !== 0) {
       await prisma.stockMovement.create({
         data: {
           companyId,
-          productId: currentInventory.productId,
-          warehouseId: currentInventory.warehouseId,
+          productId: product.id,
+          warehouseId: inventoryTarget.warehouseId,
           userId,
-          movementType: stockDifference > 0 ? "in" : "out",
+          movementType: stockDifference > 0 ? "وارد" : "صادر",
           quantity: Math.abs(stockDifference),
-          reason: supplierId ? "purchase_received" : reason,
-          quantityBefore: currentInventory.stockQuantity,
-          quantityAfter: finalStockQty,
+          reason: updateData.reason ? updateData.reason : "تم_استلام_المورد",
           notes:
             notes ||
-            `${supplierId ? "Stock from supplier" : "Inventory update"}: ${
-              stockDifference > 0 ? "+" : ""
-            }${stockDifference}`,
+            `${supplierId ? "Stock from supplier" : "Inventory update"}: ...`,
+          quantityBefore: inventoryTarget.stockQuantity,
+          quantityAfter: finalStockQty,
         },
       });
     }
 
-    // 6. Log activity (separate operation)
+    // 8️⃣ تسجيل النشاط
     await prisma.activityLogs.create({
       data: {
         userId,
         companyId,
-        action: supplierId ? "received supplier stock" : "updated inventory",
-        details: `Product: ${updatedInventory.product.name}, Stock: ${finalStockQty}${
-          paymentAmount ? `, Payment: ${paymentAmount}` : ""
+        action:
+          updateType === "supplier"
+            ? "تم_استلام_مخزون_المورد"
+            : "تم_تحديث_المخزون",
+        details: `المنتج: ${product.name}, المخزون النهائي: ${finalStockQty}${
+          paymentAmount ? `, الدفع: ${paymentAmount}` : ""
         }`,
       },
     });
@@ -360,14 +569,212 @@ export async function updateInventory(
     revalidatePath("/manageinvetory");
     return { success: true, data: updatedInventory };
   } catch (error) {
-    console.error("Error updating inventory:", error);
+    console.error("خطأ في تحديث المخزون:", error);
     return {
       success: false,
-      error:
-        error instanceof Error ? error.message : "Failed to update inventory",
+      error: error instanceof Error ? error.message : "فشل تحديث المخزون",
     };
   }
 }
+
+// export async function updateInventory(
+//   data: ExtendedInventoryUpdateData,
+//   userId: string,
+//   companyId: string,
+// ) {
+//   try {
+//     const {
+//       id,
+//       reason = "تحديث_يدوي",
+//       notes,
+//       updateType,
+//       availableQuantity: inputCartons,
+//       stockQuantity: inputCartonsStock,
+//       quantity: purchaseQty,
+//       unitCost,
+//       paymentMethod,
+//       paymentAmount,
+//       supplierId: providedSupplierId,
+//       warehouseId: targetWarehouseId,
+//       ...updateData
+//     } = data;
+
+//     const currentInventory = await prisma.inventory.findUnique({
+//       where: { id, companyId },
+//       include: { product: true, warehouse: true },
+//     });
+//     if (!currentInventory) throw new Error("سجل المخزون غير موجود");
+
+//     const product = currentInventory.product;
+//     const unitsPerPacket = product.unitsPerPacket || 1;
+//     const packetsPerCarton = product.packetsPerCarton || 1;
+//     const supplierId = providedSupplierId || product.supplierId;
+//     if (!supplierId) throw new Error("يجب تحديد المورد");
+
+//     const supplierExists = await prisma.supplier.findUnique({
+//       where: { id: supplierId },
+//     });
+//     if (!supplierExists) throw new Error("المورد غير موجود");
+
+//     const cartonToUnits = (cartons: number) =>
+//       cartons * packetsPerCarton * unitsPerPacket;
+
+//     const availableUnits = inputCartons ? cartonToUnits(inputCartons) : 0;
+//     const stockUnits = inputCartonsStock ? cartonToUnits(inputCartonsStock) : 0;
+
+//     // 👇 Determine which inventory record to update
+//     let inventoryTarget =
+//       targetWarehouseId === currentInventory.warehouseId
+//         ? currentInventory
+//         : await prisma.inventory.upsert({
+//             where: {
+//               companyId_productId_warehouseId: {
+//                 companyId,
+//                 productId: product.id,
+//                 warehouseId: targetWarehouseId!,
+//               },
+//             },
+//             update: {},
+//             create: {
+//               companyId,
+//               productId: product.id,
+//               warehouseId: targetWarehouseId!,
+//               availableQuantity: 0,
+//               stockQuantity: 0,
+//               reorderLevel: currentInventory.reorderLevel,
+//               maxStockLevel: currentInventory.maxStockLevel,
+//               status: "متوفر",
+//               lastStockTake: new Date(),
+//             },
+//           });
+
+//     const finalAvailableQty =
+//       inventoryTarget.availableQuantity + availableUnits;
+//     const finalStockQty = inventoryTarget.stockQuantity + stockUnits;
+
+//     let calculatedStatus: "available" | "low" | "out_of_stock" = "available";
+//     if (finalAvailableQty <= 0) calculatedStatus = "out_of_stock";
+//     else if (finalAvailableQty < inventoryTarget.reorderLevel)
+//       calculatedStatus = "low";
+
+//     // ✅ 1. Create purchase record if supplier update
+//     let purchaseId: string | null = null;
+//     if (updateType === "supplier" && inputCartons && unitCost) {
+//       const totalCost = inputCartons * unitCost;
+
+//       const purchase = await prisma.purchase.create({
+//         data: {
+//           companyId,
+//           supplierId,
+//           totalAmount: totalCost,
+//           amountDue: totalCost,
+//           status: "pending",
+//         },
+//       });
+
+//       await prisma.purchaseItem.create({
+//         data: {
+//           companyId,
+//           purchaseId: purchase.id,
+//           productId: product.id,
+//           quantity: inputCartons,
+//           unitCost,
+//           totalCost,
+//         },
+//       });
+
+//       purchaseId = purchase.id;
+
+//       // ✅ 2. If payment exists, record payment + journal entries
+//       if (paymentMethod && paymentAmount && paymentAmount > 0) {
+//         await recordSupplierPaymentWithJournalEntries(
+//           {
+//             supplierId,
+//             amount: paymentAmount,
+//             paymentMethod,
+//             note: notes,
+//           },
+//           userId,
+//           companyId,
+//         );
+
+//         await prisma.purchase.update({
+//           where: { id: purchase.id },
+//           data: {
+//             amountPaid: paymentAmount,
+//             amountDue: Math.max(0, totalCost - paymentAmount),
+//             status: paymentAmount >= totalCost ? "paid" : "partial",
+//           },
+//         });
+//       }
+//     }
+
+//     // ✅ 3. Update final inventory
+//     const updatedInventory = await prisma.inventory.update({
+//       where: { id: inventoryTarget.id },
+//       data: {
+//         ...updateData,
+//         availableQuantity: finalAvailableQty,
+//         stockQuantity: finalStockQty,
+//         status: calculatedStatus,
+//         ...(data.lastStockTake && {
+//           lastStockTake: new Date(data.lastStockTake),
+//         }),
+//       },
+//       include: {
+//         product: { select: { name: true, sku: true } },
+//         warehouse: { select: { name: true, location: true } },
+//       },
+//     });
+
+//     // ✅ 4. Record stock movement
+//     const stockDifference = finalStockQty - inventoryTarget.stockQuantity;
+//     if (stockDifference !== 0) {
+//       await prisma.stockMovement.create({
+//         data: {
+//           companyId,
+//           productId: product.id,
+//           warehouseId: inventoryTarget.warehouseId,
+//           userId,
+//           movementType: stockDifference > 0 ? "وارد" : "صادر",
+//           quantity: Math.abs(stockDifference),
+//           reason: supplierId ? "تم_استلام_المورد" : reason,
+//           quantityBefore: inventoryTarget.stockQuantity,
+//           quantityAfter: finalStockQty,
+//           notes:
+//             notes ||
+//             `${supplierId ? "Stock from supplier" : "Inventory update"}: ${
+//               stockDifference > 0 ? "+" : ""
+//             }${stockDifference}`,
+//         },
+//       });
+//     }
+
+//     // ✅ 5. Log activity
+//     await prisma.activityLogs.create({
+//       data: {
+//         userId,
+//         companyId,
+//         action:
+//           updateType === "supplier"
+//             ? "تم_استلام_مخزون_المورد"
+//             : "تم_تحديث_المخزون",
+//         details: `المنتج: ${product.name}, المخزون النهائي: ${finalStockQty}${
+//           paymentAmount ? `, الدفع: ${paymentAmount}` : ""
+//         }`,
+//       },
+//     });
+
+//     revalidatePath("/manageinvetory");
+//     return { success: true, data: updatedInventory };
+//   } catch (error) {
+//     console.error("خطأ في تحديث المخزون:", error);
+//     return {
+//       success: false,
+//       error: error instanceof Error ? error.message : "فشل تحديث المخزون",
+//     };
+//   }
+// }
 
 export async function adjustStock(
   productId: string,
@@ -701,8 +1108,10 @@ export async function getInventoryById(
           select: {
             name: true,
             sku: true,
+            costPrice: true,
             unitsPerPacket: true,
             packetsPerCarton: true,
+            supplier: { select: { id: true, name: true } }, // ✅ تأكد أن هذا موجود
           },
         },
         productId: true,
@@ -720,6 +1129,7 @@ export async function getInventoryById(
         maxStockLevel: true,
         location: true,
         status: true,
+
         lastStockTake: true,
         createdAt: true,
         updatedAt: true,
@@ -832,5 +1242,41 @@ export async function createWarehouse(
   } catch (error) {
     console.error("Failed to create product:", error);
     throw error;
+  }
+}
+
+export async function updateWarehouse(id: string, input: WarehouseInput) {
+  const parsed = CreateWarehouseSchema.safeParse(input);
+  if (!parsed.success) {
+    throw new Error("Invalid warehouse data");
+  }
+
+  try {
+    const warehouse = await prisma.warehouse.update({
+      where: { id },
+      data: parsed.data,
+    });
+
+    revalidatePath("/warehouses");
+    revalidatePath("/products");
+
+    return { success: true, warehouse };
+  } catch (error) {
+    console.error("Failed to update warehouse:", error);
+    return { success: false, error: "حدث خطأ أثناء تحديث المستودع" };
+  }
+}
+
+export async function deleteWarehouse(id: string) {
+  try {
+    await prisma.warehouse.delete({ where: { id } });
+
+    revalidatePath("/warehouses");
+    revalidatePath("/products");
+
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to delete warehouse:", error);
+    return { success: false, error: "حدث خطأ أثناء حذف المستودع" };
   }
 }

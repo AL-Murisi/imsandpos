@@ -19,7 +19,6 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ModeToggle } from "./toggoletheme";
-import { ScrollArea } from "@radix-ui/react-scroll-area";
 
 export default function LandingPage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);

@@ -1,24 +1,17 @@
 "use client";
 
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Button } from "../../../../components/ui/button";
-import { Input } from "../../../../components/ui/input";
-import { Label } from "../../../../components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 import { createCategory } from "@/app/actions/category"; // assume you have this
-import { CreateCategorySchema } from "@/lib/zod";
 import { useAuth } from "@/lib/context/AuthContext";
+import { CreateCategorySchema } from "@/lib/zod";
 import { Plus } from "lucide-react";
 
 type FormValues = z.infer<typeof CreateCategorySchema>;

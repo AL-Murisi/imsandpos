@@ -22,17 +22,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Role is required" }, { status: 400 });
     }
 
-    console.log("Fetching dashboard data...");
-
     // Fetch dashboard data
     const dashboardData = await fetchDashboardData(role, filters, pagination);
 
-    console.log("Generating PDF...");
-
     // Generate PDF
     const pdfBuffer = await generatePDFFromData(dashboardData);
-
-    console.log("PDF generated successfully");
 
     // Return PDF
     return new NextResponse(new Uint8Array(pdfBuffer), {

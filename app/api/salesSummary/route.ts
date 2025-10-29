@@ -145,7 +145,7 @@
 // app/api/dashboard/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma"; // adjust path to your prisma client
-import { subDays } from "date-fns";
+import { subDays } from "date-fns/subDays";
 
 // Helper to convert BigInt/Decimal to numbers
 const serializeBigInt = (obj: any): any => {

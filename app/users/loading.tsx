@@ -1,21 +1,22 @@
-// app/dashboard/userroles/loading.tsx
-import DashboardTabs from "@/components/common/Tabs";
-
+// ap
 import TableSkeleton from "@/components/common/TableSkeleton";
+import { Button } from "@/components/ui/button";
 
 export default function Loading() {
   return (
-    <DashboardTabs
-      defualt={"userDashboard"}
-      tabs={[
-        { value: "userDashboard", label: "Dashboard" },
-        { value: "useractivity", label: "useractivity" },
-        { value: "userroles", label: "userroles" },
-      ]}
-    >
-      <div className="flex flex-col p-3">
-        <TableSkeleton />
+    <div className="flex flex-col p-3">
+      <div className="mb-2 flex gap-2">
+        {["userDashboard", "useractivity", "userroles"].map((t) => (
+          <Button key={t}>
+            {t === "useractivity"
+              ? "المستخدمين"
+              : t === "userDashboard"
+                ? "أدوار المستخدمين"
+                : "أنشطة المستخدمين"}
+          </Button>
+        ))}
       </div>
-    </DashboardTabs>
+      <TableSkeleton />
+    </div>
   );
 }

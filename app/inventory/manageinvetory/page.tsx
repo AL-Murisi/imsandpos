@@ -1,13 +1,11 @@
 import { fetchAllFormData } from "@/app/actions/roles";
 import { getInventoryById, getStockMovements } from "@/app/actions/warehouse";
-import DashboardTabs from "@/components/common/Tabs";
 import { TabsContent } from "@/components/ui/tabs";
 import { ParsedSort } from "@/hooks/sort";
 import { Prisma } from "@prisma/client";
 import { SortingState } from "@tanstack/react-table";
-import ManagemovementClient from "./_components/getMovementhistry";
-import ManageinvetoryClient from "./_components/manageinvetoryClient";
 import { getSession } from "@/lib/session";
+import InventoryTabs from "./_components/tabs";
 
 type DashboardProps = {
   searchParams: Promise<{
@@ -88,27 +86,12 @@ export default async function Manageinvetory({ searchParams }: DashboardProps) {
     movementData;
 
   return (
-    <DashboardTabs
-      currentTab={currentTab}
-      tabs={[
-        { value: "Invontery", label: "Invontery" },
-        { value: "movement", label: "Movement" },
-      ]}
-    >
-      <TabsContent value="Invontery">
-        <ManageinvetoryClient
-          products={fetchedProducts}
-          total={fetchedTotalCount}
-          formData={formData}
-        />
-      </TabsContent>
-      <TabsContent value="movement">
-        <ManagemovementClient
-          products={fetchedProduct}
-          total={fetchedTotalCounts}
-          formData={formData}
-        />
-      </TabsContent>
-    </DashboardTabs>
+    <InventoryTabs
+      fetchedProducts={fetchedProducts}
+      fetchedTotalCount={fetchedTotalCount}
+      fetchedProduct={fetchedProduct}
+      fetchedTotalCounts={fetchedTotalCounts}
+      formData={formData}
+    />
   );
 }

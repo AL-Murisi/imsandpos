@@ -61,7 +61,7 @@ export default function Appheader() {
     },
     {
       title: t("debt"),
-      url: "/sells/debtSell",
+      url: "/debt",
     },
     {
       title: t("profile"),

@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import { ChevronDownIcon, X } from "lucide-react";
 import { DateRange } from "react-day-picker";
 
@@ -31,6 +30,7 @@ import {
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
+import { useEffect, useState } from "react";
 
 interface DateRangeFilterProps {
   fromKey: string;
@@ -42,13 +42,13 @@ export function DateRangeFilter({ fromKey, toKey }: DateRangeFilterProps) {
   const pathname = usePathname();
   const { replace } = useRouter();
   const t = useTranslations("datePicker");
-  const [open, setOpen] = React.useState(false);
-  const [date, setDate] = React.useState<DateRange | undefined>({
+  const [open, setOpen] = useState(false);
+  const [date, setDate] = useState<DateRange | undefined>({
     from: undefined,
     to: undefined,
   });
 
-  React.useEffect(() => {
+  useEffect(() => {
     const fromParam = searchParams.get(fromKey);
     const toParam = searchParams.get(toKey);
     setDate({
@@ -56,7 +56,7 @@ export function DateRangeFilter({ fromKey, toKey }: DateRangeFilterProps) {
       to: toParam ? new Date(toParam) : undefined,
     });
   }, [searchParams, fromKey, toKey]);
-  React.useEffect(() => {
+  useEffect(() => {
     const debounce = setTimeout(() => {
       const params = new URLSearchParams(searchParams.toString());
 

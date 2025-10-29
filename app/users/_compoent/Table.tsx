@@ -1,16 +1,19 @@
 "use client";
 
 import { useTablePrams } from "@/hooks/useTableParams";
-import { DataTable } from "@/components/common/test";
-import { Suspense, useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
 
 import dynamic from "next/dynamic";
 const Calendar22 = dynamic(
   () => import("@/components/common/DatePicker").then((m) => m.Calendar22),
   {
     ssr: false,
-    loading: () => <input type="date" className="..." />,
+  },
+);
+const DataTable = dynamic(
+  () => import("@/components/common/test").then((m) => m.DataTable),
+  {
+    ssr: false,
+    loading: () => <TableSkeleton />,
   },
 );
 import { SelectField } from "@/components/common/selection";
@@ -22,8 +25,7 @@ import CustomDialog from "@/components/common/Dailog";
 import { columns } from "../_compoent/columns";
 import SearchInput from "@/components/common/searchtest";
 import UserForm from "../_compoent/form";
-import CustomerForm from "../../customer/debtSell/Newcustomer";
-import { Skeleton } from "@/components/ui/skeleton";
+import TableSkeleton from "@/components/common/TableSkeleton";
 
 type ProductClientProps = {
   users: any[];

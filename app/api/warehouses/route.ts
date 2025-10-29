@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import * as XLSX from "xlsx";
+import { read, utils } from "xlsx";
 import prisma from "@/lib/prisma";
 import { CreateWarehouseSchema } from "@/lib/zod"; // Assuming this is your Zod schema for Warehouse
 
@@ -13,12 +13,12 @@ export async function POST(req: NextRequest) {
     }
 
     const arrayBuffer = await file.arrayBuffer();
-    const workbook = XLSX.read(arrayBuffer, { type: "buffer" });
+    const workbook = read(arrayBuffer, { type: "buffer" });
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
 
     // 1. Simple JSON conversion (assumes English headers in row 1)
-    const json = XLSX.utils.sheet_to_json<Record<string, any>>(sheet);
+    const json = utils.sheet_to_json<Record<string, any>>(sheet);
 
     console.log("📦 Parsed Excel JSON for Warehouses:", json);
 

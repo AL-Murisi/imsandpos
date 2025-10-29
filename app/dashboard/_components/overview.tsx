@@ -1,8 +1,7 @@
 // import React from "react";
 // import TopSellingChartWrapper from "./test";
-
+"use client";
 import dynamic from "next/dynamic";
-import { fa } from "zod/v4/locales";
 
 // import Chart from "../_components/chart";
 type chart = {
@@ -14,6 +13,7 @@ type chart = {
 const TopSellingChartWrapper = dynamic(
   () => import("@/components/common/Barchart"),
   {
+    ssr: false,
     loading: () => (
       <div className="h-60 animate-pulse rounded-lg bg-gray-200" />
     ),

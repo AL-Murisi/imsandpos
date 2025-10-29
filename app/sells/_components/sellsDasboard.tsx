@@ -7,16 +7,12 @@ import { DollarSignIcon, ShoppingBagIcon, WalletIcon } from "lucide-react"; // E
 import Link from "next/link";
 import { useRouter } from "next/navigation"; // For refreshing data or navigation
 import dynamic from "next/dynamic";
-import DebtSells from "./table";
 
-const ScrollArea = dynamic(
-  () => import("@/components/ui/scroll-area").then((m) => m.ScrollArea),
-  {
-    ssr: false,
-    // ensures it only loads on the client
-    // optional fallback
-  },
-);
+const DebtSells = dynamic(() => import("./table"), {
+  ssr: false,
+  // ensures it only loads on the client
+  // optional fallback
+});
 interface SellsDashboardClientProps {
   user: {
     id: string | null;

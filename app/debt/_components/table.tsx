@@ -1,12 +1,25 @@
 "use client";
-import { DataTable } from "@/components/common/test";
 
 import SearchInput from "@/components/common/searchtest";
 import { useTablePrams } from "@/hooks/useTableParams";
 import { SortingState } from "@tanstack/react-table";
 import { debtSaleColumns } from "./columns";
 import { ExportDebtSalesButton } from "@/components/ExportDebtSalesButton";
-import { Calendar22 } from "@/components/common/DatePicker";
+import dynamic from "next/dynamic";
+import TableSkeleton from "@/components/common/TableSkeleton";
+const Calendar22 = dynamic(
+  () => import("@/components/common/DatePicker").then((m) => m.Calendar22),
+  {
+    ssr: false,
+  },
+);
+const DataTable = dynamic(
+  () => import("@/components/common/test").then((m) => m.DataTable),
+  {
+    ssr: false,
+    loading: () => <TableSkeleton />,
+  },
+);
 type ProductClientProps = {
   data: any[];
   total: number;

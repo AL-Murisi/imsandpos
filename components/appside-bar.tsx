@@ -19,6 +19,8 @@ import {
   Clock,
   Receipt,
   BarChart,
+  Store,
+  ChartBar,
 } from "lucide-react";
 
 import {
@@ -33,6 +35,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubItem,
   SidebarFooter,
+  SidebarHeader,
 } from "./ui/sidebar";
 import Link from "next/link";
 import {
@@ -70,6 +73,7 @@ const IMSLogoIcon = ({ className = "", size = 24, color = "currentColor" }) => {
 import { useRouter } from "next/navigation";
 import CurrencySwitcher from "./common/CurrencySwitcher";
 import { useCurrency } from "./CurrencyProvider";
+import { ScrollArea } from "./ui/scroll-area";
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user, hasAnyRole, logoutAndRedirect } = useAuth();
   const pathname = usePathname();
@@ -136,7 +140,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     },
     {
       title: t("products"),
-      url: "/inventory/products",
+      url: "/products",
       icon: () => <Package className="h-4 w-4 text-green-600" />,
       roles: ["admin", "manager_wh"],
     },
@@ -171,6 +175,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       roles: ["admin", "cashier"],
     },
     {
+      title: t("chartofaccount"),
+      url: "/chartOfAccount",
+      icon: () => <ChartBar className="text-pink-600" />,
+      roles: ["admin", "supplier"],
+    },
+    {
+      title: t("journalEntry"),
+      url: "/journalEntry",
+      icon: () => <ChartBar className="text-pink-600" />,
+      roles: ["admin"],
+    },
+    {
       title: t("sales"),
       icon: () => <ShoppingCart className="text-green-600" />,
       roles: ["admin", "cashier"],
@@ -189,13 +205,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           roles: ["admin", "cashier"],
         },
         {
-          title: t("reservedOrders"),
-          url: "/sells/reservation",
-          icon: <Clock className="h-4 w-4 text-teal-600" />,
-          roles: ["admin", "cashier"],
+          title: t("pos"),
+          url: "/sells/pos",
+          icon: <Store className="text-blue-500" />,
+          roles: ["admin"],
         },
       ],
     },
+
     {
       title: t("profile"),
       url: "/profile",
@@ -249,142 +266,144 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       {...props}
       className="dark:bg-accent dark:text-foreground text-sidebar bg-[#0b142a]"
     >
-      <SidebarContent className="dark:bg-accent dark:text-foreground text-sidebar bg-[#0b142a]">
-        <SidebarGroup>
-          <div className="flex items-center gap-2 transition-all">
-            <div
-              className={
-                "flex aspect-square size-8 items-center justify-center rounded-lg bg-amber-400"
-              }
-            >
-              <Package className="text-2xl" />
-            </div>
-
-            <div className="flex items-center gap-1 text-left text-sm leading-tight">
-              <span className="text-sidebar truncate text-[15px] font-semibold dark:text-amber-50">
-                Stockly
-              </span>
-            </div>
+      <SidebarHeader className="bg-[#0b142a]">
+        <div className="flex items-center gap-2 transition-all">
+          <div
+            className={
+              "flex aspect-square size-8 items-center justify-center rounded-lg bg-amber-400"
+            }
+          >
+            <Package className="text-2xl" />
           </div>
-          <SidebarGroupLabel className="dark:text-foreground text-sidebar text-xs">
-            {t("welcome")} {user.name}
-          </SidebarGroupLabel>
-          <SidebarGroupLabel className="dark:text-foreground text-sidebar mb-2 text-xs">
-            {t("role")} {user.roles.join(", ")}
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {visibleMenuItems.map((item) => {
-                if (item.isDropdown && item.subItems) {
-                  const visibleSubItems = filterSubItems(item.subItems);
 
-                  if (visibleSubItems.length === 0) {
-                    return null; // Don't show dropdown if no sub-items are visible
+          {/* <div className="flex items-center gap-1 text-left text-sm leading-tight">
+            <span className="text-sidebar truncate text-[15px] font-semibold dark:text-amber-50">
+              Stockly
+            </span>
+          </div> */}
+        </div>
+        <SidebarGroupLabel className="dark:text-foreground text-sidebar text-xs">
+          {t("welcome")} {user.name}
+        </SidebarGroupLabel>
+        <SidebarGroupLabel className="dark:text-foreground text-sidebar mb-2 text-xs">
+          {t("role")} {user.roles.join(", ")}
+        </SidebarGroupLabel>
+      </SidebarHeader>
+      <SidebarContent className="dark:bg-accent dark:text-foreground text-sidebar bg-[#0b142a]">
+        <ScrollArea className="max-h-[100vh]" dir="rtl">
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {visibleMenuItems.map((item) => {
+                  if (item.isDropdown && item.subItems) {
+                    const visibleSubItems = filterSubItems(item.subItems);
+
+                    if (visibleSubItems.length === 0) {
+                      return null; // Don't show dropdown if no sub-items are visible
+                    }
+
+                    return (
+                      <Collapsible key={item.title} asChild defaultOpen={false}>
+                        <SidebarMenuItem>
+                          <CollapsibleTrigger asChild>
+                            <SidebarMenuButton
+                              tooltip={item.title}
+                              className="text-[18px]"
+                            >
+                              <item.icon />
+                              <span>{item.title}</span>
+                              <ChevronDown className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-180" />
+                            </SidebarMenuButton>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <SidebarMenuSub>
+                              {visibleSubItems.map((subItem) => (
+                                <SidebarMenuItem
+                                  key={subItem.title}
+                                  className="text-[15px]"
+                                >
+                                  <SidebarMenuButton
+                                    asChild
+                                    className={` ${
+                                      pathname === subItem.url
+                                        ? "w-40 rounded-l-lg border-r-4 border-r-orange-600 bg-orange-400 text-white"
+                                        : "text-white hover:bg-orange-300/20"
+                                    } !justify-start !pr-4 !pl-8`}
+                                  >
+                                    <Link href={subItem.url || "#"} dir="rtl">
+                                      {subItem.icon}
+                                      <span>{subItem.title}</span>
+                                    </Link>
+                                  </SidebarMenuButton>
+                                </SidebarMenuItem>
+
+                                // <SidebarMenuSubItem key={subItem.title}>
+                                //   <SidebarMenuButton asChild isActive>
+                                //     <Link href={subItem.url}>
+                                //       {subItem.icon}
+                                //       <span>{subItem.title}</span>
+                                //     </Link>
+                                //   </SidebarMenuButton>
+                                // </SidebarMenuSubItem>
+                              ))}
+                            </SidebarMenuSub>
+                          </CollapsibleContent>
+                        </SidebarMenuItem>
+                      </Collapsible>
+                    );
                   }
 
                   return (
-                    <Collapsible key={item.title} asChild defaultOpen={false}>
-                      <SidebarMenuItem>
-                        <CollapsibleTrigger asChild>
-                          <SidebarMenuButton
-                            tooltip={item.title}
-                            className="text-[18px]"
-                          >
-                            <item.icon />
-                            <span>{item.title}</span>
-                            <ChevronDown className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-180" />
-                          </SidebarMenuButton>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent>
-                          <SidebarMenuSub>
-                            {visibleSubItems.map((subItem) => (
-                              <SidebarMenuItem
-                                key={subItem.title}
-                                className="text-[15px]"
-                              >
-                                <SidebarMenuButton
-                                  asChild
-                                  className={` ${
-                                    pathname === subItem.url
-                                      ? "w-40 rounded-l-lg border-r-4 border-r-orange-600 bg-orange-400 text-white"
-                                      : "text-white hover:bg-orange-300/20"
-                                  } !justify-start !pr-4 !pl-8`}
-                                >
-                                  <Link href={subItem.url || "#"} dir="rtl">
-                                    {subItem.icon}
-                                    <span>{subItem.title}</span>
-                                  </Link>
-                                </SidebarMenuButton>
-                              </SidebarMenuItem>
+                    <SidebarMenuItem key={item.title} className="text-[20px]">
+                      <SidebarMenuButton
+                        asChild
+                        className={` ${
+                          pathname === item.url
+                            ? "w-52 rounded-l-lg border-r-4 border-r-orange-600 bg-orange-400 text-white"
+                            : "text-white hover:bg-orange-300/20"
+                        } !justify-start !pr-4 !pl-8 text-[18px]`}
+                      >
+                        <Link href={item.url || "#"}>
+                          <item.icon />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
 
-                              // <SidebarMenuSubItem key={subItem.title}>
-                              //   <SidebarMenuButton asChild isActive>
-                              //     <Link href={subItem.url}>
-                              //       {subItem.icon}
-                              //       <span>{subItem.title}</span>
-                              //     </Link>
-                              //   </SidebarMenuButton>
-                              // </SidebarMenuSubItem>
-                            ))}
-                          </SidebarMenuSub>
-                        </CollapsibleContent>
-                      </SidebarMenuItem>
-                    </Collapsible>
+                    // <SidebarMenuItem key={item.title}>
+                    //   <SidebarMenuButton asChild isActive>
+                    //     <Link href={item.url || "#"}>
+                    //       <item.icon />
+                    //       <span>{item.title}</span>
+                    //     </Link>
+                    //   </SidebarMenuButton>
+                    // </SidebarMenuItem>
                   );
-                }
+                })}{" "}
+                <LocaleSwitcher />
+                <CurrencySwitcher />
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
 
-                return (
-                  <SidebarMenuItem key={item.title} className="text-[20px]">
-                    <SidebarMenuButton
-                      asChild
-                      className={` ${
-                        pathname === item.url
-                          ? "w-52 rounded-l-lg border-r-4 border-r-orange-600 bg-orange-400 text-white"
-                          : "text-white hover:bg-orange-300/20"
-                      } !justify-start !pr-4 !pl-8 text-[18px]`}
-                    >
-                      <Link href={item.url || "#"}>
-                        <item.icon />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-
-                  // <SidebarMenuItem key={item.title}>
-                  //   <SidebarMenuButton asChild isActive>
-                  //     <Link href={item.url || "#"}>
-                  //       <item.icon />
-                  //       <span>{item.title}</span>
-                  //     </Link>
-                  //   </SidebarMenuButton>
-                  // </SidebarMenuItem>
-                );
-              })}{" "}
-              <LocaleSwitcher />
-              <CurrencySwitcher />
+          <SidebarFooter>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={() => {
+                    logoutAndRedirect();
+                  }}
+                  className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950"
+                >
+                  <LogOut />
+                  <span>{t("logout")}</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarFooter>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                onClick={() => {
-                  logoutAndRedirect();
-                }}
-                className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950"
-              >
-                <LogOut />
-                <span>{t("logout")}</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-          <ModeToggle />
-        </SidebarFooter>
+            <ModeToggle />
+          </SidebarFooter>
+        </ScrollArea>
       </SidebarContent>
-
-      {/* Sidebar Footer with Logout */}
     </Sidebar>
   );
 }

@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import { Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +19,7 @@ import {
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { Label } from "../ui/label";
 import { useTranslations } from "next-intl";
+import { useOptimistic, useState, useTransition } from "react";
 
 interface Option {
   id: string;
@@ -40,33 +40,33 @@ export function Selection({
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  const [open, setOpen] = React.useState(false);
+  const [open, setOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const t = useTranslations("selection");
-  // selected values come from URL params
-  const value = searchParams.getAll(`${selectkey}`);
 
+  const value = searchParams.getAll(`${selectkey}`);
+  const [optimisticParam, setOptimisticParam] = useOptimistic(
+    searchParams.getAll(`${selectkey}`),
+  );
   const updateCategories = (values: string[]) => {
     const params = new URLSearchParams(searchParams.toString());
-    // clear old values
     params.delete(`${selectkey}`);
-
     values.forEach((v) => params.append(`${selectkey}`, v));
 
-    // add new array values
-    // Only push if params actually changed
-    if (params.toString() !== searchParams.toString()) {
-      router.push(`${pathname}?${params.toString()}`);
-    }
+    // Wrap router.push in a transition so React knows this is async navigation
+    startTransition(() => {
+      setOptimisticParam(values);
+      if (params.toString() !== searchParams.toString()) {
+        router.push(`${pathname}?${params.toString()}`);
+      }
+    });
   };
+
   const handleToggle = (optionId: string) => {
-    // Check if the item is already in the selected values array
-    if (value.includes(optionId)) {
-      // If it's there, filter it out to deselect it
+    if (optimisticParam.includes(optionId)) {
       updateCategories(value.filter((val) => val !== optionId));
     } else {
-      // If it's not there, add it to the selected values array
-      const newValues = [...value, optionId];
-      // Check if all options are now selected, if so, trigger the 'All' state
+      const newValues = [...optimisticParam, optionId];
       if (newValues.length === options.length) {
         updateCategories([]);
       } else {
@@ -74,14 +74,6 @@ export function Selection({
       }
     }
   };
-  //   };
-  //   const handleToggle = (optionId: string) => {
-  //     if (value.includes(optionId)) {
-  //       updateCategories(value.filter((val) => val !== optionId));
-  //     } else {
-  //       updateCategories([...value, optionId]);
-  //     }
-  //   };
 
   const handleRemoveBadge = (optionId: string) => {
     updateCategories(value.filter((val) => val !== optionId));
@@ -97,7 +89,10 @@ export function Selection({
       : options.filter((option) => value.includes(option.id));
 
   return (
-    <div className="flex flex-col gap-4">
+    <div
+      data-pending={isPending ? "" : undefined}
+      className="flex flex-col gap-4"
+    >
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button

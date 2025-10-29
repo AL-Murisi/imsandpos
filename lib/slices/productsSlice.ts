@@ -49,7 +49,28 @@ const initialState: ProductsState = {
 //     return result as ProductForSale[];
 //   }
 // );
+function convertFromBaseUnit(product: any, availableUnits: number) {
+  const unitsPerPacket = product.unitsPerPacket || 1;
+  const packetsPerCarton = product.packetsPerCarton || 1;
 
+  const availablePackets = Number((availableUnits / unitsPerPacket).toFixed(2));
+  const availableCartons = Number(
+    (availablePackets / packetsPerCarton).toFixed(2),
+  );
+
+  return { availablePackets, availableCartons };
+}
+function convertToBaseUnits(
+  qty: number,
+  sellingUnit: string,
+  unitsPerPacket: number,
+  packetsPerCarton: number,
+): number {
+  if (sellingUnit === "unit") return qty;
+  if (sellingUnit === "packet") return qty * unitsPerPacket;
+  if (sellingUnit === "carton") return qty * unitsPerPacket * packetsPerCarton;
+  return qty;
+}
 const productsSlice = createSlice({
   name: "products",
   initialState,
@@ -69,55 +90,56 @@ const productsSlice = createSlice({
         c.value === action.payload ? { ...c, checked: false } : c,
       );
     },
+
     updateProductSock: (
       state,
       action: PayloadAction<{
         productId: string;
         sellingUnit: SellingUnit;
-        diff: number;
-        qCartons: number;
-        qPackets: number;
-        qunit: number;
+        selectedQty: number;
+        unitsPerPacket: number;
+        availableUnits: number;
+        packetsPerCarton: number;
       }>,
     ) => {
-      const { productId, sellingUnit, diff, qCartons, qPackets, qunit } =
-        action.payload;
-      if (diff === 0) return;
+      const {
+        productId,
+        sellingUnit,
+        selectedQty,
+        unitsPerPacket,
+        availableUnits,
+        packetsPerCarton,
+      } = action.payload;
+      if (selectedQty === 0) return;
 
       const productIndex = state.products.findIndex((p) => p.id === productId);
       if (productIndex === -1) return;
 
-      // Create a new product object to trigger reactivity
       const product = { ...state.products[productIndex] };
 
-      if (sellingUnit === "carton") {
-        product.availableCartons = Math.max(product.availableCartons - diff, 0);
-        product.availablePackets = Math.max(
-          product.availablePackets - diff * qPackets,
-          0,
-        );
-        product.availableUnits = Math.max(
-          product.availableUnits - diff * qPackets * qunit,
-          0,
-        );
-      } else if (sellingUnit === "packet") {
-        product.availablePackets = Math.max(product.availablePackets - diff, 0);
-        product.availableUnits = Math.max(
-          product.availableUnits - diff * qunit,
-          0,
-        );
-        product.availableCartons = Math.floor(
-          product.availableUnits / (qPackets * qunit),
-        );
-      } else if (sellingUnit === "unit") {
-        product.availableUnits = Math.max(product.availableUnits - diff, 0);
-        product.availablePackets = Math.floor(product.availableUnits / qunit);
-        product.availableCartons = Math.floor(
-          product.availablePackets / qPackets,
-        );
-      }
+      // 1️⃣ Convert selectedQty to base units
+      const qtyInBaseUnits = convertToBaseUnits(
+        selectedQty,
+        sellingUnit,
+        unitsPerPacket,
+        packetsPerCarton,
+      );
 
-      // Replace the product in the array to update the reference
+      // 2️⃣ Subtract from available units (base units)
+      const newAvailableUnits = Math.max(product.availableUnits || 0);
+
+      // 3️⃣ Convert back to all units
+      const { availableCartons, availablePackets } = convertFromBaseUnit(
+        product,
+        availableUnits,
+      );
+
+      // 4️⃣ Update product stock
+      product.availableUnits = newAvailableUnits;
+      product.availablePackets = availablePackets;
+      product.availableCartons = availableCartons;
+
+      // 5️⃣ Replace product in state
       state.products = [
         ...state.products.slice(0, productIndex),
         product,

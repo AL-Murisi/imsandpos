@@ -57,6 +57,8 @@ interface DataTableProps<T> {
   search?: React.ReactNode;
   /** ✅ All these match what you passed from ProductClient */
   totalCount: number;
+
+  onRowSelectionChange?: (selectedRows: T[]) => void;
   pageActiom: (
     updater: PaginationState | ((old: PaginationState) => PaginationState),
   ) => void;
@@ -85,6 +87,7 @@ export function DataTable<T>({
   sorting,
   pagination,
   highet,
+  onRowSelectionChange,
 }: DataTableProps<T>) {
   const dispatch = useAppDispatch();
   const t = useTranslations("table");
@@ -123,9 +126,19 @@ export function DataTable<T>({
 
     onColumnVisibilityChange: (updater) =>
       dispatch(setColumnVisibility(resolveUpdater(updater, columnVisibility))),
+    onRowSelectionChange: (updater) => {
+      const updated = resolveUpdater(updater, rowSelection);
+      dispatch(setRowSelection(updated));
 
-    onRowSelectionChange: (updater) =>
-      dispatch(setRowSelection(resolveUpdater(updater, rowSelection))),
+      if (typeof onRowSelectionChange === "function") {
+        // Map the updated selection directly
+        const selected = Object.keys(updated).map((rowId) => {
+          const row = table.getRow(rowId);
+          return row.original;
+        });
+        onRowSelectionChange(selected);
+      }
+    },
   });
 
   const {
