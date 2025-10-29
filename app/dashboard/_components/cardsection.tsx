@@ -4,12 +4,6 @@ import DashboardHeader from "@/components/common/dashboradheader";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
-const ChartCard = dynamic(
-  () => import("@/components/common/ChartCard").then((m) => m.ChartCard),
-  {
-    ssr: false,
-  },
-);
 const ExportDashboardButtonAPI = dynamic(
   () =>
     import("@/components/ExportDashboardButton").then(
@@ -34,6 +28,7 @@ import ShoppingBag from "lucide-react/dist/esm/icons/shopping-bag";
 import { ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
+import { ChartCard } from "@/components/common/ChartCard";
 
 interface SectionCardsProps {
   searchParams: Record<string, string | undefined>;
