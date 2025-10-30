@@ -11,9 +11,6 @@ const ExportDashboardButtonAPI = dynamic(
     ),
   {
     ssr: false,
-    loading: () => (
-      <div className="h-60 animate-pulse rounded-lg bg-gray-200" />
-    ),
   },
 );
 // ✅ Individual icon imports (saves ~180KB)

@@ -9,9 +9,6 @@ const DataTable = dynamic(
   () => import("@/components/common/test").then((m) => m.DataTable),
   {
     ssr: false,
-    loading: () => (
-      <div className="h-52 animate-pulse rounded-lg bg-gray-200" />
-    ),
   },
 );
 
@@ -49,47 +46,39 @@ export default function UserActivityTable({
   } = useTablePrams();
 
   return (
-    <Suspense
-      fallback={
-        <div className="h-70 bg-gray-200">
-          <div />
-        </div>
-      }
-    >
-      <div className="flex flex-col gap-x-6 gap-y-6">
-        <div className="bg-accent rounded-2xl p-2 shadow-xl/20 shadow-gray-500">
-          <DataTable
-            data={logs}
-            columns={userActivity}
-            initialPageSize={pagination.pageSize}
-            pageCount={Math.ceil(total / pagination.pageSize)}
-            pageActiom={setPagination}
-            onSortingChange={setSorting}
-            onGlobalFilterChange={setGlobalFilter}
-            globalFilter={globalFilter}
-            sorting={sort}
-            pagination={pagination}
-            totalCount={total}
-            highet={"h-100"}
-          />
-        </div>
-        <div className="bg-accent rounded-2xl p-2 shadow-xl/20 shadow-gray-500">
-          <DataTable
-            data={Sales}
-            columns={RecentSale}
-            initialPageSize={pagination.pageSize}
-            pageCount={Math.ceil(totals / pagination.pageSize)}
-            pageActiom={setPagination}
-            onSortingChange={setSorting}
-            onGlobalFilterChange={setGlobalFilter}
-            globalFilter={globalFilter}
-            sorting={sort}
-            pagination={pagination}
-            totalCount={total}
-            highet={"h-90"}
-          />
-        </div>
+    <div className="flex flex-col gap-x-6 gap-y-6">
+      <div className="bg-accent rounded-2xl p-2 shadow-xl/20 shadow-gray-500">
+        <DataTable
+          data={logs}
+          columns={userActivity}
+          initialPageSize={pagination.pageSize}
+          pageCount={Math.ceil(total / pagination.pageSize)}
+          pageActiom={setPagination}
+          onSortingChange={setSorting}
+          onGlobalFilterChange={setGlobalFilter}
+          globalFilter={globalFilter}
+          sorting={sort}
+          pagination={pagination}
+          totalCount={total}
+          highet={"h-100"}
+        />
       </div>
-    </Suspense>
+      <div className="bg-accent rounded-2xl p-2 shadow-xl/20 shadow-gray-500">
+        <DataTable
+          data={Sales}
+          columns={RecentSale}
+          initialPageSize={pagination.pageSize}
+          pageCount={Math.ceil(totals / pagination.pageSize)}
+          pageActiom={setPagination}
+          onSortingChange={setSorting}
+          onGlobalFilterChange={setGlobalFilter}
+          globalFilter={globalFilter}
+          sorting={sort}
+          pagination={pagination}
+          totalCount={total}
+          highet={"h-90"}
+        />
+      </div>
+    </div>
   );
 }
