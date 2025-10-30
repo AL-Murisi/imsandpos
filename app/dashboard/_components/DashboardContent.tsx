@@ -19,6 +19,9 @@ const TopSellingChartWrapper = dynamic(
   () => import("@/components/common/Barchart"),
   {
     ssr: false,
+    loading: () => (
+      <div className="col-span-1 h-[50vh] animate-pulse rounded-lg bg-gray-200" />
+    ),
   },
 );
 const ReusableAreaChart = dynamic(
