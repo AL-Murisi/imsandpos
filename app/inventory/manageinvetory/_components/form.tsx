@@ -219,18 +219,6 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <div className="grid gap-3">
-            <Label>اختر المستودع</Label>
-            <SelectField
-              options={warehouses}
-              value={warehouseId || ""}
-              action={(val) => setValue("warehouseId", val)}
-              placeholder="اختر المستودع"
-            />
-            {!warehouseId && (
-              <p className="text-xs text-red-500">المستودع مطلوب</p>
-            )}
-          </div>
           {updateType === "manual" && (
             <div className="grid gap-3">
               <Label>سبب التحديث اليدوي</Label>
@@ -268,7 +256,7 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
               </label>
 
               {showPayment && updateType == "supplier" && (
-                <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-3">
                   <div className="grid gap-2">
                     <Label>طريقة الدفع</Label>
                     <SelectField
@@ -310,7 +298,7 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
           </div>
         )}
         {/* تحديث يدوي */}
-        <div className="grid grid-rows-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
           {[
             "stockQuantity",
             "reservedQuantity",
@@ -346,7 +334,7 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div className="grid gap-2">
             <Label>الحد الأقصى للمخزون</Label>
             <Input
@@ -361,6 +349,18 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
               className="text-end"
               {...register("lastStockTake")}
             />
+          </div>
+          <div className="grid gap-3">
+            <Label>اختر المستودع</Label>
+            <SelectField
+              options={warehouses}
+              value={warehouseId || ""}
+              action={(val) => setValue("warehouseId", val)}
+              placeholder="اختر المستودع"
+            />
+            {!warehouseId && (
+              <p className="text-xs text-red-500">المستودع مطلوب</p>
+            )}
           </div>
         </div>
         <div className="flex justify-end gap-2">

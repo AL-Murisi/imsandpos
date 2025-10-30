@@ -74,7 +74,7 @@ export default async function DebtSell({ searchParams }: DashboardProps) {
     parsedSort,
   );
   return (
-    <div dir="rtl">
+    <div className="p-3" dir="rtl">
       <DebtSells
         data={data}
         total={data.length}

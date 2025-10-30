@@ -218,10 +218,10 @@ export default function ProductForm({ formData }: ExpenseFormProps) {
       open={open}
       setOpen={setOpen}
       btnLabl="إضافة  منتج"
-      style="w-full max-w-[1400px] overflow-y-auto rounded-lg p-6 xl:max-w-[1600px]"
+      style="w-full max-w-[1200px] overflow-y-auto rounded-lg p-6 xl:max-w-[1300px]"
       description="أدخل تفاصيل المنتج واحفظه"
     >
-      <ScrollArea className="max-h-[90vh]" dir="rtl">
+      <ScrollArea className="max-h-[85vh]" dir="rtl">
         <form onSubmit={handleSubmit(onSubmit)} className="w-full space-y-6">
           {/* Pricing Mode Selection */}
           <div className="rounded-lg border p-4">

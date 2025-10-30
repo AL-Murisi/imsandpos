@@ -58,50 +58,37 @@ export default function DebtSells({
   } = useTablePrams();
 
   return (
-    <div className="rounded-2xl p-2 lg:col-span-1" dir="rtl">
-      {/* <>
-        <CustomDialog
-          trigger={
-            <Button>
-              <Plus />
-              add
-            </Button>
-          }
-          title="إضافة فئة جديدة"
-        >
-          <Form />
-        </CustomDialog>{" "}
-      </> */}
-
-      <>
-        <DataTable
-          search={
-            <div className="flex flex-col gap-3 md:flex-row">
-              <Calendar22 />
-              <SearchInput placeholder={"customer بحث "} paramKey="users" />
-              <ExportDebtSalesButton
-                from={from}
-                to={to}
-                usersquery={usersquery}
-                pagesize={pagesize}
-                limit={limit}
-              />
-            </div>
-          }
-          data={data}
-          columns={debtSaleColumns}
-          initialPageSize={pagination.pageSize}
-          pageCount={Math.ceil(data.length / pagination.pageSize)}
-          pageActiom={setPagination}
-          onSortingChange={setSorting}
-          onGlobalFilterChange={setGlobalFilter}
-          globalFilter={globalFilter}
-          sorting={sort}
-          highet="h-[70vh]"
-          pagination={pagination}
-          totalCount={data.length}
-        />
-      </>
+    <div
+      className="bg-accent w-full rounded-2xl py-3 shadow-xl/20 shadow-gray-600 lg:col-span-1"
+      dir="rtl"
+    >
+      <DataTable
+        search={
+          <div className="flex flex-col gap-3 md:flex-row">
+            <Calendar22 />
+            <SearchInput placeholder={"customer بحث "} paramKey="users" />
+            <ExportDebtSalesButton
+              from={from}
+              to={to}
+              usersquery={usersquery}
+              pagesize={pagesize}
+              limit={limit}
+            />
+          </div>
+        }
+        data={data}
+        columns={debtSaleColumns}
+        initialPageSize={pagination.pageSize}
+        pageCount={Math.ceil(data.length / pagination.pageSize)}
+        pageActiom={setPagination}
+        onSortingChange={setSorting}
+        onGlobalFilterChange={setGlobalFilter}
+        globalFilter={globalFilter}
+        sorting={sort}
+        highet="h-[75vh]"
+        pagination={pagination}
+        totalCount={data.length}
+      />
     </div>
   );
 }

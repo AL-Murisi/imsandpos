@@ -126,7 +126,7 @@ export default function ProductClient({
           globalFilter={globalFilter}
           sorting={sorting}
           pagination={pagination}
-          highet="h-[72vh]"
+          highet="h-[70vh]"
           totalCount={total}
         />
       </Suspense>

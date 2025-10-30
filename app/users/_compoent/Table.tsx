@@ -62,18 +62,7 @@ export default function UserClinet({ users, total, role }: ProductClientProps) {
             <SearchInput placeholder={"بحث"} paramKey={"users"} />{" "}
             {/* Translate placeholder */}
             <SelectField options={role} paramKey="role" placeholder="الفئة" />
-            <CustomDialog
-              trigger={
-                <Button>
-                  <Plus className="ml-1" />
-                  إضافة مستخدم
-                </Button>
-              }
-              title="إضافة مستخدم"
-              description="أدخل تفاصيل المستخدم أدناه."
-            >
-              <UserForm />
-            </CustomDialog>
+            <UserForm />
           </div>
         }
         data={users}
