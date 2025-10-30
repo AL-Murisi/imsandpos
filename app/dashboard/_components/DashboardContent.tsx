@@ -128,32 +128,26 @@ function DashboardContentClient({
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
       {/* Left column - Priority charts */}
       <div className="flex flex-col gap-5 lg:col-span-2">
-        <Suspense fallback={<ChartSkeleton />}>
-          <ReusableAreaChart
-            title="Sales Overview"
-            description="Sales trends over selected period"
-            data={combined}
-            config={salesChartConfig}
-          />
-        </Suspense>
+        <ReusableAreaChart
+          title="Sales Overview"
+          description="Sales trends over selected period"
+          data={combined}
+          config={salesChartConfig}
+        />
 
-        <Suspense fallback={<ChartSkeleton />}>
-          <Charts topProducts={result.topProducts} formData={result.formData} />
-        </Suspense>
+        <Charts topProducts={result.topProducts} formData={result.formData} />
       </div>
 
       <div className="flex flex-col gap-6 lg:col-span-1">
-        <Suspense fallback={<ChartSkeleton />}>
-          <TopSellingChartWrapper
-            data={revenueChartData} // Use transformed revenue data
-            color="var(--chart-5)"
-            title="Revenue"
-            width="w-full"
-            widthco="w-full"
-            dataKey="total"
-            paramKey="revenue"
-          />
-        </Suspense>
+        <TopSellingChartWrapper
+          data={revenueChartData} // Use transformed revenue data
+          color="var(--chart-5)"
+          title="Revenue"
+          width="w-full"
+          widthco="w-full"
+          dataKey="total"
+          paramKey="revenue"
+        />
 
         <Suspense
           fallback={
