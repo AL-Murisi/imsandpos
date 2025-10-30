@@ -149,13 +149,7 @@ function DashboardContentClient({
           paramKey="revenue"
         />
 
-        <Suspense
-          fallback={
-            <div className="h-[300px] animate-pulse rounded bg-gray-200" />
-          }
-        >
-          <ChartPieLegend chartData={staticChartData} />
-        </Suspense>
+        <ChartPieLegend chartData={staticChartData} />
       </div>
 
       {/* Tables - Load last */}
