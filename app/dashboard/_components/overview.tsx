@@ -14,9 +14,6 @@ const TopSellingChartWrapper = dynamic(
   () => import("@/components/common/Barchart"),
   {
     ssr: false,
-    loading: () => (
-      <div className="h-60 animate-pulse rounded-lg bg-gray-200" />
-    ),
   },
 );
 export default function Charts({
