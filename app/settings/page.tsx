@@ -1,17 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { DollarSign, Settings } from "lucide-react";
-import ProductPriceInput from "@/components/common/exchnage";
 import CurrencySwitcher from "@/components/common/CurrencySwitcher";
+import ProductPriceInput from "@/components/common/exchnage";
+import { Settings } from "lucide-react";
+import { useState } from "react";
 
 export default function ExpensesPage() {
   const [expenseType, setExpenseType] = useState<string>("daily");

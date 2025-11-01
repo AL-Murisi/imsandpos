@@ -27,7 +27,7 @@ interface CustomDialogProps {
     id?: string;
     name?: string;
     phoneNumber?: string | null;
-    totalDebt?: number;
+    outstanding?: any;
   } | null;
   product: forsale[];
 }
@@ -204,7 +204,6 @@ export const CartItemRow = memo(
             </SelectContent>
           </Select>
         </TableCell>
-        <TableCell>{item.sellingMode}</TableCell>
         <TableCell className="whitespace-nowrap">${itemPrice}</TableCell>
         <TableCell className="whitespace-nowrap">
           ${(itemPrice * item.selectedQty).toFixed(2)}

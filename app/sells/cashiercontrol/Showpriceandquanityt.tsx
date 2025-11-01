@@ -7,12 +7,14 @@ type forsale = ProductForSale & {
   sellingMode: string;
 };
 interface CustomDialogProps {
-  users: {
-    id?: string;
-    name?: string;
-    phoneNumber?: string | null;
-    totalDebt?: number;
-  } | null;
+  users:
+    | {
+        id?: string;
+        name?: string;
+        phoneNumber?: string | null;
+        totalDebt?: number;
+      }[]
+    | null;
   product: forsale[];
 }
 export default function CartDisplayRedux({

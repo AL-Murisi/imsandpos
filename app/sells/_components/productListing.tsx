@@ -12,7 +12,9 @@ import { useCallback, useEffect, useMemo } from "react";
 import { useFormatter } from "@/hooks/usePrice";
 import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
-import { selectAvailableStock } from "@/lib/selectors";
+import { Selection } from "@/components/common/sellingcat";
+import SearchInput from "@/components/common/searchlist";
+import { parseAsString, useQueryState } from "nuqs";
 const ProductCard = dynamic(
   () => import("../_components/CartClient").then((m) => m.ProductCard),
   { ssr: false },
@@ -29,23 +31,27 @@ type forsale = ProductForSale & {
 
 type prop = {
   product: forsale[];
-
+  formData: {
+    warehouses: { id: string; name: string }[];
+    categories: { id: string; name: string }[];
+  };
   searchParams: any;
   queryr: string;
 };
 
 ProductCard.displayName = "ProductCard";
 
-export default function List({
-  product,
-
-  queryr,
-}: prop) {
+export default function List({ product, formData, queryr }: prop) {
   const t = useTranslations("cashier");
   const dispatch = useAppDispatch();
   const products = useAppSelector((state) => state.products.products);
   const { formatCurrency, formatPriceK, formatQty } = useFormatter();
-  // Memoize the handleAdd function
+  const [query, setQuery] = useQueryState(
+    `productquery`,
+    parseAsString.withDefault("").withOptions({
+      shallow: false,
+    }),
+  );
   const handleAdd = useCallback(
     (products: forsale, search: boolean) => {
       // Determine initial selling unit based on available quantities
@@ -98,6 +104,7 @@ export default function List({
       //       packetsPerCarton: products.availableCartons,
       //     }),
       //   );
+      setQuery("");
     },
     [dispatch],
   );
@@ -133,12 +140,32 @@ export default function List({
   ProductCard.displayName = "ProductCard";
   return (
     <div>
+      <div className="mb-4 grid grid-cols-2 gap-3 bg-transparent px-3 lg:flex-row">
+        {/* <SearchInput placeholder={t("search")} paramKey="product" /> */}
+
+        <Selection
+          options={formData.categories}
+          placeholder={t("filter")}
+          selectkey="categoryId"
+        />
+
+        <SearchInput
+          placeholder={t("search")}
+          paramKey="product"
+          options={product.map((p) => ({
+            id: p.id,
+            name: p.name,
+          }))} // 👈 map your products into { id, name }
+          action={(selected) => {
+            // you can trigger logic here (e.g. set selected product, filter, etc.)
+          }}
+        />
+      </div>
       {queryr && product.length === 0 && (
         <div className="text-muted-foreground mt-4 px-4 text-center text-sm">
           <p>{t("noProductFound", { query: queryr })}</p>
         </div>
       )}
-
       {(product.length > 0 || !queryr) && (
         <ScrollArea className="h-[85vh]">
           <div className="text-muted-foreground mt-4 px-4 text-center text-sm">

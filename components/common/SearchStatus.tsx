@@ -2,7 +2,7 @@
 
 import React from "react";
 // Import the necessary icons from lucide-react
-import { Search, Loader2 } from "lucide-react";
+import { Search, Loader2, X } from "lucide-react";
 
 type SearchStatusProps = {
   searching: boolean;
@@ -21,7 +21,7 @@ export default function SearchStatus({ searching }: SearchStatusProps) {
         <Loader2 className={`${iconClasses} animate-spin`} />
       ) : (
         // 2. Use the Search icon from lucide-react when not searching
-        <Search className={iconClasses} />
+        <X className={iconClasses} />
       )}
     </div>
   );

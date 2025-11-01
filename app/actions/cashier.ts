@@ -199,7 +199,9 @@ export async function processSale(data: any, companyId: string) {
         customerUpdates.push(
           tx.customer.update({
             where: { id: customerId, companyId },
-            data: { outstandingBalance: amountDue },
+            data: {
+              outstandingBalance: { increment: amountDue },
+            },
           }),
         );
       }
@@ -209,7 +211,7 @@ export async function processSale(data: any, companyId: string) {
         customerUpdates.push(
           tx.customer.update({
             where: { id: customerId, companyId },
-            data: { balance: change },
+            data: { balance: +change },
           }),
         );
       }

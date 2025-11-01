@@ -113,6 +113,96 @@ export async function FetchDebtSales(
 
   return serializedDebts; // Return the transformed data
 }
+
+export async function FetchDebtSale(
+  companyId: string,
+  where?: Prisma.SaleWhereInput,
+  searchQuery: string = "",
+  from?: string,
+  to?: string,
+  page: number = 1,
+  pageSize: number = 7,
+  sort?: SortingState,
+) {
+  const combinedWhere: Prisma.SaleWhereInput = {
+    ...where,
+    companyId,
+  };
+
+  // 🔍 Search
+  if (searchQuery) {
+    combinedWhere.OR = [
+      { customer: { name: { contains: searchQuery, mode: "insensitive" } } },
+      {
+        customer: {
+          phoneNumber: { contains: searchQuery, mode: "insensitive" },
+        },
+      },
+    ];
+  }
+
+  // 📅 Date filter
+  const fromDate = from ? new Date(from) : undefined;
+  const toDate = to ? new Date(to) : undefined;
+  if (fromDate || toDate) {
+    combinedWhere.createdAt = {
+      ...(fromDate && { gte: fromDate }),
+      ...(toDate && { lte: toDate }),
+    };
+  }
+
+  // 🧮 Group by customer and sum totals
+  const groupedSales = await prisma.sale.groupBy({
+    by: ["customerId"],
+    where: combinedWhere,
+    _sum: {
+      totalAmount: true,
+      amountPaid: true,
+      amountDue: true,
+    },
+    orderBy: {
+      _sum: { totalAmount: "desc" }, // sort by biggest total
+    },
+    skip: page * pageSize,
+    take: pageSize,
+  });
+
+  // 🧾 Fetch customer details for each group
+  const customerIds = groupedSales.map((g) => g.customerId).filter(Boolean);
+
+  const customers = await prisma.customer.findMany({
+    where: {
+      id: { in: customerIds as string[] },
+      companyId,
+    },
+    select: {
+      id: true,
+      name: true,
+      phoneNumber: true,
+      customerType: true,
+      outstandingBalance: true,
+    },
+  });
+
+  // 🔗 Combine sales + customer info
+  const result = groupedSales.map((group) => {
+    const customer = customers.find((c) => c.id === group.customerId);
+    return {
+      customerId: group.customerId,
+      name: customer?.name || "غير معروف",
+
+      phoneNumber: customer?.phoneNumber || "-",
+      customerType: customer?.customerType || "-",
+      totalAmount: Number(group._sum.totalAmount || 0),
+      amountPaid: Number(group._sum.amountPaid || 0),
+      amountDue: Number(group._sum.amountDue || 0),
+      outstandingBalance: Number(customer?.outstandingBalance || 0),
+    };
+  });
+
+  return result;
+}
+
 export async function FetchCustomerDebtReport(
   customerId: string,
   companyId: string,

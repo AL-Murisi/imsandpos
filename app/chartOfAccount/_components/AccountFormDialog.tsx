@@ -28,6 +28,7 @@ import { createAccount, updateAccount } from "@/app/actions/chartOfaccounts";
 // --------------------
 // Assuming this is your actual action
 import { getParentAccounts } from "@/app/actions/chartOfaccounts";
+import { SelectField } from "@/components/common/selectproduct";
 
 // --------------------
 // Schema
@@ -152,65 +153,65 @@ export default function AccountFormDialog({
   const selectedType = watch("account_type");
 
   const accountTypes = [
-    { value: "ASSET", label: "أصول" },
-    { value: "LIABILITY", label: "خصوم" },
-    { value: "EQUITY", label: "حقوق ملكية" },
-    { value: "REVENUE", label: "إيرادات" },
-    { value: "EXPENSE", label: "مصروفات" },
+    { id: "ASSET", name: "أصول" },
+    { id: "LIABILITY", name: "خصوم" },
+    { id: "EQUITY", name: "حقوق ملكية" },
+    { id: "REVENUE", name: "إيرادات" },
+    { id: "EXPENSE", name: "مصروفات" },
     // { value: "COST_OF_GOODS", label: "تكلفة البضاعة" },
   ];
 
   // ... (accountCategories array is unchanged)
   const accountCategories = [
-    { value: "CASH_AND_BANK", label: "نقد وبنوك", type: "ASSET" },
-    { value: "ACCOUNTS_RECEIVABLE", label: "ذمم مدينة", type: "ASSET" },
-    { value: "INVENTORY", label: "مخزون", type: "ASSET" },
-    { value: "FIXED_ASSETS", label: "أصول ثابتة", type: "ASSET" },
-    { value: "ACCUMULATED_DEPRECIATION", label: "مجمع استهلاك", type: "ASSET" },
+    { id: "CASH_AND_BANK", name: "نقد وبنوك", type: "ASSET" },
+    { id: "ACCOUNTS_RECEIVABLE", name: "ذمم مدينة", type: "ASSET" },
+    { id: "INVENTORY", name: "مخزون", type: "ASSET" },
+    { id: "FIXED_ASSETS", name: "أصول ثابتة", type: "ASSET" },
+    { id: "ACCUMULATED_DEPRECIATION", name: "مجمع استهلاك", type: "ASSET" },
     {
-      value: "OTHER_CURRENT_ASSETS",
-      label: "أصول متداولة أخرى",
+      id: "OTHER_CURRENT_ASSETS",
+      name: "أصول متداولة أخرى",
       type: "ASSET",
     },
-    { value: "OTHER_ASSETS", label: "أصول أخرى", type: "ASSET" },
-    { value: "ACCOUNTS_PAYABLE", label: "ذمم دائنة", type: "LIABILITY" },
-    { value: "CREDIT_CARD", label: "بطاقة ائتمان", type: "LIABILITY" },
-    { value: "SHORT_TERM_LOANS", label: "قروض قصيرة الأجل", type: "LIABILITY" },
+    { id: "OTHER_ASSETS", name: "أصول أخرى", type: "ASSET" },
+    { id: "ACCOUNTS_PAYABLE", name: "ذمم دائنة", type: "LIABILITY" },
+    { id: "CREDIT_CARD", name: "بطاقة ائتمان", type: "LIABILITY" },
+    { id: "SHORT_TERM_LOANS", name: "قروض قصيرة الأجل", type: "LIABILITY" },
     {
-      value: "SALES_TAX_PAYABLE",
-      label: "ضريبة مبيعات مستحقة",
+      id: "SALES_TAX_PAYABLE",
+      name: "ضريبة مبيعات مستحقة",
       type: "LIABILITY",
     },
-    { value: "ACCRUED_EXPENSES", label: "مصاريف مستحقة", type: "LIABILITY" },
+    { id: "ACCRUED_EXPENSES", name: "مصاريف مستحقة", type: "LIABILITY" },
     {
-      value: "OTHER_CURRENT_LIABILITIES",
-      label: "خصوم متداولة أخرى",
+      id: "OTHER_CURRENT_LIABILITIES",
+      name: "خصوم متداولة أخرى",
       type: "LIABILITY",
     },
     {
-      value: "LONG_TERM_LIABILITIES",
-      label: "خصوم طويلة الأجل",
+      id: "LONG_TERM_LIABILITIES",
+      name: "خصوم طويلة الأجل",
       type: "LIABILITY",
     },
-    { value: "OWNER_EQUITY", label: "رأس المال", type: "EQUITY" },
-    { value: "RETAINED_EARNINGS", label: "أرباح محتجزة", type: "EQUITY" },
-    { value: "DRAWINGS", label: "مسحوبات", type: "EQUITY" },
-    { value: "SALES_REVENUE", label: "إيرادات مبيعات", type: "REVENUE" },
-    { value: "SERVICE_REVENUE", label: "إيرادات خدمات", type: "REVENUE" },
-    { value: "OTHER_INCOME", label: "إيرادات أخرى", type: "REVENUE" },
+    { id: "OWNER_EQUITY", name: "رأس المال", type: "EQUITY" },
+    { id: "RETAINED_EARNINGS", name: "أرباح محتجزة", type: "EQUITY" },
+    { id: "DRAWINGS", name: "مسحوبات", type: "EQUITY" },
+    { id: "SALES_REVENUE", name: "إيرادات مبيعات", type: "REVENUE" },
+    { id: "SERVICE_REVENUE", name: "إيرادات خدمات", type: "REVENUE" },
+    { id: "OTHER_INCOME", name: "إيرادات أخرى", type: "REVENUE" },
     {
-      value: "COST_OF_GOODS_SOLD",
-      label: "تكلفة البضاعة المباعة",
+      id: "COST_OF_GOODS_SOLD",
+      name: "تكلفة البضاعة المباعة",
       type: "EXPENSE",
     },
-    { value: "OPERATING_EXPENSES", label: "مصاريف تشغيلية", type: "EXPENSE" },
-    { value: "PAYROLL_EXPENSES", label: "مصاريف رواتب", type: "EXPENSE" },
+    { id: "OPERATING_EXPENSES", name: "مصاريف تشغيلية", type: "EXPENSE" },
+    { id: "PAYROLL_EXPENSES", name: "مصاريف رواتب", type: "EXPENSE" },
     {
-      value: "ADMINISTRATIVE_EXPENSES",
-      label: "مصاريف إدارية",
+      id: "ADMINISTRATIVE_EXPENSES",
+      name: "مصاريف إدارية",
       type: "EXPENSE",
     },
-    { value: "OTHER_EXPENSES", label: "مصاريف أخرى", type: "EXPENSE" },
+    { id: "OTHER_EXPENSES", name: "مصاريف أخرى", type: "EXPENSE" },
   ];
   // ...
 
@@ -293,23 +294,23 @@ export default function AccountFormDialog({
           {/* Account Type */}
           <div className="grid gap-2">
             <Label htmlFor="account_type">نوع الحساب *</Label>
-            <Select
+
+            <SelectField
               value={watch("account_type")}
-              onValueChange={(value: FormValues["account_type"]) =>
-                setValue("account_type", value)
+              action={(value: string) =>
+                setValue(
+                  "account_type",
+                  value as
+                    | "ASSET"
+                    | "LIABILITY"
+                    | "EQUITY"
+                    | "REVENUE"
+                    | "EXPENSE",
+                )
               }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="اختر نوع الحساب" />
-              </SelectTrigger>
-              <SelectContent>
-                {accountTypes.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    {type.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              placeholder="اختر نوع الحساب"
+              options={accountTypes}
+            />
             {errors.account_type && (
               <p className="text-xs text-red-500">
                 {errors.account_type.message}
@@ -347,23 +348,13 @@ export default function AccountFormDialog({
           {/* Category */}
           <div className="grid gap-2">
             <Label htmlFor="account_category">الفئة *</Label>
-            <Select
+            <SelectField
+              options={filteredCategories}
               value={watch("account_category")}
-              onValueChange={(value: string) =>
-                setValue("account_category", value)
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="اختر الفئة" />
-              </SelectTrigger>
-              <SelectContent>
-                {filteredCategories.map((cat) => (
-                  <SelectItem key={cat.value} value={cat.value}>
-                    {cat.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              action={(value: string) => setValue("account_category", value)}
+              placeholder="اختر الفئة"
+            />
+
             {errors.account_category && (
               <p className="text-xs text-red-500">
                 {errors.account_category.message}

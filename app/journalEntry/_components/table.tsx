@@ -1,25 +1,16 @@
 "use client";
 
 import SearchInput from "@/components/common/searchtest";
-import { useTablePrams } from "@/hooks/useTableParams";
-import { RowSelectionState, SortingState } from "@tanstack/react-table";
-import { journalEntryColumns } from "./columns";
-import dynamic from "next/dynamic";
+import { SelectField } from "@/components/common/selection";
 import TableSkeleton from "@/components/common/TableSkeleton";
 import { Button } from "@/components/ui/button";
-import { Download, FileText, Filter } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { use, useState } from "react";
-import { SelectField } from "@/components/common/selection";
-import { BulkPostButton } from "./selection";
-import { setRowSelection } from "@/lib/slices/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useTablePrams } from "@/hooks/useTableParams";
+import { Download } from "lucide-react";
+import dynamic from "next/dynamic";
+import { use, useState } from "react";
+import { journalEntryColumns } from "./columns";
+import { BulkPostButton } from "./selection";
 
 const Calendar22 = dynamic(
   () => import("@/components/common/DatePicker").then((m) => m.Calendar22),
@@ -66,6 +57,11 @@ export default function JournalEntriesTable({
     (sum, entry) => sum + Number(entry.credit || 0),
     0,
   );
+  const filterOptions = [
+    { id: "all", name: "جميع الأنواع" },
+    { id: "automated", name: "تلقائي" },
+    { id: "manual", name: "يدوي" },
+  ];
   const [selectedRows, setSelectedRows] = useState<any[]>([]);
   const isBalanced = Math.abs(totalDebits - totalCredits) < 0.01;
   const optines = [
@@ -78,13 +74,8 @@ export default function JournalEntriesTable({
     { id: "COST_OF_GOODS", name: "تكلفة البضاعة" },
   ];
 
-  function dispatch(arg0: void) {
-    throw new Error("Function not implemented.");
-  }
-
   return (
     <ScrollArea className="h-[95vh] p-4" dir="rtl">
-      {" "}
       {/* Header */}
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
@@ -152,20 +143,11 @@ export default function JournalEntriesTable({
                 placeholder="بحث في القيود (رقم، وصف...)"
                 paramKey="search"
               />
-
-              <Select
-                value={"all"}
-                onValueChange={(value) => setParam("entryType", value)}
-              >
-                <SelectTrigger className="w-full md:w-[200px]">
-                  <SelectValue placeholder="نوع القيد" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">جميع الأنواع</SelectItem>
-                  <SelectItem value="automated">تلقائي</SelectItem>
-                  <SelectItem value="manual">يدوي</SelectItem>
-                </SelectContent>
-              </Select>
+              <SelectField
+                options={filterOptions}
+                paramKey="entryType"
+                placeholder="نوع القيد"
+              />
 
               <SelectField
                 options={optines}

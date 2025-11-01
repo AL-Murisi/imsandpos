@@ -200,10 +200,10 @@ export const inventoryColumns: ColumnDef<any>[] = [
     accessorKey: "warehouse.location",
     header: "الموقع",
   },
-  {
-    accessorKey: "stockQuantity",
-    header: "الكمية في المخزون",
-  },
+  // {
+  //   accessorKey: "stockQuantity",
+  //   header: "الكمية في المخزون",
+  // },
   {
     accessorKey: "reservedQuantity",
     header: "الكمية المحجوزة",

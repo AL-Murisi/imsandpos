@@ -1,4 +1,4 @@
-import { FetchDebtSales } from "@/app/actions/sells";
+import { FetchDebtSale } from "@/app/actions/sells";
 import { ParsedSort } from "@/hooks/sort";
 import { Prisma } from "@prisma/client";
 import { SortingState } from "@tanstack/react-table";
@@ -63,7 +63,7 @@ export default async function DebtSell({ searchParams }: DashboardProps) {
   const user = await getSession();
   if (!user) return;
   const parsedSort: SortingState = ParsedSort(sort);
-  const data = await FetchDebtSales(
+  const data = await FetchDebtSale(
     user.companyId,
     filter,
     usersquery,

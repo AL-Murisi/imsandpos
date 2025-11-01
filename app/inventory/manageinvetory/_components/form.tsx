@@ -58,7 +58,7 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
   } = useForm<FormValues>({
     resolver: zodResolver(UpdateInventorySchema),
     defaultValues: {
-      reservedQuantity: inventory.reservedQuantity ?? 0,
+      reservedQuantity: undefined,
       reorderLevel: inventory.reorderLevel,
       status: inventory.status ?? undefined,
       stockQuantity: undefined,
@@ -136,6 +136,10 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
       setIsSubmitting(true);
 
       if (!warehouseId) return toast.error("الرجاء اختيار المستودع");
+      if ((amount ?? 0) > totalCost) {
+        setIsSubmitting(false);
+        return toast.error("❌ مبلغ الدفع أكبر من إجمالي التكلفة");
+      }
 
       if (updateType === "supplier") {
         if (!supplierId) {

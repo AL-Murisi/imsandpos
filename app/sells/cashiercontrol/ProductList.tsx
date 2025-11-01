@@ -32,17 +32,12 @@ export default async function ProductsList({
 
   return (
     <div className="rounded-2xl p-2 lg:col-span-1">
-      <div className="mb-4 flex flex-wrap gap-3 bg-transparent px-3 lg:flex-row">
-        <SearchInput placeholder={t("search")} paramKey="product" />
-
-        <Selection
-          options={formData.categories}
-          placeholder={t("filter")}
-          selectkey="categoryId"
-        />
-      </div>
-
-      <List product={product} queryr={queryr} searchParams={undefined} />
+      <List
+        product={product}
+        formData={formData}
+        queryr={queryr}
+        searchParams={undefined}
+      />
     </div>
   );
 }

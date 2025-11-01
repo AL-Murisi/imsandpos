@@ -82,36 +82,30 @@ export async function Fetchcustomerbyname(searchQuery?: string) {
     ],
   };
 
-  const customer = await prisma.customer.findFirst({
+  const customer = await prisma.customer.findMany({
     where: combinedWhere,
     select: {
       id: true,
       name: true,
       phoneNumber: true,
+      outstandingBalance: true,
     },
   });
 
   if (!customer) return null;
 
-  const debts = await prisma.sale.findMany({
-    where: {
-      customerId: customer.id,
-      amountDue: { gt: 0 },
-    },
-    select: {
-      amountDue: true,
-    },
-  });
-
-  const totalDebt = debts.reduce(
-    (sum, sale) => sum + sale.amountDue.toNumber(),
-    0,
-  );
-
-  return {
-    ...customer,
-    totalDebt,
-  };
+  // const debts = await prisma.sale.findMany({
+  //   where: {
+  //     customerId: customer.id,
+  //     amountDue: { gt: 0 },
+  //   },
+  //   select: {
+  //     amountDue: true,
+  //   },
+  // });
+  const cusomers = serializeData(customer);
+  console.log(cusomers);
+  return cusomers;
 }
 
 /**

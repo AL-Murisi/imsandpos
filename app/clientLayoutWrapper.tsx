@@ -53,7 +53,7 @@ export default function ClientLayoutWrapper({
       style={
         {
           "--sidebar-width": "15rem",
-          "--sidebar-width-mobile": "10rem",
+          "--sidebar-width-mobile": "14rem",
         } as React.CSSProperties
       }
     >

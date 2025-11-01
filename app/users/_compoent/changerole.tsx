@@ -1,14 +1,8 @@
 "use client";
 import { fetchRolesForSelect } from "@/app/actions/roles";
+import { SelectField } from "@/components/common/selectproduct";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
 import React, { useEffect, useState } from "react";
 type Role = {
   id: string;
@@ -29,23 +23,12 @@ export default function Changerole() {
   return (
     <div className="grid gap-2">
       <Label htmlFor="role">الدور</Label>
-      <Select
+      <SelectField
+        action={(value) => setSelectroled(value)}
         value={selectedRole}
-        onValueChange={(value) => setSelectroled(value)}
-      >
-        <SelectTrigger>
-          <SelectValue placeholder="اختر الدور" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectGroup>
-            {role.map((r) => (
-              <SelectItem key={r.id} value={r.id}>
-                {r.name}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-        </SelectContent>
-      </Select>
+        placeholder="اختر الدور"
+        options={role}
+      />
     </div>
   );
 }

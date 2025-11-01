@@ -31,7 +31,7 @@ import {
 import { ScrollArea, ScrollBar } from "../ui/scroll-area";
 import { useTablePrams } from "@/hooks/useTableParams";
 import { Card } from "../ui/card";
-import { useAppDispatch, useAppSelector } from "@/lib/store";
+import { store, useAppDispatch, useAppSelector } from "@/lib/store";
 import {
   setColumnFilters,
   setColumnVisibility,
@@ -39,6 +39,7 @@ import {
 } from "@/lib/slices/table";
 import { ReactNode } from "react";
 import { useTranslations } from "next-intl";
+import { Provider } from "@radix-ui/react-tooltip";
 
 interface DataTableProps<T> {
   data: T[];

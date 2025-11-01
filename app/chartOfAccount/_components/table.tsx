@@ -1,24 +1,19 @@
 "use client";
 
 import SearchInput from "@/components/common/searchtest";
-import { useTablePrams } from "@/hooks/useTableParams";
-import { SortingState } from "@tanstack/react-table";
-import { accountColumns } from "./columns";
-import dynamic from "next/dynamic";
+import { SelectField } from "@/components/common/selectproduct";
 import TableSkeleton from "@/components/common/TableSkeleton";
 import { Button } from "@/components/ui/button";
-import { Plus, Download, FileSpreadsheet } from "lucide-react";
-import AccountFormDialog from "./AccountFormDialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { SelectField } from "@/components/common/selectproduct";
+import { useTablePrams } from "@/hooks/useTableParams";
+import { SortingState } from "@tanstack/react-table";
+import { Download, FileSpreadsheet } from "lucide-react";
+import dynamic from "next/dynamic";
 
+import { accountColumns } from "./columns";
+const AccountFormDialog = dynamic(() => import("./AccountFormDialog"), {
+  ssr: false,
+});
 const DataTable = dynamic(
   () => import("@/components/common/test").then((m) => m.DataTable),
   {

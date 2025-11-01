@@ -1,22 +1,14 @@
 "use client";
 
 import SearchInput from "@/components/common/searchtest";
-import { useTablePrams } from "@/hooks/useTableParams";
-import { SortingState } from "@tanstack/react-table";
-import { columns } from "./columns";
-import dynamic from "next/dynamic";
+import { SelectField } from "@/components/common/selection";
 import TableSkeleton from "@/components/common/TableSkeleton";
 import { Button } from "@/components/ui/button";
-import { Download, FileText, Filter } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { useTablePrams } from "@/hooks/useTableParams";
+import { Download } from "lucide-react";
+import dynamic from "next/dynamic";
 import { use } from "react";
-import { SelectField } from "@/components/common/selection";
+import { columns } from "./columns";
 
 const Calendar22 = dynamic(
   () => import("@/components/common/DatePicker").then((m) => m.Calendar22),
@@ -73,6 +65,11 @@ export default function JournalEntriesTable({
     { id: "EXPENSE", name: "مصروفات" },
     { id: "COST_OF_GOODS", name: "تكلفة البضاعة" },
   ];
+  const filterOptions = [
+    { id: "all", name: "جميع الأنواع" },
+    { id: "automated", name: "تلقائي" },
+    { id: "manual", name: "يدوي" },
+  ];
   return (
     <div className="rounded-2xl p-2" dir="rtl">
       {/* Header */}
@@ -94,20 +91,11 @@ export default function JournalEntriesTable({
               paramKey="search"
             />
 
-            <Select
-              value={"all"}
-              onValueChange={(value) => setParam("entryType", value)}
-            >
-              <SelectTrigger className="w-full md:w-[200px]">
-                <SelectValue placeholder="نوع القيد" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">جميع الأنواع</SelectItem>
-                <SelectItem value="automated">تلقائي</SelectItem>
-                <SelectItem value="manual">يدوي</SelectItem>
-              </SelectContent>
-            </Select>
-
+            <SelectField
+              options={filterOptions}
+              paramKey="entryType"
+              placeholder="نوع القيد"
+            />
             <SelectField
               options={optines}
               paramKey="accountType"

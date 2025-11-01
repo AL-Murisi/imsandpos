@@ -52,7 +52,7 @@ const SortableHeader: React.FC<SortableHeaderProps> = ({ column, label }) => {
   );
 };
 
-export const debtSaleColumns: ColumnDef<DebtSaleData>[] = [
+export const debtSaleColumns: ColumnDef<any>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -83,69 +83,42 @@ export const debtSaleColumns: ColumnDef<DebtSaleData>[] = [
     enableHiding: false,
   },
   {
-    accessorKey: "customer.name",
+    accessorKey: "name",
     header: ({ column }) => (
       <SortableHeader column={column} label="اسم الزبون" />
     ),
   },
   {
-    accessorKey: "customer.phoneNumber",
+    accessorKey: "phoneNumber",
     header: ({ column }) => (
       <SortableHeader column={column} label="رقم الهاتف" />
     ),
   },
   {
-    accessorKey: "customer.customerType",
+    accessorKey: "customerType",
     header: ({ column }) => (
       <SortableHeader column={column} label="نوع الزبون" />
     ),
   },
+
   // {
   //   accessorKey: "customer.outstandingBalance",
-  //   header: "رصيد العميل",
+  //   header: ({ column }) => (
+  //     <SortableHeader column={column} label=" على العميل" />
+  //   ),
   //   cell: ({ row }) => {
-  //     const balance = row.original.outstandingBalance;
+  //     const balance = row.original.customer?.outstandingBalance ?? 0;
+  //     const color =
+  //       balance > 0
+  //         ? "text-green-600"
+  //         : balance < 0
+  //           ? "text-red-600"
+  //           : "text-gray-600";
 
-  //     const isDebit = balance > 0; // customer owes company
-  //     const isCredit = balance < 0; // company owes customer
-
-  //     return (
-  //       <span
-  //         className={`font-bold ${
-  //           isDebit
-  //             ? "text-red-600"
-  //             : isCredit
-  //               ? "text-green-600"
-  //               : "text-gray-600"
-  //         }`}
-  //       >
-  //         {balance > 0
-  //           ? `+${balance.toFixed(2)} مدين`
-  //           : balance < 0
-  //             ? `${balance.toFixed(2)} دائن`
-  //             : "0"}
-  //       </span>
-  //     );
+  //     const formatted = balance > 0 ? `+${balance}` : balance.toString();
+  //     return <div className={color}>{formatted} $</div>;
   //   },
   // },
-  {
-    accessorKey: "customer.outstandingBalance",
-    header: ({ column }) => (
-      <SortableHeader column={column} label="رصيد العميل" />
-    ),
-    cell: ({ row }) => {
-      const balance = row.original.customer?.outstandingBalance ?? 0;
-      const color =
-        balance > 0
-          ? "text-green-600"
-          : balance < 0
-            ? "text-red-600"
-            : "text-gray-600";
-
-      const formatted = balance > 0 ? `+${balance}` : balance.toString();
-      return <div className={color}>{formatted} $</div>;
-    },
-  },
   {
     accessorKey: "totalAmount",
     header: ({ column }) => <SortableHeader column={column} label="الإجمالي" />,
@@ -231,10 +204,7 @@ export const debtSaleColumns: ColumnDef<DebtSaleData>[] = [
         <div className="flex gap-2">
           {amountDue > 0 && <Debtupdate debt={debt} />}
 
-          <DebtReport
-            customerName={debt.customer?.name}
-            customerID={debt.customerId}
-          />
+          <DebtReport customerName={debt.name} customerID={debt.customerId} />
         </div>
       );
     },

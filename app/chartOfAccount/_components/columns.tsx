@@ -4,26 +4,22 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ColumnDef } from "@tanstack/react-table";
-import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
-  Eye,
-  Edit2,
-  Trash2,
-  Power,
-} from "lucide-react";
-import AccountFormDialog from "./AccountFormDialog";
-import AccountDetailsDialog from "./AccountDetailsDialog";
-import { startTransition, useState, useTransition } from "react";
-import { Dialog } from "puppeteer-core";
-import Dailogreuse from "@/components/common/dailogreuse";
+import { ArrowDown, ArrowUp, ArrowUpDown, Power, Trash2 } from "lucide-react";
+
 import {
   deleteAccount,
   toggleAccountStatus,
 } from "@/app/actions/chartOfaccounts";
+import Dailogreuse from "@/components/common/dailogreuse";
+import dynamic from "next/dynamic";
+import { useState, useTransition } from "react";
 import { toast } from "sonner";
-
+const AccountFormDialog = dynamic(() => import("./AccountFormDialog"), {
+  ssr: false,
+});
+const AccountDetailsDialog = dynamic(() => import("./AccountDetailsDialog"), {
+  ssr: false,
+});
 interface AccountData {
   id: string;
   account_code: string;

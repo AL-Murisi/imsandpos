@@ -1,7 +1,7 @@
 "use client";
 
 import { processSale } from "@/app/actions/cashier";
-import SearchInput from "@/components/common/searchtest";
+import SearchInput from "@/components/common/searchlist";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,13 +67,15 @@ type forsale = ProductForSale & {
   warehousename: string;
   sellingMode: string;
 };
+interface UserOption {
+  id?: string;
+  name?: string;
+  phoneNumber?: string | null;
+  outstandingBalance?: number;
+}
+
 interface CustomDialogProps {
-  users: {
-    id?: string;
-    name?: string;
-    phoneNumber?: string | null;
-    totalDebt?: number;
-  } | null;
+  users: UserOption[] | null;
   product: forsale[];
 }
 
@@ -100,6 +102,8 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
   const [discountValue, setDiscountsValue] = useState(0);
   const [receivedAmount, setReceivedAmount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserOption | null>(null);
+
   const [saleNumber, setSaleNumber] = useState(
     `SALE-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
   );
@@ -169,7 +173,7 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
       totalDiscount: totals.discount,
       totalAfterDiscount: totals.totalAfter,
       cashierId: user.userId ?? "",
-      customerId: users?.id,
+      customerId: selectedUser?.id,
       saleNumber,
       receivedAmount,
       change: calculatedChange,
@@ -226,7 +230,8 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
       : 0;
   const isCash = receivedAmount >= totals.totalAfter;
   const canPay =
-    (isCash && receivedAmount >= totals.totalAfter) || (!isCash && users?.name);
+    (isCash && receivedAmount >= totals.totalAfter) ||
+    (!isCash && selectedUser?.name);
 
   return (
     <div className="bg-accent flex h-[45hv] flex-col rounded-2xl p-2 shadow-xl/20 shadow-gray-500 lg:col-span-1">
@@ -257,7 +262,14 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
           )}
         </div>
         <div className="flex w-60 flex-row justify-end sm:w-2xs md:w-sm">
-          <SearchInput placeholder={tt("search_customer")} paramKey="users" />
+          <SearchInput
+            placeholder={tt("search_customer")}
+            paramKey="users"
+            options={users ?? []}
+            action={(user) => {
+              setSelectedUser(user); // now `user` is single UserOption
+            }}
+          />
         </div>
       </div>
 
@@ -283,13 +295,14 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
           <Table className="w-full">
             <TableHeader className="sticky top-0 z-10">
               <TableRow className="border-amber-300 shadow-xl/20 shadow-gray-900">
-                <TableHead>{t("product")}</TableHead>
+                <TableHead>#</TableHead>
                 <TableHead>{t("sku")}</TableHead>
+
                 <TableHead>{t("product")}</TableHead>
                 <TableHead>{t("warehouse")}</TableHead>
                 <TableHead>{t("quantity")}</TableHead>
                 <TableHead>{t("type")}</TableHead>
-                <TableHead>mose</TableHead>
+
                 <TableHead>{t("price")}</TableHead>
                 <TableHead>{t("total")}</TableHead>
                 <TableHead>{t("actions")}</TableHead>
@@ -334,7 +347,7 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
           <div className="flex items-end justify-between">
             {/* Discount controls */}
             <div className="flex flex-col gap-1">
-              {tt("customer")}: <Badge>{users?.name ?? ""}</Badge>
+              {tt("customer")}: <Badge>{selectedUser?.name ?? ""}</Badge>
               <label
                 htmlFor="discount"
                 className="text-sm font-semibold text-gray-700 dark:text-gray-300"
@@ -408,7 +421,7 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
                   {t("total")}
                 </Label>
                 <span className="text-lg font-bold text-amber-600 dark:text-amber-400">
-                  {FormatPrice(totals.totalAfter)}
+                  {totals.totalAfter.toFixed(2)}
                 </span>
               </div>
               <Input
@@ -434,8 +447,8 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
                   receivedAmount={receivedAmount}
                   calculatedChange={calculatedChange}
                   userName={user?.name}
-                  customerName={users?.name}
-                  customerDebt={users?.totalDebt}
+                  customerName={selectedUser?.name}
+                  customerDebt={selectedUser?.outstandingBalance}
                   isCash={receivedAmount >= totals.totalAfter}
                   t={tt}
                 />
@@ -447,8 +460,8 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
                   receivedAmount={receivedAmount}
                   calculatedChange={calculatedChange}
                   userName={user?.name}
-                  customerName={users?.name}
-                  customerDebt={users?.totalDebt}
+                  customerName={selectedUser?.name}
+                  customerDebt={selectedUser?.outstandingBalance}
                   isCash={receivedAmount >= totals.totalAfter}
                   t={tt}
                 />
@@ -466,6 +479,7 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
               >
                 {isSubmitting ? "جاري الحفظ..." : tt("pay_now")}
               </Button>
+
               <Button
                 onClick={() => {
                   dispatch(clearCart());

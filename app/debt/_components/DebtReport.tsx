@@ -14,7 +14,7 @@ import {
 import { useFormatter } from "@/hooks/usePrice";
 import { useAuth } from "@/lib/context/AuthContext";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface Debt {
   id: string;
@@ -45,25 +45,29 @@ export default function DebtReport({
   const [open, setOpen] = useState(false);
   if (!user) return;
   const { formatCurrency, formatPriceK, formatQty } = useFormatter();
-  const handleFetch = async () => {
-    setLoading(true);
-    const sales = await FetchCustomerDebtReport(customerID, user.companyId);
+  useEffect(() => {
+    if (!customerName) return;
+    const handleFetch = async () => {
+      setLoading(true);
+      const sales = await FetchCustomerDebtReport(customerID, user.companyId);
 
-    const mapped: Debt[] = sales.map((d: any) => ({
-      id: d.id,
-      date: new Date(d.saleDate).toLocaleDateString(),
-      invoiceNo: d.saleNumber,
-      items: d.saleItems
-        .map((i: any) => `${i.product.name} x${i.quantity}`)
-        .join(", "),
-      total: parseFloat(d.totalAmount),
-      paid: parseFloat(d.amountPaid),
-      remaining: parseFloat(d.amountDue),
-    }));
+      const mapped: Debt[] = sales.map((d: any) => ({
+        id: d.id,
+        date: new Date(d.saleDate).toLocaleDateString(),
+        invoiceNo: d.saleNumber,
+        items: d.saleItems
+          .map((i: any) => `${i.product.name} x${i.quantity}`)
+          .join(", "),
+        total: parseFloat(d.totalAmount),
+        paid: parseFloat(d.amountPaid),
+        remaining: parseFloat(d.amountDue),
+      }));
 
-    setDebts(mapped);
-    setLoading(false);
-  };
+      setDebts(mapped);
+      setLoading(false);
+    };
+    handleFetch();
+  }, [open]);
 
   const totalRemaining = debts.reduce((sum, d) => sum + d.remaining, 0);
 
@@ -77,7 +81,7 @@ export default function DebtReport({
     <Dailogreuse
       open={open}
       setOpen={setOpen}
-      btnLabl={`${loading} ? جاري التحميل..." : "عرض الفاتورة`}
+      btnLabl={`عرض الفاتورة`}
       style="max-w-90 overflow-hidden md:max-w-4xl lg:max-w-6xl"
     >
       <div id="receipt-content" className="rounded-md" dir="rtl">

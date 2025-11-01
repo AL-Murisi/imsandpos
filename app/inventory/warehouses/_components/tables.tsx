@@ -2,12 +2,9 @@
 
 import { useTablePrams } from "@/hooks/useTableParams";
 import dynamic from "next/dynamic";
-const Calendar22 = dynamic(
-  () => import("@/components/common/DatePicker").then((m) => m.Calendar22),
-  {
-    ssr: false,
-  },
-);
+const ImportWarehouse = dynamic(() => import("@/components/uploadwarehouse"), {
+  ssr: false,
+});
 const DataTable = dynamic(
   () => import("@/components/common/test").then((m) => m.DataTable),
   {
@@ -20,8 +17,9 @@ import { columns } from "./columns";
 
 import TableSkeleton from "@/components/common/TableSkeleton";
 import WarehouseForm from "@/components/forms/form";
-import ImportWarehouse from "@/components/uploadwarehouse";
+
 import { useTranslations } from "next-intl";
+import { Calendar22 } from "@/components/common/DatePicker";
 
 type ProductClientProps = {
   products: any[];
