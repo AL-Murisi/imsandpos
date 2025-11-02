@@ -25,7 +25,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -35,10 +35,20 @@ export default function LoginPage() {
 
     try {
       const success = await login(email, password);
-
       if (success) {
-        router.push("/");
-        toast("logging successfully ✅ ");
+        const roles = user?.roles || []; // get from returned session
+        let redirectPath = "/";
+
+        if (roles.includes("admin")) redirectPath = "/dashboard";
+        else if (roles.includes("cashier")) redirectPath = "/sells";
+        else if (roles.includes("manager_wh"))
+          redirectPath = "/inventory/dashboardUser";
+        else if (roles.includes("supplier"))
+          redirectPath = "/supplier/products";
+        else if (roles.includes("customer")) redirectPath = "/customer";
+
+        router.push(redirectPath);
+        toast.success("تم تسجيل الدخول بنجاح ✅");
       } else {
         setError("البريد الإلكتروني أو كلمة المرور غير صحيحة");
       }
