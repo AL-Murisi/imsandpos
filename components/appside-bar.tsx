@@ -21,6 +21,9 @@ import {
   BarChart,
   Store,
   ChartBar,
+  Moon,
+  Wallet,
+  Globe,
 } from "lucide-react";
 
 import {
@@ -291,125 +294,148 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>{" "}
       <div className="dark:bg-accent dark:text-foreground text-sidebar flex h-[calc(100vh-8rem)] flex-col justify-between bg-[#0b142a]">
         {/* Scrollable menu area */}
-        <ScrollArea className="h-full pr-2" dir="rtl">
-          <SidebarContent className="dark:bg-accent dark:text-foreground text-sidebar bg-[#0b142a]">
-            {" "}
-            <SidebarGroup>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {visibleMenuItems.map((item) => {
-                    if (item.isDropdown && item.subItems) {
-                      const visibleSubItems = filterSubItems(item.subItems);
+        {/* <ScrollArea className="h-full pr-2" dir="rtl"> */}
+        <SidebarContent className="dark:bg-accent dark:text-foreground text-sidebar bg-[#0b142a]">
+          {" "}
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {visibleMenuItems.map((item) => {
+                  if (item.isDropdown && item.subItems) {
+                    const visibleSubItems = filterSubItems(item.subItems);
 
-                      if (visibleSubItems.length === 0) {
-                        return null; // Don't show dropdown if no sub-items are visible
-                      }
-
-                      return (
-                        <Collapsible
-                          key={item.title}
-                          asChild
-                          defaultOpen={false}
-                        >
-                          <SidebarMenuItem>
-                            <CollapsibleTrigger asChild>
-                              <SidebarMenuButton
-                                tooltip={item.title}
-                                className="text-[18px]"
-                              >
-                                <item.icon />
-                                <span>{item.title}</span>
-                                <ChevronDown className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-180" />
-                              </SidebarMenuButton>
-                            </CollapsibleTrigger>
-                            <CollapsibleContent>
-                              <SidebarMenuSub>
-                                {visibleSubItems.map((subItem) => (
-                                  <SidebarMenuItem
-                                    key={subItem.title}
-                                    className="text-[15px]"
-                                  >
-                                    <SidebarMenuButton
-                                      asChild
-                                      className={` ${
-                                        pathname === subItem.url
-                                          ? "w-40 rounded-l-lg border-r-4 border-r-orange-600 bg-orange-400 text-white"
-                                          : "text-white hover:bg-orange-300/20"
-                                      } !justify-start !pr-4 !pl-8`}
-                                    >
-                                      <Link href={subItem.url || "#"} dir="rtl">
-                                        {subItem.icon}
-                                        <span>{subItem.title}</span>
-                                      </Link>
-                                    </SidebarMenuButton>
-                                  </SidebarMenuItem>
-
-                                  // <SidebarMenuSubItem key={subItem.title}>
-                                  //   <SidebarMenuButton asChild isActive>
-                                  //     <Link href={subItem.url}>
-                                  //       {subItem.icon}
-                                  //       <span>{subItem.title}</span>
-                                  //     </Link>
-                                  //   </SidebarMenuButton>
-                                  // </SidebarMenuSubItem>
-                                ))}
-                              </SidebarMenuSub>
-                            </CollapsibleContent>
-                          </SidebarMenuItem>
-                        </Collapsible>
-                      );
+                    if (visibleSubItems.length === 0) {
+                      return null; // Don't show dropdown if no sub-items are visible
                     }
 
                     return (
-                      <SidebarMenuItem key={item.title} className="text-[20px]">
-                        <SidebarMenuButton
-                          asChild
-                          className={` ${
-                            pathname === item.url
-                              ? "w-52 rounded-l-lg border-r-4 border-r-orange-600 bg-orange-400 text-white"
-                              : "text-white hover:bg-orange-300/20"
-                          } !justify-start !pr-4 !pl-8 text-[18px]`}
-                        >
-                          <Link href={item.url || "#"}>
-                            <item.icon />
-                            <span>{item.title}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
+                      <Collapsible key={item.title} asChild defaultOpen={false}>
+                        <SidebarMenuItem>
+                          <CollapsibleTrigger asChild>
+                            <SidebarMenuButton
+                              tooltip={item.title}
+                              className="text-[18px]"
+                            >
+                              <item.icon />
+                              <span>{item.title}</span>
+                              <ChevronDown className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-180" />
+                            </SidebarMenuButton>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <SidebarMenuSub>
+                              {visibleSubItems.map((subItem) => (
+                                <SidebarMenuItem
+                                  key={subItem.title}
+                                  className="text-[15px]"
+                                >
+                                  <SidebarMenuButton
+                                    asChild
+                                    className={` ${
+                                      pathname === subItem.url
+                                        ? "w-40 rounded-l-lg border-r-4 border-r-orange-600 bg-orange-400 text-white"
+                                        : "text-white hover:bg-orange-300/20"
+                                    } !justify-start !pr-4 !pl-8`}
+                                  >
+                                    <Link href={subItem.url || "#"} dir="rtl">
+                                      {subItem.icon}
+                                      <span>{subItem.title}</span>
+                                    </Link>
+                                  </SidebarMenuButton>
+                                </SidebarMenuItem>
 
-                      // <SidebarMenuItem key={item.title}>
-                      //   <SidebarMenuButton asChild isActive>
-                      //     <Link href={item.url || "#"}>
-                      //       <item.icon />
-                      //       <span>{item.title}</span>
-                      //     </Link>
-                      //   </SidebarMenuButton>
-                      // </SidebarMenuItem>
+                                // <SidebarMenuSubItem key={subItem.title}>
+                                //   <SidebarMenuButton asChild isActive>
+                                //     <Link href={subItem.url}>
+                                //       {subItem.icon}
+                                //       <span>{subItem.title}</span>
+                                //     </Link>
+                                //   </SidebarMenuButton>
+                                // </SidebarMenuSubItem>
+                              ))}
+                            </SidebarMenuSub>
+                          </CollapsibleContent>
+                        </SidebarMenuItem>
+                      </Collapsible>
                     );
-                  })}{" "}
-                  <LocaleSwitcher />
-                  <CurrencySwitcher />
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-            <SidebarFooter>
+                  }
+
+                  return (
+                    <SidebarMenuItem key={item.title} className="text-[20px]">
+                      <SidebarMenuButton
+                        asChild
+                        className={` ${
+                          pathname === item.url
+                            ? "w-52 rounded-l-lg border-r-4 border-r-orange-600 bg-orange-400 text-white"
+                            : "text-white hover:bg-orange-300/20"
+                        } !justify-start !pr-4 !pl-8 text-[18px]`}
+                      >
+                        <Link href={item.url || "#"}>
+                          <item.icon />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+
+                    // <SidebarMenuItem key={item.title}>
+                    //   <SidebarMenuButton asChild isActive>
+                    //     <Link href={item.url || "#"}>
+                    //       <item.icon />
+                    //       <span>{item.title}</span>
+                    //     </Link>
+                    //   </SidebarMenuButton>
+                    // </SidebarMenuItem>
+                  );
+                })}{" "}
+              </SidebarMenu>
+            </SidebarGroupContent>
+            <SidebarGroupContent>
               <SidebarMenu>
+                {/* Logout */}
                 <SidebarMenuItem>
                   <SidebarMenuButton
-                    onClick={() => {
-                      logoutAndRedirect();
-                    }}
+                    tooltip={t("logout")}
+                    onClick={() => logoutAndRedirect()}
                     className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950"
                   >
-                    <LogOut />
+                    <LogOut className="h-5 w-5" />
                     <span>{t("logout")}</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
+
+                {/* Language */}
+                <SidebarMenuItem>
+                  <SidebarMenuButton tooltip={t("language")} asChild>
+                    <div className="flex items-center gap-2">
+                      <Globe className="h-5 w-5 text-blue-400" />
+                      <LocaleSwitcher />
+                    </div>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+
+                {/* Currency */}
+                <SidebarMenuItem>
+                  <SidebarMenuButton tooltip={t("currency")} asChild>
+                    <div className="flex items-center gap-2">
+                      <Wallet className="h-5 w-5 text-yellow-400" />
+                      <CurrencySwitcher />
+                    </div>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+
+                {/* Theme */}
+                <SidebarMenuItem>
+                  <SidebarMenuButton tooltip={t("theme")} asChild>
+                    <div className="flex items-center gap-2">
+                      <Moon className="h-5 w-5 text-indigo-400" />
+                      <ModeToggle />
+                    </div>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
               </SidebarMenu>
-              <ModeToggle />
-            </SidebarFooter>{" "}
-          </SidebarContent>
-        </ScrollArea>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+        {/* </ScrollArea> */}
       </div>
     </Sidebar>
   );

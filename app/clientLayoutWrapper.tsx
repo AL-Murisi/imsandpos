@@ -14,6 +14,7 @@ import { store } from "@/lib/store";
 import Appheader from "./AppHeader/appheader";
 import { ScrollArea } from "@radix-ui/react-scroll-area";
 import { verifySession } from "@/lib/dal";
+import IMSLoader from "@/components/loadinf";
 
 export default function ClientLayoutWrapper({
   children,
@@ -28,13 +29,7 @@ export default function ClientLayoutWrapper({
   const isAuthRoute = authRoutes.includes(pathname);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center">
-        <div className="text-accent min-h-screen w-full animate-pulse border-b-2 bg-gray-500">
-          weclome to ims
-        </div>
-      </div>
-    );
+    return <IMSLoader />;
   }
 
   // If it's an auth route or user is not authenticated, show simple layout
@@ -53,7 +48,7 @@ export default function ClientLayoutWrapper({
       style={
         {
           "--sidebar-width": "15rem",
-          "--sidebar-width-mobile": "14rem",
+          "--sidebar-width-mobile": "1rem",
         } as React.CSSProperties
       }
     >
@@ -69,7 +64,12 @@ export default function ClientLayoutWrapper({
       </SidebarInset>
       {/* {" "}
       <SidebarTrigger /> */}
-      <AppSidebar variant="inset" className="text-2xl" side="right" dir="rtl" />
+      <AppSidebar
+        variant="floating"
+        className="text-2xl"
+        side="right"
+        dir="rtl"
+      />
     </SidebarProvider>
     // </div>
   );

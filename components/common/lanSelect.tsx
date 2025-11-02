@@ -38,11 +38,11 @@ export default function LocaleSwitcherSelect({
       <SelectTrigger
         aria-label={label}
         className={clsx(
-          "flex items-center gap-2 rounded-sm border-0 px-3 py-2 text-sm hover:bg-gray-500",
+          "flex items-center border-[#0b142a] bg-[#0b142a] text-sm hover:bg-gray-500",
           isPending && "pointer-events-none opacity-60",
         )}
       >
-        <Languages className="text-muted-foreground h-5 w-5" color="red" />
+        {/* <Languages className="text-muted-foreground h-5 w-5" color="red" /> */}
         <SelectValue placeholder={label} className="" />
       </SelectTrigger>
       <SelectContent align="end" className="bg-background rounded-md shadow-md">
@@ -50,7 +50,7 @@ export default function LocaleSwitcherSelect({
           <SelectItem
             key={item.value}
             value={item.value}
-            className="border-primary flex items-center gap-x-4 gap-y-3 border"
+            className="flex items-center gap-x-4 gap-y-3"
           >
             {/* {item.value === defaultValue && (
               <Check className="text-muted-foreground h-4 w-4" />

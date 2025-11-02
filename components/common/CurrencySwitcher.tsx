@@ -8,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DollarSign } from "lucide-react";
 
 export default function CurrencySwitcher() {
   const [currency, setCurrency] = useState("USD");
@@ -29,8 +30,8 @@ export default function CurrencySwitcher() {
 
   return (
     <Select value={currency} onValueChange={handleCurrencyChange}>
-      <SelectTrigger className="">
-        <SelectValue placeholder="اختر العملة" />
+      <SelectTrigger className="border-[#0b142a] bg-[#0b142a]">
+        <DollarSign color="white" />
       </SelectTrigger>
       <SelectContent>
         <SelectItem value="YER">ريال يمني</SelectItem>
