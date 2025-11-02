@@ -27,7 +27,7 @@ export default function Charts({
       formData={formData}
       color="var(--chart-3)"
       title="Top Sales"
-      width=" sm:w-sm w-2xs md:w-3xl lg:w-5xl "
+      width="w-full "
       widthco="w-full sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-2xl 2xl:max-w-4xl"
       dataKey="quantity"
       paramKey="topItems"
