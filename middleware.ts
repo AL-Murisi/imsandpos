@@ -36,7 +36,7 @@ const routePermissions: Record<string, string[]> = {
 };
 
 // Public routes that don't require authentication
-const publicRoutes = ["/login", "/signup", "/", "/manifest.json"];
+const publicRoutes = ["/login", "/signup", "/landing", "/manifest.json"];
 
 // Routes that authenticated workers should be redirected from
 const authRoutes = ["/login", "/signup"];
