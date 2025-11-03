@@ -44,6 +44,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import dynamic from "next/dynamic";
+import { useCompany } from "@/hooks/useCompany";
 
 const PrintButton = dynamic(
   () => import("./test").then((mod) => mod.PrintButton),
@@ -78,6 +79,18 @@ interface CustomDialogProps {
   users: UserOption[] | null;
   product: forsale[];
 }
+type company =
+  | {
+      id: string;
+      name: string;
+      email: string | null;
+      phone: string | null;
+      address: string | null;
+      city: string | null;
+      country: string | null;
+      logoUrl: string | null;
+    }
+  | undefined;
 
 export default function CartDisplay({ users, product }: CustomDialogProps) {
   const { user } = useAuth();
@@ -98,6 +111,9 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
       userAgent,
     );
   // Local state
+  if (!user) return; // wait until user is loaded
+  const { company } = useCompany();
+
   const [discountType, setDiscountType] = useState<discountType>("fixed");
   const [discountValue, setDiscountsValue] = useState(0);
   const [receivedAmount, setReceivedAmount] = useState(0);
@@ -451,6 +467,7 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
                   customerDebt={selectedUser?.outstandingBalance}
                   isCash={receivedAmount >= totals.totalAfter}
                   t={tt}
+                  company={company}
                 />
               ) : (
                 <Receipt
@@ -464,7 +481,21 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
                   customerDebt={selectedUser?.outstandingBalance}
                   isCash={receivedAmount >= totals.totalAfter}
                   t={tt}
+                  company={company} // ✅ new prop
                 />
+
+                // <Receipt
+                //   saleNumber={saleNumber}
+                //   items={items}
+                //   totals={totals}
+                //   receivedAmount={receivedAmount}
+                //   calculatedChange={calculatedChange}
+                //   userName={user?.name}
+                //   customerName={selectedUser?.name}
+                //   customerDebt={selectedUser?.outstandingBalance}
+                //   isCash={receivedAmount >= totals.totalAfter}
+                //   t={tt}
+                // />
               )}
               <Button
                 disabled={!canPay || isSubmitting}

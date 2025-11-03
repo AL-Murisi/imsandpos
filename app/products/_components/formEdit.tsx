@@ -21,11 +21,13 @@ interface Option {
 
 interface ProductEditFormProps {
   product: any;
+  type: "full" | "cartonUnit" | "cartonOnly";
   onSuccess?: () => void;
 }
 
 export default function ProductEditForm({
   product,
+  type,
   onSuccess,
 }: ProductEditFormProps) {
   const [formData, setFormData] = useState<{
@@ -45,7 +47,7 @@ export default function ProductEditForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pricingMode, setPricingMode] = useState<
     "full" | "cartonUnit" | "cartonOnly"
-  >("full");
+  >(type ?? "full");
 
   const { user } = useAuth();
   const isUpdatingRef = useRef(false);
@@ -99,16 +101,6 @@ export default function ProductEditForm({
     if (!product) return;
 
     // Determine pricing mode based on prices
-    const hasUnit = product.pricePerUnit && product.pricePerUnit > 0;
-    const hasPacket = product.pricePerPacket && product.pricePerPacket > 0;
-    const hasCarton = product.pricePerCarton && product.pricePerCarton > 0;
-
-    let mode: "full" | "cartonUnit" | "cartonOnly" = "full";
-    if (hasUnit && hasPacket && hasCarton) mode = "full";
-    else if (hasUnit && !hasPacket && hasCarton) mode = "cartonUnit";
-    else if (!hasUnit && !hasPacket && hasCarton) mode = "cartonOnly";
-
-    setPricingMode(mode);
 
     reset({
       name: product.name || "",
@@ -146,6 +138,7 @@ export default function ProductEditForm({
         "pricePerPacket",
         Math.round(calculatedPricePerPacket * 100) / 100,
       );
+      setValue("type", "full");
       const calculatedPricePerUnit = calculatedPricePerPacket / unitsPerPacket;
       setValue("pricePerUnit", Math.round(calculatedPricePerUnit * 100) / 100);
       isUpdatingRef.current = false;
@@ -166,6 +159,9 @@ export default function ProductEditForm({
       const calculatedPricePerUnit = pricePerCarton / unitsPerPacket;
       setValue("pricePerUnit", Math.round(calculatedPricePerUnit * 100) / 100);
       isUpdatingRef.current = false;
+      setValue("type", "cartonUnit");
+    } else {
+      setValue("type", "cartonOnly");
     }
   }, [pricePerCarton, unitsPerPacket, pricingMode]);
 

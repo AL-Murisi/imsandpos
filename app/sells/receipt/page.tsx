@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { useReactToPrint } from "react-to-print";
 import { useSearchParams } from "next/navigation";
 import { Printer } from "lucide-react";
 import { useFormatter } from "@/hooks/usePrice";
+import { useAuth } from "@/lib/context/AuthContext";
+import { getCompany } from "@/app/actions/createcompnayacc";
 export interface ReceiptItem {
   id: string;
   name: string;
@@ -33,6 +35,19 @@ export interface ReceiptProps {
   isCash: boolean;
   t: any;
 }
+type company =
+  | {
+      id: string;
+      name: string;
+      email: string | null;
+      phone: string | null;
+      address: string | null;
+      city: string | null;
+      country: string | null;
+      logoUrl: string | null;
+    }
+  | undefined;
+
 export default function Receipt() {
   const printRef = useRef<HTMLDivElement>(null);
   const params = useSearchParams();
@@ -47,7 +62,7 @@ export default function Receipt() {
   const customerName = params.get("customerName") ?? "";
   const customerDebt = parseFloat(params.get("customerDebt") ?? "0");
   const isCash = params.get("isCash") === "1";
-
+  const company = JSON.parse(params.get("company") ?? "[]");
   const handlePrint = useReactToPrint({
     contentRef: printRef,
     documentTitle: `Receipt-${saleNumber}`,
@@ -78,6 +93,7 @@ export default function Receipt() {
         return 0;
     }
   };
+
   return (
     <>
       {/* 🔹 Printable Area */}
@@ -191,15 +207,15 @@ export default function Receipt() {
             >
               {/* Company */}
               <div style={{ textAlign: "right" }}>
-                <div className="green text-3xl">مؤسسة عادل الرياشي</div>
-                <div className="text-2xl">للتجارة والاستيراد</div>
+                <div className="green text-3xl">{company?.name} </div>
+                <div className="text-2xl"> {company?.name}</div>
                 <div>رقم الفاتورة: {saleNumber}</div>
               </div>
 
               {/* Logo */}
               <div style={{ textAlign: "center" }}>
                 <img
-                  src="/logo.png"
+                  src={company?.logoUrl ?? ""}
                   alt="Logo"
                   style={{ width: "90px", height: "80px" }}
                 />
@@ -207,8 +223,9 @@ export default function Receipt() {
 
               {/* Branch */}
               <div style={{ textAlign: "left" }}>
-                <div>فرع سناح - أمام محطة الصيادي</div>
-                <div>تلفون: 772222599</div>
+                <div> {company?.city}</div>
+                <div> {company?.address}</div>
+                <div>تلفون: {company?.phone}</div>
               </div>
             </div>
 

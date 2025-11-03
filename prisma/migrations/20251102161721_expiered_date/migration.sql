@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "products" ADD COLUMN     "  expired_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;

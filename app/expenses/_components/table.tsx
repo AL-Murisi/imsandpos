@@ -29,12 +29,9 @@ import { expenseColumns } from "./columns";
 import TableSkeleton from "@/components/common/TableSkeleton";
 import { Calendar22 } from "@/components/common/DatePicker";
 
-const ExpenseCategoryForm = dynamic(() => import("./creatCatform"), {
-  ssr: false,
-});
 type ProductClientProps = {
   data: any;
-  total: number;
+  total: any;
 
   formData: { id: string; name: string }[];
 };
@@ -78,8 +75,6 @@ export default function ExpensesPage({
           userId={user.id}
           categories={formData}
         />
-
-        <ExpenseCategoryForm companyId={user.companyId} />
       </div>
 
       <DataTable

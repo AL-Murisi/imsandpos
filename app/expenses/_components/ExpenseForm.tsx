@@ -11,10 +11,9 @@ import { useAuth } from "@/lib/context/AuthContext";
 import { useState, useTransition } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
-import ExpenseCategoryForm from "./creatCatform";
 
 interface ExpenseFormInput {
-  expense_categoriesId: string;
+  account_id: string;
   description: string;
   amount: string;
   expense_date: string;
@@ -64,8 +63,9 @@ export default function ExpenseForm({
     startTransition(async () => {
       const payload = {
         ...values,
+
         amount: parsedAmount,
-        expense_date: new Date(values.expense_date),
+        expense_date: new Date(),
       };
 
       const res = await createExpense(user.companyId, user.userId, payload);
@@ -78,7 +78,7 @@ export default function ExpenseForm({
       }
     });
   };
-  const categoriesId = watch("expense_categoriesId");
+  const account_id = watch("account_id");
   // ✅ Inside onSubmit: just close dialog on success
   const paymentMethods = [
     { id: "cash", name: "نقداً" },
@@ -86,6 +86,22 @@ export default function ExpenseForm({
     { id: "check", name: "شيك" },
     { id: "credit", name: "ائتمان" },
   ];
+  const accountCategories = [
+    {
+      id: "COST_OF_GOODS_SOLD",
+      name: "تكلفة البضاعة المباعة",
+      type: "EXPENSE",
+    },
+    { id: "OPERATING_EXPENSES", name: "مصاريف تشغيلية", type: "EXPENSE" },
+    { id: "PAYROLL_EXPENSES", name: "مصاريف رواتب", type: "EXPENSE" },
+    {
+      id: "ADMINISTRATIVE_EXPENSES",
+      name: "مصاريف إدارية",
+      type: "EXPENSE",
+    },
+    { id: "OTHER_EXPENSES", name: "مصاريف أخرى", type: "EXPENSE" },
+  ];
+  // ...
   return (
     <Dailogreuse
       open={open}
@@ -112,15 +128,14 @@ export default function ExpenseForm({
 
             <SelectField
               options={categories}
-              value={categoriesId}
-              action={(val) => setValue("expense_categoriesId", val)}
+              value={account_id}
+              action={(val) => setValue("account_id", val)}
               placeholder="اختر الفئة"
-              add={<ExpenseCategoryForm companyId={user.companyId} />}
             />
 
-            {errors.expense_categoriesId && (
+            {errors.account_id && (
               <p className="mt-1 text-xs text-red-400">
-                {errors.expense_categoriesId.message}
+                {errors.account_id.message}
               </p>
             )}
           </div>
@@ -170,6 +185,7 @@ export default function ExpenseForm({
             </label>
             <Input
               type="date"
+              defaultValue={new Date().toISOString().split("T")[0]} // "YYYY-MM-DD"
               {...register("expense_date", {
                 required: "يرجى تحديد تاريخ المصروف",
               })}
@@ -193,7 +209,7 @@ export default function ExpenseForm({
               rules={{ required: "يرجى تحديد طريقة الدفع" }}
               render={({ field }) => (
                 <SelectField
-                  options={categories}
+                  options={paymentMethods}
                   value={field.value}
                   action={field.onChange}
                   placeholder="اختر طريقة الدفع"

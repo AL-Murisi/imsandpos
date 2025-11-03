@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { fetchReceipt } from "@/app/actions/sells";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,16 +26,29 @@ import { useTranslations } from "next-intl";
 import { PrintButton } from "./test";
 import { Receipt } from "@/components/common/receipt";
 import { useAuth } from "@/lib/context/AuthContext";
+import { useCompany } from "@/hooks/useCompany";
 
 type Props = {
   id: string;
 };
-
+type company =
+  | {
+      id: string;
+      name: string;
+      email: string | null;
+      phone: string | null;
+      address: string | null;
+      city: string | null;
+      country: string | null;
+      logoUrl: string | null;
+    }
+  | undefined;
 export default function Recitp({ id }: Props) {
-  const [data, setData] = React.useState<any>(null);
-  const [loading, setLoading] = React.useState(false);
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
   const t = useTranslations("payment");
   const { user } = useAuth();
+  const { company } = useCompany();
   const userAgent =
     typeof window !== "undefined" ? navigator.userAgent.toLowerCase() : "";
   const isMobileUA =
@@ -43,6 +56,7 @@ export default function Recitp({ id }: Props) {
       userAgent,
     );
   if (!user) return;
+
   const handleFetch = async () => {
     try {
       setLoading(true);
@@ -202,6 +216,7 @@ export default function Recitp({ id }: Props) {
                 customerDebt={Number(data.customer_debt ?? 0)}
                 isCash={Boolean(data.is_cash)}
                 t={t}
+                company={company}
               />
             ) : (
               <Receipt
@@ -219,6 +234,7 @@ export default function Recitp({ id }: Props) {
                 customerDebt={Number(data.customer_debt ?? 0)}
                 isCash={Boolean(data.is_cash)}
                 t={t}
+                company={company}
               />
             )}
           </div>

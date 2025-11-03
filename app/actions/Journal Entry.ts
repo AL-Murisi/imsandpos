@@ -291,87 +291,87 @@ export async function createPurchaseWithJournalEntries(
  * - Debit: Expense Account - $500
  * - Credit: Cash (Asset) - $500
  */
-export async function createExpenseWithJournalEntries(
-  expenseData: any,
-  userId: string,
-  companyId: string,
-) {
-  return await prisma.$transaction(async (tx) => {
-    // 1. Create the expense
-    const expense = await tx.expenses.create({
-      data: {
-        ...expenseData,
-        company_id: companyId,
-        user_id: userId,
-      },
-    });
+// export async function createExpenseWithJournalEntries(
+//   expenseData: any,
+//   userId: string,
+//   companyId: string,
+// ) {
+//   return await prisma.$transaction(async (tx) => {
+//     // 1. Create the expense
+//     const expense = await tx.expenses.create({
+//       data: {
+//         ...expenseData,
+//         company_id: companyId,
+//         user_id: userId,
+//       },
+//     });
 
-    // 2. Get account mappings
-    const cashAccountId = await getAccountMapping(companyId, "cash");
+//     // 2. Get account mappings
+//     const cashAccountId = await getAccountMapping(companyId, "cash");
 
-    // Get or create expense category account
-    let expenseAccountId;
-    if (expense.category_id) {
-      const category = await tx.expense_categories.findUnique({
-        where: { id: expense.category_id },
-      });
+//     // Get or create expense category account
+//     let expenseAccountId;
+//     // if (expense.category_id) {
+//     //   const category = await tx.expense_categories.findUnique({
+//     //     where: { id: expense.category_id },
+//     //   });
 
-      // Find corresponding expense account (you'd need to link categories to accounts)
-      const expenseAccount = await tx.accounts.findFirst({
-        where: {
-          company_id: companyId,
-          account_category: "OPERATING_EXPENSES",
-          account_name_en: {
-            contains: category?.name,
-          },
-        },
-      });
+//       // Find corresponding expense account (you'd need to link categories to accounts)
+//       const expenseAccount = await tx.accounts.findFirst({
+//         where: {
+//           company_id: companyId,
+//           account_category: "OPERATING_EXPENSES",
+//           account_name_en: {
+//             contains: category?.name,
+//           },
+//         },
+//       });
 
-      expenseAccountId =
-        expenseAccount?.id ||
-        (await getAccountMapping(companyId, "operating_expenses"));
-    }
+//       expenseAccountId =
+//         expenseAccount?.id ||
+//         (await getAccountMapping(companyId, "operating_expenses"));
+//     }
 
-    // 3. Create journal entries
+//     // 3. Create journal entries
 
-    // Expense (Debit)
-    await createJournalEntry({
-      companyId,
-      accountId: expenseAccountId ?? "",
-      description: `Expense: ${expense.description}`,
-      debit: Number(expense.amount),
-      credit: 0,
-      referenceType: "expense",
-      referenceId: expense.id,
-      userId,
-    });
+//     // Expense (Debit)
+//     await createJournalEntry({
+//       companyId,
+//       accountId: expenseAccountId ?? "",
+//       description: `Expense: ${expense.description}`,
+//       debit: Number(expense.amount),
+//       credit: 0,
+//       referenceType: "expense",
+//       referenceId: expense.id,
+//       userId,
+//     });
 
-    // Cash reduction (Credit)
-    await createJournalEntry({
-      companyId,
-      accountId: cashAccountId,
-      description: `Payment for expense: ${expense.description}`,
-      debit: 0,
-      credit: Number(expense.amount),
-      referenceType: "expense",
-      referenceId: expense.id,
-      userId,
-    });
+//     // Cash reduction (Credit)
+//     await createJournalEntry({
+//       companyId,
+//       accountId: cashAccountId,
+//       description: `Payment for expense: ${expense.description}`,
+//       debit: 0,
+//       credit: Number(expense.amount),
+//       referenceType: "expense",
+//       referenceId: expense.id,
+//       userId,
+//     });
 
-    // 4. Update account balances
-    await tx.accounts.update({
-      where: { id: expenseAccountId },
-      data: { balance: { increment: expense.amount } },
-    });
+//     // 4. Update account balances
+//     await tx.accounts.update({
+//       where: { id: expenseAccountId },
+//       data: { balance: { increment: expense.amount } },
+//     });
 
-    await tx.accounts.update({
-      where: { id: cashAccountId },
-      data: { balance: { decrement: expense.amount } },
-    });
+//     await tx.accounts.update({
+//       where: { id: cashAccountId },
+//       data: { balance: { decrement: expense.amount } },
+//     });
 
-    return expense;
-  });
-}
+//     return expense;
+// //   });
+// // }
 
 /**
  * 4. PAYMENT RECEIVED FROM CUSTOMER

@@ -9,7 +9,7 @@ export const productSchema = z.object({
   description: z.string().nullable().optional(),
   categoryId: z.string().min(1, "معرّف الفئة مطلوب"),
   brandId: z.string().nullable().optional(),
-  type: z.enum(["single", "bundle", "variant"]).optional(),
+  type: z.enum(["full", "cartonUnit", "cartonOnly"]).default("full").optional(),
   unitsPerPacket: z.number().int().min(1, "عدد الوحدات في العبوة مطلوب"),
   packetsPerCarton: z.number().int().min(1, "عدد العبوات في الكرتون مطلوب"),
   costPrice: z.number().positive("سعر التكلفة يجب أن يكون موجبًا"),
@@ -39,7 +39,10 @@ export const CreateProductSchema = z
     description: z.string().nullable().optional(),
     categoryId: z.string().min(1, "معرّف الفئة مطلوب"),
     brandId: z.string().nullable().optional(),
-    type: z.enum(["single", "bundle", "variant"]).nullable().optional(),
+    type: z
+      .enum(["full", "cartonUnit", "cartonOnly"])
+      .default("full")
+      .optional(),
 
     // ✅ Allow 0 for carton-only products
     unitsPerPacket: z

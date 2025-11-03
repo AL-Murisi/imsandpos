@@ -3,7 +3,6 @@
 "use server";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
-import { revalidate } from "../dashboard/page";
 import { revalidatePath, unstable_noStore } from "next/cache";
 import { CreateSupplierInput, CreateSupplierSchema } from "@/lib/zod";
 import { cache } from "react";

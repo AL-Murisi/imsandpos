@@ -77,6 +77,7 @@ import { useRouter } from "next/navigation";
 import CurrencySwitcher from "./common/CurrencySwitcher";
 import { useCurrency } from "./CurrencyProvider";
 import { ScrollArea } from "./ui/scroll-area";
+
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user, hasAnyRole, logoutAndRedirect } = useAuth();
   const pathname = usePathname();
@@ -233,6 +234,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const visibleMenuItems = menuItems.filter((item) => {
     return hasAnyRole(item.roles);
   });
+  let url;
+  if (user.company?.logoUrl) {
+    url = user.company.logoUrl;
+  } else {
+    url = "";
+  }
   // const visibleMenuItems = menuItems.filter((item) => {
   //   return item.roles.includes("admin"); // Hardcoded
   // });
@@ -267,7 +274,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     <Sidebar
       collapsible="icon"
       {...props}
-      className="dark:bg-accent dark:text-foreground text-sidebar bg-[#0b142a]"
+      className="dark:bg-accent dark:text-foreground text-sidebar bg-[#0b142a] py-4"
     >
       <SidebarHeader className="bg-[#0b142a]">
         <div className="flex items-center gap-2 transition-all">
@@ -278,12 +285,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           >
             <Package className="text-2xl" />
           </div>
-
-          {/* <div className="flex items-center gap-1 text-left text-sm leading-tight">
-            <span className="text-sidebar truncate text-[15px] font-semibold dark:text-amber-50">
-              Stockly
-            </span>
-          </div> */}
         </div>
         <SidebarGroupLabel className="dark:text-foreground text-sidebar text-xs">
           {t("welcome")} {user.name}
@@ -295,8 +296,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <div className="dark:bg-accent dark:text-foreground text-sidebar flex h-[calc(100vh-8rem)] flex-col justify-between bg-[#0b142a]">
         {/* Scrollable menu area */}
         {/* <ScrollArea className="h-full pr-2" dir="rtl"> */}
-        <SidebarContent className="dark:bg-accent dark:text-foreground text-sidebar bg-[#0b142a]">
-          {" "}
+        <SidebarContent className="dark:bg-accent dark:text-foreground text-sidebar h-full rounded-sm bg-[#0b142a] p-1">
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
@@ -309,7 +309,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     }
 
                     return (
-                      <Collapsible key={item.title} asChild defaultOpen={false}>
+                      <Collapsible key={item.title} asChild defaultOpen={true}>
                         <SidebarMenuItem>
                           <CollapsibleTrigger asChild>
                             <SidebarMenuButton
@@ -334,7 +334,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                       pathname === subItem.url
                                         ? "w-40 rounded-l-lg border-r-4 border-r-orange-600 bg-orange-400 text-white"
                                         : "text-white hover:bg-orange-300/20"
-                                    } !justify-start !pr-4 !pl-8`}
+                                    } !pl- !justify-start !pr-4`}
                                   >
                                     <Link href={subItem.url || "#"} dir="rtl">
                                       {subItem.icon}

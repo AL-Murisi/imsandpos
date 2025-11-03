@@ -82,7 +82,22 @@ export const createColumns = (
     {
       accessorKey: "type",
       header: tt("type"),
+      cell: ({ row }) => {
+        const type = row.getValue("type") as
+          | "full"
+          | "cartonUnit"
+          | "cartonOnly";
+
+        const typeMap: Record<"full" | "cartonUnit" | "cartonOnly", string> = {
+          full: "وحدة + عبوة + كرتونة",
+          cartonUnit: "وحدة + كرتونة",
+          cartonOnly: "كرتونة فقط",
+        };
+
+        return type ? typeMap[type] : "غير محدد";
+      },
     },
+
     {
       accessorKey: "sku",
       header: ({ column }) => (
@@ -255,7 +270,7 @@ export const createColumns = (
               <CopyIcon className="h-4 w-4" />
             </Button>
 
-            <ProductEditFormm product={product} />
+            <ProductEditFormm product={product} type={product.type ?? "full"} />
 
             <Button
               variant="outline"

@@ -103,3 +103,57 @@ export async function createCompany(data: CreateCompanyInput) {
     return { success: false, message: error.message };
   }
 }
+
+export async function updateCompany(
+  companyId: string,
+  data: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    city?: string;
+    country?: string;
+    logoUrl?: string;
+  },
+) {
+  try {
+    const updatedCompany = await prisma.company.update({
+      where: { id: companyId },
+      data: {
+        ...data,
+        updatedAt: new Date(),
+      },
+    });
+
+    return { success: true, company: updatedCompany };
+  } catch (error: any) {
+    console.error("❌ Error updating company:", error);
+    return { success: false, message: error.message };
+  }
+}
+export async function getCompany(companyId: string) {
+  try {
+    const company = await prisma.company.findUnique({
+      where: { id: companyId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        address: true,
+        city: true,
+        country: true,
+        logoUrl: true,
+      },
+    });
+
+    if (!company) {
+      return { success: false, message: "لم يتم العثور على الشركة" };
+    }
+
+    return { success: true, data: company };
+  } catch (error: any) {
+    console.error("❌ Error fetching company:", error);
+    return { success: false, message: error.message };
+  }
+}

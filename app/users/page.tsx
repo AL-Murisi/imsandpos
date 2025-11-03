@@ -5,6 +5,7 @@ import { getActivityLogs } from "../actions/activitylogs";
 import { getSession } from "@/lib/session";
 import { fetchRoles, fetchRolesForSelect } from "../actions/roles";
 import UserTab from "./_compoent/tabs";
+import { getCompany } from "../actions/createcompnayacc";
 
 type Users = {
   searchParams: Promise<{
@@ -39,7 +40,7 @@ export default async function User({ searchParams }: Users) {
   const name = (await searchParams).usersquery;
   const user = await getSession();
   if (!user) return;
-  const [data, logs, roless, roles] = await Promise.all([
+  const [data, logs, roless, roles, company] = await Promise.all([
     fetechUser(
       user.companyId,
       usersquery,
@@ -55,6 +56,15 @@ export default async function User({ searchParams }: Users) {
     // const data = await fetechUser();
     fetchRolesForSelect(),
     fetchRoles(pageIndex, pageSize),
+    getCompany(user.companyId),
   ]);
-  return <UserTab data={data} roless={roless} logs={logs} roles={roles} />;
+  return (
+    <UserTab
+      data={data}
+      roless={roless}
+      logs={logs}
+      roles={roles}
+      company={company.data}
+    />
+  );
 }

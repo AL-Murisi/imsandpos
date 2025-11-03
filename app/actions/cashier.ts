@@ -211,7 +211,7 @@ export async function processSale(data: any, companyId: string) {
         customerUpdates.push(
           tx.customer.update({
             where: { id: customerId, companyId },
-            data: { balance: +change },
+            data: { balance: { increment: change } },
           }),
         );
       }
@@ -304,6 +304,7 @@ export async function getAllActiveProductsForSale(
         id: true,
         name: true,
         sku: true,
+        type: true,
         pricePerUnit: true,
         pricePerPacket: true,
         pricePerCarton: true,
@@ -333,22 +334,6 @@ export async function getAllActiveProductsForSale(
     return { availablePackets, availableCartons };
   }
 
-  // ✅ Determine product selling mode
-  function getSellingMode(product: any) {
-    const hasUnit = product.pricePerUnit && product.pricePerUnit > 0;
-    const hasPacket = product.pricePerPacket && product.pricePerPacket > 0;
-    const hasCarton = product.pricePerCarton && product.pricePerCarton > 0;
-
-    // full: unit + packet + carton
-    if (hasUnit && hasPacket && hasCarton) return "full";
-    // cartonUnit: unit + carton (no packet)
-    if (hasUnit && !hasPacket && hasCarton) return "cartonUnit";
-    // cartonOnly: carton only
-    if (!hasUnit && !hasPacket && hasCarton) return "cartonOnly";
-    // fallback
-    return "full";
-  }
-
   return activeProducts.map((product) => {
     const availableUnits = product.inventory[0]?.availableQuantity ?? 0;
     const { availablePackets, availableCartons } = convertFromBaseUnit(
@@ -356,24 +341,22 @@ export async function getAllActiveProductsForSale(
       availableUnits,
     );
 
-    const sellingMode = getSellingMode(product);
-
     // ✅ Only return quantities that are actually sold
     let finalAvailableUnits = 0;
     let finalAvailablePackets = 0;
     let finalAvailableCartons = 0;
 
-    if (sellingMode === "full") {
+    if (product.type === "full") {
       // Sell all three levels
       finalAvailableUnits = availableUnits;
       finalAvailablePackets = availablePackets;
       finalAvailableCartons = availableCartons;
-    } else if (sellingMode === "cartonUnit") {
+    } else if (product.type === "cartonUnit") {
       // Only sell units and cartons, hide packets
       finalAvailableUnits = availableUnits;
       finalAvailableCartons = availableCartons;
       finalAvailablePackets = 0; // ✅ Don't show packets
-    } else if (sellingMode === "cartonOnly") {
+    } else if (product.type === "cartonOnly") {
       // Only sell cartons, hide units and packets
       finalAvailableCartons = availableCartons;
       finalAvailableUnits = 0; // ✅ Don't show units
@@ -394,7 +377,7 @@ export async function getAllActiveProductsForSale(
       availableUnits: finalAvailableUnits,
       availablePackets: finalAvailablePackets,
       availableCartons: finalAvailableCartons,
-      sellingMode, // ✅ Optional: helpful for debugging
+      sellingMode: product.type ?? "", // ✅ Optional: helpful for debugging
     };
   });
 }

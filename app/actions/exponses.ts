@@ -99,7 +99,6 @@ export async function getExpensesByCompany(
     const expenses = await prisma.expenses.findMany({
       where: filters,
       include: {
-        expense_categories: true,
         users: { select: { id: true, name: true, email: true } },
       },
       skip: pageIndex * pageSize,
@@ -118,10 +117,7 @@ export async function getExpensesByCompany(
       referenceNumber: expense.reference_number,
       notes: expense.notes,
       status: expense.status,
-      category: {
-        id: expense.expense_categories?.id,
-        name: expense.expense_categories?.name,
-      },
+
       user: expense.users
         ? {
             id: expense.users.id,
@@ -133,65 +129,102 @@ export async function getExpensesByCompany(
       updatedAt: expense.updated_at,
     }));
     const result = serializeData(serialized);
-    return { data: result, total, pageIndex, pageSize };
+
+    return { data: result, total };
   } catch (error) {
     console.error("Error fetching expenses:", error);
     throw error;
   }
 }
-export async function createExpenseCategory(
-  companyId: string,
-  data: CreateCategoryData,
-): Promise<ActionResponse> {
-  // Basic server-side validation
-  if (!data.name || data.name.trim() === "") {
-    return { success: false, error: "يجب إدخال اسم الفئة." };
-  }
+// export async function createExpenseCategory(
+//   companyId: string,
+//   data: CreateCategoryData,
+// ): Promise<ActionResponse> {
+//   // Basic server-side validation
+//   if (!data.name || data.name.trim() === "") {
+//     return { success: false, error: "يجب إدخال اسم الفئة." };
+//   }
 
-  try {
-    const category = await prisma.expense_categories.create({
-      data: {
-        company_id: companyId,
-        name: data.name,
-        description: data.description || null, // Ensure empty string becomes null if DB requires it
-      },
-    });
+//   try {
+//     const category = await prisma.expense_categories.create({
+//       data: {
+//         company_id: companyId,
+//         name: data.name,
+//         description: data.description || null, // Ensure empty string becomes null if DB requires it
+//       },
+//     });
 
-    // Revalidate any path that displays expense categories (adjust as needed)
-    revalidatePath("/expenses/categories");
+//     // Revalidate any path that displays expense categories (adjust as needed)
+//     revalidatePath("/expenses/categories");
 
-    return { success: true, category };
-  } catch (error: any) {
-    console.error("Error creating expense category:", error);
+//     return { success: true, category };
+//   } catch (error: any) {
+//     console.error("Error creating expense category:", error);
 
-    // Handle unique constraint error (P2002) for company_id and name
-    if (error.code === "P2002") {
-      return { success: false, error: "اسم الفئة موجود مسبقًا في هذه الشركة." };
-    }
+//     // Handle unique constraint error (P2002) for company_id and name
+//     if (error.code === "P2002") {
+//       return { success: false, error: "اسم الفئة موجود مسبقًا في هذه الشركة." };
+//     }
 
-    return {
-      success: false,
-      error: error.message || "فشل إنشاء فئة المصروف.",
-    };
-  }
-}
+//     return {
+//       success: false,
+//       error: error.message || "فشل إنشاء فئة المصروف.",
+//     };
+//   }
+// }
 export async function getExpenseCategories(companyId: string) {
-  try {
-    return await prisma.expense_categories.findMany({
-      where: { company_id: companyId, is_active: true },
-      orderBy: { name: "asc" },
-    });
-  } catch (error) {
-    console.error("Error fetching expense categories:", error);
-    throw error;
+  const expenseAccounts = await prisma.accounts.findMany({
+    where: {
+      company_id: companyId,
+      account_type: "EXPENSE", // fetch all expense accounts
+      is_active: true,
+    },
+    select: {
+      id: true,
+      account_name_en: true,
+    },
+    orderBy: {
+      account_code: "asc",
+    },
+  });
+  const name = expenseAccounts.map((i) => ({
+    id: i.id,
+    name: i.account_name_en,
+  }));
+  return name;
+}
+// export async function getExpenseCategories(companyId: string) {
+//   try {
+//     return await prisma.expense_categories.findMany({
+//       where: { company_id: companyId, is_active: true },
+//       orderBy: { name: "asc" },
+//     });
+//   } catch (error) {
+//     console.error("Error fetching expense categories:", error);
+//     throw error;
+//   }
+// }
+async function getAccountMapping(companyId: string, mappingType: string) {
+  const mapping = await prisma.account_mappings.findFirst({
+    where: {
+      company_id: companyId,
+      mapping_type: mappingType,
+      is_default: true,
+    },
+  });
+
+  if (!mapping) {
+    throw new Error(`Account mapping not found for ${mappingType}`);
   }
+
+  return mapping.account_id;
 }
 
 export async function createExpense(
   companyId: string,
   userId: string,
   data: {
-    expense_categoriesId: string;
+    account_id: string;
     description: string;
     amount: number;
     expense_date: Date;
@@ -217,7 +250,7 @@ export async function createExpense(
       data: {
         company_id: companyId,
         user_id: userId, // Use the parameter directly, not undefined
-        category_id: data.expense_categoriesId,
+        account_id: data.account_id,
         description: data.description,
         expense_number: expenseNumber,
         amount: data.amount,
@@ -228,7 +261,6 @@ export async function createExpense(
         status: "pending",
       },
       include: {
-        expense_categories: true,
         users: true,
       },
     });
@@ -283,7 +315,6 @@ export async function updateExpense(
         ...(data.notes && { notes: data.notes }),
       },
       include: {
-        expense_categories: true,
         users: true,
       },
     });

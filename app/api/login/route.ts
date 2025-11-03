@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { createSession } from "@/lib/session";
 import { logActivity } from "@/app/actions/activitylogs";
+import { includes } from "zod";
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,6 +18,17 @@ export async function POST(req: NextRequest) {
         password: true, // Needed for comparison
         companyId: true, // <-- FETCH THE COMPANY ID
         roles: { include: { role: true } },
+        company: {
+          select: {
+            name: true,
+            email: true,
+            phone: true,
+            address: true,
+            city: true,
+            country: true,
+            logoUrl: true,
+          },
+        },
       },
     });
     if (!user) {

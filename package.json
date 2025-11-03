@@ -31,6 +31,8 @@
     "@radix-ui/react-tooltip": "^1.2.7",
     "@serwist/next": "^9.2.1",
     "@sparticuz/chromium-min": "^140.0.0",
+    "@supabase/ssr": "^0.7.0",
+    "@supabase/supabase-js": "^2.78.0",
     "@tabler/icons-react": "^3.34.0",
     "@tanstack/react-table": "^8.21.3",
     "@vercel/analytics": "^1.5.0",

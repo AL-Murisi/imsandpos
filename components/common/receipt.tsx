@@ -3,6 +3,18 @@
 import React from "react";
 import { Button } from "../ui/button";
 import { useFormatter } from "@/hooks/usePrice";
+type Company =
+  | {
+      id: string;
+      name: string;
+      email: string | null;
+      phone: string | null;
+      address: string | null;
+      city: string | null;
+      country: string | null;
+      logoUrl: string | null;
+    }
+  | undefined;
 
 export interface ReceiptItem {
   id: string;
@@ -30,6 +42,7 @@ export interface ReceiptProps {
   customerDebt?: number;
   isCash: boolean;
   t: any;
+  company: Company;
 }
 
 export const Receipt: React.FC<ReceiptProps> = ({
@@ -43,6 +56,7 @@ export const Receipt: React.FC<ReceiptProps> = ({
   customerDebt,
   isCash,
   t,
+  company,
 }) => {
   const getItemPrice = (item: ReceiptItem) => {
     switch (item.sellingUnit) {
@@ -210,20 +224,20 @@ export const Receipt: React.FC<ReceiptProps> = ({
               <div class="flex header justify-between items-center mb-2" dir="rtl">
                 <!-- Company -->
                 <div class="grid grid-rows-3 items-baseline gap-2 text-right">
-                  <span class="text-3xl green font-bold">مؤسسة عادل الرياشي</span>
-                  <span class="text-2xl">للتجارة والاستيراد</span>
+                  <span class="text-3xl green font-bold">  ${company?.name} </span>
+                  <span class="text-2xl">${company?.name} </span>
                   <div>رقم الفاتورة: ${saleNumber}</div>
                 </div>
 
                 <!-- Logo -->
                 <div class="flex flex-col items-center">
-                  <img src="/logo.png" alt="Logo" style="width: 100px; height: 90px;" />
+<img src="${company?.logoUrl ?? ""}" style="width: 100px; height: 90px;" />
                 </div>
 
                 <!-- Branch -->
                 <div class="grid grid-rows-4">
-                  <div class="text-lg">فرع سناح - أمام محطة الصيادي</div>
-                  <div>تلفون: 772222599</div>
+                  <div class="text-lg">  ${company?.address} </div>  <div class="text-lg">  ${company?.city} </div>
+                  <div>تلفون:  ${company?.phone}</div>
 
                 </div>
               </div>

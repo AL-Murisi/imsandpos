@@ -157,6 +157,7 @@ export default function ProductForm({ formData }: ExpenseFormProps) {
         "pricePerPacket",
         Math.round(calculatedPricePerPacket * 100) / 100,
       );
+      setValue("type", "full");
       const calculatedPricePerUnit = calculatedPricePerPacket / unitsPerPacket;
       setValue("pricePerUnit", Math.round(calculatedPricePerUnit * 100) / 100);
       isUpdatingRef.current = false;
@@ -177,6 +178,9 @@ export default function ProductForm({ formData }: ExpenseFormProps) {
       const calculatedPricePerUnit = pricePerCarton / unitsPerPacket;
       setValue("pricePerUnit", Math.round(calculatedPricePerUnit * 100) / 100);
       isUpdatingRef.current = false;
+      setValue("type", "cartonUnit");
+    } else {
+      setValue("type", "cartonOnly");
     }
   }, [pricePerCarton, unitsPerPacket, pricingMode]);
 
@@ -226,6 +230,7 @@ export default function ProductForm({ formData }: ExpenseFormProps) {
           {/* Pricing Mode Selection */}
           <div className="rounded-lg border p-4">
             <h3 className="mb-4 text-right font-semibold">نموذج البيع</h3>
+
             <div className="mb-4 flex flex-col gap-3 md:flex-row">
               <label className="flex cursor-pointer items-center gap-2">
                 <input

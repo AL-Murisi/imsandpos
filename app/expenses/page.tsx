@@ -19,7 +19,7 @@ export default async function Home() {
       <div className="p-4">
         <ExpensesPage
           data={expensesData.data}
-          total={expensesData.total}
+          total={expensesData}
           formData={categoriesData}
         />
       </div>

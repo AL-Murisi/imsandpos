@@ -39,6 +39,7 @@ interface SectionCardsProps {
       unreceivedChart: Array<{ date: string; value: number }>;
       receivedChart: Array<{ date: string; value: number }>;
     };
+    netProfit: any;
   };
   productStats: {
     totalStockQuantity: number;
@@ -131,10 +132,10 @@ export default function SectionCards({
     },
     {
       description: "receivedDebt",
-      title: `${salesSummary.debt.received} `,
+      title: `${salesSummary.netProfit} `,
       label: t("receivedDebt"),
       link: "/debt",
-      chartData: salesSummary.debt.receivedChart,
+      chartData: salesSummary.sales.chart,
       bg: "bg-gradient-to-r dark:from-pink-500 dark:to-rose-700 from-chart-1 to-chart-3",
     },
   ];

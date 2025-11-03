@@ -199,6 +199,7 @@ export default function AccountFormDialog({
     { id: "SALES_REVENUE", name: "إيرادات مبيعات", type: "REVENUE" },
     { id: "SERVICE_REVENUE", name: "إيرادات خدمات", type: "REVENUE" },
     { id: "OTHER_INCOME", name: "إيرادات أخرى", type: "REVENUE" },
+
     {
       id: "COST_OF_GOODS_SOLD",
       name: "تكلفة البضاعة المباعة",
@@ -212,6 +213,7 @@ export default function AccountFormDialog({
       type: "EXPENSE",
     },
     { id: "OTHER_EXPENSES", name: "مصاريف أخرى", type: "EXPENSE" },
+    { id: "HOUSE_EXPENSES", name: "مصاريف منزلية", type: "EXPENSE" },
   ];
   // ...
 
