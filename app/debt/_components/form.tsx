@@ -11,9 +11,15 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/context/AuthContext";
 import { useFormatter } from "@/hooks/usePrice";
-
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { useState } from "react";
-import Dailogreuse from "@/components/common/dailogreuse";
 
 // This schema needs to be defined for the payment input
 // Example: Create a new schema like PaymentAmountSchema
@@ -43,7 +49,7 @@ export default function Debtupdate({ debt }: DebtSaleProps) {
   } = useForm<FormValues>({
     resolver: zodResolver(PaymentAmountSchema),
     defaultValues: {
-      paymentAmount: undefined, // Initialize with 0 or a placeholder
+      paymentAmount: 0, // Initialize with 0 or a placeholder
     },
   });
   const { user, hasAnyRole, logout } = useAuth();
@@ -72,66 +78,59 @@ export default function Debtupdate({ debt }: DebtSaleProps) {
       // Display an error message to the user (e.g., using a toast notification)
     }
   };
-  //  قم بإدخال المبلغ الجديد لتسديد جزء أو كل الدين.
+
   return (
-    <Dailogreuse
-      open={open}
-      setOpen={setOpen}
-      btnLabl="تسديد الدين"
-      style="sm:max-w-md"
-    >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {/* ✅ تفاصيل الدين */}
-        <div className="mb-4">
-          <h3 className="text-lg font-semibold">تفاصيل الدين</h3>
-          <p>
-            المبلغ الإجمالي للبيع: {formatCurrency(Number(debt.totalAmount))}
-          </p>
-          <p>
-            المبلغ المدفوع سابقاً: {formatCurrency(Number(debt.amountPaid))}
-          </p>
-          <p>المبلغ المتبقي حالياً: {formatCurrency(Number(debt.amountDue))}</p>
-        </div>
-
-        {/* ✅ حقل المبلغ */}
-        <div className="grid gap-4">
-          <div className="grid gap-2">
-            <Label htmlFor="paymentAmount">مبلغ الدفع الجديد</Label>
-            <Input
-              id="paymentAmount"
-              type="number"
-              {...register("paymentAmount", { valueAsNumber: true })}
-            />
-            {errors.paymentAmount && (
-              <p className="text-xs text-red-500">
-                {errors.paymentAmount.message}
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* ✅ زر التأكيد */}
-        <div className="flex justify-end">
-          <Button type="submit">تأكيد الدفع</Button>
-        </div>
-      </form>
-    </Dailogreuse>
-  );
-  {
-    /* <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline"/Button>
+        <Button variant="outline">تسديد الدين</Button>
       </DialogTrigger>
-      <DialogContent className= dir="rtl">
+      <DialogContent className="sm:max-w-md" dir="rtl">
         <DialogHeader>
           <DialogTitle>تأكيد الدفع</DialogTitle>
           <DialogDescription>
-          
+            قم بإدخال المبلغ الجديد لتسديد جزء أو كل الدين.
           </DialogDescription>
         </DialogHeader>
 
-        
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          {/* ✅ تفاصيل الدين */}
+          <div className="mb-4">
+            <h3 className="text-lg font-semibold">تفاصيل الدين</h3>
+            <p>
+              المبلغ الإجمالي للبيع: {formatCurrency(Number(debt.totalAmount))}
+            </p>
+            <p>
+              المبلغ المدفوع سابقاً: {formatCurrency(Number(debt.amountPaid))}
+            </p>
+            <p>
+              المبلغ المتبقي حالياً: {formatCurrency(Number(debt.amountDue))}
+            </p>
+          </div>
+
+          {/* ✅ حقل المبلغ */}
+          <div className="grid gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="paymentAmount">مبلغ الدفع الجديد</Label>
+              <Input
+                id="paymentAmount"
+                type="number"
+                step="0.01"
+                {...register("paymentAmount", { valueAsNumber: true })}
+              />
+              {errors.paymentAmount && (
+                <p className="text-xs text-red-500">
+                  {errors.paymentAmount.message}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* ✅ زر التأكيد */}
+          <div className="flex justify-end">
+            <Button type="submit">تأكيد الدفع</Button>
+          </div>
+        </form>
       </DialogContent>
-    </Dialog></> */
-  }
+    </Dialog>
+  );
 }

@@ -102,7 +102,7 @@
     "invoiceNo": "رقم الفاتورة",
     "items": "العناصر",
     "total": "الإجمالي",
-
+    "select": "select",
     "paid": "المدفوع",
     "remaining": "المتبقي",
     "totalOutstanding": "إجمالي المتبقي",

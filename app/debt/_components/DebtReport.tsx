@@ -1,6 +1,6 @@
 "use client";
 
-import { FetchCustomerDebtReport } from "@/app/actions/sells"; // server action
+import { FetchCustomerDebtReport } from "@/app/actions/sells";
 import Dailogreuse from "@/components/common/dailogreuse";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
@@ -11,10 +11,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { useFormatter } from "@/hooks/usePrice";
 import { useAuth } from "@/lib/context/AuthContext";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { updateSalesBulk } from "@/app/actions/debtSells";
 
 interface Debt {
   id: string;
@@ -39,18 +43,21 @@ export default function DebtReport({
 }: DebtReportProps) {
   const [debts, setDebts] = useState<Debt[]>([]);
   const [loading, setLoading] = useState(false);
-  const [expandedRows, setExpandedRows] = useState<string[]>([]);
+  const [paymentAmount, setPaymentAmount] = useState<number>(0);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [open, setOpen] = useState(false);
+
   const t = useTranslations("debt");
   const { user } = useAuth();
-  const [open, setOpen] = useState(false);
-  if (!user) return;
-  const { formatCurrency, formatPriceK, formatQty } = useFormatter();
+  const { formatCurrency } = useFormatter();
+
+  if (!user) return null;
+
   useEffect(() => {
-    if (!customerName) return;
+    if (!customerID) return;
     const handleFetch = async () => {
       setLoading(true);
       const sales = await FetchCustomerDebtReport(customerID, user.companyId);
-
       const mapped: Debt[] = sales.map((d: any) => ({
         id: d.id,
         date: new Date(d.saleDate).toLocaleDateString(),
@@ -62,57 +69,101 @@ export default function DebtReport({
         paid: parseFloat(d.amountPaid),
         remaining: parseFloat(d.amountDue),
       }));
-
       setDebts(mapped);
       setLoading(false);
     };
     handleFetch();
-  }, [open]);
+  }, [open, user?.companyId, customerID]);
+  // Add a derived state for "all selected"
+  const allSelected = debts.length > 0 && selectedIds.length === debts.length;
+
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedIds([]); // unselect all
+    } else {
+      setSelectedIds(debts.map((d) => d.id)); // select all
+    }
+  };
 
   const totalRemaining = debts.reduce((sum, d) => sum + d.remaining, 0);
 
-  const toggleRow = (id: string) => {
-    setExpandedRows((prev) =>
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
+  };
+
+  const onSubmit = async () => {
+    if (paymentAmount <= 0) {
+      toast.error("Please enter a valid payment amount.");
+      return;
+    }
+    if (selectedIds.length === 0) {
+      toast.error("Please select at least one invoice to pay.");
+      return;
+    }
+
+    try {
+      await updateSalesBulk(
+        user.companyId,
+        selectedIds,
+        paymentAmount,
+        user.userId,
+      );
+
+      toast.success("Payment successfully applied!");
+      setPaymentAmount(0);
+      setSelectedIds([]);
+      setOpen(false);
+    } catch (error) {
+      console.error("Error updating debt sales:", error);
+      toast.error("Failed to apply payment. Please try again.");
+    }
   };
 
   return (
     <Dailogreuse
       open={open}
       setOpen={setOpen}
-      btnLabl={`عرض الفاتورة`}
+      btnLabl="عرض الفاتورة"
       style="max-w-90 overflow-hidden md:max-w-4xl lg:max-w-6xl"
     >
       <div id="receipt-content" className="rounded-md" dir="rtl">
-        {" "}
         {/* Header */}
-        <div className="mb-6 border-b pb-4 text-center print:mb-4 print:pb-2">
-          <h1 className="text-2xl font-bold print:text-lg">
+        <div className="mb-6 border-b pb-4 text-center">
+          <h1 className="text-2xl font-bold">
             {t("debtReport") || "Debt Report"}
           </h1>
-          <p className="text-lg print:text-sm">My Shop / Business Name</p>
-          <p className="print:text-sm">
-            {t("date") || `Date: ${new Date().toLocaleDateString()}`}
-          </p>
+          <p className="text-lg">My Shop / Business Name</p>
+          <p>{t("date") || `Date: ${new Date().toLocaleDateString()}`}</p>
         </div>
+
         {/* Customer Info */}
-        <div className="mb-6 print:mb-4">
-          <p className="print:text-sm">
+        <div className="mb-6">
+          <p>
             <strong>{t("customer") || "Customer"}:</strong> {customerName}
           </p>
           {customerContact && (
-            <p className="print:text-sm">
+            <p>
               <strong>{t("contact") || "Contact"}:</strong> {customerContact}
             </p>
           )}
         </div>
+
         {/* Table */}
         <div className="w-80 sm:w-[480px] md:w-3xl lg:w-full">
-          <ScrollArea className="top-3 h-[30vh] w-full rounded-2xl border border-amber-300 p-2">
+          <ScrollArea className="h-[30vh] w-full rounded-2xl border border-amber-300 p-2">
             <Table className="w-full">
-              <TableHeader className="sticky top-0 z-10">
+              <TableHeader>
                 <TableRow className="border-amber-300">
+                  <TableHead>
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={toggleSelectAll}
+                    />
+                  </TableHead>
+
                   <TableHead>{t("date") || "Date"}</TableHead>
                   <TableHead>{t("invoiceNo") || "Invoice #"}</TableHead>
                   <TableHead className="text-right">
@@ -127,62 +178,61 @@ export default function DebtReport({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {debts.map((debt) => {
-                  return (
-                    <TableRow key={debt.id}>
-                      <TableCell>{debt.date}</TableCell>
-                      <TableCell>{debt.invoiceNo}</TableCell>
-                      {/* <TableCell>
-                    {isExpanded
-                      ? itemList.map((item, i) => (
-                          <div key={i} className="text-sm print:text-xs">
-                            {item}
-                          </div>
-                        ))
-                      : itemList.slice(0, 2).map((item, i) => (
-                          <div key={i} className="text-sm print:text-xs">
-                            {item}
-                          </div>
-                        ))}
-                    {itemList.length > 2 && (
-                      <button
-                        className="mt-1 text-sm text-blue-500 print:hidden"
-                        onClick={() => toggleRow(debt.id)}
-                      >
-                        {isExpanded
-                          ? t("showLess") || "Show less"
-                          : t("showMore") || "Show more"}
-                      </button>
-                    )}
-                  </TableCell> */}
-                      <TableCell className="text-right">
-                        {formatCurrency(debt.total)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatCurrency(debt.paid)}
-                      </TableCell>
-                      <TableCell className="text-right font-semibold">
-                        {formatCurrency(debt.remaining)}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                {debts.map((debt) => (
+                  <TableRow key={debt.id}>
+                    <TableCell>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(debt.id)}
+                        onChange={() => toggleSelect(debt.id)}
+                      />
+                    </TableCell>
+                    <TableCell>{debt.date}</TableCell>
+                    <TableCell>{debt.invoiceNo}</TableCell>
+                    <TableCell className="text-right">
+                      {formatCurrency(debt.total)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatCurrency(debt.paid)}
+                    </TableCell>
+                    <TableCell className="text-right font-semibold">
+                      {formatCurrency(debt.remaining)}
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
         </div>
+
         {/* Footer */}
-        <div className="mt-6 flex items-center justify-between print:mt-4">
-          <p className="text-lg font-bold print:text-sm">
+        <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-lg font-bold">
             {t("totalOutstanding") || "Total Outstanding"}:{" "}
-            {totalRemaining.toFixed(2)}
+            {formatCurrency(totalRemaining)}
           </p>
-          <div className="text-right print:text-sm">
-            {user?.name}
-            <p>________________________</p>
-            <p>{t("issuedBy") || "Issued By"}</p>
+
+          <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              placeholder="المبلغ المدفوع"
+              value={paymentAmount}
+              onChange={(e) =>
+                setPaymentAmount(parseFloat(e.target.value) || 0)
+              }
+              className="w-32"
+            />
+            <Button onClick={onSubmit} disabled={loading}>
+              {loading ? "Processing..." : "Apply Payment"}
+            </Button>
           </div>
+        </div>
+
+        <div className="mt-6 text-right">
+          <p>{user?.name}</p>
+          <p>________________________</p>
+          <p>{t("issuedBy") || "Issued By"}</p>
         </div>
       </div>
     </Dailogreuse>

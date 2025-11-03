@@ -100,7 +100,15 @@ export const debtSaleColumns: ColumnDef<any>[] = [
       <SortableHeader column={column} label="نوع الزبون" />
     ),
   },
+  // {
+  //   accessorKey: "outstandingBalance",
+  //   header: "رصيد العميل",
+  //   cell: ({ row }) => {
+  //     const balance = row.original.outstandingBalance;
 
+  //     return <span>{balance}</span>;
+  //   },
+  // },
   // {
   //   accessorKey: "customer.outstandingBalance",
   //   header: ({ column }) => (
@@ -204,7 +212,10 @@ export const debtSaleColumns: ColumnDef<any>[] = [
         <div className="flex gap-2">
           {amountDue > 0 && <Debtupdate debt={debt} />}
 
-          <DebtReport customerName={debt.name} customerID={debt.customerId} />
+          <DebtReport
+            customerName={debt.customer?.name}
+            customerID={debt.customerId}
+          />
         </div>
       );
     },

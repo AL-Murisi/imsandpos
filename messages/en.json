@@ -104,7 +104,8 @@
     "paid": "Paid",
     "remaining": "Remaining",
     "totalOutstanding": "Total Outstanding",
-    "issuedBy": "Issued By"
+    "issuedBy": "Issued By",
+    "select": "select"
   },
   "productForm": {
     "title": "Products",

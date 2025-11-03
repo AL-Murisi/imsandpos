@@ -102,6 +102,135 @@ export async function updateSales(
   revalidatePath("/debt");
   return updatedSale;
 }
+export async function updateSalesBulk(
+  companyId: string,
+  saleIds: string[],
+  paymentAmount: number,
+  cashierId: string,
+) {
+  if (paymentAmount <= 0)
+    throw new Error("Payment amount must be greater than zero.");
+  if (!companyId || saleIds.length === 0)
+    throw new Error("Missing company ID or sale IDs.");
+
+  // 1️⃣ Fetch all sales
+  const sales = await prisma.sale.findMany({
+    where: { id: { in: saleIds }, companyId },
+    select: {
+      id: true,
+      totalAmount: true,
+      amountPaid: true,
+      amountDue: true,
+      customerId: true,
+    },
+  });
+
+  if (sales.length === 0) throw new Error("No matching sales found.");
+
+  // 2️⃣ Distribute payment among sales
+  let remainingPayment = paymentAmount;
+  const updates: any[] = [];
+  const paymentLogs: any[] = [];
+  const customerUpdates: Record<string, number> = {};
+
+  for (const sale of sales) {
+    if (remainingPayment <= 0) break;
+
+    const total = sale.totalAmount.toNumber();
+    const paid = sale.amountPaid.toNumber();
+    const due = sale.amountDue.toNumber();
+    if (due <= 0) continue;
+
+    const payNow = Math.min(due, remainingPayment);
+    remainingPayment -= payNow;
+
+    const newPaid = paid + payNow;
+    const newDue = total - newPaid;
+    const status = newDue <= 0 ? "paid" : newPaid > 0 ? "partial" : "pending";
+
+    updates.push({
+      id: sale.id,
+      amountPaid: newPaid,
+      amountDue: Math.max(newDue, 0),
+      paymentStatus: status,
+    });
+
+    paymentLogs.push({
+      companyId,
+      saleId: sale.id,
+      cashierId,
+      paymentType: "outstanding_payment",
+      paymentMethod: "cash",
+      amount: payNow,
+      status: "completed",
+      notes: `Payment applied for Sale ${sale.id}`,
+      createdAt: new Date(),
+    });
+
+    if (sale.customerId) {
+      customerUpdates[sale.customerId] =
+        (customerUpdates[sale.customerId] || 0) + payNow;
+    }
+  }
+
+  // 3️⃣ Chunk helper
+  const chunkArray = <T,>(arr: T[], size: number): T[][] =>
+    Array.from({ length: Math.ceil(arr.length / size) }, (_, i) =>
+      arr.slice(i * size, i * size + size),
+    );
+
+  const CHUNK_SIZE = 40; // 🔹 Adjust if needed (safe for ~40–100 updates per chunk)
+
+  // 4️⃣ Apply updates in small transactions
+  const updateChunks = chunkArray(updates, CHUNK_SIZE);
+  for (const chunk of updateChunks) {
+    await prisma.$transaction(
+      chunk.map((u) =>
+        prisma.sale.update({
+          where: { id: u.id },
+          data: {
+            amountPaid: u.amountPaid,
+            amountDue: u.amountDue,
+            paymentStatus: u.paymentStatus,
+            updatedAt: new Date(),
+          },
+        }),
+      ),
+    );
+  }
+
+  // 5️⃣ Create payments in batches
+  const paymentChunks = chunkArray(paymentLogs, CHUNK_SIZE);
+  for (const chunk of paymentChunks) {
+    await prisma.payment.createMany({ data: chunk });
+  }
+
+  // 6️⃣ Update customer balances safely
+  const customerChunks = chunkArray(
+    Object.entries(customerUpdates),
+    CHUNK_SIZE,
+  );
+  for (const chunk of customerChunks) {
+    await prisma.$transaction(
+      chunk.map(([custId, amount]) =>
+        prisma.customer.update({
+          where: { id: custId },
+          data: { outstandingBalance: { decrement: amount } },
+        }),
+      ),
+    );
+  }
+
+  // 7️⃣ Revalidate affected pages (outside DB ops)
+  await Promise.all([revalidatePath("/sells"), revalidatePath("/debt")]);
+
+  return {
+    success: true,
+    updatedSales: updates.length,
+    payments: paymentLogs.length,
+    customersUpdated: Object.keys(customerUpdates).length,
+  };
+}
 
 type DateRange = {
   from: Date | null;
