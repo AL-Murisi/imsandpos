@@ -197,7 +197,11 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
     };
 
     setIsSubmitting(true);
-
+    if (totals.totalAfter > receivedAmount && !selectedUser?.id) {
+      toast("يرجى اختيار العميل");
+      setIsSubmitting(false);
+      return;
+    }
     try {
       await processSale(payment, user.companyId);
       toast("✅ تم الدفع بنجاح!");

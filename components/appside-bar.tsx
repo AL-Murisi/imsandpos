@@ -395,7 +395,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <SidebarMenuButton
                     tooltip={t("logout")}
                     onClick={() => logoutAndRedirect()}
-                    className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950"
+                    className="text-red-600 hover:bg-orange-300/20 hover:text-red-700"
                   >
                     <LogOut className="h-5 w-5" />
                     <span>{t("logout")}</span>
@@ -404,8 +404,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
                 {/* Language */}
                 <SidebarMenuItem>
-                  <SidebarMenuButton tooltip={t("language")} asChild>
-                    <div className="flex items-center gap-2">
+                  <SidebarMenuButton
+                    tooltip={t("language")}
+                    asChild
+                    className="hover:bg-orange-300/20"
+                  >
+                    <div className="flex items-center gap-2 hover:bg-orange-300/20">
                       <Globe className="h-5 w-5 text-blue-400" />
                       <LocaleSwitcher />
                     </div>
@@ -414,8 +418,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
                 {/* Currency */}
                 <SidebarMenuItem>
-                  <SidebarMenuButton tooltip={t("currency")} asChild>
-                    <div className="flex items-center gap-2">
+                  <SidebarMenuButton
+                    tooltip={t("currency")}
+                    asChild
+                    className="hover:bg-orange-300/20"
+                  >
+                    <div className="flex items-center gap-2 hover:bg-orange-300/20">
                       <Wallet className="h-5 w-5 text-yellow-400" />
                       <CurrencySwitcher />
                     </div>
@@ -424,8 +432,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
                 {/* Theme */}
                 <SidebarMenuItem>
-                  <SidebarMenuButton tooltip={t("theme")} asChild>
-                    <div className="flex items-center gap-2">
+                  <SidebarMenuButton
+                    tooltip={t("theme")}
+                    asChild
+                    className="hover:bg-orange-300/20"
+                  >
+                    <div className="flex items-center gap-2 hover:bg-orange-300/20">
                       <Moon className="h-5 w-5 text-indigo-400" />
                       <ModeToggle />
                     </div>

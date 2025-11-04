@@ -56,11 +56,12 @@ export default function Debtupdate({ debt }: DebtSaleProps) {
   if (!user) return;
   const { formatCurrency, formatPriceK, formatQty } = useFormatter();
   const [open, setOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const onSubmit = async (data: FormValues) => {
     try {
       // **IMPORTANT: Replace with actual cashier ID**
-
+      setIsSubmitting(true);
       await updateSales(
         user.companyId,
         debt.id,
@@ -70,10 +71,11 @@ export default function Debtupdate({ debt }: DebtSaleProps) {
       setOpen(false);
       // Reset the form after successful submission
       reset();
-
+      setIsSubmitting(false);
       //   }
-      toast("Payment successfully applied!");
+      toast("✅ تم الدفع بنجاح!");
     } catch (error) {
+      setIsSubmitting(false);
       console.error("Error updating debt sale:", error);
       // Display an error message to the user (e.g., using a toast notification)
     }
@@ -126,9 +128,9 @@ export default function Debtupdate({ debt }: DebtSaleProps) {
           </div>
 
           {/* ✅ زر التأكيد */}
-          <div className="flex justify-end">
-            <Button type="submit">تأكيد الدفع</Button>
-          </div>
+          <Button type="submit">
+            {isSubmitting ? "جاري الحفظ..." : " تأكيد الدفع"}
+          </Button>
         </form>
       </DialogContent>
     </Dialog>
