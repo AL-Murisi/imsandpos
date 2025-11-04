@@ -8,6 +8,7 @@ import { LazySection } from "@/components/common/LazySection";
 import UserActivityTable from "./userActivityTable";
 import dynamic from "next/dynamic";
 import React from "react";
+import { useTranslations } from "next-intl";
 // Lazy load heavy chart components
 const ChartPieLegend = dynamic(
   () => import("@/components/common/PieChart").then((m) => m.ChartPieLegend),
@@ -75,10 +76,10 @@ function DashboardContentClient({
   salesSummary,
 }: DashboardContentClientProps) {
   const revMap = new Map(
-    salesSummary.revenue.chart.map((pt) => [pt.date, pt.value]),
+    salesSummary.revenue.chart.map((pt) => [pt.date, pt.value.toFixed(2)]),
   );
   const purMap = new Map(
-    salesSummary.purchases.chart.map((pt) => [pt.date, pt.value]),
+    salesSummary.purchases.chart.map((pt) => [pt.date, pt.value.toFixed(2)]),
   );
 
   const allDates = Array.from(
@@ -90,14 +91,32 @@ function DashboardContentClient({
     revenue: revMap.get(date) ?? 0,
     purchases: purMap.get(date) ?? 0,
   }));
+  const t = useTranslations("cards");
 
   const salesChartConfig = useMemo(
     () => ({
-      revenue: { label: "Revenue", color: "#dc2626" },
-      purchases: { label: "Purchases", color: "#3b82f6" },
+      revenue: { label: t("revenue"), color: "#dc2626" },
+      purchases: { label: t("purchases"), color: "#3b82f6" },
     }),
-    [],
+    [t],
   );
+  const chartConfigs: Record<
+    string,
+    { label: string; stroke: string; fill: string; dateFormat?: string }
+  > = {
+    revenue: {
+      label: t("revenue"),
+      stroke: "#22c55e",
+      fill: "#16a34a",
+      dateFormat: "MMM dd",
+    },
+    purchases: {
+      label: t("purchases"),
+      stroke: "#10b981",
+      fill: "#059669",
+      dateFormat: "MMM dd",
+    },
+  };
 
   const staticChartData = useMemo(
     () => [
@@ -136,6 +155,7 @@ function DashboardContentClient({
           description="Sales trends over selected period"
           data={combined}
           config={salesChartConfig}
+          t={t}
         />
 
         <Charts topProducts={result.topProducts} formData={result.formData} />

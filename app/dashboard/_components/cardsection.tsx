@@ -133,7 +133,7 @@ export default function SectionCards({
     {
       description: "receivedDebt",
       title: `${salesSummary.netProfit} `,
-      label: t("receivedDebt"),
+      label: "صافي الربح",
       link: "/debt",
       chartData: salesSummary.sales.chart,
       bg: "bg-gradient-to-r dark:from-pink-500 dark:to-rose-700 from-chart-1 to-chart-3",

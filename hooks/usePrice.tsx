@@ -27,7 +27,7 @@ export function useFormatter() {
    */
   const formatPriceK = (value: number) => {
     if (value >= 1000) {
-      const formatted = (value / 1000).toFixed(1).replace(/\.0$/, "");
+      const formatted = (value / 1000).toFixed(2).replace(/\.0$/, "");
       return `${formatted}k`;
     }
     return value.toString();

@@ -11,7 +11,7 @@ type CustomTooltipContentProps = {
     payload?: Record<string, any>;
   }>;
   label?: string | number;
-  labelFormatter?: (label: any) => string;
+  labelFormatter?: (label: any, dataKey?: string) => string;
   hideIndicator?: boolean;
   indicator?: "line" | "dot" | "dashed";
 };
@@ -44,13 +44,15 @@ export const CustomTooltipContent: React.FC<CustomTooltipContentProps> = ({
           <div className="flex items-center gap-2">
             {!hideIndicator && (
               <span
-                className={`h-2 w-2 rounded-full ${
-                  indicator === "dot" ? "block" : "hidden"
-                }`}
+                className={`h-2 w-2 rounded-full ${indicator === "dot" ? "block" : "hidden"}`}
                 style={{ backgroundColor: entry.color }}
               />
             )}
-            <span className="text-sm text-gray-800">{entry.name}</span>
+            <span className="text-sm text-gray-800">
+              {labelFormatter
+                ? labelFormatter(entry.name, entry.dataKey)
+                : entry.name}
+            </span>
           </div>
           <span className="text-sm font-semibold text-gray-900">
             {entry.value}

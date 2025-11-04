@@ -482,11 +482,31 @@ export async function getSalesOverview(
     },
     orderBy: { entry_date: "asc" },
   });
+  const debtEntries = await prisma.journal_entries.findMany({
+    where: {
+      accounts: {
+        company_id: companyId,
+        account_category: "ACCOUNTS_RECEIVABLE",
+        is_active: true,
+      },
+      is_posted: true,
+      entry_date: {
+        gte: startDate,
+        lte: endDate,
+      },
+    },
+    select: {
+      entry_date: true,
+      credit: true,
+      debit: true,
+    },
+    orderBy: { entry_date: "asc" },
+  });
 
   // Group by date
   const revenueByDate = new Map<string, number>();
   const purchasesByDate = new Map<string, number>();
-
+  const debtByDate = new Map<string, number>();
   // Aggregate revenue (credit - debit for revenue accounts)
   revenueEntries.forEach((entry) => {
     if (!entry.entry_date) return;
@@ -494,7 +514,12 @@ export async function getSalesOverview(
     const amount = Number(entry.credit) - Number(entry.debit);
     revenueByDate.set(dateKey, (revenueByDate.get(dateKey) || 0) + amount);
   });
-
+  debtEntries.forEach((entry) => {
+    if (!entry.entry_date) return;
+    const dateKey = entry.entry_date.toISOString().split("T")[0];
+    const amount = Number(entry.credit);
+    debtByDate.set(dateKey, (debtByDate.get(dateKey) || 0) + amount);
+  });
   // Aggregate purchases (debit - credit for expense accounts)
   purchaseEntries.forEach((entry) => {
     if (!entry.entry_date) return;
@@ -507,6 +532,7 @@ export async function getSalesOverview(
   const allDates = new Set([
     ...revenueByDate.keys(),
     ...purchasesByDate.keys(),
+    ...debtByDate.keys(),
   ]);
 
   const combined = Array.from(allDates)
@@ -515,6 +541,7 @@ export async function getSalesOverview(
       date,
       revenue: revenueByDate.get(date) || 0,
       purchases: purchasesByDate.get(date) || 0,
+      debts: debtByDate.get(date) || 0,
     }));
 
   return {
@@ -524,6 +551,7 @@ export async function getSalesOverview(
       (a, b) => a + b,
       0,
     ),
+    totalDebt: Array.from(debtByDate.values()).reduce((a, b) => a + b, 0),
   };
 }
 
@@ -740,6 +768,7 @@ export async function getDashboardData(
       data: salesOverview.data,
       totalRevenue: salesOverview.totalRevenue,
       totalPurchases: salesOverview.totalPurchases,
+      totalDebts: salesOverview.totalDebt,
       netProfit: salesOverview.totalRevenue - salesOverview.totalPurchases,
     },
     revenueChart,
@@ -795,7 +824,7 @@ export async function getSummaryCards(
       accounts: {
         company_id,
         account_type: "ASSET",
-        account_name_en: { contains: "Receivable" },
+        account_category: "ACCOUNTS_RECEIVABLE",
         is_active: true,
       },
       is_posted: true,

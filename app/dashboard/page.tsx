@@ -216,7 +216,10 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
       debt: {
         unreceived: summaryCards.debt.unreceived,
         received: 0, // TODO: Add received debt logic
-        unreceivedChart: [], // TODO: Add chart data
+        unreceivedChart: dashboardData.salesOverview.data.map((d) => ({
+          date: d.date,
+          value: d.debts,
+        })), // TODO: Add chart data
         receivedChart: [],
       },
       netProfit: summaryCards.netProfit,

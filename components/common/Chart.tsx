@@ -58,6 +58,7 @@ type Props = {
   description: string;
   data: ChartDataPoint[];
   config: ChartConfig;
+  t: any;
   defaultTimeRange?: string;
   timeRanges?: TimeRangeOption[];
   referenceDate?: Date; // تاريخ الأساس للفلترة (افتراضياً اليوم)
@@ -69,6 +70,7 @@ export function ReusableAreaChart({
   description,
   data,
   config,
+  t,
   defaultTimeRange = "30d",
   timeRanges = [
     { label: "آخر 3 أشهر", value: "90d", days: 90 },
@@ -212,11 +214,11 @@ export function ReusableAreaChart({
                 }}
                 reversed={true} // لتكون التواريخ من اليمين لليسار في المحور X
               />
-              <ChartTooltip
+              {/* <ChartTooltip
                 content={
                   <CustomTooltipContent
                     labelFormatter={(value) =>
-                      new Date(value).toLocaleDateString("ar-EG", {
+                      new Date(t(value)).toLocaleDateString("ar-EG", {
                         month: "short",
                         day: "numeric",
                       })
@@ -224,7 +226,16 @@ export function ReusableAreaChart({
                     indicator="dot"
                   />
                 }
+              /> */}
+              <ChartTooltip
+                content={
+                  <CustomTooltipContent
+                    labelFormatter={(label, dataKey) => t(dataKey || label)}
+                    indicator="dot"
+                  />
+                }
               />
+
               {Object.entries(config).map(([key, conf]) => (
                 <Area
                   key={key}
