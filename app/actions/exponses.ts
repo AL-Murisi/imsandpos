@@ -3,7 +3,7 @@
 // ============================================
 "use server";
 import prisma from "@/lib/prisma";
-import { Prisma } from "@prisma/client";
+import { account_category, Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 interface CreateCategoryData {
   name: string;
@@ -105,32 +105,47 @@ export async function getExpensesByCompany(
       take: pageSize,
       orderBy,
     });
-
+    const accountIds = expenses.map((e) => e.account_id);
+    const validAccountIds = accountIds.filter(
+      (id): id is string => id !== null,
+    );
+    // Fetch related accounts
+    const accounts = await prisma.accounts.findMany({
+      where: { company_id: companyId, id: { in: validAccountIds } },
+      select: { id: true, account_name_en: true },
+    });
     // Serialize and transform data
-    const serialized = expenses.map((expense) => ({
-      id: expense.id,
-      expenseNumber: expense.expense_number,
-      description: expense.description,
-      amount: expense.amount,
-      expenseDate: expense.expense_date,
-      paymentMethod: expense.payment_method,
-      referenceNumber: expense.reference_number,
-      notes: expense.notes,
-      status: expense.status,
+    const serialized = expenses.map((expense) => {
+      const account = accounts.find((a) => a.id === expense.account_id);
 
-      user: expense.users
-        ? {
-            id: expense.users.id,
-            name: expense.users.name,
-            email: expense.users.email,
-          }
-        : null,
-      createdAt: expense.created_at,
-      updatedAt: expense.updated_at,
-    }));
-    const result = serializeData(serialized);
+      return {
+        id: expense.id,
+        expenseNumber: expense.expense_number,
+        description: expense.description,
+        amount: expense.amount,
+        expenseDate: expense.expense_date,
+        paymentMethod: expense.payment_method,
+        referenceNumber: expense.reference_number,
+        notes: expense.notes,
+        status: expense.status,
+        account_id: expense.account_id,
 
-    return { data: result, total };
+        // ✅ Only the matching account name for this expense
+        account_category: account ? [account.account_name_en] : [],
+
+        user: expense.users
+          ? {
+              id: expense.users.id,
+              name: expense.users.name,
+              email: expense.users.email,
+            }
+          : null,
+        createdAt: expense.created_at,
+        updatedAt: expense.updated_at,
+      };
+    });
+
+    return { data: serialized, total };
   } catch (error) {
     console.error("Error fetching expenses:", error);
     throw error;
@@ -291,7 +306,7 @@ export async function updateExpense(
   companyId: string,
   userId: string,
   data: {
-    expense_categoriesId?: string;
+    account_id: string;
     description?: string;
     amount?: number;
     expense_date?: Date;
@@ -304,8 +319,8 @@ export async function updateExpense(
     const expense = await prisma.expenses.update({
       where: { id: expenseId },
       data: {
-        ...(data.expense_categoriesId && {
-          expense_categoriesId: data.expense_categoriesId,
+        ...(data.account_id && {
+          account_id: data.account_id,
         }),
         ...(data.description && { description: data.description }),
         ...(data.amount && { amount: data.amount }),

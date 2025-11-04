@@ -20,12 +20,13 @@ export function ExpenseEditForm({ expense }: { expense: any }) {
       status: expense.status,
       notes: expense.notes || "",
       expenseDate: new Date(expense.expenseDate).toISOString().slice(0, 16),
-      categoryId: expense.categoryId,
+      account_id: expense.account_id ?? "",
     },
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const paymentMethod = watch("payment_method");
   const status = watch("status");
+  const account_id = watch("account_id");
   const { user } = useAuth();
   if (!user) return;
   const [categories, setCategories] = useState<any[]>([]);
@@ -34,7 +35,12 @@ export function ExpenseEditForm({ expense }: { expense: any }) {
     if (user) {
       getExpenseCategories(user.companyId).then(setCategories);
     }
-  }, [user]);
+  }, [open]);
+  useEffect(() => {
+    if (categories.length && expense.account_id) {
+      setValue("account_id", expense.account_id); // تعيين القيمة الافتراضية بعد تحميل الفئات
+    }
+  }, [categories, expense.account_id, setValue]);
 
   const onSubmit = async (data: any) => {
     try {
@@ -51,7 +57,7 @@ export function ExpenseEditForm({ expense }: { expense: any }) {
           status: data.status,
           notes: data.notes,
           expense_date: new Date(data.expenseDate),
-          expense_categoriesId: data.categoryId,
+          account_id: data.account_id ?? "",
         },
       );
 
@@ -98,17 +104,13 @@ export function ExpenseEditForm({ expense }: { expense: any }) {
 
         <div className="grid gap-2">
           <Label>الفئة</Label>
-          <select
-            {...register("categoryId")}
-            className="rounded-md border px-3 py-2"
-          >
-            <option value="">-- اختر الفئة --</option>
-            {categories.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.name}
-              </option>
-            ))}
-          </select>
+
+          <SelectField
+            options={categories}
+            value={account_id}
+            action={(val) => setValue("account_id", val)}
+            placeholder="اختر الفئة"
+          />
         </div>
 
         <div className="grid gap-2">

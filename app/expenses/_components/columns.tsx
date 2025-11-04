@@ -59,13 +59,13 @@ export const expenseColumns: ColumnDef<any>[] = [
   },
 
   {
-    accessorKey: "category",
+    accessorKey: "account_category",
     header: "الفئة",
     cell: ({ row }) => {
-      const category = row.original.category;
+      const category = row.original.account_category;
       return (
         <Badge variant="outline" className="">
-          {category?.name || "غير محدد"}
+          {category || "غير محدد"}
         </Badge>
       );
     },
@@ -134,6 +134,7 @@ export const expenseColumns: ColumnDef<any>[] = [
     header: "الإجراءات",
     cell: ({ row }) => {
       const exponses = row.original;
+      const category = row.original.account_category;
       return <ExpenseEditForm expense={exponses} />;
     },
     enableSorting: false,

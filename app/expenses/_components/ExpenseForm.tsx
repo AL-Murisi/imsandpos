@@ -100,6 +100,7 @@ export default function ExpenseForm({
       type: "EXPENSE",
     },
     { id: "OTHER_EXPENSES", name: "مصاريف أخرى", type: "EXPENSE" },
+    { id: "HOUSE_EXPENSES", name: "مصاريف منزلية", type: "EXPENSE" },
   ];
   // ...
   return (

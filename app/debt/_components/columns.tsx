@@ -210,8 +210,6 @@ export const debtSaleColumns: ColumnDef<any>[] = [
 
       return (
         <div className="flex gap-2">
-          {amountDue > 0 && <Debtupdate debt={debt} />}
-
           <DebtReport
             customerName={debt.customer?.name}
             customerID={debt.customerId}

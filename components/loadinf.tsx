@@ -27,7 +27,7 @@ export default function IMSLoader() {
         animate={{ opacity: [0.4, 1, 0.4] }}
         transition={{ repeat: Infinity, duration: 2 }}
       >
-        جارٍ تحميل نظام إدارة إدارة المنتجات..
+        جارٍ تحميل نظام إدارة المنتجات..
       </motion.p>
     </div>
   );
