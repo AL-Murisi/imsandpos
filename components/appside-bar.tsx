@@ -397,6 +397,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     onClick={() => logoutAndRedirect()}
                     className="text-red-600 hover:bg-orange-300/20 hover:text-red-700"
                   >
+                    {"logout"}
                     <LogOut className="h-5 w-5" />
                   </SidebarMenuButton>
                 </SidebarMenuItem>
