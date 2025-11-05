@@ -176,7 +176,7 @@ function DashboardContentClient({
         <ChartPieLegend chartData={salesSummary.expenseBreakdown} />
       </div>
 
-      {/* Tables - Load last
+      {/*
       <div className="lg:col-span-3">
         <Suspense fallback={<TableSkeleton />}>
           <LazySection>
