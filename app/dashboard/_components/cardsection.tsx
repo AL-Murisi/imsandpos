@@ -134,7 +134,7 @@ export default function SectionCards({
       description: "receivedDebt",
       title: `${salesSummary.netProfit} `,
       label: "صافي الربح",
-      link: "/debt",
+      link: "/chartOfAccount",
       chartData: salesSummary.sales.chart,
       bg: "bg-gradient-to-r dark:from-pink-500 dark:to-rose-700 from-chart-1 to-chart-3",
     },

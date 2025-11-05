@@ -60,10 +60,10 @@ export async function POST(req: NextRequest) {
     await logActivity(
       user.id,
       user.companyId,
-      "loging",
-      "user loging",
+      "تسجيل الدخول", // loging
+      "قام المستخدم بتسجيل الدخول", // user loging
       "889",
-      "user agent",
+      "وكيل المستخدم",
     );
     return NextResponse.json({
       success: true,

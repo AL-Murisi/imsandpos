@@ -239,7 +239,7 @@ export async function updateInventory(
           reason: updateData.reason ? updateData.reason : "تم_استلام_المورد",
           notes:
             notes ||
-            `${supplierId ? "Stock from supplier" : "Inventory update"}: ...`,
+            `${supplierId ? "المخزون من المورد" : "تحديث المخزون"}: ...`,
           quantityBefore: inventoryTarget.stockQuantity,
           quantityAfter: finalStockQty,
         },

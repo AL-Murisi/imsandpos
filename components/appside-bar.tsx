@@ -48,9 +48,7 @@ import {
 } from "./ui/collapsible";
 import { useAuth } from "@/lib/context/AuthContext";
 import { ModeToggle } from "./toggoletheme";
-import { logActivity } from "@/app/actions/activitylogs";
-import { redirect, usePathname } from "next/navigation";
-import LanguageSelector from "./common/lanSelect";
+import { usePathname } from "next/navigation";
 import LocaleSwitcher from "./common/LocaleSwitcher";
 import { useTranslations } from "next-intl";
 

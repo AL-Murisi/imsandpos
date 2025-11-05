@@ -17,6 +17,8 @@ export function useFormatter() {
       style: "currency",
       currency: currency.currency,
       numberingSystem: "latn",
+      minimumFractionDigits: 2, // always show at least 2 decimals
+      maximumFractionDigits: 2, // optional, rounds to 2 decimals
     }).format(value);
   };
 

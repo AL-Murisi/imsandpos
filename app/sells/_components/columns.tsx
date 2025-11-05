@@ -87,11 +87,22 @@ export const debtSaleColumns: ColumnDef<DebtSaleData>[] = [
       <SortableHeader column={column} label="رقم الهاتف" />
     ),
   },
+
   {
     accessorKey: "customer.customerType",
-    header: ({ column }) => (
-      <SortableHeader column={column} label="customerType" />
-    ),
+    header: "نوع العميل",
+    cell: ({ row }) => {
+      const customer = row.original.customer?.customerType ?? "";
+      return (
+        <Badge className="rounded-md bg-blue-600 text-xs text-white">
+          {customer === "individual"
+            ? "فردي"
+            : customer === "commercial"
+              ? "تجاري"
+              : "-"}
+        </Badge>
+      );
+    },
   },
   {
     accessorKey: "totalAmount",

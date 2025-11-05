@@ -68,6 +68,7 @@ interface DashboardContentClientProps {
       unreceivedChart: Array<{ date: string; value: number }>;
       receivedChart: Array<{ date: string; value: number }>;
     };
+    expenseBreakdown: any;
   };
 }
 
@@ -151,8 +152,8 @@ function DashboardContentClient({
       {/* Left column - Priority charts */}
       <div className="flex flex-col gap-5 lg:col-span-2">
         <ReusableAreaChart
-          title="Sales Overview"
-          description="Sales trends over selected period"
+          title="نظرة عامة على المبيعات"
+          description="اتجاهات المبيعات خلال الفترة المحددة"
           data={combined}
           config={salesChartConfig}
           t={t}
@@ -172,10 +173,10 @@ function DashboardContentClient({
           paramKey="revenue"
         />
 
-        <ChartPieLegend chartData={staticChartData} />
+        <ChartPieLegend chartData={salesSummary.expenseBreakdown} />
       </div>
 
-      {/* Tables - Load last */}
+      {/* Tables - Load last
       <div className="lg:col-span-3">
         <Suspense fallback={<TableSkeleton />}>
           <LazySection>
@@ -188,7 +189,7 @@ function DashboardContentClient({
             />
           </LazySection>
         </Suspense>
-      </div>
+      </div> */}
     </div>
   );
 }

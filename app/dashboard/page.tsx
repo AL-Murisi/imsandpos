@@ -223,6 +223,7 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
         receivedChart: [],
       },
       netProfit: summaryCards.netProfit,
+      expenseBreakdown: dashboardData.expenseBreakdown,
     };
 
     // Transform data for DashboardContentClient

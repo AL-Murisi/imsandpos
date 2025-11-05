@@ -96,8 +96,11 @@ export const debtSaleColumns: ColumnDef<any>[] = [
   },
   {
     accessorKey: "customerType",
-    header: ({ column }) => (
-      <SortableHeader column={column} label="نوع الزبون" />
+    header: "نوع العميل",
+    cell: ({ row }) => (
+      <Badge className="rounded-md bg-blue-600 text-xs text-white">
+        {row.original.customerType === "individual" ? "فردي" : "تجاري"}
+      </Badge>
     ),
   },
   // {
@@ -161,15 +164,9 @@ export const debtSaleColumns: ColumnDef<any>[] = [
     accessorKey: "amountDue",
     header: ({ column }) => <SortableHeader column={column} label="المتبقي" />,
     cell: ({ row }) => {
-      const price = row.getValue("amountDue") as number;
-      const { currency } = useCurrency();
-      return price
-        ? new Intl.NumberFormat(currency.locale, {
-            style: "currency",
-            currency: currency.currency,
-            numberingSystem: "latn",
-          }).format(price)
-        : "N/A";
+      const price = row.original.amountDue;
+
+      return <span>{price}</span>;
     },
   },
   {

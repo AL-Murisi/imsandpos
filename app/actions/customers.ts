@@ -47,6 +47,7 @@ export async function getCustomerById(companyId: string, customerId?: string) {
         country: true,
         customerType: true,
         taxId: true,
+
         creditLimit: true,
         outstandingBalance: true,
         balance: true,

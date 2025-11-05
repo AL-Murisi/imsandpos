@@ -110,12 +110,12 @@ export const columns: ColumnDef<User>[] = [
       switch (status) {
         case true:
           color = "bg-green-100 text-green-800";
-          label = "Active";
+          label = "نشط";
           icon = <CheckCircle className="mr-1 h-4 w-4" />;
           break;
         default:
           color = "bg-yellow-100 text-yellow-800";
-          label = "Not Active";
+          label = " غير نشط";
           icon = <Clock className="mr-1 h-4 w-4" />;
           break;
       }

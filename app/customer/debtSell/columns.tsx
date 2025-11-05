@@ -23,6 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { deleteCustomer, updateCustomerStatus } from "@/app/actions/customers";
 import { useAuth } from "@/lib/context/AuthContext";
+import DebtReport from "@/app/debt/_components/DebtReport";
 
 // 🔽 Sortable Header Component
 type SortableHeaderProps = {
@@ -145,11 +146,7 @@ export const customerColumns: ColumnDef<any>[] = [
                 : "text-gray-600"
           }`}
         >
-          {balance > 0
-            ? `+${balance.toFixed(2)} مدين`
-            : balance < 0
-              ? `${balance.toFixed(2)} دائن`
-              : "0"}
+          {balance.toFixed(2)} مدين`
         </span>
       );
     },
@@ -179,45 +176,48 @@ export const customerColumns: ColumnDef<any>[] = [
       const { user } = useAuth();
       if (!user) return;
       return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">فتح القائمة</span>
-              <MoreHorizontal />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
-            <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(customer.id)}
-            >
-              نسخ المعرف
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            {customer.isActive ? (
+        <>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">فتح القائمة</span>
+                <MoreHorizontal />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
               <DropdownMenuItem
-                onClick={() =>
-                  updateCustomerStatus(false, customer.id, user.companyId)
-                }
+                onClick={() => navigator.clipboard.writeText(customer.id)}
               >
-                تعطيل
+                نسخ المعرف
               </DropdownMenuItem>
-            ) : (
+              <DropdownMenuSeparator />
+              {customer.isActive ? (
+                <DropdownMenuItem
+                  onClick={() =>
+                    updateCustomerStatus(false, customer.id, user.companyId)
+                  }
+                >
+                  تعطيل
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem
+                  onClick={() =>
+                    updateCustomerStatus(true, customer.id, user.companyId)
+                  }
+                >
+                  تفعيل
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem
-                onClick={() =>
-                  updateCustomerStatus(true, customer.id, user.companyId)
-                }
+                onClick={() => deleteCustomer(customer.id, user.companyId)}
               >
-                تفعيل
+                حذف العميل
               </DropdownMenuItem>
-            )}
-            <DropdownMenuItem
-              onClick={() => deleteCustomer(customer.id, user.companyId)}
-            >
-              حذف العميل
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <DebtReport customerName={customer.name} customerID={customer.id} />
+        </>
       );
     },
   },

@@ -89,7 +89,7 @@ export default function UniversalChart({
   const t = useTranslations("cards");
   const chartConfig: ChartConfig = {
     [dataKey]: {
-      label: dataKey === t("quantity") ? "Top Selling" : t("revenue"),
+      label: dataKey === "quantity" ? "الأكثر مبيعًا" : t("revenue"),
       color: "var(--chart-5)",
     },
     label: { color: "var(--background)" },
@@ -123,8 +123,8 @@ export default function UniversalChart({
   const xKey = dataKey === "quantity" ? "name" : "date";
   const labelText =
     dataKey === "quantity"
-      ? "Showing the top-selling products by quantity"
-      : "Showing revenue trends by date";
+      ? "عرض المنتجات الأكثر مبيعًا حسب الكمية"
+      : "عرض اتجاهات الإيرادات حسب التاريخ";
 
   const dates = [
     { id: "day", name: "day" },

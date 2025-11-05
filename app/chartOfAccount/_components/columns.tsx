@@ -154,6 +154,14 @@ export const accountColumns: ColumnDef<any>[] = [
         SALES_REVENUE: "إيرادات مبيعات",
         COST_OF_GOODS_SOLD: "تكلفة البضاعة المباعة",
         OPERATING_EXPENSES: "مصاريف تشغيلية",
+
+        // 🆕 Added:
+        OTHER_CURRENT_ASSETS: "أصول متداولة أخرى",
+        SERVICE_REVENUE: "إيرادات خدمات",
+        OTHER_CURRENT_LIABILITIES: "التزامات متداولة أخرى",
+        OTHER_EXPENSES: "مصاريف أخرى",
+        ADMINISTRATIVE_EXPENSES: "مصاريف إدارية",
+        HOUSE_EXPENSES: "مصاريف منزلية",
       };
       return (
         <span className="text-lg">

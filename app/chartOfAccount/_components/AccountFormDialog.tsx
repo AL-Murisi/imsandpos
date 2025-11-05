@@ -322,7 +322,7 @@ export default function AccountFormDialog({
 
           {/* Account Name (English) */}
           <div className="grid gap-2">
-            <Label htmlFor="account_name_en">اسم الحساب (English) *</Label>
+            <Label htmlFor="account_name_en">اسم الحساب (عربي)</Label>
             <Input
               id="account_name_en"
               type="text"
@@ -337,15 +337,15 @@ export default function AccountFormDialog({
           </div>
 
           {/* Account Name (Arabic) */}
-          <div className="grid gap-2">
+          {/* <div className="grid gap-2">
             <Label htmlFor="account_name_ar">اسم الحساب (عربي)</Label>
-            <Input
+           <Input 
               id="account_name_ar"
               type="text"
               placeholder="النقد في الصندوق"
               {...register("account_name_ar")}
             />
-          </div>
+          </div> */}
 
           {/* Category */}
           <div className="grid gap-2">

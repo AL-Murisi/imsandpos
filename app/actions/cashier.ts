@@ -149,12 +149,12 @@ export async function processSale(data: any, companyId: string) {
           productId: item.id,
           warehouseId: item.warehouseId,
           userId: cashierId,
-          movementType: "out",
+          movementType: "صادر",
           quantity: quantityInUnits,
-          reason: "sale",
+          reason: "بيع",
           quantityBefore: inventory.stockQuantity,
           quantityAfter: newStock,
-          referenceType: "Sale",
+          referenceType: "بيع",
           referenceId: sale.id,
         });
 
@@ -243,10 +243,10 @@ export async function processSale(data: any, companyId: string) {
       logActivity(
         cashierId,
         companyId,
-        "cashier",
-        "sells a product",
-        "889",
-        "user agent",
+        "أمين الصندوق", // cashier
+        "قام ببيع منتج", // sells a product
+        "889", // (keep as is, transaction or code)
+        "وكيل المستخدم",
       ).catch(console.error); // Handle errors silently
 
       // 10. Prepare response
