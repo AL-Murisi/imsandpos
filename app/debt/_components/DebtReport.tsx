@@ -1,6 +1,6 @@
 "use client";
 
-import { FetchCustomerDebtReport } from "@/lib/actions/sells";
+import { FetchCustomerDebtReport } from "@/app/actions/sells";
 import Dailogreuse from "@/components/common/dailogreuse";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
@@ -18,7 +18,7 @@ import { useAuth } from "@/lib/context/AuthContext";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { updateSalesBulk } from "@/lib/actions/debtSells";
+import { updateSalesBulk } from "@/app/actions/debtSells";
 
 interface Debt {
   id: string;

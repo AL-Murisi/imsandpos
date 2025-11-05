@@ -1,6 +1,6 @@
 import dynamic from "next/dynamic";
 import CustomerClinet from "./debtSell/table";
-import { getCustomerById } from "../../lib/actions/customers";
+import { getCustomerById } from "../actions/customers";
 import { getSession } from "@/lib/session";
 
 export default async function DebtSell() {

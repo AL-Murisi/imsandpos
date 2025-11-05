@@ -10,7 +10,7 @@ import { Label } from "../../../components/ui/label";
 import { Button } from "../../../components/ui/button";
 
 import { CreateBrandSchema } from "@/lib/zod";
-import { createBrand } from "@/lib/actions/roles";
+import { createBrand } from "@/app/actions/roles";
 import { useAuth } from "@/lib/context/AuthContext";
 
 type FormValues = z.infer<typeof CreateBrandSchema>;

@@ -9,7 +9,7 @@ import Dailogreuse from "@/components/common/dailogreuse";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
-import { getAccountDetails } from "@/lib/actions/chartOfaccounts";
+import { getAccountDetails } from "@/app/actions/chartOfaccounts";
 
 interface AccountDetailsDialogProps {
   account: {

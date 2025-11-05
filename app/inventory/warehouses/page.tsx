@@ -1,4 +1,4 @@
-import { fetchWarehouse } from "@/lib/actions/warehouse";
+import { fetchWarehouse } from "@/app/actions/warehouse";
 
 import WarehouseTable from "./_components/tables";
 import { getSession } from "@/lib/session";

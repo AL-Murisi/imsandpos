@@ -1,5 +1,5 @@
 "use client";
-import { deleteProduct } from "@/lib/actions/Product";
+import { deleteProduct } from "@/app/actions/Product";
 import ProductEditFormm from "@/app/products/_components/formEdit";
 import Dailogreuse from "@/components/common/dailogreuse";
 import { useCurrency } from "@/components/CurrencyProvider";

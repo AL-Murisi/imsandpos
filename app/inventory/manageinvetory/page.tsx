@@ -1,5 +1,5 @@
-import { fetchAllFormData } from "@/lib/actions/roles";
-import { getInventoryById, getStockMovements } from "@/lib/actions/warehouse";
+import { fetchAllFormData } from "@/app/actions/roles";
+import { getInventoryById, getStockMovements } from "@/app/actions/warehouse";
 import { TabsContent } from "@/components/ui/tabs";
 import { ParsedSort } from "@/hooks/sort";
 import { Prisma } from "@prisma/client";

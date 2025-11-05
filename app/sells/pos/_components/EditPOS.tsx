@@ -1,6 +1,6 @@
 "use client";
 
-import { createCutomer } from "@/lib/actions/customers";
+import { createCutomer } from "@/app/actions/customers";
 import { SelectField } from "@/components/common/selectproduct";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

@@ -2,7 +2,7 @@ import {
   getPurchasesByCompany,
   getSupplierPaymentsByCompany,
   fetchSuppliers,
-} from "@/lib/actions/suppliers";
+} from "@/app/actions/suppliers";
 import { getSession } from "@/lib/session";
 import { ParsedSort } from "@/hooks/sort";
 import { SortingState } from "@tanstack/react-table";

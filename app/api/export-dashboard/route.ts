@@ -1,5 +1,5 @@
 // app/api/export-dashboard/route.ts
-import { fetchDashboardData } from "@/lib/actions/dashboard";
+import { fetchDashboardData } from "@/app/actions/dashboard";
 import { generatePDFFromData } from "@/lib/pdfExport";
 import { getSession } from "@/lib/session";
 import { NextRequest, NextResponse } from "next/server";

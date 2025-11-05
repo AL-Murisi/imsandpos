@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { WarehouseUpdateDialog } from "./editform";
-import { deleteWarehouse } from "@/lib/actions/warehouse";
+import { deleteWarehouse } from "@/app/actions/warehouse";
 
 // 🔽 Sortable Header Component
 type SortableHeaderProps = {

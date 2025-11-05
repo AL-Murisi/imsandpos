@@ -1,6 +1,6 @@
 "use client";
 
-import { createPOS } from "@/lib/actions/pos";
+import { createPOS } from "@/app/actions/pos";
 import { SelectField } from "@/components/common/selectproduct";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

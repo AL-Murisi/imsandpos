@@ -1,7 +1,7 @@
 import {
   getExpenseCategories,
   getExpensesByCompany,
-} from "../../lib/actions/exponses";
+} from "../actions/exponses";
 import { getSession } from "@/lib/session";
 import ExpensesPage from "./_components/table";
 

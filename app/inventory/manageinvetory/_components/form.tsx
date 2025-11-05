@@ -1,7 +1,7 @@
 "use client";
 
-import { fetchAllFormData } from "@/lib/actions/roles";
-import { updateInventory } from "@/lib/actions/warehouse";
+import { fetchAllFormData } from "@/app/actions/roles";
+import { updateInventory } from "@/app/actions/warehouse";
 import Dailogreuse from "@/components/common/dailogreuse";
 import { SelectField } from "@/components/common/selectproduct";
 import { Button } from "@/components/ui/button";

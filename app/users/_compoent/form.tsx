@@ -7,8 +7,8 @@ import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { Label } from "../../../components/ui/label";
 
-import { fetchRolesForSelect } from "@/lib/actions/roles";
-import { createUser } from "@/lib/actions/users";
+import { fetchRolesForSelect } from "@/app/actions/roles";
+import { createUser } from "@/app/actions/users";
 import { SelectField } from "@/components/common/selectproduct";
 import { useAuth } from "@/lib/context/AuthContext";
 import { CreateUserSchema, UserInput } from "@/lib/zod";

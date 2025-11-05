@@ -26,7 +26,7 @@ import {
 import { z } from "zod";
 import { userSchema } from "@/lib/zod";
 import { Badge } from "@/components/ui/badge";
-import { updateUsers } from "@/lib/actions/users";
+import { updateUsers } from "@/app/actions/users";
 import { Label } from "@/components/ui/label";
 import { tr } from "date-fns/locale";
 import Changerole from "./changerole";

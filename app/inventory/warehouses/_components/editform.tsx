@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { CreateWarehouseSchema, WarehouseInput } from "@/lib/zod/warehouse";
-import { updateWarehouse, deleteWarehouse } from "@/lib/actions/warehouse";
+import { updateWarehouse, deleteWarehouse } from "@/app/actions/warehouse";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

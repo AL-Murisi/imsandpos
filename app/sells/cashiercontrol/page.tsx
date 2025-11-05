@@ -1,7 +1,7 @@
 // // Cart.tsx
-import { getAllActiveProductsForSale } from "@/lib/actions/cashier";
-import { Fetchcustomerbyname } from "@/lib/actions/customers";
-import { fetchAllFormData } from "@/lib/actions/roles";
+import { getAllActiveProductsForSale } from "@/app/actions/cashier";
+import { Fetchcustomerbyname } from "@/app/actions/customers";
+import { fetchAllFormData } from "@/app/actions/roles";
 import { Prisma } from "@prisma/client";
 
 import ProductListRedux from "./ProductList";

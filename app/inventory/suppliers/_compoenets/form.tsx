@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/lib/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { updateSupplierPayment } from "@/lib/actions/suppliers";
+import { updateSupplierPayment } from "@/app/actions/suppliers";
 import { useState } from "react";
 
 export function PaymentEditForm({

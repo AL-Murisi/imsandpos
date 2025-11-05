@@ -3,7 +3,7 @@
 // ============================================
 "use client";
 
-import { createSupplierPaymentFromPurchases } from "@/lib/actions/suppliers"; // 👈 your new function
+import { createSupplierPaymentFromPurchases } from "@/app/actions/suppliers"; // 👈 your new function
 import Dailogreuse from "@/components/common/dailogreuse";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
