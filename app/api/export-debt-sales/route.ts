@@ -1,7 +1,7 @@
 // app/api/export-debt-sales/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { generateDebtSalesPDF } from "@/lib/debtSalesPdfExport";
-import { FetchDebtSales } from "@/app/actions/sells";
+import { FetchDebtSales } from "@/lib/actions/sells";
 import { Prisma } from "@prisma/client";
 import { ParsedSort } from "@/hooks/sort";
 import { getSession } from "@/lib/session";

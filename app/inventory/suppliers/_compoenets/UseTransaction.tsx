@@ -3,10 +3,20 @@
 import { use, useState, useTransition } from "react";
 import DashboardTabs from "@/components/common/Tabs";
 import TableSkeleton from "@/components/common/TableSkeleton";
-import SuppliersTable from "./table";
-import PurchasesTable from "./PurchasesTable";
-import PaymentsTable from "./paymentsTable";
 
+import dynamic from "next/dynamic";
+const SuppliersTable = dynamic(() => import("./table"), {
+  ssr: false,
+  loading: () => <TableSkeleton />,
+});
+const PurchasesTable = dynamic(() => import("./PurchasesTable"), {
+  ssr: false,
+  loading: () => <TableSkeleton />,
+});
+const PaymentsTable = dynamic(() => import("./paymentsTable"), {
+  ssr: false,
+  loading: () => <TableSkeleton />,
+});
 type TabsControllerProps = {
   suppliersPromise: Promise<any[]>;
   purchasesPromise: Promise<{ data: any[]; total: number }>;

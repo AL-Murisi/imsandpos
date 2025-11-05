@@ -9,7 +9,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown, Power, Trash2 } from "lucide-react";
 import {
   deleteAccount,
   toggleAccountStatus,
-} from "@/app/actions/chartOfaccounts";
+} from "@/lib/actions/chartOfaccounts";
 import Dailogreuse from "@/components/common/dailogreuse";
 import dynamic from "next/dynamic";
 import { useState, useTransition } from "react";

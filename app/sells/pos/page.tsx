@@ -1,4 +1,4 @@
-import { fetchPOSManagers, getPOSList } from "@/app/actions/pos";
+import { fetchPOSManagers, getPOSList } from "@/lib/actions/pos";
 import SalesPointTable from "./_components/Table";
 import { getSession } from "@/lib/session";
 

@@ -1,4 +1,4 @@
-import { fetchCategory } from "@/app/actions/category";
+import { fetchCategory } from "@/lib/actions/category";
 import CategoryTable from "./_components/tables";
 import { getSession } from "@/lib/session";
 

@@ -1,13 +1,23 @@
 "use client";
 
-import UserClinet from "./Table";
-
-import UserActivityTable from "./userActivityLogs";
+const UserClinet = dynamic(() => import("./Table"), {
+  ssr: false,
+  loading: () => <TableSkeleton />,
+});
 import DashboardTabs from "@/components/common/Tabs";
 import TableSkeleton from "@/components/common/TableSkeleton";
-import Role from "./roleTable";
-import UpdateCompanyForm from "./updateCompany";
-
+import dynamic from "next/dynamic";
+const UpdateCompanyForm = dynamic(() => import("./updateCompany"), {
+  ssr: false,
+});
+const UserActivityTable = dynamic(() => import("./userActivityLogs"), {
+  ssr: false,
+  loading: () => <TableSkeleton />,
+});
+const Role = dynamic(() => import("./roleTable"), {
+  ssr: false,
+  loading: () => <TableSkeleton />,
+});
 export default function UserTab({
   data,
   roless,

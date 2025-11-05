@@ -8,13 +8,13 @@ const Calendar22 = dynamic(
   },
 );
 
-const DataTable = dynamic(
-  () => import("@/components/common/test").then((m) => m.DataTable),
-  {
-    ssr: false,
-    loading: () => <TableSkeleton />,
-  },
-);
+// const DataTable = dynamic(
+//   () => import("@/components/common/test").then((m) => m.DataTable),
+//   {
+//     ssr: false,
+//     loading: () => <TableSkeleton />,
+//   },
+// );
 import { useTablePrams } from "@/hooks/useTableParams";
 
 import SearchInput from "@/components/common/searchtest";
@@ -23,6 +23,7 @@ import { useTranslations } from "next-intl";
 
 import { supplierColumns } from "./columns";
 import TableSkeleton from "@/components/common/TableSkeleton";
+import { DataTable } from "@/components/common/test";
 const SupplierForm = dynamic(() => import("@/components/forms/supplierform"), {
   ssr: false,
 });

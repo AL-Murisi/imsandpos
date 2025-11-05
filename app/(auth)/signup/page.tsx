@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { createCompany } from "@/app/actions/createcompnayacc";
+import { createCompany } from "@/lib/actions/createcompnayacc";
 import {
   Building2,
   User,

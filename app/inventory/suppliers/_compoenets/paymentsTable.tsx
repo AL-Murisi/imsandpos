@@ -1,13 +1,6 @@
 "use client";
 
 import dynamic from "next/dynamic";
-const Calendar22 = dynamic(
-  () => import("@/components/common/DatePicker").then((m) => m.Calendar22),
-  {
-    ssr: false,
-    loading: () => <input type="date" className="..." />,
-  },
-);
 
 import { DataTable } from "@/components/common/test";
 import { useTablePrams } from "@/hooks/useTableParams";
@@ -18,6 +11,7 @@ import { useTranslations } from "next-intl";
 
 import { PrintPaymentsTable } from "@/components/printItems";
 import { paymentColumns } from "./columns";
+import { Calendar22 } from "@/components/common/DatePicker";
 
 type ProductClientProps = {
   data: any[];

@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { createSession } from "@/lib/session";
-import { logActivity } from "@/app/actions/activitylogs";
+import { logActivity } from "@/lib/actions/activitylogs";
 import { includes } from "zod";
 
 export async function POST(req: NextRequest) {

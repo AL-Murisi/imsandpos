@@ -854,31 +854,36 @@ export async function getSummaryCards(
  * Get Product Statistics
  */
 export async function getProductStats(companyId: string) {
-  const products = await prisma.inventory.findMany({
-    where: {
-      companyId: companyId,
-      // is_active: true // Add if you have this field
-    },
-    select: {
-      stockQuantity: true,
-      reorderLevel: true,
-    },
-  });
+  const productStats = prisma.inventory
+    .aggregate({
+      _count: { stockQuantity: true },
+      where: { companyId },
+    })
+    .then(async (stock) => {
+      const [lowStockCount, zeroStockCount] = await Promise.all([
+        prisma.inventory.count({
+          where: {
+            companyId,
+            stockQuantity: {
+              lte: prisma.inventory.fields.reorderLevel,
+            },
+          },
+        }),
+        prisma.inventory.count({
+          where: {
+            companyId,
+            stockQuantity: 0,
+          },
+        }),
+      ]);
 
-  const totalStockQuantity = products.reduce(
-    (sum, p) => sum + (p.stockQuantity || 0),
-    0,
-  );
-  const lowStockProducts = products.filter(
-    (p) => p.stockQuantity > 0 && p.stockQuantity <= (p.reorderLevel || 0),
-  ).length;
-  const zeroProducts = products.filter((p) => p.stockQuantity === 0).length;
-
-  return {
-    totalStockQuantity,
-    lowStockProducts,
-    zeroProducts,
-  };
+      return {
+        totalStockQuantity: stock._count.stockQuantity || 0,
+        lowStockProducts: lowStockCount,
+        zeroProducts: zeroStockCount,
+      };
+    });
+  return productStats;
 }
 
 /**

@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { useTablePrams } from "@/hooks/useTableParams";
+import { useTranslations } from "next-intl";
 
 const XAxis = dynamic(() => import("recharts").then((m) => m.XAxis), {
   ssr: false,
@@ -85,9 +86,10 @@ export default function UniversalChart({
   color,
   paramKey,
 }: ProductClientProps) {
+  const t = useTranslations("cards");
   const chartConfig: ChartConfig = {
     [dataKey]: {
-      label: dataKey === "quantity" ? "Top Selling" : "Revenue",
+      label: dataKey === t("quantity") ? "Top Selling" : t("revenue"),
       color: "var(--chart-5)",
     },
     label: { color: "var(--background)" },

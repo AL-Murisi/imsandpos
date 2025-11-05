@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { checkLowStockAndNotify } from "@/app/actions/debtSells";
+import { checkLowStockAndNotify } from "@/lib/actions/debtSells";
 import { gzipSync } from "zlib";
 
 export async function GET() {

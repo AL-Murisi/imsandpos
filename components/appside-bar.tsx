@@ -48,7 +48,7 @@ import {
 } from "./ui/collapsible";
 import { useAuth } from "@/lib/context/AuthContext";
 import { ModeToggle } from "./toggoletheme";
-import { logActivity } from "@/app/actions/activitylogs";
+import { logActivity } from "@/lib/actions/activitylogs";
 import { redirect, usePathname } from "next/navigation";
 import LanguageSelector from "./common/lanSelect";
 import LocaleSwitcher from "./common/LocaleSwitcher";
@@ -398,17 +398,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     className="text-red-600 hover:bg-orange-300/20 hover:text-red-700"
                   >
                     <LogOut className="h-5 w-5" />
-                    <span>{t("logout")}</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
 
                 {/* Language */}
                 <SidebarMenuItem>
-                  <SidebarMenuButton
-                    tooltip={t("language")}
-                    asChild
-                    className="hover:bg-orange-300/20"
-                  >
+                  <SidebarMenuButton asChild className="hover:bg-orange-300/20">
                     <div className="flex items-center gap-2 hover:bg-orange-300/20">
                       <Globe className="h-5 w-5 text-blue-400" />
                       <LocaleSwitcher />
@@ -418,11 +413,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
                 {/* Currency */}
                 <SidebarMenuItem>
-                  <SidebarMenuButton
-                    tooltip={t("currency")}
-                    asChild
-                    className="hover:bg-orange-300/20"
-                  >
+                  <SidebarMenuButton asChild className="hover:bg-orange-300/20">
                     <div className="flex items-center gap-2 hover:bg-orange-300/20">
                       <Wallet className="h-5 w-5 text-yellow-400" />
                       <CurrencySwitcher />
@@ -432,11 +423,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
                 {/* Theme */}
                 <SidebarMenuItem>
-                  <SidebarMenuButton
-                    tooltip={t("theme")}
-                    asChild
-                    className="hover:bg-orange-300/20"
-                  >
+                  <SidebarMenuButton asChild className="hover:bg-orange-300/20">
                     <div className="flex items-center gap-2 hover:bg-orange-300/20">
                       <Moon className="h-5 w-5 text-indigo-400" />
                       <ModeToggle />

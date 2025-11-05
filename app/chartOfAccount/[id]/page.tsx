@@ -1,7 +1,7 @@
 import {
   getAccountLedger,
   getJournalEntries,
-} from "../../actions/Journal Entry"; // adjust your import path
+} from "../../../lib/actions/Journal Entry"; // adjust your import path
 import { getSession } from "@/lib/session";
 import JournalEntriesTable from "./table";
 

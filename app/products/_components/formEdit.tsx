@@ -1,6 +1,6 @@
 "use client";
-import { UpdateProduct } from "@/app/actions/Product";
-import { fetchAllFormData } from "@/app/actions/roles";
+import { UpdateProduct } from "@/lib/actions/Product";
+import { fetchAllFormData } from "@/lib/actions/roles";
 import Dailogreuse from "@/components/common/dailogreuse";
 import { SelectField } from "@/components/common/selectproduct";
 import { Button } from "@/components/ui/button";
@@ -47,7 +47,7 @@ export default function ProductEditForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pricingMode, setPricingMode] = useState<
     "full" | "cartonUnit" | "cartonOnly"
-  >(type ?? "full");
+  >(product?.type ?? "full");
 
   const { user } = useAuth();
   const isUpdatingRef = useRef(false);
@@ -73,7 +73,7 @@ export default function ProductEditForm({
   const pricePerCarton = watch("pricePerCarton");
   const pricePerUnit = watch("pricePerUnit");
   const pricePerPacket = watch("pricePerPacket");
-
+  const expiredAt = watch("expiredAt");
   const t = useTranslations("productForm");
 
   // ✅ Load form options once on mount
@@ -100,7 +100,9 @@ export default function ProductEditForm({
   useEffect(() => {
     if (!product) return;
 
-    // Determine pricing mode based on prices
+    // ✅ Determine pricing mode based on existing product.type
+
+    setPricingMode(product?.type);
 
     reset({
       name: product.name || "",
@@ -118,8 +120,9 @@ export default function ProductEditForm({
       wholesalePrice: product.wholesalePrice || undefined,
       minWholesaleQty: product.minWholesaleQty || undefined,
       dimensions: product.dimensions || "",
+      type: product.type || "cartonOnly", // ✅ Keep original type
     });
-  }, [product?.id, reset]); // ✅ Only rerun when product changes
+  }, [product?.id, reset]);
 
   // ✅ Auto-calculate prices for full mode - FIXED
   useEffect(() => {
@@ -160,8 +163,6 @@ export default function ProductEditForm({
       setValue("pricePerUnit", Math.round(calculatedPricePerUnit * 100) / 100);
       isUpdatingRef.current = false;
       setValue("type", "cartonUnit");
-    } else {
-      setValue("type", "cartonOnly");
     }
   }, [pricePerCarton, unitsPerPacket, pricingMode]);
 
@@ -510,8 +511,15 @@ export default function ProductEditForm({
                 </p>
               )}
             </div>
-
             <div className="grid gap-2">
+              <Label>تاريخ الانتهاء</Label>
+              <Input
+                type="datetime-local"
+                className="text-end"
+                {...register("expiredAt")}
+              />
+            </div>
+            {/* <div className="grid gap-2">
               <Label htmlFor="dimensions">الأبعاد</Label>
               <Input
                 id="dimensions"
@@ -524,7 +532,7 @@ export default function ProductEditForm({
                   {errors.dimensions.message}
                 </p>
               )}
-            </div>
+            </div> */}
 
             <div className="grid gap-2">
               <Label htmlFor="description">الوصف</Label>

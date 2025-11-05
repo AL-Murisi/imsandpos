@@ -19,10 +19,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { WarehouseSchema } from "@/lib/zod";
-import { z } from "zod";
+
 import { WarehouseUpdateDialog } from "./editform";
-import { deleteWarehouse } from "@/app/actions/warehouse";
+import { deleteWarehouse } from "@/lib/actions/warehouse";
 
 // 🔽 Sortable Header Component
 type SortableHeaderProps = {
@@ -63,8 +62,8 @@ const SortableHeader: React.FC<SortableHeaderProps> = ({ column, label }) => {
 };
 
 // 🔢 User Type
-export type Warehouse = z.infer<typeof WarehouseSchema>;
-export const columns: ColumnDef<Warehouse>[] = [
+
+export const columns: ColumnDef<any>[] = [
   {
     id: "select",
     header: ({ table }) => (

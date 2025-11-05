@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 // استبدل بالمسار الصحيح
 import { useState } from "react";
 import { toast } from "sonner";
-import { UpateJournalEntriesPosting } from "../../actions/Journal Entry";
+import { UpateJournalEntriesPosting } from "../../../lib/actions/Journal Entry";
 import { setRowSelection } from "@/lib/slices/table";
 import { useAppDispatch } from "@/lib/store";
 

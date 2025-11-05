@@ -3,24 +3,19 @@
 import { useTablePrams } from "@/hooks/useTableParams";
 
 import dynamic from "next/dynamic";
-const Calendar22 = dynamic(
-  () => import("@/components/common/DatePicker").then((m) => m.Calendar22),
-  {
-    ssr: false,
-    loading: () => <input type="date" className="..." />,
-  },
-);
-const DataTable = dynamic(
-  () => import("@/components/common/test").then((m) => m.DataTable),
-  {
-    ssr: false,
-    loading: () => <TableSkeleton />,
-  },
-);
+//
+// const DataTable = dynamic(
+//   () => import("@/components/common/test").then((m) => m.DataTable),
+//   {
+//     ssr: false,
+//     loading: () => <TableSkeleton />,
+//   },
+// );
 // import SearchInput from "@/components/common/SearchInput";
 
 import { role } from "../_compoent/columns";
 import TableSkeleton from "@/components/common/TableSkeleton";
+import { DataTable } from "@/components/common/test";
 
 type ProductClientProps = {
   Role: any[];

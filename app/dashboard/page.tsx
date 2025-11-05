@@ -131,8 +131,8 @@ import {
   getSummaryCards,
   getProductStats,
   getUserCount,
-} from "../actions/dashboard";
-import { fetchAllFormData } from "../actions/roles";
+} from "../../lib/actions/dashboard";
+import { fetchAllFormData } from "../../lib/actions/roles";
 
 interface DashboardProps {
   searchParams: Promise<Record<string, string | undefined>>;

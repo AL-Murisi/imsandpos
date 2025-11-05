@@ -8,7 +8,8 @@
     "lowStock": "Low Stock",
     "finishedStock": "Finished Products",
     "users": "Users",
-    "sales": "Sales"
+    "sales": "Sales",
+    "quantity": "الكمية"
   },
   "LocaleSwitcher": {
     " ar": "Ar",

@@ -8,20 +8,11 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { Building2, Upload, X } from "lucide-react";
-import { updateCompany } from "@/app/actions/createcompnayacc";
+import { updateCompany } from "@/lib/actions/createcompnayacc";
 import { useAuth } from "@/lib/context/AuthContext";
 import { createClient } from "@supabase/supabase-js";
+import { FormValues, UpdateCompanySchema } from "@/lib/zod";
 // ✅ Validation schema
-const UpdateCompanySchema = z.object({
-  name: z.string().min(2, "اسم الشركة يجب أن يكون على الأقل حرفين"),
-  email: z.string().email("البريد الإلكتروني غير صحيح"),
-  phone: z.string().optional(),
-  address: z.string().optional(),
-  city: z.string().optional(),
-  country: z.string().optional(),
-});
-
-type FormValues = z.infer<typeof UpdateCompanySchema>;
 
 export default function UpdateCompanyForm({
   company,

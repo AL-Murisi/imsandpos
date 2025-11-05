@@ -1,9 +1,9 @@
 "use client";
+
 import TableSkeleton from "@/components/common/TableSkeleton";
 import dynamic from "next/dynamic";
-import React from "react";
-// import Items from "./items";
-const Items = dynamic(() => import("./items"), {
+
+const WarehouseTable = dynamic(() => import("./tables"), {
   ssr: false,
   loading: () => <TableSkeleton />,
 });
@@ -17,11 +17,21 @@ type ProductClientProps = {
     suppliers: { id: string; name: string }[];
   };
 };
-
-export default function ProductClient({
+export default function Clint({
   products,
   total,
   formData,
 }: ProductClientProps) {
-  return <Items products={products} total={total} formData={formData} />;
+  return (
+    <WarehouseTable
+      products={products}
+      total={products.length}
+      formData={{
+        warehouses: [],
+        categories: [],
+        brands: [],
+        suppliers: [],
+      }}
+    />
+  );
 }

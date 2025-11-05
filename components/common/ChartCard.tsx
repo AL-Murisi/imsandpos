@@ -161,29 +161,42 @@ export function ChartCard({
                 <div className="dark:bg-secondary-foreground bg-primary-foreground flex h-20 w-20 items-center justify-center rounded-full">
                   {icon}
                 </div>
+
                 <div className="text-white">
-                  {description == "dمنتج" ? (
-                    <div className="flex flex-col justify-end gap-2">
-                      <div className="grid grid-cols-2 gap-3">
-                        <Label> {label}</Label>
-                        <Label>{title || 0}</Label>
+                  {/* If we have a second title, show both labels */}
+                  {title2 && label2 ? (
+                    <div className="flex flex-col gap-2">
+                      <div className="grid grid-cols-2 justify-between gap-3">
+                        <div className="text-end text-white">{label}</div>
+
+                        <div className="text-end text-white">
+                          {title ?? "—"}
+                        </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <Label> {label2}</Label>
-                        <Label>{title2 || 0}</Label>
+                      <div className="grid grid-cols-2 justify-between gap-3">
+                        <div className="text-end text-white">{label2}</div>
+
+                        <div className="text-end text-white">
+                          {title2 ?? "—"}
+                        </div>
                       </div>
                     </div>
                   ) : (
-                    <Label>{title || 0}</Label>
+                    // Otherwise show just one line without showing "0"
+                    <Label>{title ?? "—"}</Label>
                   )}
                 </div>
               </div>
 
               {/* Label */}
-              <div className="text-end text-white">
-                {label}
-                {description == "dمنتج" && <></>}
-              </div>
+              <div className="text-end text-white">{label}</div>
+
+              {/* Optional: Show "لا توجد بيانات" if no chart data */}
+              {/* {(!chartData || chartData.length === 0) && (
+                <div className="mt-2 text-center text-sm text-gray-200">
+                  لا توجد بيانات
+                </div>
+              )} */}
             </>
           )}
           {link && (

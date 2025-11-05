@@ -22,7 +22,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { deleteCustomer } from "@/app/actions/users";
+import { deleteCustomer } from "@/lib/actions/users";
 import { useAuth } from "@/lib/context/AuthContext";
 import { Edit, Trash2 } from "lucide-react";
 import {

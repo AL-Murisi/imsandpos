@@ -1,10 +1,16 @@
 "use client";
 
-import ManageinvetoryClient from "./manageinvetoryClient";
-import ManagemovementClient from "./getMovementhistry";
 import DashboardTabs from "@/components/common/Tabs";
 import TableSkeleton from "@/components/common/TableSkeleton";
-
+import dynamic from "next/dynamic";
+const ManageinvetoryClient = dynamic(() => import("./manageinvetoryClient"), {
+  ssr: false,
+  loading: () => <TableSkeleton />,
+});
+const ManagemovementClient = dynamic(() => import("./getMovementhistry"), {
+  ssr: false,
+  loading: () => <TableSkeleton />,
+});
 export default function InventoryTabs({
   fetchedProducts,
   fetchedTotalCount,

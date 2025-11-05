@@ -1,7 +1,9 @@
 "use client";
-import { deleteProduct } from "@/app/actions/Product";
+import { deleteProduct } from "@/lib/actions/Product";
 import ProductEditFormm from "@/app/products/_components/formEdit";
+import Dailogreuse from "@/components/common/dailogreuse";
 import { useCurrency } from "@/components/CurrencyProvider";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -19,6 +21,7 @@ import {
   CopyIcon,
   Trash2,
 } from "lucide-react";
+import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
 type SortableHeaderProps = {
@@ -118,11 +121,6 @@ export const createColumns = (
     },
 
     {
-      accessorKey: "status",
-      header: tt("status"),
-      // keep status cell as-is
-    },
-    {
       accessorKey: "warehouse.name",
       header: ({ column }) => (
         <SortableHeader column={column} label={tt("warehouseId")} />
@@ -191,6 +189,14 @@ export const createColumns = (
       header: tt("minWholesaleQty"),
     },
     {
+      accessorKey: "expiredAt",
+      header: "تاريخ الانتهاء",
+      cell: ({ row }) => {
+        const date = row.original;
+        return <ExpiryStatus expiredAt={date.expiredAt} />;
+      },
+    },
+    {
       accessorKey: "wholesalePrice",
       header: tt("wholesalePrice"),
       cell: ({ row }) => {
@@ -220,34 +226,34 @@ export const createColumns = (
           : "N/A";
       },
     },
-    {
-      accessorKey: "weight",
-      header: tt("weight"),
-      cell: ({ row }) => {
-        const weight = row.getValue("weight") as number;
-        return weight ? `${weight} kg` : "N/A";
-      },
-    },
-    {
-      accessorKey: "dimensions",
-      header: tt("dimensions"),
-      cell: ({ row }) => row.getValue("dimensions") || "N/A",
-    },
+    // {
+    //   accessorKey: "weight",
+    //   header: tt("weight"),
+    //   cell: ({ row }) => {
+    //     const weight = row.getValue("weight") as number;
+    //     return weight ? `${weight} kg` : "N/A";
+    //   },
+    // },
+    // {
+    //   accessorKey: "dimensions",
+    //   header: tt("dimensions"),
+    //   cell: ({ row }) => row.getValue("dimensions") || "N/A",
+    // },
     {
       accessorKey: "isActive",
       header: tt("isActive"),
       cell: ({ row }) => {
         const isActive = row.getValue("isActive") as boolean;
         return (
-          <div
+          <Badge
             className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
               isActive
                 ? "bg-green-100 text-green-800"
                 : "bg-gray-100 text-gray-700"
             }`}
           >
-            {isActive ? "Yes" : "No"}
-          </div>
+            {isActive ? "نعم" : "لا"}
+          </Badge>
         );
       },
     },
@@ -259,30 +265,85 @@ export const createColumns = (
         const id = product.id ?? "";
         const { user } = useAuth();
         if (!user) return;
+        const [confirmOpen, setConfirmOpen] = useState(false);
+        const [isPending, startTransition] = useTransition();
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={async () => {
+            (await deleteProduct(id, user.companyId),
+              toast("✅ deleteing items successed"));
+          }}
+          title={tt("deleteProduct")}
+        >
+          <Trash2 className="h-4 w-4 text-red-500" />
+        </Button>;
+        const handleDelete = () => {
+          startTransition(async () => {
+            const result = await deleteProduct(id, user.companyId);
+
+            if (result.success) {
+              toast(
+                `تم بنجاح ✅
+                   ${result.message}تم حذف الحساب بنجاح.,
+                 `,
+              );
+            } else {
+              toast(
+                `  حدث خطأ ⚠️
+                  ${result.error} فشل في حذف الحساب
+                  `,
+              );
+            }
+          });
+        };
         return (
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigator.clipboard.writeText(product.sku)}
-              title={tt("copySKU")}
+            <Dailogreuse
+              open={confirmOpen}
+              setOpen={setConfirmOpen}
+              btnLabl={
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={isPending}
+                  className="h-8 w-8 p-0 text-red-600 hover:bg-red-100"
+                  onClick={() => setConfirmOpen(true)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              }
+              titel="تأكيد الحذف"
+              description={`هل أنت متأكد من حذف هذا ${product.name}؟ هذه العملية لا يمكن التراجع عنها.`}
+              style={undefined}
             >
-              <CopyIcon className="h-4 w-4" />
-            </Button>
+              {" "}
+              <div className="mt-4 flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setConfirmOpen(false)}>
+                  إلغاء
+                </Button>
+                <Button variant="destructive" onClick={handleDelete}>
+                  موافق، احذف
+                </Button>
+              </div>
+            </Dailogreuse>
 
-            <ProductEditFormm product={product} type={product.type ?? "full"} />
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigator.clipboard.writeText(product.sku)}
+                title={tt("copySKU")}
+              >
+                <CopyIcon className="h-4 w-4" />
+              </Button>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={async () => {
-                (await deleteProduct(id, user.companyId),
-                  toast("✅ deleteing items successed"));
-              }}
-              title={tt("deleteProduct")}
-            >
-              <Trash2 className="h-4 w-4 text-red-500" />
-            </Button>
+              <ProductEditFormm
+                product={product}
+                type={product.type ?? "full"}
+              />
+            </div>
           </div>
         );
       },
@@ -291,3 +352,36 @@ export const createColumns = (
 };
 
 export default function sortfilteringsearch() {}
+import { format } from "date-fns";
+
+type ExpiryProps = {
+  expiredAt?: string | Date;
+};
+
+export function ExpiryStatus({ expiredAt }: ExpiryProps) {
+  if (!expiredAt) return <span className="text-gray-500">—</span>;
+
+  const expiryDate = new Date(expiredAt);
+  const today = new Date();
+
+  const diffInDays = Math.ceil(
+    (expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+  );
+
+  let color = "text-green-600"; // default: not close to expiry
+  let label = "صالح";
+
+  if (diffInDays <= 0) {
+    color = "text-red-600";
+    label = "منتهي";
+  } else if (diffInDays <= 30) {
+    color = "text-yellow-600";
+    label = "قارب على الانتهاء";
+  }
+
+  return (
+    <span className={color}>
+      {format(expiryDate, "yyyy-MM-dd")} — {label}
+    </span>
+  );
+}

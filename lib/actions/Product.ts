@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { availableMemory } from "process";
 import { logActivity } from "./activitylogs";
 import { CreateProductInput, CreateProductSchema } from "@/lib/zod";
+import { success } from "zod";
 
 export async function CreateProduct(
   data: any,
@@ -32,6 +33,7 @@ export async function CreateProduct(
     packetsPerCarton,
     costPrice,
     pricePerUnit,
+    expiredAt,
     pricePerPacket,
     pricePerCarton,
     wholesalePrice,
@@ -42,6 +44,8 @@ export async function CreateProduct(
   } = parsed.data;
 
   try {
+    const date = new Date(data.expiredAt).toISOString() as any;
+
     // ✅ Create product FIRST (outside transaction to avoid issues)
     const product = await prisma.product.create({
       data: {
@@ -56,6 +60,7 @@ export async function CreateProduct(
         packetsPerCarton,
         costPrice,
         pricePerUnit,
+        expiredAt: date,
         pricePerPacket,
         pricePerCarton,
         wholesalePrice,
@@ -132,15 +137,19 @@ export async function deleteProduct(id: string, companyId: string) {
   if (!id) {
     throw new Error("Product ID is required.");
   }
+  try {
+    const deletedProduct = await prisma.product.deleteMany({
+      where: {
+        id: id,
+        companyId,
+      },
+    });
 
-  const deletedProduct = await prisma.product.deleteMany({
-    where: {
-      id: id,
-      companyId,
-    },
-  });
-  revalidatePath("/products");
-  return deletedProduct;
+    revalidatePath("/products");
+    return { success: true, deletedProduct, message: "تم حذف الحساب بنجاح" };
+  } catch (error) {
+    return { success: false, error: "فشل في حذف " };
+  }
 }
 export async function fetchProductBySku(sku: string) {
   const product = await prisma.product.findFirst({
@@ -243,12 +252,13 @@ export async function fetchProduct(
         barcode: true,
         description: true,
         categoryId: true,
-        brandId: true,
+
         type: true,
         unitsPerPacket: true,
         packetsPerCarton: true,
         costPrice: true,
         pricePerUnit: true,
+        expiredAt: true,
         pricePerPacket: true,
         pricePerCarton: true,
         wholesalePrice: true,
@@ -367,6 +377,7 @@ export async function UpdateProduct(
     console.error(parsed.error.format());
     throw new Error("Invalid product data");
   }
+  const date = new Date(data.expiredAt).toISOString() as any;
 
   const {
     sku,
@@ -379,6 +390,7 @@ export async function UpdateProduct(
     packetsPerCarton,
     costPrice,
     pricePerUnit,
+    expiredAt,
     pricePerPacket,
     pricePerCarton,
     wholesalePrice,
@@ -427,6 +439,7 @@ export async function UpdateProduct(
         packetsPerCarton,
         costPrice,
         pricePerUnit,
+        expiredAt: date,
         pricePerPacket,
         pricePerCarton,
         wholesalePrice,

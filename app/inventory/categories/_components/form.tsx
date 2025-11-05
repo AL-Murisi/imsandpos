@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-import { createCategory } from "@/app/actions/category"; // assume you have this
+import { createCategory } from "@/lib/actions/category"; // assume you have this
 import { useAuth } from "@/lib/context/AuthContext";
 import { CreateCategorySchema } from "@/lib/zod";
 import { Plus } from "lucide-react";

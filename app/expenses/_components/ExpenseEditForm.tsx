@@ -1,6 +1,6 @@
 "use client";
 
-import { getExpenseCategories, updateExpense } from "@/app/actions/exponses";
+import { getExpenseCategories, updateExpense } from "@/lib/actions/exponses";
 import Dailogreuse from "@/components/common/dailogreuse";
 import { SelectField } from "@/components/common/selectproduct";
 import { Button } from "@/components/ui/button";

@@ -24,6 +24,7 @@ export const productSchema = z.object({
   wholesalePrice: z.number().positive("سعر الجملة يجب أن يكون موجبًا"),
   minWholesaleQty: z.number().int().min(1, "الحد الأدنى للكمية بالجملة مطلوب"),
   weight: z.number().nullable().optional(),
+  expiredAt: z.union([z.string(), z.date()]),
   dimensions: z.string().nullable().optional(),
   supplierId: z.string().min(1, "معرّف المورد مطلوب"),
   warehouseId: z.string().min(1, "معرّف المستودع مطلوب"),
@@ -61,7 +62,7 @@ export const CreateProductSchema = z
       .number()
       .min(0, "سعر الوحدة يجب أن يكون 0 أو أكثر")
       .optional(),
-
+    expiredAt: z.union([z.string(), z.date()]),
     // ✅ Allow 0 for carton-only products
     pricePerPacket: z.number().min(0, "سعر العبوة يجب أن يكون 0 أو أكثر"),
 

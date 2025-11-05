@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { deleteCustomer, updateCustomerStatus } from "@/app/actions/customers";
+import { deleteCustomer, updateCustomerStatus } from "@/lib/actions/customers";
 import { useAuth } from "@/lib/context/AuthContext";
 
 // 🔽 Sortable Header Component

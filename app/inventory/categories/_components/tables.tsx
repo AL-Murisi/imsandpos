@@ -13,9 +13,13 @@ import SearchInput from "@/components/common/searchtest";
 import { columns } from "./columns";
 
 import { useTranslations } from "next-intl";
+const ImportWarehouse = dynamic(() => import("@/components/uploadwarehouse"), {
+  ssr: false,
+});
 
-import ImportWarehouse from "@/components/uploadwarehouse";
-import CategoryForm from "./form";
+const CategoryForm = dynamic(() => import("./form"), {
+  ssr: false,
+});
 import { Calendar22 } from "@/components/common/DatePicker";
 import TableSkeleton from "@/components/common/TableSkeleton";
 import dynamic from "next/dynamic";

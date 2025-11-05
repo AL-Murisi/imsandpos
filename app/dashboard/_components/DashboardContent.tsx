@@ -165,7 +165,7 @@ function DashboardContentClient({
         <TopSellingChartWrapper
           data={revenueChartData} // Use transformed revenue data
           color="var(--chart-5)"
-          title="Revenue"
+          title={t("revenue")}
           width="w-full"
           widthco="w-full"
           dataKey="total"

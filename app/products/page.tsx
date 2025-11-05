@@ -1,7 +1,7 @@
-import { fetchAllFormData } from "@/app/actions/roles";
+import { fetchAllFormData } from "@/lib/actions/roles";
 import { Prisma } from "@prisma/client";
 import ProductClient from "./_components/ProductClient";
-import { fetchProduct } from "@/app/actions/Product";
+import { fetchProduct } from "@/lib/actions/Product";
 import { getSession } from "@/lib/session";
 
 type DashboardProps = {

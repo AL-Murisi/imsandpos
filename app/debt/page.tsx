@@ -1,4 +1,4 @@
-import { FetchDebtSale } from "@/app/actions/sells";
+import { FetchDebtSale } from "@/lib/actions/sells";
 import { ParsedSort } from "@/hooks/sort";
 import { Prisma } from "@prisma/client";
 import { SortingState } from "@tanstack/react-table";

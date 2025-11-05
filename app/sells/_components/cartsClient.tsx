@@ -1,6 +1,6 @@
 "use client";
 
-import { processSale } from "@/app/actions/cashier";
+import { processSale } from "@/lib/actions/cashier";
 import SearchInput from "@/components/common/searchlist";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

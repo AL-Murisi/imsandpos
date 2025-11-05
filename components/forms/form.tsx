@@ -14,7 +14,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { CreateWarehouseSchema } from "@/lib/zod";
-import { createWarehouse } from "@/app/actions/warehouse";
+import { createWarehouse } from "@/lib/actions/warehouse";
 import { useAuth } from "@/lib/context/AuthContext";
 import { Plus } from "lucide-react";
 import { useState } from "react";

@@ -3,7 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 
-import { CreateProduct } from "@/app/actions/Product";
+import { CreateProduct } from "@/lib/actions/Product";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -187,6 +187,7 @@ export default function ProductForm({ formData }: ExpenseFormProps) {
   const onSubmit = async (data: CreateProductInput) => {
     try {
       setIsSubmitting(true);
+
       if (user) {
         await CreateProduct(data, user.userId, user.companyId);
         toast.success("✅ تم إضافة المنتج بنجاح!");
@@ -283,7 +284,7 @@ export default function ProductForm({ formData }: ExpenseFormProps) {
 
           {/* Product Details */}
           <div className="grid gap-6">
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
               <div className="grid gap-2">
                 <Label htmlFor="name">اسم المنتج</Label>
                 <Input
@@ -335,6 +336,28 @@ export default function ProductForm({ formData }: ExpenseFormProps) {
                   </p>
                 )}
               </div>
+              {pricingMode === "cartonUnit" && (
+                <>
+                  <div className="grid gap-2">
+                    <Label htmlFor="unitsPerPacket">
+                      عدد الوحدات في الكرتونة
+                    </Label>
+                    <Input
+                      id="unitsPerPacket"
+                      type="number"
+                      {...register("unitsPerPacket", { valueAsNumber: true })}
+                      className="text-right"
+                      placeholder="مثال: 120 وحدة"
+                    />
+
+                    {errors.unitsPerPacket && (
+                      <p className="text-right text-xs text-red-500">
+                        {errors.unitsPerPacket.message}
+                      </p>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
             {pricingMode === "full" && (
               <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
@@ -391,27 +414,6 @@ export default function ProductForm({ formData }: ExpenseFormProps) {
                       {unitsPerPacket * packetsPerCarton} وحدة
                     </p>
                   </div>
-                )}
-              </div>
-            )}
-
-            {pricingMode === "cartonUnit" && (
-              <div className="grid gap-2">
-                <Label htmlFor="unitsPerPacket">عدد الوحدات في الكرتونة</Label>
-                <Input
-                  id="unitsPerPacket"
-                  type="number"
-                  {...register("unitsPerPacket", { valueAsNumber: true })}
-                  className="text-right"
-                  placeholder="مثال: 120 وحدة"
-                />
-                <p className="text-right text-xs text-gray-600">
-                  (عدد الوحدات الموجودة مباشرة في الكرتونة)
-                </p>
-                {errors.unitsPerPacket && (
-                  <p className="text-right text-xs text-red-500">
-                    {errors.unitsPerPacket.message}
-                  </p>
                 )}
               </div>
             )}
@@ -575,7 +577,7 @@ export default function ProductForm({ formData }: ExpenseFormProps) {
             </div>
 
             {/* Warehouse and Dimensions */}
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
               <div className="grid gap-2">
                 <Label htmlFor="warehouseId">المستودع</Label>
                 <SelectField
@@ -592,6 +594,14 @@ export default function ProductForm({ formData }: ExpenseFormProps) {
                 )}
               </div>
               <div className="grid gap-2">
+                <Label>تاريخ الانتهاء</Label>
+                <Input
+                  type="datetime-local"
+                  className="text-end"
+                  {...register("expiredAt")}
+                />
+              </div>
+              <div className="grid gap-2">
                 <Label htmlFor="supplierId">المورد</Label>
                 <SelectField
                   options={formData.suppliers}
@@ -606,7 +616,7 @@ export default function ProductForm({ formData }: ExpenseFormProps) {
                   </p>
                 )}
               </div>
-              <div className="hidden gap-2">
+              {/* <div className="hidden gap-2">
                 <Label htmlFor="dimensions">الأبعاد</Label>
                 <Input
                   id="dimensions"
@@ -620,7 +630,7 @@ export default function ProductForm({ formData }: ExpenseFormProps) {
                     {errors.dimensions.message}
                   </p>
                 )}
-              </div>
+              </div> */}
             </div>
           </div>
 
