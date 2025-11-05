@@ -7,9 +7,8 @@ const UserClinet = dynamic(() => import("./Table"), {
 import DashboardTabs from "@/components/common/Tabs";
 import TableSkeleton from "@/components/common/TableSkeleton";
 import dynamic from "next/dynamic";
-const UpdateCompanyForm = dynamic(() => import("./updateCompany"), {
-  ssr: false,
-});
+import UpdateCompanyForm from "./updateCompany";
+
 const UserActivityTable = dynamic(() => import("./userActivityLogs"), {
   ssr: false,
   loading: () => <TableSkeleton />,
