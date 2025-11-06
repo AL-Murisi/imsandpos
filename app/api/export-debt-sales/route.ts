@@ -9,7 +9,7 @@ import { getSession } from "@/lib/session";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { from, to, usersquery = "" } = body;
+    const { from, to, usersquery = "", sale_type } = body;
 
     console.log("Fetching debt sales data...");
     const user = await getSession();
@@ -27,6 +27,7 @@ export async function POST(request: NextRequest) {
     const sales = await FetchDebtSales(
       user.companyId,
       filter,
+      sale_type,
       usersquery,
       from,
       to,
@@ -109,7 +110,7 @@ export async function GET(request: NextRequest) {
     const to = searchParams.get("to") || undefined;
     const usersquery = searchParams.get("usersquery") || "";
     const sort = searchParams.get("sort") || "";
-
+    const sale_type = searchParams.get("sale_type") || "";
     console.log("Fetching debt sales data...");
 
     const filter: Prisma.SaleWhereInput = {
@@ -124,6 +125,7 @@ export async function GET(request: NextRequest) {
     const sales = await FetchDebtSales(
       user.companyId,
       filter,
+      sale_type,
       usersquery,
       from,
       to,
