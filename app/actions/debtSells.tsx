@@ -66,7 +66,7 @@ export async function updateSales(
         companyId,
         saleId,
         cashierId: cashierId ?? "",
-        paymentType: "outstanding_payment",
+        payment_type: "outstanding_payment",
         paymentMethod: "cash",
         amount: paymentAmount,
         status: "completed",

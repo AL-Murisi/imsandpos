@@ -171,7 +171,7 @@ export const fetchDashboardData = unstable_cache(
         where: {
           companyId,
           createdAt: debtRange,
-          paymentType: "outstanding_payment",
+          payment_type: "outstanding_payment",
           status: "completed",
         },
         orderBy: { createdAt: "asc" },
@@ -196,7 +196,7 @@ export const fetchDashboardData = unstable_cache(
         where: {
           companyId,
           createdAt: debtRange,
-          paymentType: "outstanding_payment",
+          payment_type: "outstanding_payment",
           status: "completed",
         },
         orderBy: { createdAt: "asc" },

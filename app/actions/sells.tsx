@@ -326,7 +326,7 @@ export async function fetchSalesSummary(
       _count: { id: true },
       where: {
         createdAt: { gte: startOfToday, lte: endOfToday },
-        paymentType: "outstanding_payment",
+        payment_type: "outstanding_payment",
         status: "completed",
         cashierId,
         companyId,
