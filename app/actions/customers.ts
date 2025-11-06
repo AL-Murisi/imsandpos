@@ -218,3 +218,66 @@ export async function createCutomer(form: createCusomer, companyId: string) {
     throw error;
   }
 }
+export async function updatedCustomer(
+  form: createCusomer,
+  id: string,
+  companyId: string,
+) {
+  const pared = CreateCustomerSchema.safeParse(form);
+  if (!pared.success) {
+    throw new Error("Invalid customer data");
+  }
+
+  const {
+    name,
+    email,
+    phoneNumber,
+    address,
+    city,
+    state,
+    country,
+    customerType,
+    taxId,
+  } = pared.data;
+  console.log(pared.data);
+  const emailValue = email?.trim() || null;
+  try {
+    // Assuming 'companyIdValue' is the variable holding the company's ID
+
+    // Assume companyIdValue and email are non-null strings
+    const existingUser = await prisma.customer.findUnique({
+      where: {
+        // 💡 FIX: Use the compound unique key defined by @@unique([companyId, email])
+        companyId_email: {
+          companyId, // <-- Provide the company ID
+          email: email ?? "", // <-- Provide the email to search for
+        },
+      },
+    });
+    if (existingUser) {
+      return { error: "هذا البريد الإلكتروني مستخدم بالفعل" };
+    }
+
+    const customer = await prisma.customer.update({
+      where: { id, companyId },
+      data: {
+        companyId: companyId,
+        name,
+        ...(emailValue ? { email: emailValue } : {}),
+        phoneNumber,
+        address,
+        city,
+        state,
+        country,
+        customerType,
+
+        taxId,
+      },
+    });
+    revalidatePath("/customer");
+    return { success: true, customer };
+  } catch (error) {
+    console.error("Failed to create customer:", error);
+    throw error;
+  }
+}

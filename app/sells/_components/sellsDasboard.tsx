@@ -7,11 +7,11 @@ import { DollarSignIcon, ShoppingBagIcon, WalletIcon } from "lucide-react"; // E
 import Link from "next/link";
 import { useRouter } from "next/navigation"; // For refreshing data or navigation
 import dynamic from "next/dynamic";
+import TableSkeleton from "@/components/common/TableSkeleton";
 
 const DebtSells = dynamic(() => import("./table"), {
   ssr: false,
-  // ensures it only loads on the client
-  // optional fallback
+  loading: () => <TableSkeleton />,
 });
 interface SellsDashboardClientProps {
   user: {
@@ -102,7 +102,7 @@ export default function SellsDashboardClient({
             <Link href="/products">البحث عن منتج</Link>
           </Button> */}
       </div>
-      <DebtSells data={recentSales} total={0} sort={[]} />
+      <DebtSells data={debtSales} total={0} sort={[]} />
     </section>
   );
 }

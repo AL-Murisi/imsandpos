@@ -4,6 +4,7 @@ const DataTable = dynamic(
   () => import("@/components/common/test").then((m) => m.DataTable),
   {
     ssr: false,
+    loading: () => <TableSkeleton />,
   },
 );
 import SearchInput from "@/components/common/searchtest";
@@ -11,6 +12,7 @@ import { useTablePrams } from "@/hooks/useTableParams";
 import { SortingState } from "@tanstack/react-table";
 import { debtSaleColumns } from "./columns";
 import dynamic from "next/dynamic";
+import TableSkeleton from "@/components/common/TableSkeleton";
 type ProductClientProps = {
   data: any[];
   total: number;
@@ -44,38 +46,21 @@ export default function DebtSells({
 
   return (
     <div className="bg-accent rounded-2xl p-2 lg:col-span-1" dir="rtl">
-      {/* <>
-        <CustomDialog
-          trigger={
-            <Button>
-              <Plus />
-              add
-            </Button>
-          }
-          title="إضافة فئة جديدة"
-        >
-          <Form />
-        </CustomDialog>{" "}
-      </> */}
-
-      <>
-        <SearchInput placeholder={"customer بحث "} paramKey="users" />
-
-        <DataTable
-          data={data}
-          columns={debtSaleColumns}
-          initialPageSize={pagination.pageSize}
-          pageCount={Math.ceil(data.length / pagination.pageSize)}
-          pageActiom={setPagination}
-          onSortingChange={setSorting}
-          onGlobalFilterChange={setGlobalFilter}
-          globalFilter={globalFilter}
-          sorting={sort}
-          highet="h-[40vh]"
-          pagination={pagination}
-          totalCount={data.length}
-        />
-      </>
+      <DataTable
+        search={<SearchInput placeholder={"customer بحث "} paramKey="users" />}
+        data={data}
+        columns={debtSaleColumns}
+        initialPageSize={pagination.pageSize}
+        pageCount={Math.ceil(data.length / pagination.pageSize)}
+        pageActiom={setPagination}
+        onSortingChange={setSorting}
+        onGlobalFilterChange={setGlobalFilter}
+        globalFilter={globalFilter}
+        sorting={sort}
+        highet="h-[40vh]"
+        pagination={pagination}
+        totalCount={data.length}
+      />
     </div>
   );
 }

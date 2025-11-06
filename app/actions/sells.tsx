@@ -27,6 +27,31 @@ type ReceiptResult = {
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { SortingState } from "@tanstack/react-table";
+function serializeData<T>(data: T): T {
+  if (data === null || data === undefined) return data;
+  if (typeof data !== "object") return data;
+
+  if (Array.isArray(data)) {
+    return data.map((item) => serializeData(item)) as T;
+  }
+
+  const plainObj: any = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (value instanceof Prisma.Decimal) {
+      plainObj[key] = value.toNumber(); // or value.toString() if you prefer
+    } else if (value instanceof Date) {
+      plainObj[key] = value.toISOString();
+    } else if (typeof value === "bigint") {
+      plainObj[key] = value.toString();
+    } else if (typeof value === "object" && value !== null) {
+      plainObj[key] = serializeData(value);
+    } else {
+      plainObj[key] = value;
+    }
+  }
+
+  return plainObj;
+}
 export async function FetchDebtSales(
   companyId: string,
   where?: Prisma.SaleWhereInput,
@@ -56,6 +81,7 @@ export async function FetchDebtSales(
           phoneNumber: { contains: searchQuery, mode: "insensitive" },
         },
       },
+      { saleNumber: { contains: searchQuery, mode: "insensitive" } },
       { paymentStatus: { contains: searchQuery, mode: "insensitive" } },
     ];
   }
@@ -80,6 +106,7 @@ export async function FetchDebtSales(
       createdAt: true,
       paymentStatus: true,
       customerId: true,
+
       saleNumber: true,
       customer: {
         select: {
@@ -89,18 +116,38 @@ export async function FetchDebtSales(
           customerType: true,
         },
       },
+
+      saleItems: {
+        select: {
+          productId: true,
+          sellingUnit: true,
+          quantity: true,
+          unitPrice: true,
+          product: {
+            select: {
+              name: true,
+              warehouseId: true,
+            },
+          },
+        },
+      },
     },
     where: combinedWhere,
     skip: page * pageSize,
     take: pageSize,
     orderBy,
   });
+
   // await prisma.payment
   const serializedDebts = debts.map((sale) => ({
     ...sale,
-    totalAmount: sale.totalAmount.toString(), // Convert Decimal to string
-    amountPaid: sale.amountPaid.toString(), // Convert Decimal to string
-    amountDue: sale.amountDue.toString(), // Convert Decimal to string
+    saleItems: sale.saleItems.map((item) => ({
+      ...item,
+      unitPrice: Number(item.unitPrice),
+    })),
+    totalAmount: Number(sale.totalAmount), // Convert Decimal to string
+    amountPaid: Number(sale.amountPaid), // Convert Decimal to string
+    amountDue: Number(sale.amountDue), // Convert Decimal to string
     saleDate: sale.saleDate.toISOString(),
     createdAt: sale.createdAt.toISOString(),
     customer: sale.customer
@@ -110,7 +157,6 @@ export async function FetchDebtSales(
         }
       : null,
   }));
-
   return serializedDebts; // Return the transformed data
 }
 
@@ -258,7 +304,6 @@ export async function fetchSalesSummary(
 ) {
   // Role-based filter
 
-  console.log(userId);
   // Today's date range
   const today = new Date();
   const startOfToday = new Date(today.setHours(0, 0, 0, 0));

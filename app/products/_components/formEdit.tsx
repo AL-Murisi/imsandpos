@@ -6,6 +6,7 @@ import { SelectField } from "@/components/common/selectproduct";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/lib/context/AuthContext";
 import { CreateProductInput, CreateProductSchema } from "@/lib/zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -190,66 +191,113 @@ export default function ProductEditForm({
       titel="قم بتحديث تفاصيل المنتج"
       description={`تعديل المنتج: ${product?.name}`}
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="w-full space-y-6">
-        {/* Pricing Mode Selection */}
-        <div className="rounded-lg border p-4">
-          <h3 className="mb-4 text-right font-semibold">نموذج البيع</h3>
-          <div className="mb-4 flex flex-col gap-3 md:flex-row">
-            <label className="flex cursor-pointer items-center gap-2">
-              <input
-                type="radio"
-                checked={pricingMode === "full"}
-                onChange={() => {
-                  setPricingMode("full");
-                  setValue("packetsPerCarton", 0);
-                  setValue("pricePerPacket", 0);
-                }}
-                className="cursor-pointer"
-              />
-              <span className="text-sm font-medium">
-                بيع متعدد المستويات (وحدة + عبوة + كرتونة)
-              </span>
-            </label>
-            <label className="flex cursor-pointer items-center gap-2">
-              <input
-                type="radio"
-                checked={pricingMode === "cartonUnit"}
-                onChange={() => {
-                  setPricingMode("cartonUnit");
-                  setValue("packetsPerCarton", 0);
-                  setValue("pricePerPacket", 0);
-                }}
-                className="cursor-pointer"
-              />
-              <span className="text-sm font-medium">
-                بيع بالوحدة والكرتونة فقط
-              </span>
-            </label>
-            <label className="flex cursor-pointer items-center gap-2">
-              <input
-                type="radio"
-                checked={pricingMode === "cartonOnly"}
-                onChange={() => {
-                  setPricingMode("cartonOnly");
-                  setValue("unitsPerPacket", 0);
-                  setValue("packetsPerCarton", 0);
-                  setValue("pricePerUnit", 0);
-                  setValue("pricePerPacket", 0);
-                }}
-                className="cursor-pointer"
-              />
-              <span className="text-sm font-medium">بيع بالكرتونة فقط</span>
-            </label>
+      <ScrollArea className="max-h-[85vh]" dir="rtl">
+        <form onSubmit={handleSubmit(onSubmit)} className="w-full space-y-6">
+          {/* Pricing Mode Selection */}
+          <div className="rounded-lg border p-4">
+            <h3 className="mb-4 text-right font-semibold">نموذج البيع</h3>
+            <div className="mb-4 flex flex-col gap-3 md:flex-row">
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="radio"
+                  checked={pricingMode === "full"}
+                  onChange={() => {
+                    setPricingMode("full");
+                    setValue("packetsPerCarton", 0);
+                    setValue("pricePerPacket", 0);
+                  }}
+                  className="cursor-pointer"
+                />
+                <span className="text-sm font-medium">
+                  بيع متعدد المستويات (وحدة + عبوة + كرتونة)
+                </span>
+              </label>
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="radio"
+                  checked={pricingMode === "cartonUnit"}
+                  onChange={() => {
+                    setPricingMode("cartonUnit");
+                    setValue("packetsPerCarton", 0);
+                    setValue("pricePerPacket", 0);
+                  }}
+                  className="cursor-pointer"
+                />
+                <span className="text-sm font-medium">
+                  بيع بالوحدة والكرتونة فقط
+                </span>
+              </label>
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="radio"
+                  checked={pricingMode === "cartonOnly"}
+                  onChange={() => {
+                    setPricingMode("cartonOnly");
+                    setValue("unitsPerPacket", 0);
+                    setValue("packetsPerCarton", 0);
+                    setValue("pricePerUnit", 0);
+                    setValue("pricePerPacket", 0);
+                  }}
+                  className="cursor-pointer"
+                />
+                <span className="text-sm font-medium">بيع بالكرتونة فقط</span>
+              </label>
+            </div>
           </div>
-        </div>
 
-        {/* Packaging Fields */}
-        {pricingMode === "full" && (
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          {/* Packaging Fields */}
+          {pricingMode === "full" && (
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+              <div className="grid gap-2">
+                <Label htmlFor="unitsPerPacket">
+                  عدد الوحدات في العبوة الواحدة
+                </Label>
+                <Input
+                  id="unitsPerPacket"
+                  type="number"
+                  {...register("unitsPerPacket", { valueAsNumber: true })}
+                  className="text-right"
+                />
+                {errors.unitsPerPacket && (
+                  <p className="text-right text-xs text-red-500">
+                    {errors.unitsPerPacket.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="packetsPerCarton">
+                  عدد العبوات في الكرتونة
+                </Label>
+                <Input
+                  id="packetsPerCarton"
+                  type="number"
+                  {...register("packetsPerCarton", { valueAsNumber: true })}
+                  className="text-right"
+                />
+                {errors.packetsPerCarton && (
+                  <p className="text-right text-xs text-red-500">
+                    {errors.packetsPerCarton.message}
+                  </p>
+                )}
+              </div>
+
+              {unitsPerPacket && packetsPerCarton && (
+                <div className="grid gap-2 rounded-lg p-3">
+                  <p className="text-right text-sm font-medium text-gray-700">
+                    الإجمالي لكل كرتونة:
+                  </p>
+                  <p className="text-right text-lg font-bold text-blue-600">
+                    {unitsPerPacket * packetsPerCarton} وحدة
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {pricingMode === "cartonUnit" && (
             <div className="grid gap-2">
-              <Label htmlFor="unitsPerPacket">
-                عدد الوحدات في العبوة الواحدة
-              </Label>
+              <Label htmlFor="unitsPerPacket">عدد الوحدات في الكرتونة</Label>
               <Input
                 id="unitsPerPacket"
                 type="number"
@@ -262,123 +310,105 @@ export default function ProductEditForm({
                 </p>
               )}
             </div>
+          )}
 
-            <div className="grid gap-2">
-              <Label htmlFor="packetsPerCarton">عدد العبوات في الكرتونة</Label>
-              <Input
-                id="packetsPerCarton"
-                type="number"
-                {...register("packetsPerCarton", { valueAsNumber: true })}
-                className="text-right"
-              />
-              {errors.packetsPerCarton && (
-                <p className="text-right text-xs text-red-500">
-                  {errors.packetsPerCarton.message}
-                </p>
-              )}
-            </div>
-
-            {unitsPerPacket && packetsPerCarton && (
-              <div className="grid gap-2 rounded-lg p-3">
-                <p className="text-right text-sm font-medium text-gray-700">
-                  الإجمالي لكل كرتونة:
-                </p>
-                <p className="text-right text-lg font-bold text-blue-600">
-                  {unitsPerPacket * packetsPerCarton} وحدة
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {pricingMode === "cartonUnit" && (
-          <div className="grid gap-2">
-            <Label htmlFor="unitsPerPacket">عدد الوحدات في الكرتونة</Label>
-            <Input
-              id="unitsPerPacket"
-              type="number"
-              {...register("unitsPerPacket", { valueAsNumber: true })}
-              className="text-right"
-            />
-            {errors.unitsPerPacket && (
-              <p className="text-right text-xs text-red-500">
-                {errors.unitsPerPacket.message}
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* Product Details */}
-        <div className="grid gap-6">
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-            <div className="grid gap-2">
-              <Label htmlFor="name">اسم المنتج</Label>
-              <Input id="name" {...register("name")} className="text-right" />
-              {errors.name && (
-                <p className="text-right text-xs text-red-500">
-                  {errors.name.message}
-                </p>
-              )}
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="sku">الرمز (SKU)</Label>
-              <Input
-                id="sku"
-                type="text"
-                {...register("sku")}
-                disabled
-                className="bg-gray-100 text-right"
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="categoryId">الفئة</Label>
-              <SelectField
-                options={formData.categories}
-                value={watchedCategoryId}
-                action={(val) => setValue("categoryId", val)}
-                placeholder="اختر الفئة"
-              />
-              {errors.categoryId && (
-                <p className="text-right text-xs text-red-500">
-                  {errors.categoryId.message}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Pricing Grid */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            {/* Cost Price */}
-            <div className="rounded-lg border border-green-100 p-4">
-              <h3 className="mb-4 text-right font-semibold text-green-900">
-                سعر الشراء من المورد
-              </h3>
+          {/* Product Details */}
+          <div className="grid gap-6">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
               <div className="grid gap-2">
-                <Label htmlFor="costPrice">سعر الشراء للوحدة</Label>
-                <Input
-                  id="costPrice"
-                  type="number"
-                  step="0.01"
-                  {...register("costPrice", { valueAsNumber: true })}
-                  className="text-right"
-                />
-                {errors.costPrice && (
+                <Label htmlFor="name">اسم المنتج</Label>
+                <Input id="name" {...register("name")} className="text-right" />
+                {errors.name && (
                   <p className="text-right text-xs text-red-500">
-                    {errors.costPrice.message}
+                    {errors.name.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="sku">الرمز (SKU)</Label>
+                <Input
+                  id="sku"
+                  type="text"
+                  {...register("sku")}
+                  disabled
+                  className="bg-gray-100 text-right"
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="categoryId">الفئة</Label>
+                <SelectField
+                  options={formData.categories}
+                  value={watchedCategoryId}
+                  action={(val) => setValue("categoryId", val)}
+                  placeholder="اختر الفئة"
+                />
+                {errors.categoryId && (
+                  <p className="text-right text-xs text-red-500">
+                    {errors.categoryId.message}
                   </p>
                 )}
               </div>
             </div>
 
-            {/* Retail Pricing */}
-            <div className="rounded-lg border border-amber-100 p-4">
-              <h3 className="mb-4 text-right font-semibold text-amber-900">
-                أسعار البيع بالتجزئة
-              </h3>
-              {pricingMode === "full" && (
-                <div className="space-y-3">
+            {/* Pricing Grid */}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+              {/* Cost Price */}
+              <div className="rounded-lg border border-green-100 p-4">
+                <h3 className="mb-4 text-right font-semibold text-green-900">
+                  سعر الشراء من المورد
+                </h3>
+                <div className="grid gap-2">
+                  <Label htmlFor="costPrice">سعر الشراء للوحدة</Label>
+                  <Input
+                    id="costPrice"
+                    type="number"
+                    step="0.01"
+                    {...register("costPrice", { valueAsNumber: true })}
+                    className="text-right"
+                  />
+                  {errors.costPrice && (
+                    <p className="text-right text-xs text-red-500">
+                      {errors.costPrice.message}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Retail Pricing */}
+              <div className="rounded-lg border border-amber-100 p-4">
+                <h3 className="mb-4 text-right font-semibold text-amber-900">
+                  أسعار البيع بالتجزئة
+                </h3>
+                {pricingMode === "full" && (
+                  <div className="space-y-3">
+                    <div className="grid gap-2">
+                      <Label htmlFor="pricePerUnit">سعر الوحدة</Label>
+                      <Input
+                        id="pricePerUnit"
+                        type="number"
+                        step="0.01"
+                        disabled
+                        value={pricePerUnit || ""}
+                        className="bg-gray-100 text-right"
+                      />
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label htmlFor="pricePerPacket">سعر العبوة</Label>
+                      <Input
+                        id="pricePerPacket"
+                        type="number"
+                        step="0.01"
+                        disabled
+                        value={pricePerPacket || ""}
+                        className="bg-gray-100 text-right"
+                      />
+                    </div>
+                  </div>
+                )}
+                {pricingMode === "cartonUnit" && (
                   <div className="grid gap-2">
                     <Label htmlFor="pricePerUnit">سعر الوحدة</Label>
                     <Input
@@ -390,136 +420,110 @@ export default function ProductEditForm({
                       className="bg-gray-100 text-right"
                     />
                   </div>
+                )}
+                {pricingMode === "cartonOnly" && (
+                  <p className="text-right text-sm text-gray-600">
+                    بيع بالكرتونة فقط
+                  </p>
+                )}
+              </div>
 
+              {/* Bulk Pricing */}
+              <div className="rounded-lg border border-purple-100 p-4">
+                <h3 className="mb-4 text-right font-semibold text-purple-900">
+                  أسعار البيع بالجملة
+                </h3>
+                <div className="space-y-3">
                   <div className="grid gap-2">
-                    <Label htmlFor="pricePerPacket">سعر العبوة</Label>
+                    <Label htmlFor="pricePerCarton">سعر الكرتونة</Label>
                     <Input
-                      id="pricePerPacket"
+                      id="pricePerCarton"
                       type="number"
                       step="0.01"
-                      disabled
-                      value={pricePerPacket || ""}
-                      className="bg-gray-100 text-right"
+                      {...register("pricePerCarton", { valueAsNumber: true })}
+                      className="text-right"
                     />
+                    {errors.pricePerCarton && (
+                      <p className="text-right text-xs text-red-500">
+                        {errors.pricePerCarton.message}
+                      </p>
+                    )}
                   </div>
-                </div>
-              )}
-              {pricingMode === "cartonUnit" && (
-                <div className="grid gap-2">
-                  <Label htmlFor="pricePerUnit">سعر الوحدة</Label>
-                  <Input
-                    id="pricePerUnit"
-                    type="number"
-                    step="0.01"
-                    disabled
-                    value={pricePerUnit || ""}
-                    className="bg-gray-100 text-right"
-                  />
-                </div>
-              )}
-              {pricingMode === "cartonOnly" && (
-                <p className="text-right text-sm text-gray-600">
-                  بيع بالكرتونة فقط
-                </p>
-              )}
-            </div>
 
-            {/* Bulk Pricing */}
-            <div className="rounded-lg border border-purple-100 p-4">
-              <h3 className="mb-4 text-right font-semibold text-purple-900">
-                أسعار البيع بالجملة
-              </h3>
-              <div className="space-y-3">
-                <div className="grid gap-2">
-                  <Label htmlFor="pricePerCarton">سعر الكرتونة</Label>
-                  <Input
-                    id="pricePerCarton"
-                    type="number"
-                    step="0.01"
-                    {...register("pricePerCarton", { valueAsNumber: true })}
-                    className="text-right"
-                  />
-                  {errors.pricePerCarton && (
-                    <p className="text-right text-xs text-red-500">
-                      {errors.pricePerCarton.message}
-                    </p>
-                  )}
-                </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="wholesalePrice">السعر الجملي</Label>
+                    <Input
+                      id="wholesalePrice"
+                      type="number"
+                      step="0.01"
+                      {...register("wholesalePrice", { valueAsNumber: true })}
+                      className="text-right"
+                    />
+                    {errors.wholesalePrice && (
+                      <p className="text-right text-xs text-red-500">
+                        {errors.wholesalePrice.message}
+                      </p>
+                    )}
+                  </div>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="wholesalePrice">السعر الجملي</Label>
-                  <Input
-                    id="wholesalePrice"
-                    type="number"
-                    step="0.01"
-                    {...register("wholesalePrice", { valueAsNumber: true })}
-                    className="text-right"
-                  />
-                  {errors.wholesalePrice && (
-                    <p className="text-right text-xs text-red-500">
-                      {errors.wholesalePrice.message}
-                    </p>
-                  )}
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="minWholesaleQty">الحد الأدنى</Label>
-                  <Input
-                    id="minWholesaleQty"
-                    type="number"
-                    {...register("minWholesaleQty", { valueAsNumber: true })}
-                    className="text-right"
-                  />
-                  {errors.minWholesaleQty && (
-                    <p className="text-right text-xs text-red-500">
-                      {errors.minWholesaleQty.message}
-                    </p>
-                  )}
+                  <div className="grid gap-2">
+                    <Label htmlFor="minWholesaleQty">الحد الأدنى</Label>
+                    <Input
+                      id="minWholesaleQty"
+                      type="number"
+                      {...register("minWholesaleQty", { valueAsNumber: true })}
+                      className="text-right"
+                    />
+                    {errors.minWholesaleQty && (
+                      <p className="text-right text-xs text-red-500">
+                        {errors.minWholesaleQty.message}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Additional Fields */}
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <div className="grid gap-2">
-              <Label htmlFor="warehouseId">المستودع</Label>
-              <SelectField
-                options={formData.warehouses}
-                value={watchedWarehouseId}
-                action={(val) => setValue("warehouseId", val)}
-                placeholder="اختر المستودع"
-              />
-              {errors.warehouseId && (
-                <p className="text-right text-xs text-red-500">
-                  {errors.warehouseId.message}
-                </p>
-              )}
-            </div>
+            {/* Additional Fields */}
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="warehouseId">المستودع</Label>
+                <SelectField
+                  options={formData.warehouses}
+                  value={watchedWarehouseId}
+                  action={(val) => setValue("warehouseId", val)}
+                  placeholder="اختر المستودع"
+                />
+                {errors.warehouseId && (
+                  <p className="text-right text-xs text-red-500">
+                    {errors.warehouseId.message}
+                  </p>
+                )}
+              </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="supplierId">المورد</Label>
-              <SelectField
-                options={formData.suppliers}
-                value={watchedSupplierId}
-                action={(val) => setValue("supplierId", val)}
-                placeholder="اختر المورد"
-              />
-              {errors.supplierId && (
-                <p className="text-right text-xs text-red-500">
-                  {errors.supplierId.message}
-                </p>
-              )}
-            </div>
-            <div className="grid gap-2">
-              <Label>تاريخ الانتهاء</Label>
-              <Input
-                type="datetime-local"
-                className="text-end"
-                {...register("expiredAt")}
-              />
-            </div>
-            {/* <div className="grid gap-2">
+              <div className="grid gap-2">
+                <Label htmlFor="supplierId">المورد</Label>
+                <SelectField
+                  options={formData.suppliers}
+                  value={watchedSupplierId}
+                  action={(val) => setValue("supplierId", val)}
+                  placeholder="اختر المورد"
+                />
+                {errors.supplierId && (
+                  <p className="text-right text-xs text-red-500">
+                    {errors.supplierId.message}
+                  </p>
+                )}
+              </div>
+              <div className="grid gap-2">
+                <Label>تاريخ الانتهاء</Label>
+                <Input
+                  type="datetime-local"
+                  className="text-end"
+                  {...register("expiredAt")}
+                />
+              </div>
+              {/* <div className="grid gap-2">
               <Label htmlFor="dimensions">الأبعاد</Label>
               <Input
                 id="dimensions"
@@ -534,42 +538,43 @@ export default function ProductEditForm({
               )}
             </div> */}
 
-            <div className="grid gap-2">
-              <Label htmlFor="description">الوصف</Label>
-              <Input
-                id="description"
-                type="text"
-                {...register("description")}
-                className="text-right"
-              />
-              {errors.description && (
-                <p className="text-right text-xs text-red-500">
-                  {errors.description.message}
-                </p>
-              )}
+              <div className="grid gap-2">
+                <Label htmlFor="description">الوصف</Label>
+                <Input
+                  id="description"
+                  type="text"
+                  {...register("description")}
+                  className="text-right"
+                />
+                {errors.description && (
+                  <p className="text-right text-xs text-red-500">
+                    {errors.description.message}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Submit Buttons */}
-        <div className="flex justify-end gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setOpen(false)}
-            disabled={isSubmitting}
-          >
-            إلغاء
-          </Button>
-          <Button
-            type="submit"
-            disabled={isSubmitting || loading}
-            className="min-w-[120px] bg-green-600 hover:bg-green-700"
-          >
-            {isSubmitting || loading ? "جاري الحفظ..." : "حفظ التعديلات"}
-          </Button>
-        </div>
-      </form>
+          {/* Submit Buttons */}
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+              disabled={isSubmitting}
+            >
+              إلغاء
+            </Button>
+            <Button
+              type="submit"
+              disabled={isSubmitting || loading}
+              className="min-w-[120px] bg-green-600 hover:bg-green-700"
+            >
+              {isSubmitting || loading ? "جاري الحفظ..." : "حفظ التعديلات"}
+            </Button>
+          </div>
+        </form>
+      </ScrollArea>
     </Dailogreuse>
   );
 }

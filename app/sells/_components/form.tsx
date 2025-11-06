@@ -20,6 +20,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useState } from "react";
+import Dailogreuse from "@/components/common/dailogreuse";
 
 // This schema needs to be defined for the payment input
 // Example: Create a new schema like PaymentAmountSchema
@@ -82,57 +83,49 @@ export default function Debtupdate({ debt }: DebtSaleProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline">تسديد الدين</Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md" dir="rtl">
-        <DialogHeader>
-          <DialogTitle>تأكيد الدفع</DialogTitle>
-          <DialogDescription>
-            قم بإدخال المبلغ الجديد لتسديد جزء أو كل الدين.
-          </DialogDescription>
-        </DialogHeader>
+    <Dailogreuse
+      open={open}
+      setOpen={setOpen}
+      btnLabl={"تسديد الدين"}
+      style="sm:max-w-md"
+      description="  قم بإدخال المبلغ الجديد لتسديد جزء أو كل الدين."
+    >
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        {/* ✅ تفاصيل الدين */}
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold">تفاصيل الدين</h3>
+          <p>
+            المبلغ الإجمالي للبيع: {formatCurrency(Number(debt.totalAmount))}
+          </p>
+          <p>
+            المبلغ المدفوع سابقاً: {formatCurrency(Number(debt.amountPaid))}
+          </p>
+          <p>المبلغ المتبقي حالياً: {formatCurrency(Number(debt.amountDue))}</p>
+        </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {/* ✅ تفاصيل الدين */}
-          <div className="mb-4">
-            <h3 className="text-lg font-semibold">تفاصيل الدين</h3>
-            <p>
-              المبلغ الإجمالي للبيع: {formatCurrency(Number(debt.totalAmount))}
-            </p>
-            <p>
-              المبلغ المدفوع سابقاً: {formatCurrency(Number(debt.amountPaid))}
-            </p>
-            <p>
-              المبلغ المتبقي حالياً: {formatCurrency(Number(debt.amountDue))}
-            </p>
+        {/* ✅ حقل المبلغ */}
+        <div className="grid gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="paymentAmount">مبلغ الدفع الجديد</Label>
+            <Input
+              id="paymentAmount"
+              type="number"
+              step="0.01"
+              {...register("paymentAmount", { valueAsNumber: true })}
+            />
+            {errors.paymentAmount && (
+              <p className="text-xs text-red-500">
+                {errors.paymentAmount.message}
+              </p>
+            )}
           </div>
+        </div>
 
-          {/* ✅ حقل المبلغ */}
-          <div className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="paymentAmount">مبلغ الدفع الجديد</Label>
-              <Input
-                id="paymentAmount"
-                type="number"
-                step="0.01"
-                {...register("paymentAmount", { valueAsNumber: true })}
-              />
-              {errors.paymentAmount && (
-                <p className="text-xs text-red-500">
-                  {errors.paymentAmount.message}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* ✅ زر التأكيد */}
-          <Button type="submit">
-            {isSubmitting ? "جاري الحفظ..." : " تأكيد الدفع"}
-          </Button>
-        </form>
-      </DialogContent>
-    </Dialog>
+        {/* ✅ زر التأكيد */}
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "جاري الحفظ..." : " تأكيد الدفع"}
+        </Button>
+      </form>
+    </Dailogreuse>
   );
 }

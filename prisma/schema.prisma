@@ -360,7 +360,7 @@ model Sale {
   saleNumber       String          @unique @map("sale_number")
   customerId       String?         @map("customer_id")
   cashierId        String          @map("cashier_id")
-  saleType         String          @default("sale")
+  sale_type         String           @default("sale")
   status           String          @default("completed")
   subtotal         Decimal         @db.Decimal(10, 2)
   taxAmount        Decimal         @default(0) @map("tax_amount") @db.Decimal(10, 2)
@@ -373,6 +373,9 @@ model Sale {
   createdAt        DateTime        @default(now()) @map("created_at")
   updatedAt        DateTime        @updatedAt @map("updated_at")
   point_of_sale_id String?
+  originalSaleId   String?         @map("original_sale_id")
+  originalSale     Sale?           @relation("ReturnSale", fields: [originalSaleId], references: [id])
+  returns          Sale[]    @relation("ReturnSale")
   payments         Payment[]
   saleItems        SaleItem[]
   cashier          User            @relation(fields: [cashierId], references: [id])

@@ -8,6 +8,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown, EditIcon } from "lucide-react";
 import Debtupdate from "./form";
 import Recitp from "./recitp";
 import { useCurrency } from "@/components/CurrencyProvider";
+import { ReturnForm } from "./Returnitems";
 
 interface DebtSaleData {
   id: string;
@@ -51,7 +52,7 @@ const SortableHeader: React.FC<SortableHeaderProps> = ({ column, label }) => {
   );
 };
 
-export const debtSaleColumns: ColumnDef<DebtSaleData>[] = [
+export const debtSaleColumns: ColumnDef<any>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -134,12 +135,13 @@ export const debtSaleColumns: ColumnDef<DebtSaleData>[] = [
         : "N/A";
     },
   },
+
   {
     accessorKey: "saleNumber",
     header: ({ column }) => (
       <SortableHeader column={column} label="saleNumber" />
     ),
-    cell: ({ row }) => <div>{row.getValue("saleNumber")} $</div>,
+    cell: ({ row }) => <div>{row.getValue("saleNumber")}</div>,
   },
   {
     accessorKey: "amountDue",
@@ -196,10 +198,11 @@ export const debtSaleColumns: ColumnDef<DebtSaleData>[] = [
       const amountDue = Number(debt.amountDue) || 0; // ✅ convert to number safely
 
       return (
-        <>
+        <div className="flex flex-row gap-2">
           {amountDue > 0 && <Debtupdate debt={debt} />}
           <Recitp id={debt.saleNumber} />
-        </>
+          <ReturnForm sale={debt} />
+        </div>
       );
     },
   },

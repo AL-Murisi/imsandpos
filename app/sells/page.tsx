@@ -39,7 +39,7 @@ export default async function SellsDashboard({ searchParams }: DashboardProps) {
   const {
     from,
     to,
-    usersquery = "",
+    usersquery,
     page = "1",
     limit = "5",
     salesFrom,
@@ -87,7 +87,7 @@ export default async function SellsDashboard({ searchParams }: DashboardProps) {
       parsedSort,
     ),
   ]);
-  console.log(salesSummary);
+
   const currentUser = {
     id: userId,
     name: "", // can be fetched if needed

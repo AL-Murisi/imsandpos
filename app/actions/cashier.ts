@@ -52,7 +52,7 @@ export async function processSale(data: any, companyId: string) {
           customerId,
           cashierId,
           taxAmount: 0,
-          saleType: "sale",
+          sale_type: "sale",
           status: "completed",
           subtotal: totalBeforeDiscount,
           discountAmount: totalDiscount,
@@ -380,4 +380,305 @@ export async function getAllActiveProductsForSale(
       sellingMode: product.type ?? "", // ✅ Optional: helpful for debugging
     };
   });
+}
+export async function processReturn(data: any, companyId: string) {
+  const { saleId, cashierId, customerId, returnNumber, reason, items } = data;
+
+  // Filter only items with quantity > 0
+  const returnItems = items.filter((item: any) => item.quantity > 0);
+
+  if (returnItems.length === 0) {
+    return { success: false, message: "لا توجد منتجات للإرجاع" };
+  }
+
+  const result = await prisma.$transaction(
+    async (tx) => {
+      // 1. Get original sale
+      const originalSale = await tx.sale.findUnique({
+        where: { id: saleId },
+        include: {
+          saleItems: {
+            include: {
+              product: true,
+            },
+          },
+        },
+      });
+
+      if (!originalSale) {
+        throw new Error("عملية البيع غير موجودة");
+      }
+
+      // 2. Calculate return totals
+      let returnSubtotal = 0;
+      let returnTotalCOGS = 0;
+
+      const saleItemsMap = new Map(
+        originalSale.saleItems.map((item) => [item.productId, item]),
+      );
+
+      // Helper function to convert to base units
+      function convertToBaseUnits(
+        qty: number,
+        sellingUnit: string,
+        unitsPerPacket: number,
+        packetsPerCarton: number,
+      ): number {
+        if (sellingUnit === "unit") return qty;
+        if (sellingUnit === "packet") return qty * (unitsPerPacket || 1);
+        if (sellingUnit === "carton")
+          return qty * (unitsPerPacket || 1) * (packetsPerCarton || 1);
+        return qty;
+      }
+
+      // Calculate return amount and COGS
+      for (const returnItem of returnItems) {
+        const saleItem = saleItemsMap.get(returnItem.productId);
+        if (!saleItem) {
+          throw new Error(
+            `المنتج ${returnItem.name} غير موجود في البيع الأصلي`,
+          );
+        }
+
+        // Validate return quantity
+        if (returnItem.quantity > saleItem.quantity) {
+          throw new Error(
+            `كمية الإرجاع للمنتج ${returnItem.name} أكبر من الكمية المباعة`,
+          );
+        }
+
+        // Calculate return value (based on unit price from original sale)
+        const itemReturnValue =
+          saleItem.unitPrice.toNumber() * returnItem.quantity;
+        returnSubtotal += itemReturnValue;
+
+        // Calculate COGS for this return
+        const product = saleItem.product;
+        const totalUnitsPerCarton =
+          product.unitsPerPacket === 0 && product.packetsPerCarton === 0
+            ? 1
+            : product.packetsPerCarton === 0
+              ? Math.max(product.unitsPerPacket, 1)
+              : Math.max(product.unitsPerPacket, 1) *
+                Math.max(product.packetsPerCarton, 1);
+
+        let costPerSellingUnit = 0;
+        if (returnItem.sellingUnit === "carton") {
+          costPerSellingUnit = product.costPrice.toNumber();
+        } else if (returnItem.sellingUnit === "packet") {
+          costPerSellingUnit =
+            product.costPrice.toNumber() /
+            Math.max(product.packetsPerCarton, 1);
+        } else if (returnItem.sellingUnit === "unit") {
+          costPerSellingUnit =
+            product.costPrice.toNumber() / totalUnitsPerCarton;
+        }
+
+        const itemCOGS = returnItem.quantity * costPerSellingUnit;
+        returnTotalCOGS += itemCOGS;
+      }
+
+      // 3. Create return sale record
+      const returnSale = await tx.sale.create({
+        data: {
+          companyId,
+          saleNumber: returnNumber,
+          customerId: originalSale.customerId,
+          cashierId,
+          sale_type: "return",
+          status: "completed",
+          subtotal: -returnSubtotal, // Negative for return
+          taxAmount: 0,
+          discountAmount: 0,
+          totalAmount: -returnSubtotal,
+          amountPaid: -returnSubtotal, // Will be refunded
+          amountDue: 0,
+          paymentStatus: "paid",
+          originalSaleId: saleId,
+        },
+      });
+
+      // 4. Create return sale items and restock inventory
+      const returnSaleItemsData = [];
+      const stockMovementsData = [];
+      const inventoryUpdates = [];
+
+      for (const returnItem of returnItems) {
+        const saleItem = saleItemsMap.get(returnItem.productId);
+        const product = saleItem!.product;
+
+        // Convert to base units for inventory
+        const quantityInUnits = convertToBaseUnits(
+          returnItem.quantity,
+          returnItem.sellingUnit,
+          product.unitsPerPacket || 1,
+          product.packetsPerCarton || 1,
+        );
+
+        // Get inventory
+        const inventory = await tx.inventory.findUnique({
+          where: {
+            companyId_productId_warehouseId: {
+              companyId,
+              productId: returnItem.productId,
+              warehouseId: returnItem.warehouseId,
+            },
+          },
+        });
+
+        if (!inventory) {
+          throw new Error(`المخزون غير موجود للمنتج ${returnItem.name}`);
+        }
+
+        const newStock = inventory.stockQuantity + quantityInUnits;
+        const newAvailable = inventory.availableQuantity + quantityInUnits;
+
+        // Prepare return sale item
+        returnSaleItemsData.push({
+          companyId,
+          saleId: returnSale.id,
+          productId: returnItem.productId,
+          quantity: returnItem.quantity,
+          sellingUnit: returnItem.sellingUnit,
+          unitPrice: saleItem!.unitPrice,
+          totalPrice: saleItem!.unitPrice.toNumber() * returnItem.quantity,
+        });
+
+        // Prepare stock movement
+        stockMovementsData.push({
+          companyId,
+          productId: returnItem.productId,
+          warehouseId: returnItem.warehouseId,
+          userId: cashierId,
+          movementType: "وارد",
+          quantity: quantityInUnits,
+          reason: "إرجاع بيع",
+          quantityBefore: inventory.stockQuantity,
+          quantityAfter: newStock,
+          referenceType: "إرجاع",
+          referenceId: returnSale.id,
+          notes: reason || undefined,
+        });
+
+        // Prepare inventory update
+        inventoryUpdates.push(
+          tx.inventory.update({
+            where: {
+              companyId_productId_warehouseId: {
+                companyId,
+                productId: returnItem.productId,
+                warehouseId: returnItem.warehouseId,
+              },
+            },
+            data: {
+              stockQuantity: newStock,
+              availableQuantity: newAvailable,
+              status:
+                newAvailable <= inventory.reorderLevel
+                  ? "low"
+                  : newAvailable === 0
+                    ? "out_of_stock"
+                    : "available",
+            },
+          }),
+        );
+      }
+
+      // Execute all operations in parallel
+      await Promise.all([
+        tx.saleItem.createMany({ data: returnSaleItemsData }),
+        tx.stockMovement.createMany({ data: stockMovementsData }),
+        ...inventoryUpdates,
+      ]);
+
+      // 5. Handle customer balance and refund
+      const customerUpdates = [];
+
+      if (customerId) {
+        // Check original sale payment status
+        if (
+          originalSale.paymentStatus === "unpaid" ||
+          originalSale.paymentStatus === "partial"
+        ) {
+          // If original sale was unpaid/partial, reduce outstanding balance
+          const amountToDeduct = Math.min(
+            returnSubtotal,
+            originalSale.amountPaid?.toNumber() || 0,
+          );
+
+          if (amountToDeduct > 0) {
+            customerUpdates.push(
+              tx.customer.update({
+                where: { id: customerId, companyId },
+                data: {
+                  outstandingBalance: { decrement: amountToDeduct },
+                },
+              }),
+            );
+          }
+
+          // Remaining amount goes to customer balance (credit)
+          const remainingCredit = returnSubtotal - amountToDeduct;
+          if (remainingCredit > 0) {
+            customerUpdates.push(
+              tx.customer.update({
+                where: { id: customerId, companyId },
+                data: {
+                  balance: { increment: remainingCredit },
+                },
+              }),
+            );
+          }
+        } else {
+          // If original sale was paid, add full amount to customer balance
+          customerUpdates.push(
+            tx.customer.update({
+              where: { id: customerId, companyId },
+              data: {
+                balance: { increment: returnSubtotal },
+              },
+            }),
+          );
+        }
+      }
+
+      // 6. Create payment record for return
+      customerUpdates.push(
+        tx.payment.create({
+          data: {
+            companyId,
+            saleId: returnSale.id,
+            cashierId,
+            customerId: originalSale.customerId,
+            paymentMethod: "cash",
+            paymentType: "return_refund",
+            amount: -returnSubtotal, // Negative for refund
+            status: "completed",
+            notes: reason || "إرجاع بيع",
+          },
+        }),
+      );
+
+      if (customerUpdates.length > 0) {
+        await Promise.all(customerUpdates);
+      }
+
+      // The trigger function will handle the accounting entries automatically
+
+      return {
+        success: true,
+        message: "تم إرجاع البيع بنجاح",
+        returnSale,
+        returnSubtotal,
+        returnCOGS: returnTotalCOGS,
+      };
+    },
+    {
+      timeout: 20000,
+      maxWait: 5000,
+    },
+  );
+
+  revalidatePath("/sells");
+  return result;
 }

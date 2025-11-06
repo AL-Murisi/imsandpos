@@ -659,7 +659,7 @@ export async function getExpenseBreakdown(
   const expenses = await prisma.accounts.findMany({
     where: {
       company_id: companyId,
-      account_type: { in: ["EXPENSE", "COST_OF_GOODS"] },
+      account_type: { in: ["EXPENSE"] },
       is_active: true,
     },
     include: {
@@ -680,35 +680,36 @@ export async function getExpenseBreakdown(
   });
 
   const categoryTotals = expenses.map((account) => {
-    const total = account.journal_entries.reduce(
+    const totalRaw = account.journal_entries.reduce(
       (sum, entry) => sum + Number(entry.debit) - Number(entry.credit),
       0,
     );
 
+    // Round to 2 decimals to avoid floating errors
+    const total = Math.round(totalRaw * 100) / 100;
+
     return {
-      category: account.account_name_en,
+      category: account.account_name_en.trim(),
       amount: total,
-      percentage: 0, // Will calculate after
+      percentage: 0,
     };
   });
 
-  // Calculate percentages
-  const totalExpenses = categoryTotals.reduce(
-    (sum, cat) => sum + cat.amount,
-    0,
-  );
+  // Remove zero or near-zero categories
+  const filtered = categoryTotals.filter((cat) => cat.amount > 0.01);
 
-  const chartData = categoryTotals
-    .filter((cat) => cat.amount > 0)
+  const totalExpenses = filtered.reduce((sum, cat) => sum + cat.amount, 0);
+
+  const chartData = filtered
     .map((cat, index) => ({
       id: index + 1,
-      browser: cat.category, // Using same format as your existing pie chart
+      browser: cat.category,
       visitors: cat.amount,
       fill: `var(--chart-${(index % 5) + 1})`,
       percentage: ((cat.amount / totalExpenses) * 100).toFixed(1),
     }))
     .sort((a, b) => b.visitors - a.visitors)
-    .slice(0, 5); // Top 5 categories
+    .slice(0, 5);
 
   return chartData;
 }

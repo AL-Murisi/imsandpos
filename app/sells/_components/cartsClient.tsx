@@ -45,6 +45,7 @@ import { toast } from "sonner";
 
 import dynamic from "next/dynamic";
 import { useCompany } from "@/hooks/useCompany";
+import Link from "next/link";
 
 const PrintButton = dynamic(
   () => import("./test").then((mod) => mod.PrintButton),
@@ -256,7 +257,7 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
   return (
     <div className="bg-accent flex h-[45hv] flex-col rounded-2xl p-2 shadow-xl/20 shadow-gray-500 lg:col-span-1">
       {/* Header & Cart Tabs */}
-      <div className="flex justify-between">
+      <div className="flex flex-wrap-reverse justify-between">
         <div className="flex justify-between gap-1">
           <Button
             className="rounded-[5px] bg-green-500 px-3 py-1 text-white"
@@ -281,7 +282,7 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
             </Button>
           )}
         </div>
-        <div className="flex w-60 flex-row justify-end sm:w-2xs md:w-sm">
+        <div className="flex w-72 flex-row justify-end gap-2 sm:w-2xs md:w-sm">
           <SearchInput
             placeholder={tt("search_customer")}
             paramKey="users"
@@ -290,6 +291,9 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
               setSelectedUser(user); // now `user` is single UserOption
             }}
           />
+          <Button>
+            <Link href={"/sells"}>إرجاع المبيعات</Link>
+          </Button>
         </div>
       </div>
 
