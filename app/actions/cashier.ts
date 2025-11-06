@@ -651,7 +651,7 @@ export async function processReturn(data: any, companyId: string) {
             cashierId,
             customerId: originalSale.customerId,
             paymentMethod: "cash",
-            paymentType: "return_refund",
+            payment_type: "return_refund",
             amount: -returnSubtotal, // Negative for refund
             status: "completed",
             notes: reason || "إرجاع بيع",
