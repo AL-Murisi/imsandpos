@@ -31,6 +31,18 @@ type SortableHeaderProps = {
   column: any;
   label: string;
 };
+import { useRouter, useSearchParams } from "next/navigation";
+
+const router = useRouter();
+const searchParams = useSearchParams();
+const saleTypeFilter = searchParams.get("sale_type") || "";
+
+const handleFilterChange = (value: string) => {
+  const params = new URLSearchParams(searchParams.toString());
+  if (value) params.set("sale_type", value);
+  else params.delete("sale_type");
+  router.push(`?${params.toString()}`);
+};
 
 const SortableHeader: React.FC<SortableHeaderProps> = ({ column, label }) => {
   const isSorted = column.getIsSorted();
@@ -168,6 +180,36 @@ export const debtSaleColumns: ColumnDef<any>[] = [
       return <div>{date.toLocaleDateString("ar-EG")}</div>;
     },
   },
+  {
+    accessorKey: "sale_type",
+    header: ({ column }) => (
+      <SortableHeader column={column} label="نوع العملية" />
+    ),
+    cell: ({ row }) => {
+      const type = row.getValue("sale_type") as string;
+      const color =
+        type === "sale"
+          ? "bg-green-100 text-green-800"
+          : type === "return"
+            ? "bg-red-100 text-red-800"
+            : "bg-gray-100 text-gray-800";
+
+      const label = type === "sale" ? "بيع" : type === "return" ? "إرجاع" : "-";
+
+      return (
+        <select
+          value={saleTypeFilter}
+          onChange={(e) => handleFilterChange(e.target.value)}
+          className="rounded border px-2 py-1"
+        >
+          <option value="">الكل</option>
+          <option value="sale">بيع</option>
+          <option value="return">إرجاع</option>
+        </select>
+      );
+    },
+  },
+
   {
     accessorKey: "paymentStatus",
     header: ({ column }) => <SortableHeader column={column} label="الحالة" />,

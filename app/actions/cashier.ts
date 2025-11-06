@@ -552,7 +552,7 @@ export async function processReturn(data: any, companyId: string) {
           userId: cashierId,
           movementType: "وارد",
           quantity: quantityInUnits,
-          reason: "إرجاع بيع",
+          reason: reason ?? "إرجاع بيع",
           quantityBefore: inventory.stockQuantity,
           quantityAfter: newStock,
           referenceType: "إرجاع",

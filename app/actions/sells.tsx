@@ -55,6 +55,8 @@ function serializeData<T>(data: T): T {
 export async function FetchDebtSales(
   companyId: string,
   where?: Prisma.SaleWhereInput,
+  sale_type?: string, // only returns
+
   searchQuery: string = "",
   from?: string,
   to?: string,
@@ -65,6 +67,7 @@ export async function FetchDebtSales(
   const combinedWhere: Prisma.SaleWhereInput = {
     ...where, // Existing filters (category, warehouse, etc.)
     companyId,
+    sale_type, // only returns
   };
 
   const orderBy = sort?.length
@@ -106,7 +109,7 @@ export async function FetchDebtSales(
       createdAt: true,
       paymentStatus: true,
       customerId: true,
-
+      sale_type: true,
       saleNumber: true,
       customer: {
         select: {
@@ -247,6 +250,52 @@ export async function FetchDebtSale(
   });
 
   return result;
+}
+export async function fetchAllReturnItems(companyId: string) {
+  // Fetch all sales of type "return" for this company
+  const returnSales = await prisma.sale.findMany({
+    where: {
+      companyId,
+      sale_type: "sale", // only returns
+    },
+    select: {
+      sale_type: true,
+      saleDate: true,
+      originalSaleId: true,
+      saleItems: {
+        select: {
+          productId: true,
+          quantity: true,
+          sellingUnit: true,
+          unitPrice: true,
+          product: { select: { name: true } },
+        },
+      },
+
+      customer: {
+        select: { id: true, name: true },
+      },
+    },
+    orderBy: { saleDate: "desc" },
+  });
+
+  // Flatten all items into a single array
+  const returnItems = returnSales.flatMap((sale) =>
+    sale.saleItems.map((item) => ({
+      returnSaleId: sale.originalSaleId,
+      sale_type: sale.sale_type,
+      customerId: sale.customer?.id,
+      customerName: sale.customer?.name || "غير معروف",
+      productId: item.productId,
+      name: item.product.name,
+      sellingUnit: item.sellingUnit,
+      quantityReturned: Number(item.quantity),
+      unitPrice: Number(item.unitPrice),
+      saleDate: sale.saleDate,
+    })),
+  );
+
+  return returnItems;
 }
 
 export async function FetchCustomerDebtReport(

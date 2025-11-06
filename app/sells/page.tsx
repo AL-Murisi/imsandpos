@@ -1,4 +1,8 @@
-import { FetchDebtSales, fetchSalesSummary } from "@/app/actions/sells";
+import {
+  fetchAllReturnItems,
+  FetchDebtSales,
+  fetchSalesSummary,
+} from "@/app/actions/sells";
 import { verifySession } from "@/lib/dal";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
@@ -31,6 +35,7 @@ type DashboardProps = {
     chartTo?: string;
     chartFrom?: string;
     sort: string;
+    sale_type?: string;
   }>;
 };
 
@@ -41,7 +46,8 @@ export default async function SellsDashboard({ searchParams }: DashboardProps) {
     to,
     usersquery,
     page = "1",
-    limit = "5",
+    limit = "7",
+    sale_type,
     salesFrom,
     salesTo,
     purchasesFrom,
@@ -79,6 +85,7 @@ export default async function SellsDashboard({ searchParams }: DashboardProps) {
     FetchDebtSales(
       user.companyId,
       filter,
+      sale_type,
       usersquery,
       from,
       to,
