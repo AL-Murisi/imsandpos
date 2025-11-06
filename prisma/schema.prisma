@@ -426,7 +426,9 @@ model Payment {
   saleId          String?   @map("sale_id")
   customerId      String?   @map("customer_id")
   cashierId       String    @map("cashier_id")
-  paymentType     String
+  payment_type     String?
+    isInitial       Boolean   @default(false) @map("is_initial")
+
   paymentMethod   String    @map("payment_method")
   amount          Decimal   @db.Decimal(10, 2)
   referenceNumber String?   @map("reference_number")

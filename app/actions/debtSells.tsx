@@ -159,7 +159,7 @@ export async function updateSalesBulk(
       companyId,
       saleId: sale.id,
       cashierId,
-      paymentType: "outstanding_payment",
+      payment_type: "outstanding_payment",
       paymentMethod: "cash",
       amount: payNow,
       status: "completed",

@@ -226,7 +226,7 @@ export async function processSale(data: any, companyId: string) {
               cashierId,
               customerId,
               paymentMethod: "cash",
-              paymentType: "sale_payment",
+              payment_type: "sale_payment",
               amount: receivedAmount,
               status: "completed",
             },
