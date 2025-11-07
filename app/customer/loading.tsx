@@ -2,10 +2,39 @@
 import DashboardTabs from "@/components/common/Tabs";
 
 import TableSkeleton from "@/components/common/TableSkeleton";
+import SearchInput from "@/components/common/searchtest";
+import { SelectField } from "@/components/common/selectproduct";
+import CustomDialog from "@/components/common/Dailog";
+import { Calendar22 } from "@/components/common/DatePicker";
+import { Plus } from "lucide-react";
+
+import CustomerForm from "./debtSell/Newcustomer";
+import { Button } from "@/components/ui/button";
 
 export default function Loading() {
   return (
-    <div className="flex flex-col p-3">
+    <div className="bg-accent flex flex-col p-3" dir="rtl">
+      {/* Add dir="rtl" for proper RTL layout */}
+      <div className="mb-2 flex flex-wrap gap-2">
+        <Calendar22 />
+        <SearchInput placeholder={"بحث"} paramKey={"users"} />{" "}
+        {/* Translate placeholder */}
+        <SearchInput placeholder={"الفئة"} paramKey={"users"} />{" "}
+        <CustomDialog
+          trigger={
+            <Button>
+              <Plus className="ml-1" />{" "}
+              {/* Change mr-1 to ml-1 for RTL icon placement */}
+              إضافة عميل
+            </Button>
+          }
+          title="إضافة مستخدم"
+          description="أدخل تفاصيل المستخدم أدناه."
+        >
+          <CustomerForm />
+        </CustomDialog>
+      </div>
+
       <TableSkeleton />
     </div>
   );

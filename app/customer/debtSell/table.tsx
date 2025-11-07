@@ -50,7 +50,7 @@ export default function CustomerClinet({ users, total, role }: Props) {
   return (
     <div className="bg-accent flex flex-col p-3" dir="rtl">
       {/* Add dir="rtl" for proper RTL layout */}
-      <div className="flex flex-wrap gap-2">
+      <div className="mb-2 flex flex-wrap gap-2">
         <Calendar22 />
         <SearchInput placeholder={"بحث"} paramKey={"users"} />{" "}
         {/* Translate placeholder */}

@@ -119,6 +119,36 @@ export const customerColumns: ColumnDef<any>[] = [
     ),
     cell: ({ row }) => <div>{row.getValue("phoneNumber") || "غير محدد"}</div>,
   },
+
+  {
+    accessorKey: "creditLimit",
+    header: ({ column }) => <SortableHeader column={column} label="حد دين" />,
+    cell: ({ row }) => {
+      const creditLimit = Number(row.original.creditLimit);
+      const outstanding = Number(row.original.outstandingBalance);
+
+      let statusColor = "";
+      let label = "";
+
+      if (outstanding >= creditLimit) {
+        statusColor = "text-red-600 font-semibold"; // over limit
+        label = "تجاوز الحد";
+      } else if (creditLimit - outstanding <= creditLimit * 0.2) {
+        statusColor = "text-yellow-600 font-semibold"; // close to limit
+        label = "قرب الحد";
+      } else {
+        statusColor = "text-green-600 font-semibold"; // safe
+        label = "ضمن الحد";
+      }
+
+      return (
+        <div className={statusColor}>
+          {`${outstanding} / ${creditLimit} ${label}`}
+        </div>
+      );
+    },
+  },
+
   {
     accessorKey: "customerType",
     header: "نوع العميل",
@@ -147,7 +177,7 @@ export const customerColumns: ColumnDef<any>[] = [
                 : "text-gray-600"
           }`}
         >
-          {balance.toFixed(2)} مدين`
+          {balance.toFixed(2)}
         </span>
       );
     },

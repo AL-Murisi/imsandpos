@@ -40,6 +40,7 @@ export default function CustomerEditForm({ customer }: { customer: any }) {
       postalCode: customer.postalCode ?? "",
       customerType: customer.customerType ?? "individual",
       taxId: customer.taxId ?? "",
+      creditLimit: customer.creditLimit ?? undefined,
     });
   }, [customer]);
 
@@ -170,16 +171,28 @@ export default function CustomerEditForm({ customer }: { customer: any }) {
               )}
             </div>
           </div>
-
-          {/* Tax ID */}
-          <div className="grid gap-2">
-            <Label htmlFor="taxId">الرقم الضريبي</Label>
-            <Input id="taxId" {...register("taxId")} />
-            {errors.taxId && (
-              <p className="text-xs text-red-500">{errors.taxId.message}</p>
-            )}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="creditLimit">حد دين</Label>
+              <Input
+                id=" creditLimit"
+                {...register("creditLimit", { valueAsNumber: true })}
+              />
+              {errors.creditLimit && (
+                <p className="text-xs text-red-500">
+                  {errors.creditLimit.message}
+                </p>
+              )}
+            </div>
+            {/* Tax ID */}
+            <div className="grid gap-2">
+              <Label htmlFor="taxId">الرقم الضريبي</Label>
+              <Input id="taxId" {...register("taxId")} />
+              {errors.taxId && (
+                <p className="text-xs text-red-500">{errors.taxId.message}</p>
+              )}
+            </div>
           </div>
-
           <div className="flex justify-end">
             <Button disabled={isSubmitting} type="submit">
               {isSubmitting ? "جاري الحفظ..." : "حفظ "}

@@ -215,7 +215,7 @@ export const debtSaleColumns: ColumnDef<any>[] = [
         <div className="flex flex-row gap-2">
           {amountDue > 0 && <Debtupdate debt={debt} />}
           <Recitp id={debt.saleNumber} />
-          <ReturnForm sale={debt} />
+          {debt.sale_type === "sale" && <ReturnForm sale={debt} />}
         </div>
       );
     },

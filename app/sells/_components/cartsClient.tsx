@@ -74,6 +74,7 @@ interface UserOption {
   name?: string;
   phoneNumber?: string | null;
   outstandingBalance?: number;
+  creditLimit?: number;
 }
 
 interface CustomDialogProps {
@@ -124,6 +125,9 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
   const [saleNumber, setSaleNumber] = useState(
     `SALE-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
   );
+  const debtLimit = totals.totalAfter + (selectedUser?.outstandingBalance ?? 0);
+
+  // Check only when we actually have a selected user and a credit limit
 
   const hasAddedCart = useRef(false);
 
@@ -176,7 +180,12 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
 
   const handlePayment = useCallback(async () => {
     if (!user) return;
-
+    if (selectedUser?.creditLimit !== undefined) {
+      if (debtLimit > selectedUser.creditLimit && receivedAmount == 0) {
+        toast.error("⚠️ تجاوز العميل الحد الائتماني المسموح به");
+        return;
+      }
+    }
     const calculatedChange =
       receivedAmount >= totals.totalAfter
         ? receivedAmount - totals.totalAfter

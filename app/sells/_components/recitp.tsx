@@ -72,7 +72,12 @@ export default function Recitp({ id }: Props) {
       setLoading(false);
     }
   };
-
+  const label =
+    data?.sale_type === "return"
+      ? "إرجاع"
+      : data?.sale_type === "sale"
+        ? "بيع"
+        : "-";
   return (
     <Dailogreuse
       open={open}
@@ -91,12 +96,12 @@ export default function Recitp({ id }: Props) {
           className="rounded-md text-amber-50"
           dir="rtl"
         >
-          {/* Header Info */}
           <div className="mb-2 flex flex-col items-center justify-center text-center text-amber-50">
-            <h2 className="text-lg font-bold">
-              فاتورة رقم: {data.sale_number}
-            </h2>
             <div className="flex flex-wrap justify-center gap-4 text-sm">
+              <h2 className="text-lg font-bold">فاتورة : {label}</h2>
+              <h2 className="text-lg font-bold">
+                فاتورة رقم: {data.sale_number}
+              </h2>
               <span>العميل: {data.customer_name || "بدون"}</span>
               <span>الكاشير: {data.user_name || "غير محدد"}</span>
               <span>طريقة الدفع: {data.is_cash ? "نقدي" : "آجل / دين"}</span>

@@ -9,6 +9,13 @@ import TableSkeleton from "@/components/common/TableSkeleton";
 import { DataTable } from "@/components/common/test";
 import { useRouter, useSearchParams } from "next/navigation";
 import { SelectField } from "@/components/common/selection";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type ProductClientProps = {
   data: any[];
@@ -44,29 +51,41 @@ export default function DebtSells({
   const searchParams = useSearchParams();
   const saleTypeFilter = searchParams.get("sale_type") || "";
 
+  // const handleFilterChange = (value: string) => {
+  //   const params = new URLSearchParams(searchParams.toString());
+  //   if (value == "all") params.delete("sale_type", value);
+  //   if (value) params.set("sale_type", value);
+  //   else params.delete("sale_type");
+  //   router.push(`?${params.toString()}`);
+  // };
   const handleFilterChange = (value: string) => {
     const params = new URLSearchParams(searchParams.toString());
-    if (value) params.set("sale_type", value);
-    else params.delete("sale_type");
+
+    if (value === "all") {
+      params.delete("sale_type");
+    } else {
+      params.set("sale_type", value);
+    }
+
     router.push(`?${params.toString()}`);
   };
-
   return (
     <div className="bg-accent rounded-2xl p-2 lg:col-span-1" dir="rtl">
       <DataTable
         search={
-          <>
-            {" "}
-            <select
-              value={saleTypeFilter}
-              onChange={(e) => handleFilterChange(e.target.value)}
-              className="rounded border px-2 py-1"
-            >
-              <option value="">الكل</option>
-              <option value="sale">بيع</option>
-              <option value="return">إرجاع</option>
-            </select>
-          </>
+          <Select
+            value={saleTypeFilter}
+            onValueChange={(e) => handleFilterChange(e)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder={saleTypeFilter} />
+            </SelectTrigger>{" "}
+            <SelectContent>
+              <SelectItem value="all">الكل</SelectItem>
+              <SelectItem value="sale">بيع</SelectItem>
+              <SelectItem value="return">إرجاع</SelectItem>
+            </SelectContent>
+          </Select>
         }
         data={data}
         columns={debtSaleColumns}

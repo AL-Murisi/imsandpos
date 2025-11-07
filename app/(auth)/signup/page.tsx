@@ -19,6 +19,8 @@ import {
   Upload,
   X,
 } from "lucide-react";
+import { createClient } from "@supabase/supabase-js";
+import Link from "next/link";
 // import { createClient } from "@supabase/supabase-js";
 
 // Initialize Supabase client
@@ -112,45 +114,10 @@ export default function CompanySignup() {
     setLogoFile(null);
     setLogoPreview(null);
   };
-
-  // Upload logo to Supabase Storage
-  // const uploadLogo = async (companyId: string): Promise<string | null> => {
-  //   if (!logoFile) return null;
-
-  //   setUploadingLogo(true);
-  //   try {
-  //     // Create unique filename
-  //     const fileExt = logoFile.name.split('.').pop();
-  //     const fileName = `${companyId}-${Date.now()}.${fileExt}`;
-  //     const filePath = `company-logos/${fileName}`;
-
-  //     // Upload to Supabase Storage
-  //     const { data, error } = await supabase.storage
-  //       .from('company-assets')
-  //       .upload(filePath, logoFile, {
-  //         cacheControl: '3600',
-  //         upsert: false
-  //       });
-
-  //     if (error) {
-  //       console.error('Upload error:', error);
-  //       throw error;
-  //     }
-
-  //     // Get public URL
-  //     const { data: publicUrlData } = supabase.storage
-  //       .from('company-assets')
-  //       .getPublicUrl(filePath);
-
-  //     return publicUrlData.publicUrl;
-  //   } catch (error) {
-  //     console.error('Error uploading logo:', error);
-  //     setErrorMessage("فشل في رفع الشعار");
-  //     return null;
-  //   } finally {
-  //     setUploadingLogo(false);
-  //   }
-  // };
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  );
 
   const onSubmit = async (data: FormValues) => {
     setLoading(true);
@@ -268,7 +235,7 @@ export default function CompanySignup() {
                   </h2>
                 </div>
 
-                <div className="row-span-2 flex flex-col gap-4">
+                {/* <div className="row-span-2 flex flex-col gap-4">
                   <Label className="text-right text-base font-semibold text-gray-700 dark:text-gray-300">
                     شعار الشركة (اختياري)
                   </Label>
@@ -332,7 +299,7 @@ export default function CompanySignup() {
                       </div>
                     </div>
                   )}
-                </div>
+                </div> */}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 {/* Company Name and Email */}
@@ -665,12 +632,12 @@ export default function CompanySignup() {
 
               <p className="text-center text-sm text-gray-600 dark:text-gray-400">
                 هل لديك حساب بالفعل؟{" "}
-                <a
+                <Link
                   href="/login"
                   className="font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
                 >
                   تسجيل الدخول من هنا
-                </a>
+                </Link>
               </p>
               <p className="text-center text-sm text-gray-600 dark:text-gray-400">
                 بإنشاء حساب، أنت توافق على{" "}

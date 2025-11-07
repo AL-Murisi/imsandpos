@@ -61,14 +61,13 @@ export async function getCustomerById(companyId: string, customerId?: string) {
     const result = customers.map((c) => ({
       ...c,
       creditLimit: c.creditLimit?.toString() ?? "0",
-
+      balance: Number(c.balance),
       outstandingBalance: Number(c.outstandingBalance),
     }));
+    console.log(result);
 
-    const serialized = serializeData(result);
-    return serialized; // ✅ this is an array now
+    return result; // ✅ this is an array now
   } catch (error) {
-    console.error("Failed to fetch customer:", error);
     throw error;
   }
 }
@@ -89,6 +88,7 @@ export async function Fetchcustomerbyname(searchQuery?: string) {
       id: true,
       name: true,
       phoneNumber: true,
+      creditLimit: true,
       outstandingBalance: true,
     },
   });
@@ -105,7 +105,7 @@ export async function Fetchcustomerbyname(searchQuery?: string) {
   //   },
   // });
   const cusomers = serializeData(customer);
-  console.log(cusomers);
+
   return cusomers;
 }
 
@@ -238,6 +238,7 @@ export async function updatedCustomer(
     country,
     customerType,
     taxId,
+    creditLimit,
   } = pared.data;
   console.log(pared.data);
   const emailValue = email?.trim() || null;
@@ -270,7 +271,7 @@ export async function updatedCustomer(
         state,
         country,
         customerType,
-
+        creditLimit,
         taxId,
       },
     });

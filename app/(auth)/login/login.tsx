@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/card";
 import { Lock, Mail, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
+import Link from "next/link";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -184,6 +185,12 @@ export default function LoginPage() {
                   مورد
                 </Button>
               </div>
+              <Link
+                href="/signup"
+                className="font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+              >
+                إنشاء حساب من هنا
+              </Link>
             </div>
           </CardContent>
 

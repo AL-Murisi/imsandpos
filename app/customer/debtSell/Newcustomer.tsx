@@ -148,7 +148,13 @@ export default function CustomerForm() {
             )}
           </div>
         </div>
-
+        <div className="grid gap-2">
+          <Label htmlFor="creditLimit">الرقم الضريبي</Label>
+          <Input id=" creditLimit" {...register("creditLimit")} />
+          {errors.creditLimit && (
+            <p className="text-xs text-red-500">{errors.creditLimit.message}</p>
+          )}
+        </div>
         {/* Tax ID */}
         <div className="grid gap-2">
           <Label htmlFor="taxId">الرقم الضريبي</Label>

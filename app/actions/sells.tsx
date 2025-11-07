@@ -12,6 +12,7 @@ type ReceiptItem = {
 
 type ReceiptResult = {
   sale_number: string;
+  sale_type: string;
   total_before: number;
   total_after: number;
   received_amount: number;
@@ -416,6 +417,7 @@ export async function fetchReceipt(saleId: string, companyId: string) {
         s.customer_id,
         s.company_id,
         s.discount_amount,
+        s.sale_type,
         c.name AS customer_name,
         c.outstanding_balance,
         u.name AS cashier_name
@@ -463,6 +465,7 @@ export async function fetchReceipt(saleId: string, companyId: string) {
       (COALESCE(s.amount_paid, 0)::numeric - s.total_amount::numeric) AS calculated_change,
       s.cashier_name AS user_name,
       s.customer_name,
+      s.sale_type,
       s.outstanding_balance::numeric AS customer_debt,
       (COALESCE(s.amount_paid, 0)::numeric >= s.total_amount::numeric) AS is_cash,
       (
