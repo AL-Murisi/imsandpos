@@ -49,8 +49,8 @@ export const CartTab = memo(
       <Button
         className={`rounded ${
           isActive
-            ? "bg-card border-primary text-foreground hover:bg-secondary rounded-md border-2 hover:scale-100"
-            : "bg-primary text-black"
+            ? "bg-primary hover:bg-secondary rounded-md border-2 text-black hover:scale-100"
+            : "bg-card hover:bg-primary border-primary text-foreground rounded-md border-2 hover:text-black"
         }`}
         onClick={onSelect}
       >

@@ -14,7 +14,7 @@ const routePermissions: Record<string, string[]> = {
   // Admin and workers routes
   "/inventory/products": ["admin", "manager_wh"],
   "/inventory/categories": ["admin", "manager_wh"],
-  "/inventory/suppliers": ["admin", "manager_wh"],
+  "/suppliers": ["admin", "manager_wh"],
   "/inventory/warehouses": ["admin", "manager_wh"],
   "/inventory/dashboardUser": ["manager_wh"],
   // Admin, workers, and customers routes

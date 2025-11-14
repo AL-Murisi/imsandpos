@@ -24,6 +24,7 @@ interface SellsDashboardClientProps {
   salesSummary: any; // Define a type for your sales summary
   productStats: any; // Define a type for your product stats
   recentSales: any;
+  totalSales: number;
 }
 
 export default function SellsDashboardClient({
@@ -31,6 +32,7 @@ export default function SellsDashboardClient({
   debtSales,
   salesSummary,
   productStats,
+  totalSales,
   recentSales,
 }: SellsDashboardClientProps) {
   const router = useRouter();
@@ -102,7 +104,7 @@ export default function SellsDashboardClient({
             <Link href="/products">البحث عن منتج</Link>
           </Button> */}
       </div>
-      <DebtSells data={debtSales} total={0} sort={[]} />
+      <DebtSells data={debtSales} total={totalSales} sort={[]} />
     </section>
   );
 }

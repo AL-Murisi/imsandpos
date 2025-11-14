@@ -97,54 +97,58 @@ export function EditSupplierForm({
       titel={supplier ? "تعديل بيانات المورد" : "إضافة مورد جديد"}
       description="أدخل تفاصيل المورد واحفظها"
     >
-      <form
-        onSubmit={handleSubmit(onSubmit)}
-        className="grid grid-cols-2 gap-4 p-4"
-      >
-        <div className="col-span-2">
-          <Label>اسم المورد</Label>
-          <Input {...register("name")} placeholder="اسم المورد" />
-        </div>
+      <form onSubmit={handleSubmit(onSubmit)} className="">
+        <div className="grid gap-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="grid gap-2">
+              <Label>اسم المورد</Label>
+              <Input {...register("name")} placeholder="اسم المورد" />
+            </div>
 
-        <div>
-          <Label>الشخص المسؤول</Label>
-          <Input {...register("contactPerson")} />
-        </div>
+            <div className="grid gap-2">
+              <Label>الشخص المسؤول</Label>
+              <Input {...register("contactPerson")} />
+            </div>
 
-        <div>
-          <Label>البريد الإلكتروني</Label>
-          <Input {...register("email")} />
-        </div>
+            <div className="grid gap-2">
+              <Label>البريد الإلكتروني</Label>
+              <Input {...register("email")} />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="grid gap-2">
+              <Label>رقم الهاتف</Label>
+              <Input {...register("phoneNumber")} />
+            </div>
 
-        <div>
-          <Label>رقم الهاتف</Label>
-          <Input {...register("phoneNumber")} />
-        </div>
+            <div className="grid gap-2">
+              <Label>العنوان</Label>
+              <Input {...register("address")} />
+            </div>
 
-        <div>
-          <Label>العنوان</Label>
-          <Input {...register("address")} />
-        </div>
+            <div className="grid gap-2">
+              {" "}
+              <Label>المدينة</Label>
+              <Input {...register("city")} />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="grid gap-2">
+              <Label>الدولة</Label>
+              <Input {...register("country")} />
+            </div>
 
-        <div>
-          <Label>المدينة</Label>
-          <Input {...register("city")} />
-        </div>
+            <div className="grid gap-2">
+              <Label>الرقم الضريبي</Label>
+              <Input {...register("taxId")} />
+            </div>
 
-        <div>
-          <Label>الدولة</Label>
-          <Input {...register("country")} />
-        </div>
-
-        <div>
-          <Label>الرقم الضريبي</Label>
-          <Input {...register("taxId")} />
-        </div>
-
-        <div className="col-span-2 mt-4 flex justify-end">
-          <Button type="submit" disabled={loading}>
-            {loading ? "جارٍ التحديث..." : "تحديث"}
-          </Button>
+            <div className="col-span-2 mt-4 flex justify-end">
+              <Button type="submit" disabled={loading}>
+                {loading ? "جارٍ التحديث..." : "تحديث"}
+              </Button>
+            </div>
+          </div>
         </div>
       </form>
     </Dailogreuse>

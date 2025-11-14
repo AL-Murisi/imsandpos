@@ -131,8 +131,10 @@ export async function slow(ms: number) {
 }
 
 export const fetchSuppliers = cache(async (companyId: string) => {
-  console.log("fetchSuppliers");
   await slow(1000);
+  const total = await prisma.supplier.count({
+    where: { companyId: companyId },
+  });
   const supplier = await prisma.supplier.findMany({
     where: { companyId: companyId },
     select: {
@@ -151,10 +153,14 @@ export const fetchSuppliers = cache(async (companyId: string) => {
       isActive: true,
       createdAt: true,
       updatedAt: true,
+      totalPaid: true,
+      totalPurchased: true,
+      outstandingBalance: true,
     },
   });
   const serialized = serializeData(supplier);
-  return serialized;
+
+  return { data: serialized, total };
 });
 export async function createSupplier(
   form: CreateSupplierInput,
@@ -176,6 +182,9 @@ export async function createSupplier(
     postalCode,
     taxId,
     paymentTerms,
+    totalPaid,
+    totalPurchased,
+    outstandingBalance,
   } = parsed.data;
   try {
     const user = await prisma.supplier.create({
@@ -192,6 +201,9 @@ export async function createSupplier(
         postalCode,
         taxId,
         paymentTerms,
+        totalPaid,
+        totalPurchased,
+        outstandingBalance,
       },
     });
     revalidatePath("/suppliers");
@@ -288,7 +300,7 @@ export const getPurchasesByCompany = cache(
       });
       const serialized = serializeData(purchases);
 
-      return { data: serialized, total, pageIndex, pageSize };
+      return { data: serialized, total };
     } catch (error) {
       console.error("Error fetching company purchases:", error);
       throw error;
@@ -342,7 +354,7 @@ export const getSupplierPaymentsByCompany = cache(
         take: pageSize,
       });
       const serialized = serializeData(payments);
-      return { data: serialized, total, pageIndex, pageSize };
+      return { data: serialized, total };
     } catch (error) {
       console.error("Error fetching company payments:", error);
       throw error;
@@ -450,141 +462,7 @@ export async function updateSupplierPayment(
     throw error;
   }
 }
-// ============================================
-// Create Supplier Payment and Apply to Purchases
-// ============================================
-// export async function createSupplierPaymentFromPurchases(
-//   userId: string,
-//   companyId: string,
-//   data: {
-//     createdBy: string;
-//     supplierId: string;
-//     amount: number;
-//     paymentMethod: string;
-//     note?: string;
-//     paymentDate?: Date;
-//   },
-// ) {
-//   try {
-//     const { createdBy, supplierId, amount, paymentMethod, note, paymentDate } =
-//       data;
 
-//     if (!supplierId || !amount || amount <= 0) {
-//       throw new Error("Supplier ID and valid payment amount are required");
-//     }
-
-//     // 1. Fetch purchases (outside transaction)
-//     const purchases = await prisma.purchase.findMany({
-//       where: {
-//         companyId,
-//         supplierId,
-//         status: { in: ["pending", "partial"] },
-//       },
-//       orderBy: { createdAt: "asc" },
-//     });
-
-//     if (!purchases.length) {
-//       throw new Error(
-//         "No pending or partial purchases found for this supplier",
-//       );
-//     }
-
-//     // 2. Calculate payment allocation (in memory)
-//     let remainingAmount = amount;
-//     const purchaseUpdates: Array<{
-//       id: string;
-//       amountPaid: number;
-//       amountDue: number;
-//       status: "pending" | "partial" | "paid";
-//     }> = [];
-
-//     for (const purchase of purchases) {
-//       if (remainingAmount <= 0) break;
-
-//       const amountDue = Number(purchase.amountDue);
-//       const amountToApply = Math.min(amountDue, remainingAmount);
-
-//       const newAmountPaid = Number(purchase.amountPaid) + amountToApply;
-//       const newAmountDue = Math.max(0, amountDue - amountToApply);
-
-//       purchaseUpdates.push({
-//         id: purchase.id,
-//         amountPaid: newAmountPaid,
-//         amountDue: newAmountDue,
-//         status:
-//           newAmountDue <= 0
-//             ? "paid"
-//             : amountToApply > 0
-//               ? "partial"
-//               : "pending",
-//       });
-
-//       remainingAmount -= amountToApply;
-//     }
-
-//     // 3. Quick transaction - only update purchases
-//     const updatedPurchases = await prisma.$transaction(
-//       async (tx) => {
-//         return Promise.all(
-//           purchaseUpdates.map((update) =>
-//             tx.purchase.update({
-//               where: { id: update.id },
-//               data: {
-//                 amountPaid: Number(update.amountPaid),
-//                 amountDue: Number(update.amountDue),
-//                 status: update.status,
-//               },
-//             }),
-//           ),
-//         );
-//       },
-//       { timeout: 5000 },
-//     );
-//     // 4. Create payment record (separate operation)
-//     const supplierPayment = await prisma.supplierPayment.create({
-//       data: {
-//         companyId,
-//         supplierId,
-//         amount,
-
-//         paymentMethod,
-//         note,
-//         createdBy,
-
-//         paymentDate: paymentDate ?? new Date(),
-//       },
-//       include: { supplier: true },
-//     });
-
-//     // 5. Log activity (separate operation)
-//     await prisma.activityLogs.create({
-//       data: {
-//         userId,
-//         companyId,
-//         action: "created supplier payment",
-//         details: `Supplier: ${supplierPayment.supplier.name}, Payment: ${amount}, Applied to ${updatedPurchases.length} purchase(s).`,
-//       },
-//     });
-
-//     revalidatePath("/suppliers");
-
-//     return {
-//       success: true,
-//       payment: supplierPayment,
-//       updatedPurchases,
-//       remainingAmount,
-//     };
-//   } catch (error) {
-//     console.error("Error creating supplier payment:", error);
-//     return {
-//       success: false,
-//       error:
-//         error instanceof Error
-//           ? error.message
-//           : "Failed to create supplier payment",
-//     };
-//   }
-// }
 export async function createSupplierPaymentFromPurchases(
   userId: string,
   companyId: string,

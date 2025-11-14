@@ -22,12 +22,14 @@ export default function UserTab({
   roless,
   logs,
   roles,
+  totalLogs,
   company,
 }: {
   data: any[];
   roless: any[];
   logs: any[];
   roles: any[];
+  totalLogs: number;
   company:
     | {
         id: string;
@@ -56,7 +58,7 @@ export default function UserTab({
           value: "useractivity",
           label: "أنشطة المستخدمين",
           content: (
-            <UserActivityTable logs={logs} total={logs.length} sort={[]} />
+            <UserActivityTable logs={logs} total={totalLogs} sort={[]} />
           ),
         },
         {

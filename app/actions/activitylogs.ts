@@ -28,6 +28,7 @@ export async function getActivityLogs(
   pageSize: number = 7,
   sort?: SortingState,
 ) {
+  const total = await prisma.activityLogs.count({ where: { companyId } });
   const logs = await prisma.activityLogs.findMany({
     where: { companyId },
     include: {
@@ -44,5 +45,5 @@ export async function getActivityLogs(
     skip: page * pageSize,
     take: pageSize,
   });
-  return logs;
+  return { logs, total };
 }

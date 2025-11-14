@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ColumnDef } from "@tanstack/react-table";
 import { ArrowDown, ArrowUp, ArrowUpDown, EditIcon } from "lucide-react";
 import Debtupdate from "./form";
-import Recitp from "./recitp";
+import Recitp from "../cashiercontrol/_components/recitp";
 import { useCurrency } from "@/components/CurrencyProvider";
 import { ReturnForm } from "./Returnitems";
 

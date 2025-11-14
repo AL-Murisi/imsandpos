@@ -292,7 +292,6 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
                   <div className="grid gap-2">
                     <Label>مبلغ الدفع</Label>
                     <Input
-                      type="number"
                       {...register("paymentAmount", { valueAsNumber: true })}
                     />
                   </div>

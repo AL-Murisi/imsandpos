@@ -14,6 +14,7 @@ import {
 import { ColumnDef } from "@tanstack/react-table";
 import { Edit } from "lucide-react";
 import InvonteryEditFormm from "./form";
+import PurchaseReturnForm from "./returnform";
 
 export const StockMovementColumns: ColumnDef<any>[] = [
   {
@@ -248,6 +249,7 @@ export const inventoryColumns: ColumnDef<any>[] = [
       return (
         <div className="flex gap-2 p-2">
           <InvonteryEditFormm inventory={inventory} />
+          <PurchaseReturnForm inventory={inventory} />
         </div>
       );
     },

@@ -57,11 +57,13 @@ export default async function User({ searchParams }: Users) {
     fetchRoles(pageIndex, pageSize),
     getCompany(user.companyId),
   ]);
+  const { logs: log, total: totals } = logs;
   return (
     <UserTab
       data={data}
       roless={roless}
-      logs={logs}
+      logs={log}
+      totalLogs={totals}
       roles={roles}
       company={company.data}
     />

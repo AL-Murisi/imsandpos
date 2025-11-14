@@ -7,7 +7,7 @@ export default async function DebtSell() {
   const user = await getSession();
   if (!user?.companyId) return;
 
-  const data = await getCustomerById(user.companyId);
+  const data = getCustomerById(user.companyId);
   // const data = await FetchDebtSales(filter);
   return (
     <div className="rounded-xl p-3">

@@ -52,11 +52,11 @@ const PrintButton = dynamic(
   { ssr: false },
 );
 const CartItemRow = dynamic(
-  () => import("../_components/CartClient").then((mod) => mod.CartItemRow),
+  () => import("./CartClient").then((mod) => mod.CartItemRow),
   { ssr: false },
 );
 const CartTab = dynamic(
-  () => import("../_components/CartClient").then((mod) => mod.CartTab),
+  () => import("./CartClient").then((mod) => mod.CartTab),
   { ssr: false },
 );
 const Receipt = dynamic(
@@ -329,14 +329,14 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
             <TableHeader className="sticky top-0 z-10">
               <TableRow className="border-amber-300 shadow-xl/20 shadow-gray-900">
                 <TableHead>#</TableHead>
-                <TableHead>{t("sku")}</TableHead>
+                <TableHead className="text-center">{t("sku")}</TableHead>
 
-                <TableHead>{t("product")}</TableHead>
-                <TableHead>{t("warehouse")}</TableHead>
-                <TableHead>{t("quantity")}</TableHead>
-                <TableHead>{t("type")}</TableHead>
+                <TableHead className="text-start">{t("product")}</TableHead>
+                <TableHead className="text-start">{t("warehouse")}</TableHead>
+                <TableHead className="text-center">{t("quantity")}</TableHead>
+                <TableHead className="text-center">{t("type")}</TableHead>
 
-                <TableHead>{t("price")}</TableHead>
+                <TableHead className="text-center">{t("price")}</TableHead>
                 <TableHead>{t("total")}</TableHead>
                 <TableHead>{t("actions")}</TableHead>
               </TableRow>
@@ -412,7 +412,6 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
                 </Select>
 
                 <input
-                  type="number"
                   value={discountValue}
                   onChange={(e) => {
                     const val = Math.max(0, Number(e.target.value));
@@ -424,7 +423,6 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
                     );
                     setDiscountsValue(val);
                   }}
-                  min={0}
                   className="w-20 rounded border border-gray-300 px-2 py-1 text-sm dark:border-gray-600"
                   max={discountType === "percentage" ? 100 : totals.totalBefore}
                 />

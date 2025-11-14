@@ -129,14 +129,22 @@ function DashboardContentClient({
     ],
     [],
   );
-
-  // Transform revenue data for the TopSellingChartWrapper
   const revenueChartData = useMemo(() => {
-    return salesSummary.revenue.chart.map((item, index) => ({
-      date: item.date,
-      total: item.value, // Map 'value' to 'total' expected by the chart
-      key: item.date,
-    }));
+    return salesSummary.revenue.chart.map((item) => {
+      const [year, month] = item.date.split("-");
+      const monthLabel = new Date(
+        Number(year),
+        Number(month) - 1,
+      ).toLocaleString("ar-US", {
+        month: "short",
+        year: "numeric",
+      });
+      return {
+        date: monthLabel,
+        total: item.value,
+        key: item.date,
+      };
+    });
   }, [salesSummary.revenue.chart]);
 
   if (!result) {

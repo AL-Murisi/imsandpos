@@ -3,6 +3,7 @@
 import DashboardTabs from "@/components/common/Tabs";
 import TableSkeleton from "@/components/common/TableSkeleton";
 import dynamic from "next/dynamic";
+import { use } from "react";
 const ManageinvetoryClient = dynamic(() => import("./manageinvetoryClient"), {
   ssr: false,
   loading: () => <TableSkeleton />,
@@ -12,36 +13,43 @@ const ManagemovementClient = dynamic(() => import("./getMovementhistry"), {
   loading: () => <TableSkeleton />,
 });
 export default function InventoryTabs({
-  fetchedProducts,
-  fetchedTotalCount,
-  fetchedProduct,
-  fetchedTotalCounts,
+  inventoryData,
+
+  movementData,
+
   formData,
+  currentTab, // ✅ new prop
 }: {
-  fetchedProducts: any[];
-  fetchedTotalCount: number;
-  fetchedProduct: any[];
-  fetchedTotalCounts: number;
-  formData: {
+  inventoryData: Promise<{ inventory: any[]; totalCount: number }>;
+  // fetchedTotalCount: number;
+  movementData: Promise<{ movements: any[]; totalCount: number }>;
+  // fetchedTotalCounts: number;
+  formData: Promise<{
     warehouses: { id: string; name: string }[];
     categories: { id: string; name: string }[];
     brands: { id: string; name: string }[];
     suppliers: { id: string; name: string }[];
-  };
+  }>;
+  currentTab: string; // ✅ new prop
 }) {
+  const inventory = use(inventoryData);
+  const movement = use(movementData);
+  const format = use(formData);
   return (
     <DashboardTabs
-      defaultTab="inventory"
+      // ✅ new prop
+      defaultTab={currentTab}
       loader={<TableSkeleton />}
+      paramKey="tab"
       tabs={[
         {
           value: "inventory",
           label: "المخزون",
           content: (
             <ManageinvetoryClient
-              products={fetchedProducts}
-              total={fetchedTotalCount}
-              formData={formData}
+              products={inventory.inventory}
+              total={inventory.totalCount}
+              formData={format}
             />
           ),
         },
@@ -50,9 +58,9 @@ export default function InventoryTabs({
           label: "حركات المخزون",
           content: (
             <ManagemovementClient
-              products={fetchedProduct}
-              total={fetchedTotalCounts}
-              formData={formData}
+              products={movement.movements}
+              total={movement.totalCount}
+              formData={format}
             />
           ),
         },

@@ -35,13 +35,6 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
   if (!user) return;
   const pageIndex = Number(page) - 1;
   const pageSize = Number(limit);
-
-  const [formData] = await Promise.all([
-    fetchAllFormData(user.companyId),
-    // fetchProductStats("admin", user.companyId),
-    // Fetchusers(true, user.companyId),
-  ]);
-
   const where: Prisma.ProductWhereInput = {
     supplierId,
     warehouseId,
@@ -57,17 +50,21 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
       ]
     : [];
 
-  const { products, totalCount } = await fetchProduct(
-    user.companyId,
-    productquery,
-    where,
-    from,
-    to,
-    pageIndex,
-    pageSize,
-    parsedSort,
-  );
+  const [formData, product] = await Promise.all([
+    fetchAllFormData(user.companyId),
+    fetchProduct(
+      user.companyId,
+      productquery,
+      where,
+      from,
+      to,
+      pageIndex,
+      pageSize,
+      parsedSort,
+    ),
+  ]);
 
+  const { products, totalCount } = product;
   return (
     <div className="p-3">
       <ProductClient

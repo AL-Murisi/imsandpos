@@ -202,7 +202,7 @@ export function DataTable<T>({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
             {/* Align to the start (right) for RTL */}
-            {[5, 10, 20, 50, 100, 1000].map((size) => (
+            {[10, 20, 50, 100, 1000].map((size) => (
               <DropdownMenuItem
                 key={size}
                 onClick={() => table.setPageSize(size)}
@@ -218,6 +218,34 @@ export function DataTable<T>({
         </DropdownMenu>
 
         <div className="space-x-2">
+          {/* <Button
+            className="shadow-xl/20 shadow-gray-900"
+            onClick={() =>
+              pageActiom((old) => ({
+                ...old,
+                pageIndex: Math.max(0, old.pageIndex - 1),
+              }))
+            }
+            disabled={pagination.pageIndex === 0}
+          >
+            {t("prev")}
+          </Button>
+
+          <Button
+            className="shadow-xl/20 shadow-gray-900"
+            onClick={() =>
+              pageActiom((old) => ({
+                ...old,
+                pageIndex: old.pageIndex + 1,
+              }))
+            }
+            disabled={
+              (pagination.pageIndex + 1) * pagination.pageSize >= totalCount
+            }
+          >
+            {t("next")}
+          </Button> */}
+
           {/* space-x-2 works for RTL, but you might consider space-x-reverse for explicit control */}
           <Button
             className="shadow-xl/20 shadow-gray-900"

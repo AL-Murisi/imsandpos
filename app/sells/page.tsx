@@ -106,8 +106,9 @@ export default async function SellsDashboard({ searchParams }: DashboardProps) {
     <ScrollArea className="flex h-[95vh] flex-col space-y-8 p-6" dir="rtl">
       <SellsDashboardClient
         user={currentUser}
-        debtSales={data}
-        recentSales={data}
+        debtSales={data.serializedDebts}
+        recentSales={data.serializedDebts}
+        totalSales={data.total}
         salesSummary={salesSummary}
         productStats={productStats}
       />

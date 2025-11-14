@@ -66,6 +66,7 @@ export async function updateInventory(
   data: ExtendedInventoryUpdateData,
   userId: string,
   companyId: string,
+  purchaseType?: "purchases",
 ) {
   try {
     const {
@@ -83,7 +84,7 @@ export async function updateInventory(
       warehouseId: targetWarehouseId, // المستودع المستهدف
       ...updateData
     } = data;
-    console.log(data);
+
     // 1️⃣ جلب السجل الحالي للمخزون
     const currentInventory = await prisma.inventory.findUnique({
       where: { id, companyId },
@@ -199,6 +200,7 @@ export async function updateInventory(
         await prisma.purchase.update({
           where: { id: purchase.id },
           data: {
+            purchaseType: purchaseType,
             amountPaid: paymentAmount,
             amountDue: Math.max(0, totalCost - paymentAmount),
             status: paymentAmount >= totalCost ? "paid" : "partial",
@@ -212,6 +214,7 @@ export async function updateInventory(
       where: { id: inventoryTarget.id },
       data: {
         ...updateData,
+
         availableQuantity: finalAvailableQty,
         stockQuantity: finalStockQty,
         status: calculatedStatus,
@@ -224,6 +227,7 @@ export async function updateInventory(
         warehouse: { select: { name: true, location: true } },
       },
     });
+    revalidatePath("/manageinvetory");
 
     // 7️⃣ تسجيل حركة المخزون
     const stockDifference = finalStockQty - inventoryTarget.stockQuantity;
@@ -261,7 +265,6 @@ export async function updateInventory(
       },
     });
 
-    revalidatePath("/manageinvetory");
     return { success: true, data: updatedInventory };
   } catch (error) {
     console.error("خطأ في تحديث المخزون:", error);
@@ -272,6 +275,251 @@ export async function updateInventory(
   }
 }
 
+interface PurchaseReturnData {
+  productId: string;
+  warehouseId: string;
+  supplierId: string;
+  returnQuantity: number;
+  returnUnit: "unit" | "packet" | "carton";
+  unitCost: number;
+  paymentMethod?: string;
+  refundAmount?: number;
+  reason?: string;
+}
+
+export async function processPurchaseReturn(
+  data: PurchaseReturnData,
+  userId: string,
+  companyId: string,
+) {
+  const {
+    productId,
+    warehouseId,
+    supplierId,
+    returnQuantity,
+    returnUnit,
+    unitCost,
+    paymentMethod,
+    refundAmount = 0,
+    reason,
+  } = data;
+
+  try {
+    const result = await prisma.$transaction(
+      async (tx) => {
+        // 1. Get product and inventory
+        const product = await tx.product.findUnique({
+          where: { id: productId },
+        });
+
+        if (!product) {
+          throw new Error("المنتج غير موجود");
+        }
+
+        const inventory = await tx.inventory.findUnique({
+          where: {
+            companyId_productId_warehouseId: {
+              companyId,
+              productId,
+              warehouseId,
+            },
+          },
+        });
+
+        if (!inventory) {
+          throw new Error("سجل المخزون غير موجود");
+        }
+
+        // 2. Convert return quantity to base units
+        function convertToBaseUnits(
+          qty: number,
+          unit: string,
+          unitsPerPacket: number,
+          packetsPerCarton: number,
+        ): number {
+          if (unit === "unit") return qty;
+          if (unit === "packet") return qty * (unitsPerPacket || 1);
+          if (unit === "carton")
+            return qty * (unitsPerPacket || 1) * (packetsPerCarton || 1);
+          return qty;
+        }
+
+        const returnQuantityInUnits = convertToBaseUnits(
+          returnQuantity,
+          returnUnit,
+          product.unitsPerPacket || 1,
+          product.packetsPerCarton || 1,
+        );
+
+        // Validate: Can't return more than what's in stock
+        if (returnQuantityInUnits > inventory.stockQuantity) {
+          throw new Error(
+            `لا يمكن إرجاع كمية أكبر من المخزون الحالي (${inventory.stockQuantity})`,
+          );
+        }
+
+        // 3. Calculate return cost (ALWAYS POSITIVE)
+        const returnTotalCost = Math.abs(returnQuantity * unitCost);
+
+        // 4. Get original purchase to determine payment status
+        // Find the most recent purchase from this supplier for this product
+        const originalPurchase = await tx.purchase.findFirst({
+          where: {
+            companyId,
+            supplierId,
+            purchaseType: { not: "return" },
+            purchaseItems: {
+              some: {
+                productId,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+        });
+
+        let originalPaymentStatus: "paid" | "partial" | "unpaid" = "unpaid";
+        if (originalPurchase) {
+          if (originalPurchase.amountPaid >= originalPurchase.totalAmount) {
+            originalPaymentStatus = "paid";
+          } else if (originalPurchase.amountPaid.toNumber() > 0) {
+            originalPaymentStatus = "partial";
+          }
+        }
+
+        // 5. Create purchase return record (POSITIVE VALUES)
+        const purchaseReturn = await tx.purchase.create({
+          data: {
+            companyId,
+            supplierId,
+            purchaseType: "return",
+            totalAmount: returnTotalCost, // ✅ Positive value
+            amountPaid: refundAmount, // ✅ Positive value
+            amountDue: Math.max(0, returnTotalCost - refundAmount),
+            status:
+              refundAmount >= returnTotalCost
+                ? "paid"
+                : refundAmount > 0
+                  ? "partial"
+                  : "unpaid",
+          },
+        });
+
+        // 6. Create purchase item for return (POSITIVE QUANTITY)
+        await tx.purchaseItem.create({
+          data: {
+            companyId,
+            purchaseId: purchaseReturn.id,
+            productId,
+            quantity: returnQuantity, // ✅ Positive quantity
+            unitCost,
+            totalCost: returnTotalCost, // ✅ Positive value
+          },
+        });
+
+        // 7. Update inventory (DECREASE stock)
+        const newStockQty = inventory.stockQuantity - returnQuantityInUnits;
+        const newAvailableQty =
+          inventory.availableQuantity - returnQuantityInUnits;
+
+        await tx.inventory.update({
+          where: {
+            companyId_productId_warehouseId: {
+              companyId,
+              productId,
+              warehouseId,
+            },
+          },
+          data: {
+            stockQuantity: newStockQty,
+            availableQuantity: newAvailableQty,
+            status:
+              newAvailableQty <= 0
+                ? "out_of_stock"
+                : newAvailableQty <= inventory.reorderLevel
+                  ? "low"
+                  : "available",
+          },
+        });
+
+        // 8. Record stock movement
+        await tx.stockMovement.create({
+          data: {
+            companyId,
+            productId,
+            warehouseId,
+            userId,
+            movementType: "صادر",
+            quantity: returnQuantityInUnits,
+            reason: "إرجاع_للمورد",
+            quantityBefore: inventory.stockQuantity,
+            quantityAfter: newStockQty,
+            referenceType: "purchase_return",
+            referenceId: purchaseReturn.id,
+            notes: reason || `إرجاع ${returnQuantity} ${returnUnit}`,
+          },
+        });
+
+        // 9. Handle refund payment if any
+        if (refundAmount > 0 && paymentMethod) {
+          await tx.supplierPayment.create({
+            data: {
+              companyId,
+              supplierId,
+              purchaseId: purchaseReturn.id,
+              createdBy: userId,
+              amount: refundAmount, // ✅ Positive value (money back from supplier)
+              paymentMethod,
+              note: reason || "استرداد مبلغ من المورد",
+            },
+          });
+        }
+
+        // 10. Update supplier balance
+        await tx.supplier.update({
+          where: { id: supplierId, companyId },
+          data: {
+            totalPurchased: { decrement: returnTotalCost },
+            ...(refundAmount > 0 && {
+              totalPaid: { decrement: refundAmount },
+            }),
+            outstandingBalance: {
+              increment:
+                originalPaymentStatus === "unpaid" ||
+                originalPaymentStatus === "partial"
+                  ? returnTotalCost - refundAmount
+                  : 0,
+            },
+          },
+        });
+
+        return {
+          success: true,
+          message: "تم إرجاع المشتريات بنجاح",
+          purchaseReturn,
+          returnAmount: returnTotalCost,
+          refundAmount,
+          originalPaymentStatus,
+        };
+      },
+      {
+        timeout: 20000,
+        maxWait: 5000,
+      },
+    );
+
+    revalidatePath("/manageinvetory");
+
+    return result;
+  } catch (error: any) {
+    console.error("خطأ في إرجاع المشتريات:", error);
+    return {
+      success: false,
+      message: error.message || "فشل في معالجة الإرجاع",
+    };
+  }
+}
 // export async function updateInventory(
 //   data: ExtendedInventoryUpdateData,
 //   userId: string,
@@ -712,7 +960,7 @@ export async function getStockMovements(
 
     // Get total count for pagination
     const totalCount = await prisma.stockMovement.count({
-      where,
+      where: { companyId },
     });
 
     // Get paginated data
@@ -765,8 +1013,8 @@ export async function getInventoryById(
   where: Prisma.InventoryWhereInput = {},
   from?: string,
   to?: string,
-  page: number = 0,
-  pageSize: number = 5,
+  page: number = 1,
+  pageSize: number = 7,
   sort: SortState = [],
 ) {
   try {
@@ -794,13 +1042,14 @@ export async function getInventoryById(
       };
     }
 
-    const totalCount = await prisma.inventory.count({ where });
+    const totalCount = await prisma.inventory.count({ where: { companyId } });
 
     const inventory = await prisma.inventory.findMany({
       select: {
         id: true,
         product: {
           select: {
+            id: true,
             name: true,
             sku: true,
             costPrice: true,
@@ -809,6 +1058,7 @@ export async function getInventoryById(
             supplier: { select: { id: true, name: true } }, // ✅ تأكد أن هذا موجود
           },
         },
+
         productId: true,
         warehouse: {
           select: {

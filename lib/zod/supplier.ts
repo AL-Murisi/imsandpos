@@ -19,6 +19,9 @@ export const CreateSupplierSchema = z.object({
   postalCode: z.string().optional(),
   taxId: z.string().optional(),
   paymentTerms: z.string().optional(),
+  totalPurchased: z.number().positive().optional(),
+  totalPaid: z.number().positive().optional(),
+  outstandingBalance: z.number().positive().optional(),
 });
 export type CreateSupplierInput = z.infer<typeof CreateSupplierSchema>;
 export const SupplierSchema = z.object({

@@ -459,8 +459,11 @@ model Purchase {
   amountPaid    Decimal        @default(0) @map("amount_paid") @db.Decimal(12, 2)
   amountDue     Decimal        @default(0) @map("amount_due") @db.Decimal(12, 2)
   status        String         @default("pending")
+  purchaseType  String         @default("normal") @map("purchase_type") // 👈 new
+
   createdAt     DateTime       @default(now()) @map("created_at")
   updatedAt     DateTime       @updatedAt @map("updated_at")
+
   purchaseItems PurchaseItem[]
    supplierPayments  SupplierPayment[]
   company       Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)

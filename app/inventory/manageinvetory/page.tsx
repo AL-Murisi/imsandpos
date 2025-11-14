@@ -41,7 +41,7 @@ export default async function Manageinvetory({ searchParams }: DashboardProps) {
     tab,
   } = params || {};
 
-  const currentTab = params.tab ?? "Invontery";
+  const currentTab = tab ?? "inventory";
   const pageIndex = Number(page) - 1;
   const pageSize = Number(limit);
 
@@ -57,41 +57,57 @@ export default async function Manageinvetory({ searchParams }: DashboardProps) {
     categoryId,
   };
   // ✅ Run all fetches in parallel
-  const [formData, inventoryData, movementData] = await Promise.all([
-    fetchAllFormData(user.companyId),
-    getInventoryById(
-      user.companyId,
-      inventoreyquery,
-      where,
-      from,
-      to,
-      pageIndex,
-      pageSize,
-      parsedSort,
-    ),
-    getStockMovements(
-      user.companyId,
-      movementquery,
-      input,
-      from,
-      to,
-      pageIndex,
-      pageSize,
-    ),
-  ]);
+  const formData = fetchAllFormData(user.companyId);
+  // Collect common params
+  const commonParams = {
+    from,
+    to,
+    pageIndex,
+    pageSize,
+    supplierId,
+    warehouseId,
+    categoryId,
+    parsedSort,
+  };
 
-  const { inventory: fetchedProducts, totalCount: fetchedTotalCount } =
-    inventoryData;
-  const { movements: fetchedProduct, totalCount: fetchedTotalCounts } =
-    movementData;
+  // Tab-specific params
+  let inventoryParams: any = {};
+  let movementParams: any = {};
+
+  if (currentTab === "inventory") {
+    inventoryParams = { ...commonParams, query: inventoreyquery, where };
+  } else if (currentTab === "movement") {
+    movementParams = { ...commonParams, query: movementquery, input };
+  }
+
+  // Then call the functions
+  const inventoryData = getInventoryById(
+    user.companyId,
+    inventoryParams.query,
+    inventoryParams.where,
+    inventoryParams.from,
+    inventoryParams.to,
+    inventoryParams.pageIndex,
+    inventoryParams.pageSize,
+    inventoryParams.parsedSort,
+  );
+
+  const movementData = getStockMovements(
+    user.companyId,
+    movementParams.query,
+    movementParams.input,
+    movementParams.from,
+    movementParams.to,
+    movementParams.pageIndex,
+    movementParams.pageSize,
+  );
 
   return (
     <InventoryTabs
-      fetchedProducts={fetchedProducts}
-      fetchedTotalCount={fetchedTotalCount}
-      fetchedProduct={fetchedProduct}
-      fetchedTotalCounts={fetchedTotalCounts}
+      inventoryData={inventoryData}
+      movementData={movementData}
       formData={formData}
+      currentTab={currentTab}
     />
   );
 }

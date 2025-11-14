@@ -19,7 +19,12 @@ interface JournalEntryData {
   reference_type: string | null;
   reference_id: string | null;
   fiscal_period: string | null;
-  posted_by: string;
+  posted_by: {
+    id: string;
+    name: string;
+    email: string | null;
+  } | null; // optional if entry hasn't been posted
+  created_by: string;
   users_journal_entries_created_byTousers: {
     name: string;
   };
@@ -128,13 +133,13 @@ export const journalEntryColumns: ColumnDef<JournalEntryData>[] = [
     },
   },
   {
-    accessorKey: "posted_by",
+    accessorKey: "posted_by.name",
     header: ({ column }) => (
       <SortableHeader column={column} label="تم الترحيل بواسطة" />
     ),
     cell: ({ row }) => {
-      const postedBy = row.original.posted_by;
-      return <span>{postedBy || "—"}</span>;
+      const posted_by = row.original.posted_by; // already mapped
+      return <span>{posted_by?.name || "—"}</span>;
     },
   },
   {

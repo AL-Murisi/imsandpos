@@ -8,7 +8,7 @@ export function useTablePrams() {
   const router = useRouter();
   const pathname = usePathname();
   const page = Math.max(Number(searchParams.get("page") || 1), 1);
-  const limit = Math.max(Number(searchParams.get("limit") || 7), 1);
+  const limit = Math.max(Number(searchParams.get("limit") || 10), 1);
 
   const search = searchParams.get("search") || "";
   const sort = searchParams.get("sort");
@@ -46,17 +46,23 @@ export function useTablePrams() {
     pagination,
     sorting,
     globalFilter: search,
-
     setPagination: (
       updater: PaginationState | ((old: PaginationState) => PaginationState),
     ) => {
-      const state =
-        typeof updater === "function"
-          ? updater({ pageIndex: page - 1, pageSize: limit })
-          : updater;
+      const oldState: PaginationState = {
+        pageIndex: page - 1,
+        pageSize: limit,
+      };
 
-      setParam("page", state.pageIndex + 1);
-      setParam("limit", state.pageSize);
+      const newState =
+        typeof updater === "function" ? updater(oldState) : updater;
+
+      // ✅ Only update if value actually changed
+      if (newState.pageIndex !== oldState.pageIndex)
+        setParam("page", newState.pageIndex + 1);
+
+      if (newState.pageSize !== oldState.pageSize)
+        setParam("limit", newState.pageSize);
     },
 
     setSorting: (

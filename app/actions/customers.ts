@@ -31,8 +31,6 @@ function serializeData<T>(data: T): T {
   return plainObj;
 }
 export async function getCustomerById(companyId: string, customerId?: string) {
-  if (!companyId) return;
-  console.log("getCustomerById");
   try {
     const customers = await prisma.customer.findMany({
       where: { id: customerId, companyId },
@@ -64,9 +62,9 @@ export async function getCustomerById(companyId: string, customerId?: string) {
       balance: Number(c.balance),
       outstandingBalance: Number(c.outstandingBalance),
     }));
-    console.log(result);
+    const total = await prisma.customer.count({ where: { companyId } });
 
-    return result; // ✅ this is an array now
+    return { result, total }; // ✅ this is an array now
   } catch (error) {
     throw error;
   }
@@ -173,7 +171,9 @@ export async function createCutomer(form: createCusomer, companyId: string) {
     country,
     customerType,
     taxId,
+    creditLimit,
     outstandingBalance,
+    balance,
   } = pared.data;
   console.log(pared.data);
   const emailValue = email?.trim() || null;
@@ -205,9 +205,10 @@ export async function createCutomer(form: createCusomer, companyId: string) {
         city,
         state,
         country,
+        creditLimit,
         outstandingBalance: outstanding,
         customerType,
-
+        balance,
         taxId,
       },
     });

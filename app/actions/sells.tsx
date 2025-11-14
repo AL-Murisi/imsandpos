@@ -100,6 +100,7 @@ export async function FetchDebtSales(
       }),
     };
   }
+
   const debts = await prisma.sale.findMany({
     select: {
       id: true,
@@ -141,6 +142,7 @@ export async function FetchDebtSales(
     take: pageSize,
     orderBy,
   });
+  const total = await prisma.sale.count({ where: { companyId } });
 
   // await prisma.payment
   const serializedDebts = debts.map((sale) => ({
@@ -161,7 +163,7 @@ export async function FetchDebtSales(
         }
       : null,
   }));
-  return serializedDebts; // Return the transformed data
+  return { serializedDebts, total }; // Return the transformed data
 }
 
 export async function FetchDebtSale(
@@ -233,6 +235,7 @@ export async function FetchDebtSale(
       outstandingBalance: true,
     },
   });
+  const total = await prisma.sale.count({ where: { companyId } });
 
   // 🔗 Combine sales + customer info
   const result = groupedSales.map((group) => {
@@ -250,7 +253,7 @@ export async function FetchDebtSale(
     };
   });
 
-  return result;
+  return { result, total };
 }
 export async function fetchAllReturnItems(companyId: string) {
   // Fetch all sales of type "return" for this company

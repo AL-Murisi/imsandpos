@@ -1,9 +1,8 @@
 import { cookies } from "next/headers";
 import { getRequestConfig } from "next-intl/server";
-import { currencyConfig } from "@/currency/config"; // ✅ your existing config
+import { currencyConfig } from "@/currency/config";
 import { getUserLocale } from "@/lib/local";
 
-// ✅ Cache translations at build time
 const messagesCache = new Map<string, any>();
 
 async function getMessages(locale: string) {
@@ -14,7 +13,6 @@ async function getMessages(locale: string) {
     messagesCache.set(locale, messages);
     return messages;
   } catch {
-    // Fallback to Arabic if not found
     if (!messagesCache.has("ar")) {
       const fallback = (await import(`../messages/ar.json`)).default;
       messagesCache.set("ar", fallback);
@@ -23,22 +21,21 @@ async function getMessages(locale: string) {
   }
 }
 
-// ✅ Detect currency from locale (fallback if cookie not set)
-function detectCurrency(locale: string): keyof typeof currencyConfig {
-  if (locale.startsWith("en-US")) return "USD";
-  if (locale.startsWith("ar-SA")) return "SAR";
-  return "YER";
-}
-
 export default getRequestConfig(async () => {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const locale = await getUserLocale();
   const messages = await getMessages(locale);
 
-  // ✅ Get currency from cookies, fallback based on locale
-  const currency = ((await cookieStore).get("NEXT_CURRENCY")?.value ||
-    "YER") as keyof typeof currencyConfig;
-  // ✅ Optionally store currency in cookie if missing
+  // ✅ Read currency from cookie per user
+  const currencyCookie = cookieStore.get("NEXT_CURRENCY")
+    ?.value as keyof typeof currencyConfig;
+  const currency =
+    currencyCookie ||
+    (locale.startsWith("en-US")
+      ? "USD"
+      : locale.startsWith("ar-SA")
+        ? "SAR"
+        : "YER");
 
   return {
     locale,

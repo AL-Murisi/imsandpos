@@ -11,6 +11,7 @@ import { Download, FileSpreadsheet } from "lucide-react";
 import dynamic from "next/dynamic";
 
 import { accountColumns } from "./columns";
+import { useFormatter } from "@/hooks/usePrice";
 const AccountFormDialog = dynamic(() => import("./AccountFormDialog"), {
   ssr: false,
 });
@@ -90,6 +91,9 @@ export default function ChartOfAccountsTable({
     { id: "FIXED_ASSETS", name: "أصول ثابتة" },
     { id: "ACCOUNTS_PAYABLE", name: "ذمم دائنة" },
   ];
+
+  const { formatCurrency } = useFormatter();
+
   return (
     <ScrollArea className="h-[95vh] p-3" dir="rtl">
       {/* Header Section */}
@@ -121,33 +125,33 @@ export default function ChartOfAccountsTable({
         <div className="rounded-2xl border bg-gradient-to-r from-cyan-500 to-cyan-700 p-3 shadow-xl/20 shadow-gray-900">
           <p className="text-md font-medium">إجمالي الأصول</p>
           <p className="mt-1 text-2xl font-bold">
-            {totals.totalAssets.toFixed(2)}{" "}
+            {formatCurrency(totals.totalAssets)}{" "}
           </p>
         </div>
         {/* إجمالي الخصوم */}
         <div className="rounded-lg bg-gradient-to-r from-red-500 to-red-700 p-3 shadow-xl/20 shadow-gray-900">
           <p className="text-lg font-medium">إجمالي الخصوم</p>
           <p className="mt-1 text-2xl font-bold">
-            {totals.totalLiabilities.toFixed(2)}{" "}
+            {formatCurrency(totals.totalLiabilities)}{" "}
           </p>
         </div>
         {/* إجمالي الإيرادات */}
         <div className="rounded-2xl bg-gradient-to-r from-purple-500 to-purple-700 p-4 shadow-xl/20 shadow-gray-900">
           <p className="text-sm font-medium">إجمالي الإيرادات</p>
           <p className="\ mt-1 text-2xl font-bold">
-            {totals.totalRevenue.toFixed(2)}{" "}
+            {formatCurrency(totals.totalRevenue)}{" "}
           </p>
         </div>
         <div className="rounded-2xl bg-gradient-to-r from-green-400 to-green-700 p-4 shadow-xl/20 shadow-gray-900">
           <p className="text-sm font-medium">صافي الربح</p>
           <p className="\ mt-1 text-2xl font-bold">
-            {totals.netIncome.toFixed(2)}{" "}
+            {formatCurrency(totals.netIncome)}{" "}
           </p>
         </div>
         <div className="rounded-2xl bg-gradient-to-r from-green-700 to-purple-700 p-4 shadow-xl/20 shadow-gray-900">
           <p className="text-sm font-medium">إجمالي المصروفات </p>
           <p className="\ mt-1 text-2xl font-bold">
-            {totals.totalExpenses.toFixed(2)}{" "}
+            {formatCurrency(totals.totalExpenses)}{" "}
           </p>
         </div>
         {/* الحسابات النشطة */}

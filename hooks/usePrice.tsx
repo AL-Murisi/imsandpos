@@ -10,18 +10,44 @@ export function useFormatter() {
    * @param value number to format
    * @returns formatted string with selected currency
    */
-  const formatCurrency = (value: number) => {
-    if (value == null) return "N/A";
+  // const formatCurrency = (value: number) => {
+  //   if (value == null) return "N/A";
 
-    return new Intl.NumberFormat(currency.locale, {
+  //   return new Intl.NumberFormat(currency.locale, {
+  //     style: "currency",
+  //     currency: currency.currency,
+  //     numberingSystem: "latn",
+  //     minimumFractionDigits: 2, // always show at least 2 decimals
+  //     maximumFractionDigits: 2, // optional, rounds to 2 decimals
+  //   }).format(value);
+  // };
+  const formatCurrency = (value: number) => {
+    let formattedValue = value;
+    let suffix = "";
+
+    // Determine K/M/B suffix
+    if (Math.abs(value) >= 1_000_000_000) {
+      formattedValue = value / 1_000_000_000;
+      suffix = "B";
+    } else if (Math.abs(value) >= 1_000_000) {
+      formattedValue = value / 1_000_000;
+      suffix = "M";
+    } else if (Math.abs(value) >= 1000) {
+      formattedValue = value / 1000;
+      suffix = "k";
+    }
+
+    // Format the number with Arabic currency style
+    let formattedCurrency = new Intl.NumberFormat(currency.locale, {
       style: "currency",
       currency: currency.currency,
       numberingSystem: "latn",
-      minimumFractionDigits: 2, // always show at least 2 decimals
-      maximumFractionDigits: 2, // optional, rounds to 2 decimals
-    }).format(value);
-  };
+      minimumFractionDigits: 2, // allow removing .00
+      maximumFractionDigits: 2,
+    }).format(formattedValue);
 
+    return `${suffix}${formattedCurrency}`;
+  };
   /**
    * Format large numbers as "k" notation (1000 -> 1k)
    * @param value number to format

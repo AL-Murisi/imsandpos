@@ -181,7 +181,7 @@ export default function UniversalChart({
         {" "}
         <Suspense>
           <ChartContainer config={chartConfig} className={`h-60 ${widthco}`}>
-            <BarChart data={data} margin={{ right: 5, left: 5 }}>
+            <BarChart data={data} margin={{ right: 2, left: 2 }}>
               <XAxis dataKey={xKey} />
               <YAxis tickFormatter={formatNumber} />
               <ChartTooltip
@@ -197,11 +197,14 @@ export default function UniversalChart({
               <Bar dataKey={dataKey} fill={color} radius={[4, 4, 4, 4]}>
                 <LabelList
                   dataKey={dataKey}
-                  position="top"
+                  position="inside"
+                  fill="black"
                   offset={3}
-                  fontSize={13}
+                  fontSize={15}
                   fontWeight="bold"
-                  formatter={(value: any) => formatNumber(Number(value))}
+                  formatter={(value: any) =>
+                    formatNumber(Number(value.toFixed(2)))
+                  }
                 />
               </Bar>
             </BarChart>

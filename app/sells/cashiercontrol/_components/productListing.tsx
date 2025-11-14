@@ -1,5 +1,3 @@
-"use client";
-
 import { addItem, updateQty } from "@/lib/slices/cartSlice";
 import {
   setProductsLocal,
@@ -7,18 +5,15 @@ import {
 } from "@/lib/slices/productsSlice";
 import { useAppDispatch, useAppSelector } from "@/lib/store";
 import { ProductForSale } from "@/lib/zod";
-import { useCallback, useEffect, useMemo } from "react";
+import { Suspense, useCallback, useEffect, useMemo } from "react";
 
 import { useFormatter } from "@/hooks/usePrice";
 import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
-import { Selection } from "@/components/common/sellingcat";
-import SearchInput from "@/components/common/searchlist";
+
 import { parseAsString, useQueryState } from "nuqs";
-const ProductCard = dynamic(
-  () => import("../_components/CartClient").then((m) => m.ProductCard),
-  { ssr: false },
-);
+import { ProductCard } from "./CartClient";
+
 const ScrollArea = dynamic(
   () => import("@/components/ui/scroll-area").then((m) => m.ScrollArea),
   { ssr: false },
@@ -139,40 +134,17 @@ export default function List({ product, formData, queryr }: prop) {
   );
   ProductCard.displayName = "ProductCard";
   return (
-    <div>
-      <div className="mb-4 grid grid-cols-2 gap-3 bg-transparent px-3 lg:flex-row">
-        {/* <SearchInput placeholder={t("search")} paramKey="product" /> */}
-
-        <Selection
-          options={formData.categories}
-          placeholder={t("filter")}
-          selectkey="categoryId"
-        />
-
-        <SearchInput
-          placeholder={t("search")}
-          paramKey="product"
-          options={product.map((p) => ({
-            id: p.id,
-            name: p.name,
-          }))} // 👈 map your products into { id, name }
-          action={(selected) => {
-            // you can trigger logic here (e.g. set selected product, filter, etc.)
-          }}
-        />
-      </div>
+    <ScrollArea className="h-[85vh]">
       {queryr && product.length === 0 && (
         <div className="text-muted-foreground mt-4 px-4 text-center text-sm">
           <p>{t("noProductFound", { query: queryr })}</p>
         </div>
       )}
       {(product.length > 0 || !queryr) && (
-        <ScrollArea className="h-[85vh]">
-          <div className="text-muted-foreground mt-4 px-4 text-center text-sm">
-            {productGrid}
-          </div>
-        </ScrollArea>
+        <div className="text-muted-foreground mt-4 px-4 text-center text-sm">
+          {productGrid}
+        </div>
       )}
-    </div>
+    </ScrollArea>
   );
 }

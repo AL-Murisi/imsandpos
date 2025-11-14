@@ -466,7 +466,7 @@ export async function getSalesOverview(
     where: {
       accounts: {
         company_id: companyId,
-        account_type: { in: ["EXPENSE", "COST_OF_GOODS"] },
+        account_type: "EXPENSE",
         is_active: true,
       },
       is_posted: true,
@@ -482,25 +482,21 @@ export async function getSalesOverview(
     },
     orderBy: { entry_date: "asc" },
   });
-  const debtEntries = await prisma.journal_entries.findMany({
+  const debtEntries = await prisma.accounts.findMany({
     where: {
-      accounts: {
-        company_id: companyId,
-        account_category: "ACCOUNTS_RECEIVABLE",
-        is_active: true,
-      },
-      is_posted: true,
-      entry_date: {
+      company_id: companyId,
+      account_category: "ACCOUNTS_RECEIVABLE",
+      is_active: true,
+      updated_at: {
         gte: startDate,
         lte: endDate,
       },
     },
     select: {
-      entry_date: true,
-      credit: true,
-      debit: true,
+      updated_at: true,
+      balance: true,
     },
-    orderBy: { entry_date: "asc" },
+    orderBy: { updated_at: "asc" },
   });
 
   // Group by date
@@ -515,9 +511,9 @@ export async function getSalesOverview(
     revenueByDate.set(dateKey, (revenueByDate.get(dateKey) || 0) + amount);
   });
   debtEntries.forEach((entry) => {
-    if (!entry.entry_date) return;
-    const dateKey = entry.entry_date.toISOString().split("T")[0];
-    const amount = Number(entry.credit);
+    if (!entry.updated_at) return;
+    const dateKey = entry.updated_at.toISOString().split("T")[0];
+    const amount = Number(entry.balance);
     debtByDate.set(dateKey, (debtByDate.get(dateKey) || 0) + amount);
   });
   // Aggregate purchases (debit - credit for expense accounts)
@@ -583,21 +579,25 @@ export async function getRevenueChart(
     orderBy: { entry_date: "asc" },
   });
 
-  const revenueByDate = new Map<string, number>();
+  const revenueByMonth = new Map<string, number>();
 
   entries.forEach((entry) => {
     if (!entry.entry_date) return;
-    const dateKey = entry.entry_date.toISOString().split("T")[0];
+
+    // Group by month (e.g. "2025-01")
+    const date = entry.entry_date;
+    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
     const amount = Number(entry.credit) - Number(entry.debit);
-    revenueByDate.set(dateKey, (revenueByDate.get(dateKey) || 0) + amount);
+
+    revenueByMonth.set(monthKey, (revenueByMonth.get(monthKey) || 0) + amount);
   });
 
-  return Array.from(revenueByDate.entries())
+  return Array.from(revenueByMonth.entries())
     .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([date, total]) => ({
-      date,
+    .map(([month, total]) => ({
+      date: month, // "YYYY-MM"
       total,
-      key: date,
+      key: month,
     }));
 }
 
@@ -763,14 +763,14 @@ export async function getDashboardData(
       getTopSellingProducts(companyId, { startDate, endDate }, topItems),
       getExpenseBreakdown(companyId, { startDate, endDate }),
     ]);
-
+  console.log(salesOverview.totalRevenue - salesOverview.totalPurchases);
   return {
     salesOverview: {
       data: salesOverview.data,
       totalRevenue: salesOverview.totalRevenue,
       totalPurchases: salesOverview.totalPurchases,
       totalDebts: salesOverview.totalDebt,
-      netProfit: salesOverview.totalRevenue - salesOverview.totalPurchases,
+      netProfit: salesOverview.totalPurchases - salesOverview.totalRevenue,
     },
     revenueChart,
     topProducts,
@@ -836,18 +836,25 @@ export async function getSummaryCards(
     },
   });
 
-  const totalRevenue =
-    Number(revenue._sum.credit || 0) - Number(revenue._sum.debit || 0);
-  const totalPurchases =
-    Number(purchases._sum.debit || 0) - Number(purchases._sum.credit || 0);
-  const totalUnreceived =
-    Number(unreceived._sum.debit || 0) - Number(unreceived._sum.credit || 0);
+  const totalRevenue = Math.abs(
+    Number(revenue._sum.credit || 0) - Number(revenue._sum.debit || 0),
+  );
 
+  const totalPurchases = Math.abs(
+    Number(purchases._sum.debit || 0) - Number(purchases._sum.credit || 0),
+  );
+
+  const totalUnreceived = Math.abs(
+    Number(unreceived._sum.debit || 0) - Number(unreceived._sum.credit || 0),
+  );
+  const netProfit = Math.abs(totalRevenue - totalPurchases);
+
+  console.log(totalUnreceived, netProfit);
   return {
     revenue: { total: totalRevenue },
     purchases: { total: totalPurchases },
     debt: { unreceived: totalUnreceived },
-    netProfit: totalRevenue - totalPurchases,
+    netProfit,
   };
 }
 

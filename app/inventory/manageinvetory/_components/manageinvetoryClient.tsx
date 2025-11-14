@@ -3,23 +3,14 @@
 import { SelectField } from "@/components/common/selection";
 import { useTablePrams } from "@/hooks/useTableParams";
 import dynamic from "next/dynamic";
-const Calendar22 = dynamic(
-  () => import("@/components/common/DatePicker").then((m) => m.Calendar22),
-  {
-    ssr: false,
-  },
-);
-const DataTable = dynamic(
-  () => import("@/components/common/test").then((m) => m.DataTable),
-  {
-    ssr: false,
-    loading: () => <TableSkeleton />,
-  },
-); // import SearchInput from "@/components/common/SearchInput";
+
+// import SearchInput from "@/components/common/SearchInput";
 import SearchInput from "@/components/common/searchtest";
 import TableSkeleton from "@/components/common/TableSkeleton";
 import { useTranslations } from "next-intl";
 import { inventoryColumns } from "./columnsMovment";
+import { Calendar22 } from "@/components/common/DatePicker";
+import { DataTable } from "@/components/common/test";
 
 type ProductClientProps = {
   products: any[];

@@ -20,19 +20,7 @@ export default function Loading() {
         <SearchInput placeholder={"بحث"} paramKey={"users"} />{" "}
         {/* Translate placeholder */}
         <SearchInput placeholder={"الفئة"} paramKey={"users"} />{" "}
-        <CustomDialog
-          trigger={
-            <Button>
-              <Plus className="ml-1" />{" "}
-              {/* Change mr-1 to ml-1 for RTL icon placement */}
-              إضافة عميل
-            </Button>
-          }
-          title="إضافة مستخدم"
-          description="أدخل تفاصيل المستخدم أدناه."
-        >
-          <CustomerForm />
-        </CustomDialog>
+        <CustomerForm />
       </div>
 
       <TableSkeleton />

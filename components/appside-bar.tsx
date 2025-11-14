@@ -126,12 +126,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           icon: <FolderKanban className="h-4 w-4 text-purple-600" />,
           roles: ["admin", "manager_wh"],
         },
-        {
-          title: t("suppliers"),
-          url: "/inventory/suppliers",
-          icon: <Users className="h-4 w-4 text-orange-600" />,
-          roles: ["admin", "manager_wh"],
-        },
+
         {
           title: t("warehouses"),
           url: "/inventory/warehouses",
@@ -144,6 +139,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       title: t("products"),
       url: "/products",
       icon: () => <Package className="h-4 w-4 text-green-600" />,
+      roles: ["admin", "manager_wh"],
+    },
+    {
+      title: t("suppliers"),
+      url: "/suppliers",
+      icon: () => <Users className="h-4 w-4 text-orange-600" />,
       roles: ["admin", "manager_wh"],
     },
     {
@@ -307,12 +308,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     }
 
                     return (
-                      <Collapsible key={item.title} asChild defaultOpen={true}>
+                      <Collapsible key={item.title} asChild defaultOpen={false}>
                         <SidebarMenuItem>
                           <CollapsibleTrigger asChild>
                             <SidebarMenuButton
                               tooltip={item.title}
-                              className="text-[18px]"
+                              className="text-[15px]"
                             >
                               <item.icon />
                               <span>{item.title}</span>
@@ -389,17 +390,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarGroupContent>
               <SidebarMenu>
                 {/* Logout */}
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    tooltip={t("logout")}
-                    onClick={() => logoutAndRedirect()}
-                    className="text-red-600 hover:bg-orange-300/20 hover:text-red-700"
-                  >
-                    <LogOut className="h-5 w-5" />
-                    {t("logout")}
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-
                 {/* Language */}
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild className="hover:bg-orange-300/20">
@@ -409,7 +399,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     </div>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-
                 {/* Currency */}
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild className="hover:bg-orange-300/20">
@@ -419,7 +408,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     </div>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-
                 {/* Theme */}
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild className="hover:bg-orange-300/20">
@@ -427,6 +415,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       <Moon className="h-5 w-5 text-indigo-400" />
                       <ModeToggle />
                     </div>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>{" "}
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    tooltip={t("logout")}
+                    onClick={() => logoutAndRedirect()}
+                    className="text-red-600 hover:bg-orange-300/20 hover:text-red-700"
+                  >
+                    <LogOut className="h-5 w-5" />
+                    {t("logout")}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>

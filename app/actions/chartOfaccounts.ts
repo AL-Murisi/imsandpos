@@ -124,8 +124,9 @@ export async function getChartOfAccounts() {
     }, initialTotals);
 
     // Calculate Net Income (صافي الربح)
-    financialTotals.netIncome =
-      financialTotals.totalRevenue - financialTotals.totalExpenses;
+    financialTotals.netIncome = Math.abs(
+      financialTotals.totalExpenses - financialTotals.totalRevenue,
+    );
 
     // 2. Prepare Detailed Accounts Data
     const accountsWithChildren = accounts.map((acc) => ({
@@ -246,7 +247,7 @@ export async function createAccount(data: CreateAccountInput) {
       });
     }
 
-    revalidatePath("/accounting/chart-of-accounts");
+    revalidatePath("/accounting/chartOfAccount");
     return { success: true, data: account, message: "تم إنشاء الحساب بنجاح" };
   } catch (error) {
     console.error("Create account error:", error);

@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { Prisma } from "@prisma/client";
+import { SortingState } from "@tanstack/react-table";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -699,6 +700,28 @@ export async function getBalanceSheet(companyId: string, asOfDate: Date) {
 /**
  * 7. TRIAL BALANCE
  */
+export async function getExpenseCategories() {
+  const company = await getSession();
+  if (!company) return [];
+  const expenseAccounts = await prisma.accounts.findMany({
+    where: {
+      company_id: company.companyId,
+      is_active: true,
+    },
+    select: {
+      id: true,
+      account_name_en: true,
+    },
+    orderBy: {
+      account_code: "asc",
+    },
+  });
+  const name = expenseAccounts.map((i) => ({
+    id: i.id,
+    name: i.account_name_en,
+  }));
+  return name;
+}
 export async function getTrialBalance(companyId: string, asOfDate: Date) {
   const accounts = await prisma.accounts.findMany({
     where: {
@@ -778,31 +801,51 @@ function serializeData<T>(data: T): T {
 
   return plainObj;
 }
-export async function getJournalEntries(account_id?: string, poste?: boolean) {
+export async function getJournalEntries(
+  account_id?: string,
+  isPosted: boolean = false,
+  from?: string,
+  to?: string,
+  page: number = 1,
+  pageSize: number = 7,
+  sort?: SortingState,
+) {
   const company = await getSession();
   if (!company) return [];
-  const whereClause: {
-    company_id: string;
-    account_id?: string;
-    is_posted?: boolean;
-  } = {
+  const whereClause: Prisma.journal_entriesWhereInput = {
     company_id: company.companyId,
-    is_posted: poste,
+    is_posted: isPosted,
+    account_id: account_id,
   };
+  const fromatDate = from ? new Date(from).toISOString() : undefined;
+  const toDate = to ? new Date(to).toISOString() : undefined;
 
-  if (account_id) {
-    whereClause.account_id = account_id;
+  if (fromatDate || toDate) {
+    whereClause.created_at = {
+      ...(fromatDate && {
+        gte: fromatDate,
+      }),
+      ...(toDate && {
+        lte: toDate,
+      }),
+    };
   }
+
+  const total = await prisma.journal_entries.count({
+    where: { company_id: company.companyId },
+  });
   const entries = await prisma.journal_entries.findMany({
     where: whereClause,
     select: {
       id: true,
+
       entry_number: true,
       entry_date: true,
       description: true,
       debit: true,
       credit: true,
       is_posted: true,
+      created_by: true,
       is_automated: true,
       reference_type: true,
       fiscal_period: true,
@@ -820,6 +863,18 @@ export async function getJournalEntries(account_id?: string, poste?: boolean) {
         select: { name: true, email: true },
       },
     },
+    skip: page * pageSize,
+    take: pageSize,
+    orderBy: {
+      created_at: "desc", // ✅ Order latest first
+    },
+  });
+  const userIds = entries
+    .map((e) => e.posted_by)
+    .filter((id): id is string => id !== null); // 👈 type guard
+  const users = await prisma.user.findMany({
+    where: { id: { in: userIds } },
+    select: { id: true, name: true, email: true },
   });
 
   // 👇 حوّل أي قيم رقمية إلى أرقام حقيقية
@@ -827,6 +882,16 @@ export async function getJournalEntries(account_id?: string, poste?: boolean) {
     ...entry,
     debit: Number(entry.debit) || 0,
     credit: Number(entry.credit) || 0,
+    total,
+    posted_by: entry.posted_by
+      ? users.find((u) => u.id === entry.posted_by) || null
+      : null,
+    updatedBy: entry.users_journal_entries_updated_byTousers
+      ? {
+          name: entry.users_journal_entries_updated_byTousers.name,
+          email: entry.users_journal_entries_updated_byTousers.email,
+        }
+      : null,
   }));
 
   return data;
@@ -955,6 +1020,7 @@ export async function UpateJournalEntriesPosting(
       data: {
         is_posted: is_posted,
         updated_by: userId,
+        posted_by: userId,
       },
     });
 

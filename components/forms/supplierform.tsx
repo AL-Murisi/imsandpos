@@ -19,6 +19,8 @@ import { createSupplier } from "@/app/actions/suppliers";
 import { useAuth } from "@/lib/context/AuthContext";
 import { useState } from "react";
 import { Plus } from "lucide-react";
+import Dailogreuse from "../common/dailogreuse";
+import { ScrollArea } from "../ui/scroll-area";
 
 type FormValues = z.infer<typeof CreateSupplierSchema>;
 
@@ -59,15 +61,21 @@ export default function SupplierForm() {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen} modal={false}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Plus className="mr-2 h-4 w-4" />
+    <Dailogreuse
+      open={open}
+      setOpen={setOpen}
+      btnLabl={
+        <>
+          <Plus className="ml-1" />{" "}
+          {/* Change mr-1 to ml-1 for RTL icon placement */}
           جديد
-        </Button>
-      </DialogTrigger>
-
-      <DialogContent dir="rtl" className="sm:w-md">
+        </>
+      }
+      titel="إضافة المورد"
+      style="sm:max-w-6xl"
+      description="أدخل تفاصيل المورد أدناه."
+    >
+      <ScrollArea className="max-h-[85vh]" dir="rtl">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" dir="rtl">
           <div className="grid gap-4">
             <div className="grid grid-cols-2 gap-4">
@@ -193,13 +201,43 @@ export default function SupplierForm() {
                   </p>
                 )}
               </div>
+              <div className="grid gap-2">
+                <Label htmlFor="totalPurchased">
+                  إجمالي المشتريات الافتتاحي
+                </Label>
+                <Input
+                  type="number"
+                  id="totalPurchased"
+                  {...register("totalPurchased")}
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="totalPaid">إجمالي المدفوع الافتتاحي</Label>
+                <Input
+                  type="number"
+                  id="totalPaid"
+                  {...register("totalPaid")}
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="outstandingBalance">
+                  الرصيد الافتتاحي (الديون)
+                </Label>
+                <Input
+                  type="number"
+                  id="outstandingBalance"
+                  {...register("outstandingBalance")}
+                />
+              </div>
             </div>
           </div>
           <div className="flex justify-end">
             <Button type="submit">تأكيد</Button>
           </div>
         </form>
-      </DialogContent>
-    </Dialog>
+      </ScrollArea>
+    </Dailogreuse>
   );
 }

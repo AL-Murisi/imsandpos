@@ -1,169 +1,147 @@
 "use client";
 
-import { useForm, useFieldArray } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { fetchAllFormData } from "@/app/actions/roles";
+import { processPurchaseReturn } from "@/app/actions/warehouse";
+import Dailogreuse from "@/components/common/dailogreuse";
+import { SelectField } from "@/components/common/selectproduct";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { toast } from "sonner";
-import { useState, useEffect } from "react";
-import Dailogreuse from "@/components/common/dailogreuse";
-// import { processPurchaseReturn } from "@/app/actions/purchase";
 import { useAuth } from "@/lib/context/AuthContext";
-import { AlertCircle, Package, TrendingDown } from "lucide-react";
-import { error } from "console";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import { z } from "zod";
 
-const returnSchema = z.object({
-  purchaseId: z.string(),
-  supplierId: z.string(),
-  returnNumber: z.string(),
-  reason: z.string().min(3, "يجب إدخال سبب الإرجاع"),
-  items: z
-    .array(
-      z.object({
-        productId: z.string(),
-        productName: z.string(),
-        warehouseId: z.string(),
-        quantityPurchased: z.number(),
-        unitCost: z.number(),
-        quantity: z.number().min(0, "أدخل الكمية المطلوبة"),
-      }),
-    )
-    .min(1, "يجب تحديد عنصر واحد على الأقل للإرجاع"),
+const PurchaseReturnSchema = z.object({
+  supplierId: z.string().min(1, "المورد مطلوب"),
+  warehouseId: z.string().min(1, "المستودع مطلوب"),
+  returnQuantity: z.number().positive("أدخل كمية صحيحة"),
+  returnUnit: z.enum(["unit", "packet", "carton"]),
+  unitCost: z.number().positive("أدخل سعر الوحدة"),
+  paymentMethod: z.string().optional(),
   refundAmount: z.number().optional(),
-  refundMethod: z.enum(["cash", "credit"]).optional(),
+  reason: z.string().optional(),
 });
 
-type ReturnFormValues = z.infer<typeof returnSchema>;
+type FormValues = z.infer<typeof PurchaseReturnSchema>;
 
-interface PurchaseReturnFormProps {
-  purchase: {
-    id: string;
-    supplierId: string;
-    supplier: {
-      name: string;
-      outstandingBalance: number;
-    };
-    totalAmount: number;
-    status: string;
-    createdAt: Date;
-    purchaseItems: Array<{
-      id: string;
-      productId: string;
-      product: {
-        name: string;
-        warehouseId: string;
-      };
-      quantity: number;
-      unitCost: number;
-      totalCost: number;
-    }>;
-  };
+interface Supplier {
+  id: string;
+  name: string;
 }
 
-export function PurchaseReturnForm({ purchase }: PurchaseReturnFormProps) {
-  const { user } = useAuth();
+interface Warehouse {
+  id: string;
+  name: string;
+}
+
+export default function PurchaseReturnForm({ inventory }: { inventory: any }) {
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [showPayment, setShowPayment] = useState(false);
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [returnTotal, setReturnTotal] = useState(0);
-  const [showRefund, setShowRefund] = useState(false);
-
-  const { handleSubmit, control, register, watch, setValue } =
-    useForm<ReturnFormValues>({
-      resolver: zodResolver(returnSchema),
-      defaultValues: {
-        purchaseId: purchase.id,
-        supplierId: purchase.supplierId,
-        returnNumber: `PRET-${Date.now()}`,
-        reason: "",
-        items: purchase.purchaseItems.map((item) => ({
-          productId: item.productId,
-          productName: item.product.name,
-          warehouseId: item.product.warehouseId,
-          quantityPurchased: item.quantity,
-          unitCost: parseFloat(item.unitCost.toString()),
-          quantity: 0,
-        })),
-        refundAmount: 0,
-        refundMethod: "credit",
-      },
-    });
-
-  const { fields } = useFieldArray({
-    control: control,
-    name: "items",
-  });
-
-  const watchedItems = watch("items");
-  const refundMethod = watch("refundMethod");
-
-  // Calculate return total
-  useEffect(() => {
-    const total = watchedItems.reduce((sum, item) => {
-      return sum + item.quantity * item.unitCost;
-    }, 0);
-    setReturnTotal(total);
-    setValue("refundAmount", total);
-  }, [watchedItems, setValue]);
-
+  const { user } = useAuth();
   if (!user) return null;
 
-  const onSubmit = async (values: ReturnFormValues) => {
-    const selectedItems = values.items.filter((i) => i.quantity > 0);
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    reset,
+    formState: { errors },
+  } = useForm<FormValues>({
+    resolver: zodResolver(PurchaseReturnSchema),
+    defaultValues: {
+      returnUnit: "unit",
+      supplierId: inventory.product?.supplier?.id || "",
+      warehouseId: inventory.warehouseId || "",
+      unitCost:
+        inventory.product?.costPrice && inventory.product.costPrice !== 0
+          ? Number(inventory.product.costPrice)
+          : undefined,
+    },
+  });
 
-    if (selectedItems.length === 0) {
-      toast.error("يرجى تحديد كمية للإرجاع");
+  const supplierId = watch("supplierId");
+  const warehouseId = watch("warehouseId");
+  const quantity = watch("returnQuantity");
+  const unitCost = watch("unitCost");
+  const refundAmount = watch("refundAmount");
+  const paymentMethod = watch("paymentMethod");
+  const returnUnit = watch("returnUnit");
+
+  const totalCost = (quantity || 0) * (unitCost || 0);
+
+  const paymentMethods = [
+    { id: "cash", name: "نقداً" },
+    { id: "bank", name: "تحويل بنكي" },
+    { id: "check", name: "شيك" },
+    { id: "credit", name: "ائتمان" },
+  ];
+
+  useEffect(() => {
+    if (!open) {
+      reset();
+      setShowPayment(false);
       return;
     }
 
-    // Validation
-    const invalidItem = selectedItems.find(
-      (item) => item.quantity > item.quantityPurchased,
-    );
+    const loadData = async () => {
+      const data = await fetchAllFormData(user.companyId);
+      setSuppliers(data.suppliers || []);
+      setWarehouses(data.warehouses || []);
+    };
 
-    if (invalidItem) {
-      toast.error(
-        `كمية الإرجاع للمنتج "${invalidItem.productName}" أكبر من الكمية المشتراة`,
-      );
-      return;
+    loadData();
+  }, [open, user.companyId, reset]);
+
+  const onSubmit = async (data: FormValues) => {
+    if (!inventory.product?.id) {
+      return toast.error("المنتج غير موجود");
     }
 
-    if (showRefund && (!values.refundAmount || values.refundAmount <= 0)) {
-      toast.error("يرجى إدخال مبلغ الاسترداد");
-      return;
-    }
+    if (!warehouseId) return toast.error("الرجاء اختيار المستودع");
+    if (!supplierId) return toast.error("الرجاء اختيار المورد");
 
-    if (showRefund && values.refundAmount! > returnTotal) {
-      toast.error("مبلغ الاسترداد أكبر من إجمالي الإرجاع");
-      return;
-    }
+    if ((refundAmount ?? 0) > totalCost)
+      return toast.error("مبلغ الاسترجاع أكبر من القيمة الإجمالية");
 
     setIsSubmitting(true);
 
     try {
-      //   const result = await processPurchaseReturn(
-      //     {
-      //       ...values,
-      //       refundAmount: showRefund ? values.refundAmount : 0,
-      //       refundMethod: showRefund ? values.refundMethod : undefined,
-      //     },
-      //     user.companyId,
-      //     user.userId
-      //   );
-      //   if (result.success) {
-      //     toast.success(result.message, {
-      //       description: `مبلغ الإرجاع: ${result.returnAmount.toFixed(2)} ر.س`,
-      //     });
-      //     setOpen(false);
-      //   } else {
-      //     toast.error(result.message || "فشل في معالجة الإرجاع");
-      //   }
-    } catch (error: any) {
-      console.error("خطأ في معالجة الإرجاع:", error);
-      toast.error(error.message || "حدث خطأ أثناء الإرجاع");
+      const payload = {
+        productId: inventory.product.id,
+        warehouseId,
+        supplierId,
+        returnQuantity: data.returnQuantity,
+        returnUnit,
+        unitCost,
+        paymentMethod: showPayment ? paymentMethod : undefined,
+        refundAmount: showPayment ? refundAmount : 0,
+        reason: data.reason,
+      };
+
+      const result = await processPurchaseReturn(
+        payload,
+        user.userId,
+        user.companyId,
+      );
+
+      if (result.success) {
+        toast.success(result.message || "تم إرجاع المشتريات بنجاح");
+        setOpen(false);
+        reset();
+      } else {
+        toast.error(result.message || "فشل في عملية الإرجاع");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("حدث خطأ أثناء الإرجاع");
     } finally {
       setIsSubmitting(false);
     }
@@ -174,232 +152,134 @@ export function PurchaseReturnForm({ purchase }: PurchaseReturnFormProps) {
       open={open}
       setOpen={setOpen}
       btnLabl="إرجاع للمورد"
+      titel="إرجاع مشتريات للمورد"
+      description="أدخل تفاصيل عملية الإرجاع واحفظها"
       style="sm:max-w-5xl"
-      description="تفاصيل إرجاع المشتريات"
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" dir="rtl">
-        {/* Purchase Info */}
-        <div className="rounded-lg border border-orange-200 bg-orange-50 p-4 dark:border-orange-800 dark:bg-orange-950">
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="font-medium">رقم الفاتورة:</span>{" "}
-              <span className="text-gray-700 dark:text-gray-300">
-                {purchase.id.slice(0, 8)}
-              </span>
-            </div>
-            <div>
-              <span className="font-medium">المورد:</span>{" "}
-              <span className="text-gray-700 dark:text-gray-300">
-                {purchase.supplier.name}
-              </span>
-            </div>
-            <div>
-              <span className="font-medium">إجمالي الفاتورة:</span>{" "}
-              <span className="text-gray-700 dark:text-gray-300">
-                {parseFloat(purchase.totalAmount.toString()).toFixed(2)} ر.س
-              </span>
-            </div>
-            <div>
-              <span className="font-medium">حالة الدفع:</span>{" "}
-              <span
-                className={`font-semibold ${
-                  purchase.status === "paid"
-                    ? "text-green-600"
-                    : purchase.status === "partial"
-                      ? "text-yellow-600"
-                      : "text-red-600"
-                }`}
-              >
-                {purchase.status === "paid"
-                  ? "مدفوع"
-                  : purchase.status === "partial"
-                    ? "دفعة جزئية"
-                    : "معلق"}
-              </span>
-            </div>
+        {/* المورد والمستودع */}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="grid gap-2">
+            <Label>اختر المورد</Label>
+            <SelectField
+              options={suppliers}
+              value={supplierId || ""}
+              placeholder="اختر المورد"
+              action={(val) => setValue("supplierId", val)}
+            />
+            {errors.supplierId && (
+              <p className="text-xs text-red-500">
+                {errors.supplierId.message}
+              </p>
+            )}
+          </div>
+
+          <div className="grid gap-2">
+            <Label>اختر المستودع</Label>
+            <SelectField
+              options={warehouses}
+              value={warehouseId || ""}
+              placeholder="اختر المستودع"
+              action={(val) => setValue("warehouseId", val)}
+            />
+            {errors.warehouseId && (
+              <p className="text-xs text-red-500">
+                {errors.warehouseId.message}
+              </p>
+            )}
           </div>
         </div>
 
-        {/* Reason */}
-        <div>
-          <Label htmlFor="reason" className="text-base font-semibold">
-            سبب الإرجاع <span className="text-red-500">*</span>
-          </Label>
-          <Textarea
-            id="reason"
-            {...register("reason")}
-            placeholder="مثال: بضاعة تالفة، خطأ في الطلب، جودة رديئة..."
-            rows={3}
-            className="mt-2"
-          />
-          {
-            <p className="mt-1 text-xs text-gray-500">
-              يرجى تقديم سبب تفصيلي للإرجاع
-            </p>
-          }
-        </div>
-
-        <Separator />
-
-        {/* Items Table */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Package className="h-5 w-5 text-gray-600" />
-            <Label className="text-base font-semibold">المنتجات المشتراة</Label>
+        {/* الكمية والوحدة */}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="grid gap-2">
+            <Label>كمية الإرجاع</Label>
+            <Input {...register("returnQuantity", { valueAsNumber: true })} />
+            {errors.returnQuantity && (
+              <p className="text-xs text-red-500">
+                {errors.returnQuantity.message}
+              </p>
+            )}
           </div>
 
-          <div className="max-h-[400px] overflow-y-auto rounded-lg border">
-            <table className="w-full border-collapse text-sm">
-              <thead className="bg-muted sticky top-0">
-                <tr>
-                  <th className="p-3 text-right font-semibold">المنتج</th>
-                  <th className="p-3 text-center font-semibold">
-                    الكمية المشتراة
-                  </th>
-                  <th className="p-3 text-center font-semibold">سعر الوحدة</th>
-                  <th className="p-3 text-center font-semibold">
-                    كمية الإرجاع
-                  </th>
-                  <th className="p-3 text-center font-semibold">المجموع</th>
-                </tr>
-              </thead>
-              <tbody>
-                {fields.map((field, index) => {
-                  const quantity = watchedItems[index]?.quantity || 0;
-                  const itemTotal = quantity * field.unitCost;
+          <div className="grid gap-2">
+            <Label>الوحدة</Label>
+            <select
+              {...register("returnUnit")}
+              className="rounded-md border border-gray-300 px-2 py-2"
+            >
+              <option value="unit">وحدة</option>
+              <option value="packet">علبة</option>
+              <option value="carton">كرتون</option>
+            </select>
+          </div>
 
-                  return (
-                    <tr
-                      key={field.id}
-                      className="border-t hover:bg-gray-50 dark:hover:bg-gray-800"
-                    >
-                      <td className="p-3">
-                        <div className="font-medium">{field.productName}</div>
-                      </td>
-                      <td className="p-3 text-center font-medium">
-                        {field.quantityPurchased}
-                      </td>
-                      <td className="p-3 text-center">
-                        {field.unitCost.toFixed(2)} ر.س
-                      </td>
-                      <td className="p-3 text-center">
-                        <Input
-                          type="number"
-                          min={0}
-                          max={field.quantityPurchased}
-                          step="any"
-                          className="w-28 text-center"
-                          {...register(`items.${index}.quantity`, {
-                            valueAsNumber: true,
-                          })}
-                        />
-                      </td>
-                      <td className="p-3 text-center font-semibold">
-                        {itemTotal > 0 ? (
-                          <span className="text-orange-600">
-                            {itemTotal.toFixed(2)} ر.س
-                          </span>
-                        ) : (
-                          <span className="text-gray-400">0.00 ر.س</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div className="grid gap-2">
+            <Label>سعر الوحدة</Label>
+            <Input {...register("unitCost", { valueAsNumber: true })} />
+            {errors.unitCost && (
+              <p className="text-xs text-red-500">{errors.unitCost.message}</p>
+            )}
           </div>
         </div>
 
-        {/* Return Summary */}
-        {returnTotal > 0 && (
-          <div className="space-y-4">
-            <div className="rounded-lg border border-orange-200 bg-orange-50 p-4 dark:border-orange-800 dark:bg-orange-950">
-              <div className="mb-3 flex items-center justify-between">
-                <span className="text-lg font-semibold">
-                  إجمالي مبلغ الإرجاع:
-                </span>
-                <span className="text-2xl font-bold text-orange-600">
-                  {returnTotal.toFixed(2)} ر.س
-                </span>
-              </div>
+        {/* الإجمالي */}
+        {quantity && unitCost ? (
+          <div className="rounded-md bg-gray-50 p-3 text-sm font-medium">
+            الإجمالي: <span className="font-bold">{totalCost}</span>
+          </div>
+        ) : null}
 
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                <AlertCircle className="ml-1 inline-block h-4 w-4" />
-                {purchase.status === "paid" ? (
-                  <span>سيتم خصم المبلغ من رصيد المورد أو استرداده نقداً</span>
-                ) : (
-                  <span>سيتم تخفيض المديونية على المورد</span>
-                )}
-              </div>
-            </div>
+        {/* الدفع */}
+        <div className="rounded-lg border border-gray-200 p-4">
+          <label className="flex cursor-pointer items-center gap-2">
+            <input
+              type="checkbox"
+              checked={showPayment}
+              onChange={(e) => setShowPayment(e.target.checked)}
+            />
+            <span className="text-sm font-medium">تسجيل استرجاع مالي</span>
+          </label>
 
-            {/* Refund Options */}
-            <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
-              <label className="mb-3 flex cursor-pointer items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={showRefund}
-                  onChange={(e) => setShowRefund(e.target.checked)}
-                  className="h-4 w-4"
+          {showPayment && (
+            <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid gap-2">
+                <Label>طريقة الدفع</Label>
+                <SelectField
+                  options={paymentMethods}
+                  value={paymentMethod || ""}
+                  placeholder="اختر الطريقة"
+                  action={(val) => setValue("paymentMethod", val)}
                 />
-                <span className="text-sm font-medium">
-                  استرداد مبلغ الآن (اختياري)
-                </span>
-              </label>
+              </div>
 
-              {showRefund && (
-                <div className="mt-3 grid grid-cols-1 gap-4 border-t pt-3 md:grid-cols-2">
-                  <div>
-                    <Label htmlFor="refundAmount" className="text-sm">
-                      مبلغ الاسترداد
-                    </Label>
-                    <Input
-                      id="refundAmount"
-                      type="number"
-                      min={0}
-                      max={returnTotal}
-                      step="0.01"
-                      {...register("refundAmount", { valueAsNumber: true })}
-                      className="mt-1"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="refundMethod" className="text-sm">
-                      طريقة الاسترداد
-                    </Label>
-                    <select
-                      id="refundMethod"
-                      {...register("refundMethod")}
-                      className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
-                    >
-                      <option value="credit">
-                        خصم من رصيد المورد (إضافة دائن)
-                      </option>
-                      <option value="cash">استرداد نقدي</option>
-                    </select>
-                  </div>
-                </div>
-              )}
+              <div className="grid gap-2">
+                <Label>مبلغ الاسترجاع</Label>
+                <Input {...register("refundAmount", { valueAsNumber: true })} />
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* Actions */}
-        <div className="flex justify-end gap-3 pt-4">
+        {/* السبب */}
+        <div className="grid gap-3">
+          <Label>سبب الإرجاع</Label>
+          <Textarea placeholder="أدخل سبب الإرجاع" {...register("reason")} />
+        </div>
+
+        <div className="flex justify-end gap-2">
           <Button
             type="button"
             variant="outline"
-            onClick={() => setOpen(false)}
+            onClick={() => reset()}
             disabled={isSubmitting}
           >
             إلغاء
           </Button>
           <Button
-            disabled={isSubmitting || returnTotal === 0}
             type="submit"
-            className="min-w-[140px] bg-orange-600 hover:bg-orange-700"
+            disabled={isSubmitting}
+            className="bg-green-600 hover:bg-green-700"
           >
             {isSubmitting ? "جاري المعالجة..." : "تأكيد الإرجاع"}
           </Button>

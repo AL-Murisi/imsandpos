@@ -69,28 +69,27 @@ export default function DebtSells({
 
     router.push(`?${params.toString()}`);
   };
+  const filteroption = [
+    { id: "sale", name: "بيع" },
+    {
+      id: "return",
+      name: "إرجاع",
+    },
+  ];
   return (
     <div className="bg-accent rounded-2xl p-2 lg:col-span-1" dir="rtl">
       <DataTable
         search={
-          <Select
-            value={saleTypeFilter}
-            onValueChange={(e) => handleFilterChange(e)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder={saleTypeFilter} />
-            </SelectTrigger>{" "}
-            <SelectContent>
-              <SelectItem value="all">الكل</SelectItem>
-              <SelectItem value="sale">بيع</SelectItem>
-              <SelectItem value="return">إرجاع</SelectItem>
-            </SelectContent>
-          </Select>
+          <SelectField
+            options={filteroption}
+            paramKey="sale_type"
+            placeholder={"نوع العملية"}
+          />
         }
         data={data}
         columns={debtSaleColumns}
         initialPageSize={pagination.pageSize}
-        pageCount={Math.ceil(data.length / pagination.pageSize)}
+        pageCount={Math.ceil(total / pagination.pageSize)}
         pageActiom={setPagination}
         onSortingChange={setSorting}
         onGlobalFilterChange={setGlobalFilter}

@@ -114,9 +114,6 @@ export function Calendar22() {
   };
   return (
     <div className="bg-accent flex flex-col gap-3 rounded-[10px] shadow-xl/20 shadow-gray-900">
-      {/* <Label htmlFor="range-date" className="px-1">
-        Select date
-      </Label> */}
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button

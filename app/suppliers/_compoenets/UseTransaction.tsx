@@ -18,7 +18,7 @@ const PaymentsTable = dynamic(() => import("./paymentsTable"), {
   loading: () => <TableSkeleton />,
 });
 type TabsControllerProps = {
-  suppliersPromise: Promise<any[]>;
+  suppliersPromise: Promise<{ data: any[]; total: number }>;
   purchasesPromise: Promise<{ data: any[]; total: number }>;
   paymentsPromise: Promise<{ data: any[]; total: number }>;
 };
@@ -52,8 +52,8 @@ export function TabsController({
           label: "المورّدون",
           content: (
             <SuppliersTable
-              data={suppliers}
-              total={suppliers.length}
+              data={suppliers.data}
+              total={suppliers.total}
               formData={{
                 warehouses: [],
                 categories: [],

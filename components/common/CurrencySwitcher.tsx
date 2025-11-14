@@ -11,7 +11,7 @@ import {
 import { DollarSign } from "lucide-react";
 
 export default function CurrencySwitcher() {
-  const [currency, setCurrency] = useState("USD");
+  const [currency, setCurrency] = useState("YER");
 
   // Read currency from cookie on mount
   useEffect(() => {

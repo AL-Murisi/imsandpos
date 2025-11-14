@@ -1,16 +1,15 @@
 "use client";
 
+import { useTransition } from "react";
+import { useQueryState, parseAsString } from "nuqs";
 import {
   Select,
+  SelectTrigger,
+  SelectValue,
   SelectContent,
   SelectGroup,
   SelectItem,
-  SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
-import { parseAsString } from "nuqs";
-import { useQueryState } from "nuqs";
-import { useTransition } from "react";
 
 interface Option {
   id: string;
@@ -19,7 +18,7 @@ interface Option {
 
 interface SelectFieldProps {
   options: Option[];
-  paramKey: string; // e.g., "category"
+  paramKey: string;
   placeholder: string;
 }
 
@@ -38,14 +37,24 @@ export function SelectField({
     }),
   );
 
+  const handleValueChange = (newValue: string) => {
+    if (newValue === "all") {
+      // ❌ Remove the parameter completely
+      setValue(null);
+    } else {
+      // ✅ Set normal value
+      setValue(newValue);
+    }
+  };
+
   return (
-    <div className="bg-accent rounded-2xl shadow-xl/20 shadow-gray-900">
-      <Select value={value} onValueChange={setValue}>
+    <div className="rounded-2xl shadow-xl/20 shadow-gray-900">
+      <Select value={value} onValueChange={handleValueChange}>
         <SelectTrigger
           className="border-primary rounded-md border-2"
           disabled={isPending}
         >
-          <SelectValue placeholder={placeholder} />
+          <SelectValue placeholder={placeholder} className="" />
         </SelectTrigger>
         <SelectContent>
           <SelectGroup>
