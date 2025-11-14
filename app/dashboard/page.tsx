@@ -133,6 +133,7 @@ import {
   getUserCount,
 } from "../actions/dashboard";
 import { fetchAllFormData } from "../actions/roles";
+import prisma from "@/lib/prisma";
 
 interface DashboardProps {
   searchParams: Promise<Record<string, string | undefined>>;
@@ -178,7 +179,6 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
     query: params.query || "",
     sort: params.sort || "",
   };
-
   try {
     // 🚀 PARALLEL DATA FETCHING - All queries run simultaneously
     const [dashboardData, summaryCards, productStats, users, formData] =
@@ -192,6 +192,8 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
 
     // Transform data for SectionCards component
     const salesSummary = {
+      saleTotal: dashboardData.sales,
+
       sales: {
         total: summaryCards.revenue.total,
         chart: dashboardData.salesOverview.data.map((d) => ({

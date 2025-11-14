@@ -30,6 +30,8 @@ import { ChartCard } from "@/components/common/ChartCard";
 interface SectionCardsProps {
   searchParams: Record<string, string | undefined>;
   salesSummary: {
+    saleTotal: number;
+
     sales: { total: number; chart: Array<{ date: string; value: number }> };
     purchases: { total: number; chart: Array<{ date: string; value: number }> };
     revenue: { total: number; chart: Array<{ date: string; value: number }> };
@@ -166,7 +168,7 @@ export default function SectionCards({
     },
     {
       description: "sales",
-      title: salesSummary.sales.total,
+      title: salesSummary.saleTotal,
       label: t("sales"),
       link: "",
       bg: "bg-gradient-to-r from-blue-500 to-blue-700",

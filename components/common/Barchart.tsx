@@ -29,6 +29,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useTablePrams } from "@/hooks/useTableParams";
 import { useTranslations } from "next-intl";
+import { useFormatter } from "@/hooks/usePrice";
 
 const XAxis = dynamic(() => import("recharts").then((m) => m.XAxis), {
   ssr: false,
@@ -119,6 +120,7 @@ export default function UniversalChart({
     if (num >= 1_000) return (num / 1_000).toFixed(1).replace(/\.0$/, "") + "k";
     return num.toString();
   };
+  const { formatCurrency } = useFormatter();
 
   const xKey = dataKey === "quantity" ? "name" : "date";
   const labelText =
@@ -183,12 +185,12 @@ export default function UniversalChart({
           <ChartContainer config={chartConfig} className={`h-60 ${widthco}`}>
             <BarChart data={data} margin={{ right: 2, left: 2 }}>
               <XAxis dataKey={xKey} />
-              <YAxis tickFormatter={formatNumber} />
+              <YAxis tickFormatter={formatCurrency} />
               <ChartTooltip
                 content={
                   <ChartTooltipContent
                     indicator="dashed"
-                    formatter={(value: any) => [formatNumber(Number(value))]}
+                    formatter={(value: any) => [formatCurrency(Number(value))]}
                   />
                 }
                 cursor={false}
@@ -202,9 +204,7 @@ export default function UniversalChart({
                   offset={3}
                   fontSize={15}
                   fontWeight="bold"
-                  formatter={(value: any) =>
-                    formatNumber(Number(value.toFixed(2)))
-                  }
+                  formatter={(value: any) => formatCurrency(Number(value))}
                 />
               </Bar>
             </BarChart>

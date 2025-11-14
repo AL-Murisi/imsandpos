@@ -143,6 +143,34 @@ export const supplierColumns: ColumnDef<any>[] = [
     cell: ({ row }) => <div>{row.getValue("email") || "-"}</div>,
   },
   {
+    accessorKey: "totalPaid",
+    header: "المدفوع",
+    cell: ({ row }) => (
+      <div className="font-semibold">
+        {Number(row.original.totalPaid).toFixed(2)}
+      </div>
+    ),
+  },
+  {
+    accessorKey: "totalPurchased",
+    header: "إجمالي المشتريات",
+    cell: ({ row }) => (
+      <div className="font-semibold">
+        {Number(row.original.totalPurchased).toFixed(2)}
+      </div>
+    ),
+  },
+  {
+    accessorKey: "outstandingBalance",
+    header: "الرصيد المتبقي",
+    cell: ({ row }) => (
+      <div className="font-semibold">
+        {Number(row.original.outstandingBalance).toFixed(2)}
+      </div>
+    ),
+  },
+
+  {
     accessorKey: "phoneNumber",
     header: ({ column }) => (
       <SortableHeader column={column} label="رقم الهاتف" />

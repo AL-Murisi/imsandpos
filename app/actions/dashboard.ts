@@ -507,20 +507,20 @@ export async function getSalesOverview(
   revenueEntries.forEach((entry) => {
     if (!entry.entry_date) return;
     const dateKey = entry.entry_date.toISOString().split("T")[0];
-    const amount = Number(entry.credit) - Number(entry.debit);
+    const amount = Math.abs(Number(entry.credit) - Number(entry.debit));
     revenueByDate.set(dateKey, (revenueByDate.get(dateKey) || 0) + amount);
   });
   debtEntries.forEach((entry) => {
     if (!entry.updated_at) return;
     const dateKey = entry.updated_at.toISOString().split("T")[0];
-    const amount = Number(entry.balance);
+    const amount = Math.abs(Number(entry.balance));
     debtByDate.set(dateKey, (debtByDate.get(dateKey) || 0) + amount);
   });
   // Aggregate purchases (debit - credit for expense accounts)
   purchaseEntries.forEach((entry) => {
     if (!entry.entry_date) return;
     const dateKey = entry.entry_date.toISOString().split("T")[0];
-    const amount = Number(entry.debit) - Number(entry.credit);
+    const amount = Math.abs(Number(entry.debit) - Number(entry.credit));
     purchasesByDate.set(dateKey, (purchasesByDate.get(dateKey) || 0) + amount);
   });
 
@@ -587,7 +587,7 @@ export async function getRevenueChart(
     // Group by month (e.g. "2025-01")
     const date = entry.entry_date;
     const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-    const amount = Number(entry.credit) - Number(entry.debit);
+    const amount = Math.abs(Number(entry.credit) - Number(entry.debit));
 
     revenueByMonth.set(monthKey, (revenueByMonth.get(monthKey) || 0) + amount);
   });
@@ -756,6 +756,10 @@ export async function getDashboardData(
   { startDate, endDate }: DateRange,
   topItems: number = 10,
 ) {
+  const sales = await prisma.saleItem.count({
+    where: { companyId: companyId },
+  });
+
   const [salesOverview, revenueChart, topProducts, expenseBreakdown] =
     await Promise.all([
       getSalesOverview(companyId, { startDate, endDate }),
@@ -774,6 +778,7 @@ export async function getDashboardData(
     },
     revenueChart,
     topProducts,
+    sales,
     expenseBreakdown,
   };
 }

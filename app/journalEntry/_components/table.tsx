@@ -66,6 +66,7 @@ export default function JournalEntriesTable({
   //   { id: "automated", name: "تلقائي" },
   //   { id: "manual", name: "يدوي" },
   // ];
+  const total = data.find((t) => t.total ?? 0);
   const [selectedRows, setSelectedRows] = useState<any[]>([]);
   const isBalanced = Math.abs(totalDebits - totalCredits) < 0.01;
   const optines = [
@@ -76,7 +77,7 @@ export default function JournalEntriesTable({
   return (
     <div className="" dir="rtl">
       <ScrollArea className="h-[95vh] p-4" dir="rtl">
-        <div className="grid grid-cols-1 gap-4 rounded-3xl p-2 sm:grid-cols-2 md:grid-cols-4">
+        <div className="grid-cols- grid gap-4 rounded-3xl p-2 sm:grid-cols-2 md:grid-cols-4">
           <div className="rounded-lg bg-gradient-to-r from-cyan-500 to-cyan-700 p-4">
             <p className="text-lg font-medium">إجمالي المدين</p>
             <p className="mt-1 font-mono text-2xl font-bold">
@@ -148,7 +149,7 @@ export default function JournalEntriesTable({
             data={data}
             columns={journalEntryColumns}
             initialPageSize={pagination.pageSize}
-            pageCount={Math.ceil(data[0].total / pagination.pageSize)}
+            pageCount={Math.ceil(total ?? 0 / pagination.pageSize)}
             pageActiom={setPagination}
             onSortingChange={setSorting}
             onGlobalFilterChange={setGlobalFilter}
