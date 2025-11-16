@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/context/AuthContext";
 import { CreatePosSchema, CreatePosType } from "@/lib/zod/pos";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 type Option = {
@@ -27,18 +28,21 @@ export default function POSForm(users: Option) {
   } = useForm<CreatePosType>({
     resolver: zodResolver(CreatePosSchema),
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { user } = useAuth();
   if (!user?.companyId) return null;
 
   const onSubmit = async (data: CreatePosType) => {
+    setIsSubmitting(true);
+
     const result = await createPOS(data, user.companyId);
     // console.log(result);
     // if (result?.error) {
     //   toast.error(result.error);
     //   return;
     // }
-
+    setIsSubmitting(false);
     toast.success("✅ تمت إضافة نقطة البيع بنجاح");
     reset();
   };
@@ -79,7 +83,13 @@ export default function POSForm(users: Option) {
         </div>
 
         <div className="flex justify-end">
-          <Button type="submit">تأكيد</Button>
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            className="min-w-[120px] bg-green-600 hover:bg-green-700"
+          >
+            {isSubmitting ? "جاري الحفظ..." : "حفظ "}
+          </Button>{" "}
         </div>
       </div>
     </form>

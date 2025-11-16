@@ -46,7 +46,7 @@ export default async function SellsDashboard({ searchParams }: DashboardProps) {
     to,
     usersquery,
     page = "1",
-    limit = "7",
+    limit = "13",
     sale_type,
     salesFrom,
     salesTo,

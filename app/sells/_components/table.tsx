@@ -95,7 +95,7 @@ export default function DebtSells({
         onGlobalFilterChange={setGlobalFilter}
         globalFilter={globalFilter}
         sorting={sort}
-        highet="h-[40vh]"
+        highet="h-[52vh]"
         pagination={pagination}
         totalCount={data.length}
       />

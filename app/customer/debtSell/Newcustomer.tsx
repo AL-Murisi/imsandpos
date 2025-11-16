@@ -45,19 +45,23 @@ export default function CustomerForm() {
   const { user } = useAuth();
   if (!user?.companyId) return;
   const [open, setOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const customerTypes = watch("customerType");
   const onSubmit = async (data: CreateCustomer) => {
+    setIsSubmitting(true);
+
     const result = await createCutomer(data, user.companyId);
 
     if (result.error) {
       toast.error(result.error);
-
+      setIsSubmitting(false);
       return;
     }
 
     toast.success("✅ تمت إضافة  بنجاح");
     setOpen(false);
+    setIsSubmitting(false);
     reset();
   };
   const customerType = [
@@ -222,7 +226,13 @@ export default function CustomerForm() {
             {/* Tax ID */}
           </div>
           <div className="flex justify-end">
-            <Button type="submit">تأكيد</Button>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="min-w-[120px] bg-green-600 hover:bg-green-700"
+            >
+              {isSubmitting ? "جاري الحفظ..." : "حفظ "}
+            </Button>{" "}
           </div>
         </form>
       </ScrollArea>

@@ -32,6 +32,7 @@ import { tr } from "date-fns/locale";
 import Changerole from "./changerole";
 import { useAuth } from "@/lib/context/AuthContext";
 import CustomDialog from "@/components/common/Dailog";
+import EditUserForm from "./editForm";
 
 // 🔽 Sortable Header Component
 type SortableHeaderProps = {
@@ -175,38 +176,41 @@ export const columns: ColumnDef<User>[] = [
       let state: boolean;
 
       return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(userr?.id)}
-            ></DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <Changerole />
-            </DropdownMenuItem>
+        <>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuItem
+                onClick={() => navigator.clipboard.writeText(userr?.id)}
+              ></DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <Changerole />
+              </DropdownMenuItem>
 
-            {userr.isActive ? (
-              <DropdownMenuItem
-                onClick={() => updateUsers(false, userr.id, user.companyId)}
-              >
-                <Label>Deactivate</Label>
-              </DropdownMenuItem>
-            ) : (
-              <DropdownMenuItem
-                onClick={() => updateUsers(true, userr.id, user.companyId)}
-              >
-                <Label>Activate</Label>
-              </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+              {userr.isActive ? (
+                <DropdownMenuItem
+                  onClick={() => updateUsers(false, userr.id, user.companyId)}
+                >
+                  <Label>Deactivate</Label>
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem
+                  onClick={() => updateUsers(true, userr.id, user.companyId)}
+                >
+                  <Label>Activate</Label>
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <EditUserForm users={userr} />
+        </>
       );
     },
   },

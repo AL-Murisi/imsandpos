@@ -305,6 +305,7 @@ export const getPurchasesByCompany = cache(
 
         skip: pageIndex * pageSize,
         take: pageSize,
+        orderBy: { createdAt: "desc" },
       });
       const serialized = serializeData(purchases);
       console.log(serialized);
@@ -360,6 +361,7 @@ export const getSupplierPaymentsByCompany = cache(
 
         skip: pageIndex * pageSize,
         take: pageSize,
+        orderBy: { createdAt: "desc" },
       });
       const serialized = serializeData(payments);
       return { data: serialized, total };

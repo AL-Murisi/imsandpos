@@ -120,7 +120,7 @@ export default function UniversalChart({
     if (num >= 1_000) return (num / 1_000).toFixed(1).replace(/\.0$/, "") + "k";
     return num.toString();
   };
-  const { formatCurrency } = useFormatter();
+  const { formatCurrency, formatPriceK } = useFormatter();
 
   const xKey = dataKey === "quantity" ? "name" : "date";
   const labelText =
@@ -185,17 +185,27 @@ export default function UniversalChart({
           <ChartContainer config={chartConfig} className={`h-60 ${widthco}`}>
             <BarChart data={data} margin={{ right: 2, left: 2 }}>
               <XAxis dataKey={xKey} />
-              <YAxis tickFormatter={formatCurrency} />
+              <YAxis
+                tickFormatter={
+                  dataKey === "quantity" ? formatPriceK : formatCurrency
+                }
+              />
+
               <ChartTooltip
                 content={
                   <ChartTooltipContent
                     indicator="dashed"
-                    formatter={(value: any) => [formatCurrency(Number(value))]}
+                    formatter={(value: any) => [
+                      dataKey === "quantity"
+                        ? formatPriceK(Number(value))
+                        : formatCurrency(Number(value)),
+                    ]}
                   />
                 }
                 cursor={false}
                 defaultIndex={1}
               />
+
               <Bar dataKey={dataKey} fill={color} radius={[4, 4, 4, 4]}>
                 <LabelList
                   dataKey={dataKey}
@@ -203,11 +213,15 @@ export default function UniversalChart({
                   fill="black"
                   offset={3}
                   fontSize={15}
-                  formatter={(value: any) => formatCurrency(Number(value))}
+                  formatter={(value: any) =>
+                    dataKey === "quantity"
+                      ? formatPriceK(Number(value))
+                      : formatCurrency(Number(value))
+                  }
                 />
               </Bar>
             </BarChart>
-          </ChartContainer>{" "}
+          </ChartContainer>
         </Suspense>
       </CardContent>
       <CardFooter className="flex-col items-start gap-2 p-3 text-sm">

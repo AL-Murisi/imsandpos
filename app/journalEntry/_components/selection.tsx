@@ -19,21 +19,25 @@ export function BulkPostButton({
 }: BulkPostButtonProps) {
   const dispatch = useAppDispatch();
   const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleBulkPost = async () => {
     if (selectedEntries.length === 0) {
       toast("الرجاء تحديد قيد واحد على الأقل");
+      setIsSubmitting(false);
       return;
     }
-
+    setIsSubmitting(true);
     const entryNumbers = selectedEntries.map((e) => e.entry_number);
     const result = await UpateJournalEntriesPosting(entryNumbers, true);
 
     if (result.success) {
       toast(`تم ترحيل ${selectedEntries.length} قيود بنجاح ✅`);
+      setIsSubmitting(false);
       dispatch(setRowSelection({}));
       onSuccess?.();
     } else {
+      setIsSubmitting(false);
       toast("فشل ترحيل القيود ❌");
     }
   };
@@ -41,11 +45,11 @@ export function BulkPostButton({
   return (
     <Button
       onClick={handleBulkPost}
-      disabled={loading || selectedEntries.length === 0}
+      disabled={isSubmitting || selectedEntries.length === 0}
       variant="default"
       className="p-x-4 bg-green-600 text-white hover:bg-green-700"
     >
-      {loading ? "جاري الترحيل..." : "ترحيل المحدد"}
+      {isSubmitting ? "جاري الترحيل..." : "ترحيل المحدد"}
     </Button>
   );
 }

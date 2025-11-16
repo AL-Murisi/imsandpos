@@ -22,6 +22,7 @@ import {
 import { CategorySchema } from "@/lib/zod";
 import { z } from "zod";
 import { deleteCategory, toggleCategoryActive } from "@/app/actions/category";
+import EditCategoryForm from "./editForm";
 
 // 🔽 Sortable Header Component
 type SortableHeaderProps = {
@@ -155,51 +156,54 @@ export const columns: ColumnDef<User>[] = [
     cell: ({ row }) => {
       const category = row.original;
       return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">فتح القائمة</span>
-              <MoreHorizontal />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
+        <>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">فتح القائمة</span>
+                <MoreHorizontal />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
 
-            {/* Copy ID */}
-            <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(category.id)}
-            >
-              نسخ معرّف الفئة
-            </DropdownMenuItem>
+              {/* Copy ID */}
+              <DropdownMenuItem
+                onClick={() => navigator.clipboard.writeText(category.id)}
+              >
+                نسخ معرّف الفئة
+              </DropdownMenuItem>
 
-            <DropdownMenuSeparator />
+              <DropdownMenuSeparator />
 
-            {/* Edit */}
-            <DropdownMenuItem onClick={() => openEditDialog(category)}>
-              تعديل
-            </DropdownMenuItem>
+              {/* Edit */}
+              <DropdownMenuItem onClick={() => openEditDialog(category)}>
+                تعديل
+              </DropdownMenuItem>
 
-            {/* Delete */}
-            <DropdownMenuItem
-              onClick={async () => {
-                if (confirm("هل أنت متأكد من حذف هذه الفئة؟")) {
-                  await deleteCategory(category.id);
-                }
-              }}
-            >
-              حذف
-            </DropdownMenuItem>
+              {/* Delete */}
+              <DropdownMenuItem
+                onClick={async () => {
+                  if (confirm("هل أنت متأكد من حذف هذه الفئة؟")) {
+                    await deleteCategory(category.id);
+                  }
+                }}
+              >
+                حذف
+              </DropdownMenuItem>
 
-            {/* Activate / Deactivate */}
-            <DropdownMenuItem
-              onClick={async () => {
-                await toggleCategoryActive(category.id, !category.isActive);
-              }}
-            >
-              {category.isActive ? "تعطيل" : "تفعيل"}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              {/* Activate / Deactivate */}
+              <DropdownMenuItem
+                onClick={async () => {
+                  await toggleCategoryActive(category.id, !category.isActive);
+                }}
+              >
+                {category.isActive ? "تعطيل" : "تفعيل"}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <EditCategoryForm category={category} />
+        </>
       );
     },
   },

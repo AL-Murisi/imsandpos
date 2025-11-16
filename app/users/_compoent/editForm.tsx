@@ -8,7 +8,7 @@ import { Input } from "../../../components/ui/input";
 import { Label } from "../../../components/ui/label";
 
 import { fetchRolesForSelect } from "@/app/actions/roles";
-import { createUser } from "@/app/actions/users";
+import { UpdatwUser } from "@/app/actions/users";
 import { SelectField } from "@/components/common/selectproduct";
 import { useAuth } from "@/lib/context/AuthContext";
 import { CreateUserSchema, UserInput } from "@/lib/zod";
@@ -21,7 +21,7 @@ type Role = {
   name: string;
 };
 
-export default function UserForm() {
+export default function EditUserForm({ users }: any) {
   const [roles, setRoles] = useState<Role[]>([]);
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -36,11 +36,12 @@ export default function UserForm() {
   } = useForm<UserInput>({
     resolver: zodResolver(CreateUserSchema),
     defaultValues: {
-      email: "",
-      name: "",
-      phoneNumber: "",
-      password: "",
-      roleId: "",
+      email: users.email,
+      name: users.name,
+      phoneNumber: users.phoneNumber,
+      password: users.password,
+
+      roleId: users.roleId,
     },
   });
   const { user } = useAuth();
@@ -64,7 +65,7 @@ export default function UserForm() {
     setIsSubmitting(true);
 
     setOpen(true);
-    const result = await createUser(data, user.companyId);
+    const result = await UpdatwUser(data, users.id, user.companyId);
 
     if (result.error) {
       toast.error(result.error);
@@ -83,7 +84,7 @@ export default function UserForm() {
     <Dailogreuse
       open={open}
       setOpen={setOpen}
-      btnLabl={"إضافة مستخدم"}
+      btnLabl={"تعديل مستخدم"}
       style="w-sm"
       description="أدخل تفاصيل المنتج واحفظه"
     >

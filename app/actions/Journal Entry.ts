@@ -906,7 +906,6 @@ export async function getAccountLedger(
   startDate?: Date,
   endDate?: Date,
 ) {
-  console.log(id, "here");
   const account = await prisma.accounts.findFirst({
     where: {
       id,

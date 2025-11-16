@@ -132,7 +132,29 @@ export async function createUser(form: any, companyId: string) {
         roleId,
       },
     });
+    revalidatePath("/users");
+    return { success: true, user };
+  } catch (error) {
+    console.error("Failed to create user:", error);
+    return { error: "فشل في إنشاء المستخدم" };
+  }
+}
+export async function UpdatwUser(form: any, id: string, companyId: string) {
+  const parsed = CreateUserSchema.safeParse(form);
+  if (!parsed.success) {
+    throw new Error("Invalid user data");
+  }
 
+  const { email, name, phoneNumber, password, roleId } = parsed.data;
+
+  try {
+    // ✅ Check if email already exists
+
+    const user = await prisma.user.update({
+      where: { id },
+      data: { companyId, email, name, phoneNumber, password },
+    });
+    revalidatePath("/users");
     return { success: true, user };
   } catch (error) {
     console.error("Failed to create user:", error);

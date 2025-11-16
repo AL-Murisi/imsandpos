@@ -101,55 +101,54 @@ export function WarehouseUpdateDialog({
       titel="تعديل بيانات المستودع"
       description="قم بتحديث تفاصيل المستودع واحفظ التغييرات"
     >
-      <form
-        onSubmit={handleSubmit(onSubmit)}
-        className="grid grid-cols-2 gap-4 p-4"
-      >
-        <div className="col-span-2">
-          <Label>اسم المستودع</Label>
-          <Input {...register("name")} placeholder="اسم المستودع" />
-        </div>
+      <form onSubmit={handleSubmit(onSubmit)} className="">
+        {" "}
+        <div className="grid gap-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+            <div className="grid gap-2">
+              {" "}
+              <Label>اسم المستودع</Label>
+              <Input {...register("name")} placeholder="اسم المستودع" />
+            </div>
+            <div className="grid gap-2">
+              <Label>الموقع</Label>
+              <Input {...register("location")} placeholder="الموقع" />
+            </div>
+            <div className="grid gap-2">
+              <Label>العنوان</Label>
+              <Input {...register("address")} placeholder="العنوان" />
+            </div>
+            <div className="grid gap-2">
+              <Label>المدينة</Label>
+              <Input {...register("city")} placeholder="المدينة" />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+            <div className="grid gap-2">
+              <Label>المنطقة / الولاية</Label>
+              <Input {...register("state")} placeholder="المنطقة / الولاية" />
+            </div>
+            <div className="grid gap-2">
+              <Label>الدولة</Label>
+              <Input {...register("country")} placeholder="الدولة" />
+            </div>
 
-        <div>
-          <Label>الموقع</Label>
-          <Input {...register("location")} placeholder="الموقع" />
-        </div>
+            <div className="grid gap-2">
+              <Label>الرمز البريدي</Label>
+              <Input {...register("postalCode")} placeholder="الرمز البريدي" />
+            </div>
 
-        <div>
-          <Label>العنوان</Label>
-          <Input {...register("address")} placeholder="العنوان" />
-        </div>
+            <div className="grid gap-2">
+              <Label>رقم الهاتف</Label>
+              <Input {...register("phoneNumber")} placeholder="رقم الهاتف" />
+            </div>
 
-        <div>
-          <Label>المدينة</Label>
-          <Input {...register("city")} placeholder="المدينة" />
+            <div className="grid gap-2">
+              <Label>البريد الإلكتروني</Label>
+              <Input {...register("email")} placeholder="البريد الإلكتروني" />
+            </div>
+          </div>{" "}
         </div>
-
-        <div>
-          <Label>المنطقة / الولاية</Label>
-          <Input {...register("state")} placeholder="المنطقة / الولاية" />
-        </div>
-
-        <div>
-          <Label>الدولة</Label>
-          <Input {...register("country")} placeholder="الدولة" />
-        </div>
-
-        <div>
-          <Label>الرمز البريدي</Label>
-          <Input {...register("postalCode")} placeholder="الرمز البريدي" />
-        </div>
-
-        <div>
-          <Label>رقم الهاتف</Label>
-          <Input {...register("phoneNumber")} placeholder="رقم الهاتف" />
-        </div>
-
-        <div>
-          <Label>البريد الإلكتروني</Label>
-          <Input {...register("email")} placeholder="البريد الإلكتروني" />
-        </div>
-
         <div className="col-span-2 mt-4 flex justify-between">
           <Button
             type="button"

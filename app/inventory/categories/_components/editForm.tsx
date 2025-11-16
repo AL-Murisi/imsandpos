@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-import { createCategory } from "@/app/actions/category"; // assume you have this
+import { createCategory, updateCategory } from "@/app/actions/category"; // assume you have this
 import { useAuth } from "@/lib/context/AuthContext";
 import { CreateCategorySchema } from "@/lib/zod";
 import { Plus } from "lucide-react";
@@ -21,7 +21,7 @@ type Category = {
   name: string;
 };
 
-export default function CategoryForm() {
+export default function EditCategoryForm({ category }: any) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [open, setOpen] = useState(false);
   const {
@@ -33,9 +33,9 @@ export default function CategoryForm() {
   } = useForm<FormValues>({
     resolver: zodResolver(CreateCategorySchema),
     defaultValues: {
-      name: "",
-      description: "",
-      parentId: "", // empty string means no parent
+      name: category.name,
+      description: category.description,
+      parentId: category.parentId, // empty string means no parent
     },
   });
   const { user } = useAuth();
@@ -45,12 +45,11 @@ export default function CategoryForm() {
 
   const onSubmit = async (data: FormValues) => {
     setIsSubmitting(true);
-
     const finalData = {
       ...data,
       parentId: data.parentId || undefined, // Remove empty string
     };
-    await createCategory(finalData, user.companyId);
+    await updateCategory(category.id, user.companyId, finalData);
     setOpen(false);
     setIsSubmitting(false);
     reset();
@@ -61,7 +60,7 @@ export default function CategoryForm() {
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
           <Plus className="mr-2 h-4 w-4" />
-          جديد
+          تعديل
         </Button>
       </DialogTrigger>
 

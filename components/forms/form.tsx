@@ -24,6 +24,8 @@ type FormValues = z.infer<typeof CreateWarehouseSchema>;
 export default function WarehouseForm() {
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   if (!user) return;
   const warehouse = `warehouse-${Date.now().toString().slice(-2)}`;
   const {
@@ -49,11 +51,12 @@ export default function WarehouseForm() {
 
   // Load roles on mount
   const onSubmit = async (data: FormValues) => {
-    console.log("Submitted:", data);
+    setIsSubmitting(true);
 
     await createWarehouse(data, user.companyId);
     setOpen(false);
     reset();
+    setIsSubmitting(false);
   };
 
   return (
@@ -170,7 +173,13 @@ export default function WarehouseForm() {
             </div>
           </div>
           <div className="flex justify-end">
-            <Button type="submit">تأكيد</Button>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="min-w-[120px] bg-green-600 hover:bg-green-700"
+            >
+              {isSubmitting ? "جاري الحفظ..." : "حفظ "}
+            </Button>{" "}
           </div>
         </form>{" "}
       </DialogContent>

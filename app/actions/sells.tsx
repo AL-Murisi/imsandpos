@@ -62,7 +62,7 @@ export async function FetchDebtSales(
   from?: string,
   to?: string,
   page: number = 1, // 0-indexed page number
-  pageSize: number = 7,
+  pageSize: number = 13,
   sort?: SortingState,
 ) {
   const combinedWhere: Prisma.SaleWhereInput = {

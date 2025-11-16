@@ -488,12 +488,17 @@ export const purchaseColumns: ColumnDef<any>[] = [
       const supplierId = row.original;
       const supplier_name = row.original.name;
       const purchaseId = row.original.id;
+      const amountDue = Number(supplierId.amountDue);
       return (
-        <PaymentCreateForm
-          purchaseId={purchaseId}
-          supplier={supplierId}
-          supplier_name={supplier_name}
-        />
+        <>
+          {amountDue > 0 && (
+            <PaymentCreateForm
+              purchaseId={purchaseId}
+              supplier={supplierId}
+              supplier_name={supplier_name}
+            />
+          )}
+        </>
       );
     },
   },

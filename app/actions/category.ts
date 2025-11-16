@@ -37,13 +37,17 @@ export async function createCategory(
 }
 
 // Update category
-export async function updateCategory(id: string, form: CreateCategoryInput) {
+export async function updateCategory(
+  id: string,
+  companyId: string,
+  form: CreateCategoryInput,
+) {
   const parsed = CreateCategorySchema.safeParse(form);
   if (!parsed.success) throw new Error("Invalid data");
 
   const { name, description, parentId } = parsed.data;
   const category = await prisma.category.update({
-    where: { id },
+    where: { id, companyId },
     data: { name, description, parentId },
   });
 

@@ -49,14 +49,17 @@ export default function SupplierForm() {
     },
   });
   const [open, setOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const { user } = useAuth();
   if (!user) return;
   // Load roles on mount
   const onSubmit = async (data: FormValues) => {
-    console.log("Submitted:", data);
+    setIsSubmitting(true);
 
     await createSupplier(data, user.companyId);
     setOpen(false);
+    setIsSubmitting(false);
     reset();
   };
 
@@ -234,7 +237,13 @@ export default function SupplierForm() {
             </div>
           </div>
           <div className="flex justify-end">
-            <Button type="submit">تأكيد</Button>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="min-w-[120px] bg-green-600 hover:bg-green-700"
+            >
+              {isSubmitting ? "جاري الحفظ..." : "حفظ المنتج"}
+            </Button>
           </div>
         </form>
       </ScrollArea>
