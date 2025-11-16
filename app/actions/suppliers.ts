@@ -288,7 +288,15 @@ export const getPurchasesByCompany = cache(
           purchaseItems: {
             include: {
               product: {
-                select: { id: true, name: true, sku: true, costPrice: true },
+                select: {
+                  id: true,
+                  name: true,
+                  sku: true,
+                  costPrice: true,
+                  unitsPerPacket: true,
+                  type: true,
+                  packetsPerCarton: true,
+                },
               },
             },
           },
@@ -299,7 +307,7 @@ export const getPurchasesByCompany = cache(
         take: pageSize,
       });
       const serialized = serializeData(purchases);
-
+      console.log(serialized);
       return { data: serialized, total };
     } catch (error) {
       console.error("Error fetching company purchases:", error);
@@ -381,20 +389,17 @@ export async function updateSupplierPayment(
         include: { supplier: true },
       });
 
-      if (!currentPayment) {
-        throw new Error("Payment not found");
-      }
-
-      if (currentPayment.companyId !== companyId) {
+      if (!currentPayment) throw new Error("Payment not found");
+      if (currentPayment.companyId !== companyId)
         throw new Error("Unauthorized");
-      }
 
-      // 2. If amount changed, recalculate purchase status
       let purchaseUpdate = null;
-      if (data.amount && data.amount !== Number(currentPayment.amount)) {
-        const amountDifference = data.amount - Number(currentPayment.amount);
+      let amountDifference = 0;
 
-        // Find purchases with this supplier to update totals
+      // 2. Amount changed?
+      if (data.amount && data.amount !== Number(currentPayment.amount)) {
+        amountDifference = data.amount - Number(currentPayment.amount);
+
         const purchases = await tx.purchase.findMany({
           where: {
             companyId,
@@ -404,18 +409,19 @@ export async function updateSupplierPayment(
         });
 
         if (purchases.length > 0) {
-          // Update the most recent purchase
           const latestPurchase = purchases[purchases.length - 1];
           const newAmountPaid =
             Number(latestPurchase.amountPaid) + amountDifference;
-          const newAmountDue =
-            Number(latestPurchase.totalAmount) - newAmountPaid;
+          const newAmountDue = Math.max(
+            0,
+            Number(latestPurchase.totalAmount) - newAmountPaid,
+          );
 
           purchaseUpdate = await tx.purchase.update({
             where: { id: latestPurchase.id },
             data: {
               amountPaid: Math.max(0, newAmountPaid),
-              amountDue: Math.max(0, newAmountDue),
+              amountDue: newAmountDue,
               status:
                 newAmountDue <= 0
                   ? "paid"
@@ -425,9 +431,25 @@ export async function updateSupplierPayment(
             },
           });
         }
+
+        // --- 3. UPDATE SUPPLIER TOTALS ---
+        await tx.supplier.update({
+          where: { id: currentPayment.supplierId, companyId },
+          data: {
+            totalPaid: {
+              set: Math.max(
+                0,
+                Number(currentPayment.supplier.totalPaid) + amountDifference,
+              ),
+            },
+            outstandingBalance: {
+              increment: -amountDifference, // paying reduces balance
+            },
+          },
+        });
       }
 
-      // 3. Update payment
+      // 4. Update payment
       const updatedPayment = await tx.supplierPayment.update({
         where: { id: paymentId },
         data: {
@@ -436,12 +458,10 @@ export async function updateSupplierPayment(
           ...(data.note && { note: data.note }),
           ...(data.paymentDate && { paymentDate: data.paymentDate }),
         },
-        include: {
-          supplier: true,
-        },
+        include: { supplier: true },
       });
 
-      // 4. Log activity
+      // 5. Log
       await tx.activityLogs.create({
         data: {
           userId,
@@ -450,7 +470,9 @@ export async function updateSupplierPayment(
           details: `Payment updated for ${currentPayment.supplier.name}: ${updatedPayment.amount}`,
         },
       });
+
       revalidatePath("/suppliers");
+
       return {
         success: true,
         payment: updatedPayment,
@@ -462,13 +484,14 @@ export async function updateSupplierPayment(
     throw error;
   }
 }
-
 export async function createSupplierPaymentFromPurchases(
   userId: string,
   companyId: string,
   data: {
+    status: string;
     createdBy: string;
     supplierId: string;
+    purchaseId: string;
     amount: number;
     paymentMethod: string;
     note?: string;
@@ -476,137 +499,548 @@ export async function createSupplierPaymentFromPurchases(
   },
 ) {
   try {
-    const { createdBy, supplierId, amount, paymentMethod, note, paymentDate } =
-      data;
+    const {
+      status,
+      purchaseId,
+      createdBy,
+      supplierId,
+      amount,
+      paymentMethod,
+      note,
+      paymentDate,
+    } = data;
 
-    // --- Validation ---
-    if (!supplierId || !amount || amount <= 0) {
-      throw new Error("Supplier ID and valid payment amount are required");
-    }
-
-    // --- 1. Fetch purchases with pending/partial status ---
-    const purchases = await prisma.purchase.findMany({
-      where: {
-        companyId,
-        supplierId,
-        status: { in: ["pending", "partial"] },
-      },
-      orderBy: { createdAt: "asc" },
-    });
-
-    if (!purchases.length) {
+    // Validation
+    if (!supplierId || !amount || amount <= 0 || !purchaseId) {
       throw new Error(
-        "No pending or partial purchases found for this supplier",
+        "Supplier ID, Purchase ID, and valid amount are required",
       );
     }
 
-    // --- 2. Calculate allocation logic (in memory) ---
-    let remainingAmount = amount;
-    const purchaseUpdates: Array<{
-      id: string;
-      amountPaid: number;
-      amountDue: number;
-      status: "pending" | "partial" | "paid";
-    }> = [];
+    // Get supplier
+    const supplier = await prisma.supplier.findUnique({
+      where: { id: supplierId },
+    });
+    if (!supplier) throw new Error("Supplier not found");
 
-    for (const purchase of purchases) {
-      if (remainingAmount <= 0) break;
+    // Get specific purchase with current payment status
+    const purchase = await prisma.purchase.findUnique({
+      where: { id: purchaseId },
+      include: {
+        supplierPayments: {
+          orderBy: { paymentDate: "desc" },
+        },
+      },
+    });
 
-      const amountDue = Number(purchase.amountDue);
-      const amountToApply = Math.min(amountDue, remainingAmount);
+    if (!purchase) throw new Error("Purchase not found");
 
-      const newAmountPaid = Number(purchase.amountPaid) + amountToApply;
-      const newAmountDue = Math.max(0, amountDue - amountToApply);
+    // ✅ Calculate amounts correctly
+    const totalAmount = Number(purchase.totalAmount);
+    const currentAmountPaid = Number(purchase.amountPaid);
+    const currentAmountDue = Number(purchase.amountDue);
 
-      purchaseUpdates.push({
-        id: purchase.id,
-        amountPaid: newAmountPaid,
-        amountDue: newAmountDue,
-        status:
-          newAmountDue <= 0
-            ? "paid"
-            : amountToApply > 0
-              ? "partial"
-              : "pending",
-      });
+    // Calculate new amounts
+    const newAmountPaid = currentAmountPaid + amount;
+    const newAmountDue = Math.max(0, currentAmountDue - amount);
 
-      remainingAmount -= amountToApply;
+    // Determine new status
+    let newStatus: string;
+    if (newAmountDue === 0) {
+      newStatus = "paid";
+    } else if (newAmountPaid > 0) {
+      newStatus = "partial";
+    } else {
+      newStatus = "pending";
     }
 
-    if (!purchaseUpdates.length) {
-      throw new Error("No applicable purchases found for this payment.");
+    // Check if payment exceeds amount due
+    if (amount > currentAmountDue) {
+      throw new Error(
+        `Payment amount (${amount}) exceeds amount due (${currentAmountDue})`,
+      );
     }
 
-    console.log("Applying payment to", purchaseUpdates.length, "purchase(s)");
+    console.log("💰 Payment Calculation:", {
+      purchaseId: purchase.id,
+      totalAmount,
+      currentAmountPaid,
+      currentAmountDue,
+      newPayment: amount,
+      newAmountPaid,
+      newAmountDue,
+      newStatus,
+    });
 
-    // --- 3. Transaction: Update purchases + create payment ---
+    // ✅ Transaction with proper sequencing
     const result = await prisma.$transaction(
       async (tx) => {
-        // Update all purchases
-        const updatedPurchases = await Promise.all(
-          purchaseUpdates.map((update) =>
-            tx.purchase.update({
-              where: { id: update.id },
-              data: {
-                amountPaid: update.amountPaid,
-                amountDue: update.amountDue,
-                status: update.status,
-              },
-            }),
-          ),
-        );
-
-        // Create supplier payment record
+        // 1. Create supplier payment record first
         const supplierPayment = await tx.supplierPayment.create({
           data: {
             companyId,
             supplierId,
+            purchaseId, // ✅ Link to purchase
             amount,
             paymentMethod,
             note,
             createdBy,
             paymentDate: paymentDate ?? new Date(),
           },
-          include: { supplier: true },
+          include: {
+            supplier: true,
+            purchase: true,
+          },
         });
 
-        return { updatedPurchases, supplierPayment };
+        // 2. Update purchase with new amounts
+        const updatedPurchase = await tx.purchase.update({
+          where: { id: purchaseId },
+          data: {
+            amountPaid: newAmountPaid,
+            amountDue: newAmountDue,
+            status: newStatus,
+            purchaseType: "outstandingpayment", // ✅ Trigger the database trigger
+          },
+        });
+
+        // 3. Update supplier totals
+        const supplierUpdateData: any = {
+          totalPaid: { increment: amount },
+        };
+
+        // Reduce supplier outstanding ONLY if purchase had outstanding
+        if (currentAmountDue > 0) {
+          supplierUpdateData.outstandingBalance = { decrement: amount };
+        }
+
+        await tx.supplier.update({
+          where: { id: supplierId, companyId },
+          data: supplierUpdateData,
+        });
+
+        return {
+          supplierPayment,
+          updatedPurchase,
+          previousAmountPaid: currentAmountPaid,
+          previousAmountDue: currentAmountDue,
+        };
       },
-      { timeout: 30000 },
+      {
+        timeout: 30000,
+        // ✅ Important: Ensure triggers are executed
+        isolationLevel: "ReadCommitted",
+      },
     );
 
-    const { updatedPurchases, supplierPayment } = result;
+    const {
+      supplierPayment,
+      updatedPurchase,
+      previousAmountPaid,
+      previousAmountDue,
+    } = result;
 
-    // --- 4. Log activity (outside transaction) ---
+    // Log activity
     await prisma.activityLogs.create({
       data: {
         userId,
         companyId,
         action: "Created supplier payment",
-        details: `Supplier: ${supplierPayment.supplier.name}, Payment: ${amount}, Applied to ${updatedPurchases.length} purchase(s).`,
+        details: `Supplier: ${supplierPayment.supplier.name}, Payment: ${amount}, Purchase: ${purchaseId}. Previous paid: ${previousAmountPaid}, New paid: ${newAmountPaid}. Previous due: ${previousAmountDue}, New due: ${newAmountDue}.`,
       },
     });
 
     revalidatePath("/suppliers");
-    // --- 5. Serialize & return ---
+    revalidatePath("/purchases");
+
     return {
       success: true,
       payment: serializeData(supplierPayment),
-      updatedPurchases: serializeData(updatedPurchases),
-      remainingAmount,
+      updatedPurchase: serializeData(updatedPurchase),
+      summary: {
+        previousAmountPaid,
+        newAmountPaid,
+        previousAmountDue,
+        newAmountDue,
+        paymentAmount: amount,
+        newStatus,
+      },
     };
   } catch (error) {
     console.error("❌ Error creating supplier payment:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to create payment",
+    };
+  }
+}
 
+// ✅ New function to update existing payment
+// export async function updateSupplierPayment(
+//   userId: string,
+//   companyId: string,
+//   paymentId: string,
+//   data: {
+//     amount: number;
+//     paymentMethod?: string;
+//     note?: string;
+//     paymentDate?: Date;
+//   },
+// ) {
+//   try {
+//     // Get existing payment
+//     const existingPayment = await prisma.supplierPayment.findUnique({
+//       where: { id: paymentId },
+//       include: {
+//         purchase: true,
+//         supplier: true,
+//       },
+//     });
+
+//     if (!existingPayment) {
+//       throw new Error("Payment not found");
+//     }
+
+//     if (!existingPayment.purchaseId) {
+//       throw new Error("Payment is not linked to a purchase");
+//     }
+
+//     const oldAmount = Number(existingPayment.amount);
+//     const newAmount = data.amount;
+//     const amountDifference = newAmount - oldAmount;
+
+//     // Get purchase
+//     const purchase = await prisma.purchase.findUnique({
+//       where: { id: existingPayment.purchaseId },
+//     });
+
+//     if (!purchase) {
+//       throw new Error("Related purchase not found");
+//     }
+
+//     const currentAmountPaid = Number(purchase.amountPaid);
+//     const currentAmountDue = Number(purchase.amountDue);
+
+//     // Calculate new amounts
+//     const newAmountPaid = currentAmountPaid + amountDifference;
+//     const newAmountDue = Math.max(0, currentAmountDue - amountDifference);
+
+//     // Determine new status
+//     let newStatus: string;
+//     if (newAmountDue === 0) {
+//       newStatus = "paid";
+//     } else if (newAmountPaid > 0) {
+//       newStatus = "partial";
+//     } else {
+//       newStatus = "pending";
+//     }
+
+//     // Validate
+//     if (newAmountDue < 0) {
+//       throw new Error(
+//         `Updated payment would result in overpayment. Maximum allowed: ${currentAmountDue + oldAmount}`
+//       );
+//     }
+
+//     console.log("💰 Payment Update Calculation:", {
+//       paymentId,
+//       purchaseId: purchase.id,
+//       oldAmount,
+//       newAmount,
+//       amountDifference,
+//       currentAmountPaid,
+//       newAmountPaid,
+//       currentAmountDue,
+//       newAmountDue,
+//       newStatus,
+//     });
+
+//     // Transaction
+//     const result = await prisma.$transaction(
+//       async (tx) => {
+//         // 1. Update payment record
+//         const updatedPayment = await tx.supplierPayment.update({
+//           where: { id: paymentId },
+//           data: {
+//             amount: newAmount,
+//             paymentMethod: data.paymentMethod ?? existingPayment.paymentMethod,
+//             note: data.note ?? existingPayment.note,
+//             paymentDate: data.paymentDate ?? existingPayment.paymentDate,
+//           },
+//           include: {
+//             supplier: true,
+//             purchase: true,
+//           },
+//         });
+
+//         // 2. Update purchase
+//         const updatedPurchase = await tx.purchase.update({
+//           where: { id: existingPayment.purchaseId },
+//           data: {
+//             amountPaid: newAmountPaid,
+//             amountDue: newAmountDue,
+//             status: newStatus,
+//             purchaseType: "outstandingpayment", // ✅ Trigger update
+//           },
+//         });
+
+//         // 3. Update supplier totals
+//         await tx.supplier.update({
+//           where: { id: existingPayment.supplierId, companyId },
+//           data: {
+//             totalPaid: { increment: amountDifference },
+//             outstandingBalance: { decrement: amountDifference },
+//           },
+//         });
+
+//         return {
+//           updatedPayment,
+//           updatedPurchase,
+//         };
+//       },
+//       {
+//         timeout: 30000,
+//         isolationLevel: 'ReadCommitted',
+//       },
+//     );
+
+//     // Log activity
+//     await prisma.activityLogs.create({
+//       data: {
+//         userId,
+//         companyId,
+//         action: "Updated supplier payment",
+//         details: `Payment ID: ${paymentId}, Old amount: ${oldAmount}, New amount: ${newAmount}, Difference: ${amountDifference}`,
+//       },
+//     });
+
+//     revalidatePath("/suppliers");
+//     revalidatePath("/purchases");
+
+//     return {
+//       success: true,
+//       payment: serializeData(result.updatedPayment),
+//       updatedPurchase: serializeData(result.updatedPurchase),
+//       summary: {
+//         oldAmount,
+//         newAmount,
+//         amountDifference,
+//         newAmountPaid,
+//         newAmountDue,
+//         newStatus,
+//       },
+//     };
+//   } catch (error) {
+//     console.error("❌ Error updating supplier payment:", error);
+//     return {
+//       success: false,
+//       error:
+//         error instanceof Error ? error.message : "Failed to update payment",
+//     };
+//   }
+// }
+
+// ✅ Function to get payment history for a purchase
+export async function getPurchasePaymentHistory(
+  purchaseId: string,
+  companyId: string,
+) {
+  try {
+    const purchase = await prisma.purchase.findUnique({
+      where: { id: purchaseId, companyId },
+      include: {
+        supplierPayments: {
+          orderBy: { paymentDate: "desc" },
+          include: {
+            supplier: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+        supplier: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (!purchase) {
+      throw new Error("Purchase not found");
+    }
+
+    // Calculate cumulative totals
+    let runningPaid = 0;
+    const paymentsWithRunningTotal = purchase.supplierPayments
+      .map((payment) => {
+        runningPaid += Number(payment.amount);
+        return {
+          ...payment,
+          cumulativePaid: runningPaid,
+          remainingDue: Number(purchase.totalAmount) - runningPaid,
+        };
+      })
+      .reverse(); // Reverse to show oldest first with running total
+
+    return {
+      success: true,
+      purchase: {
+        id: purchase.id,
+        totalAmount: Number(purchase.totalAmount),
+        amountPaid: Number(purchase.amountPaid),
+        amountDue: Number(purchase.amountDue),
+        status: purchase.status,
+        supplier: purchase.supplier,
+      },
+      payments: serializeData(paymentsWithRunningTotal),
+    };
+  } catch (error) {
+    console.error("❌ Error getting payment history:", error);
     return {
       success: false,
       error:
         error instanceof Error
           ? error.message
-          : "Failed to create supplier payment",
+          : "Failed to get payment history",
     };
   }
 }
+// export async function createSupplierPaymentFromPurchases(
+//   userId: string,
+//   companyId: string,
+//   data: {
+//     status: string;
+//     createdBy: string;
+//     supplierId: string;
+//     purchaseId: string; // IMPORTANT
+//     amount: number;
+//     paymentMethod: string;
+//     note?: string;
+//     paymentDate?: Date;
+//   },
+// ) {
+//   try {
+//     const {
+//       status,
+//       purchaseId,
+//       createdBy,
+//       supplierId,
+
+//       amount,
+//       paymentMethod,
+//       note,
+//       paymentDate,
+//     } = data;
+
+//     if (!supplierId || !amount || amount <= 0 || !purchaseId) {
+//       throw new Error(
+//         "Supplier ID, Purchase ID, and valid amount are required",
+//       );
+//     }
+
+//     const supplier = await prisma.supplier.findUnique({
+//       where: { id: supplierId },
+//     });
+//     if (!supplier) throw new Error("Supplier not found");
+
+//     // --- GET SPECIFIC PURCHASE ---
+//     const purchase = await prisma.purchase.findUnique({
+//       where: { id: purchaseId },
+//     });
+
+//     if (!purchase) throw new Error("Purchase not found");
+
+//     // --- CALCULATE PAYMENT ---
+//     const amountDue = Number(purchase.amountDue);
+//     const apply = Math.abs(amountDue - amount);
+//     const remainingAmount = amount - apply;
+
+//     const purchaseUpdates = [
+//       {
+//         id: purchase.id,
+//         amountPaid: amount,
+//         amountDue: Math.max(0, amountDue - apply),
+//         status: apply >= amountDue ? "paid" : "partial",
+//       },
+//     ];
+
+//     // --- TRANSACTION ---
+//     const result = await prisma.$transaction(
+//       async (tx) => {
+//         const updatedPurchases = await Promise.all(
+//           purchaseUpdates.map((u) =>
+//             tx.purchase.update({
+//               where: { id: u.id },
+//               data: {
+//                 amountPaid: u.amountPaid,
+//                 amountDue: u.amountDue,
+//                 status: u.status,
+//                 purchaseType: "outstandingpayment",
+//               },
+//             }),
+//           ),
+//         );
+
+//         const supplierPayment = await tx.supplierPayment.create({
+//           data: {
+//             companyId,
+//             supplierId,
+//             amount,
+//             paymentMethod,
+//             note,
+//             createdBy,
+//             paymentDate: paymentDate ?? new Date(),
+//           },
+//           include: { supplier: true },
+//         });
+
+//         await tx.supplier.update({
+//           where: { id: supplierId, companyId },
+//           data: {
+//             totalPaid: { increment: amount },
+//             outstandingBalance: { increment: -amount },
+//           },
+//         });
+
+//         return { updatedPurchases, supplierPayment };
+//       },
+//       { timeout: 30000 },
+//     );
+
+//     const { updatedPurchases, supplierPayment } = result;
+
+//     await prisma.activityLogs.create({
+//       data: {
+//         userId,
+//         companyId,
+//         action: "Created supplier payment",
+//         details: `Supplier: ${supplierPayment.supplier.name}, Payment: ${amount}, Applied to purchase ${purchaseId}.`,
+//       },
+//     });
+
+//     revalidatePath("/suppliers");
+
+//     return {
+//       success: true,
+//       payment: serializeData(supplierPayment),
+//       updatedPurchases: serializeData(updatedPurchases),
+//       remainingAmount,
+//     };
+//   } catch (error) {
+//     console.error("❌ Error creating supplier payment:", error);
+//     return {
+//       success: false,
+//       error:
+//         error instanceof Error ? error.message : "Failed to create payment",
+//     };
+//   }
+// }
+
 // ============================================
 // 4. GET SUPPLIER SUMMARY (Purchases + Payments)
 // ============================================

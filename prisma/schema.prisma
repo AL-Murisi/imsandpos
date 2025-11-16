@@ -274,23 +274,28 @@ model Inventory {
   reorderLevel      Int       @default(0) @map("reorder_level")
   maxStockLevel     Int?      @map("max_stock_level")
   location          String?
+  purchaseReceipt    String?  
+  lastPurchaseId     String?
+  lastPurchaseItemId String?
+receiptNo     String?   @unique
   status            String    @default("available")
   lastStockTake     DateTime? @map("last_stock_take")
   createdAt         DateTime  @default(now()) @map("created_at")
   updatedAt         DateTime  @updatedAt @map("updated_at")
-  company           Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  product           Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
-  warehouse         Warehouse @relation(fields: [warehouseId], references: [id])
+
+  // RELATIONS
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id])
+
+  // NEW RELATIONS
+  lastPurchase     Purchase?     @relation("InventoryLastPurchase", fields: [lastPurchaseId], references: [id])
+  lastPurchaseItem PurchaseItem? @relation("InventoryLastPurchaseItem", fields: [lastPurchaseItemId], references: [id])
 
   @@unique([companyId, productId, warehouseId])
-  @@index([companyId])
-  @@index([productId])
-  @@index([warehouseId])
-  @@index([location])
-  @@index([status])
-  @@index([createdAt])
   @@map("inventory")
 }
+
 
 model StockMovement {
   id             String    @id @default(cuid())
@@ -460,9 +465,10 @@ model Purchase {
   amountDue     Decimal        @default(0) @map("amount_due") @db.Decimal(12, 2)
   status        String         @default("pending")
   purchaseType  String         @default("normal") @map("purchase_type") // 👈 new
-
+  
   createdAt     DateTime       @default(now()) @map("created_at")
   updatedAt     DateTime       @updatedAt @map("updated_at")
+  inventoryLastPurchase Inventory[] @relation("InventoryLastPurchase")
 
   purchaseItems PurchaseItem[]
    supplierPayments  SupplierPayment[]
@@ -488,6 +494,7 @@ model PurchaseItem {
   company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   purchase   Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  inventoryLastPurchaseItem Inventory[] @relation("InventoryLastPurchaseItem")
 
   @@index([companyId])
   @@index([purchaseId])

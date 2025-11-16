@@ -203,7 +203,6 @@ export default function UniversalChart({
                   fill="black"
                   offset={3}
                   fontSize={15}
-                  fontWeight="bold"
                   formatter={(value: any) => formatCurrency(Number(value))}
                 />
               </Bar>

@@ -439,7 +439,7 @@ export async function getSalesOverview(
   companyId: string,
   { startDate, endDate }: DateRange,
 ) {
-  // Get revenue data from REVENUE accounts
+  // Get revenue data (REVENUE ACCOUNTS)
   const revenueEntries = await prisma.journal_entries.findMany({
     where: {
       accounts: {
@@ -448,20 +448,13 @@ export async function getSalesOverview(
         is_active: true,
       },
       is_posted: true,
-      entry_date: {
-        gte: startDate,
-        lte: endDate,
-      },
+      entry_date: { gte: startDate, lte: endDate },
     },
-    select: {
-      entry_date: true,
-      credit: true,
-      debit: true,
-    },
+    select: { entry_date: true, credit: true, debit: true },
     orderBy: { entry_date: "asc" },
   });
 
-  // Get purchase/expense data from EXPENSE and COST_OF_GOODS accounts
+  // Purchases / Expenses (EXPENSE ACCOUNTS)
   const purchaseEntries = await prisma.journal_entries.findMany({
     where: {
       accounts: {
@@ -470,67 +463,69 @@ export async function getSalesOverview(
         is_active: true,
       },
       is_posted: true,
-      entry_date: {
-        gte: startDate,
-        lte: endDate,
-      },
+      entry_date: { gte: startDate, lte: endDate },
     },
-    select: {
-      entry_date: true,
-      credit: true,
-      debit: true,
-    },
+    select: { entry_date: true, credit: true, debit: true },
     orderBy: { entry_date: "asc" },
   });
+
+  // Debts (AR)
   const debtEntries = await prisma.accounts.findMany({
     where: {
       company_id: companyId,
       account_category: "ACCOUNTS_RECEIVABLE",
       is_active: true,
-      updated_at: {
-        gte: startDate,
-        lte: endDate,
-      },
+      updated_at: { gte: startDate, lte: endDate },
     },
-    select: {
-      updated_at: true,
-      balance: true,
-    },
+    select: { updated_at: true, balance: true },
     orderBy: { updated_at: "asc" },
   });
 
-  // Group by date
+  // Maps for daily grouping
   const revenueByDate = new Map<string, number>();
   const purchasesByDate = new Map<string, number>();
   const debtByDate = new Map<string, number>();
-  // Aggregate revenue (credit - debit for revenue accounts)
+  const profitByDate = new Map<string, number>(); // NEW
+
+  // --- Revenue Aggregation (credit - debit) ---
   revenueEntries.forEach((entry) => {
     if (!entry.entry_date) return;
     const dateKey = entry.entry_date.toISOString().split("T")[0];
-    const amount = Math.abs(Number(entry.credit) - Number(entry.debit));
+    const amount = Math.max(0, Number(entry.credit) - Number(entry.debit));
     revenueByDate.set(dateKey, (revenueByDate.get(dateKey) || 0) + amount);
   });
+
+  // --- Debt Aggregation ---
   debtEntries.forEach((entry) => {
     if (!entry.updated_at) return;
     const dateKey = entry.updated_at.toISOString().split("T")[0];
-    const amount = Math.abs(Number(entry.balance));
+    const amount = Math.max(0, Number(entry.balance));
     debtByDate.set(dateKey, (debtByDate.get(dateKey) || 0) + amount);
   });
-  // Aggregate purchases (debit - credit for expense accounts)
+
+  // --- Purchases Aggregation (debit - credit) ---
   purchaseEntries.forEach((entry) => {
     if (!entry.entry_date) return;
     const dateKey = entry.entry_date.toISOString().split("T")[0];
-    const amount = Math.abs(Number(entry.debit) - Number(entry.credit));
+    const amount = Math.max(0, Number(entry.debit) - Number(entry.credit));
     purchasesByDate.set(dateKey, (purchasesByDate.get(dateKey) || 0) + amount);
   });
 
-  // Combine all dates
+  // --- PROFIT PER DATE (revenue - purchases) ---
   const allDates = new Set([
     ...revenueByDate.keys(),
     ...purchasesByDate.keys(),
     ...debtByDate.keys(),
   ]);
 
+  allDates.forEach((date) => {
+    const revenue = revenueByDate.get(date) || 0;
+    const purchases = purchasesByDate.get(date) || 0;
+    const profit = Math.max(0, revenue - purchases); // no negatives
+    profitByDate.set(date, profit);
+  });
+
+  // --- Combined Data (for chart) ---
   const combined = Array.from(allDates)
     .sort()
     .map((date) => ({
@@ -538,16 +533,15 @@ export async function getSalesOverview(
       revenue: revenueByDate.get(date) || 0,
       purchases: purchasesByDate.get(date) || 0,
       debts: debtByDate.get(date) || 0,
+      profit: profitByDate.get(date) || 0, // NEW
     }));
 
   return {
     data: combined,
-    totalRevenue: Array.from(revenueByDate.values()).reduce((a, b) => a + b, 0),
-    totalPurchases: Array.from(purchasesByDate.values()).reduce(
-      (a, b) => a + b,
-      0,
-    ),
-    totalDebt: Array.from(debtByDate.values()).reduce((a, b) => a + b, 0),
+    totalRevenue: [...revenueByDate.values()].reduce((a, b) => a + b, 0),
+    totalPurchases: [...purchasesByDate.values()].reduce((a, b) => a + b, 0),
+    totalDebt: [...debtByDate.values()].reduce((a, b) => a + b, 0),
+    totalProfit: [...profitByDate.values()].reduce((a, b) => a + b, 0), // NEW
   };
 }
 
@@ -767,14 +761,12 @@ export async function getDashboardData(
       getTopSellingProducts(companyId, { startDate, endDate }, topItems),
       getExpenseBreakdown(companyId, { startDate, endDate }),
     ]);
-  console.log(salesOverview.totalRevenue - salesOverview.totalPurchases);
   return {
     salesOverview: {
       data: salesOverview.data,
       totalRevenue: salesOverview.totalRevenue,
       totalPurchases: salesOverview.totalPurchases,
       totalDebts: salesOverview.totalDebt,
-      netProfit: salesOverview.totalPurchases - salesOverview.totalRevenue,
     },
     revenueChart,
     topProducts,
@@ -854,7 +846,6 @@ export async function getSummaryCards(
   );
   const netProfit = Math.abs(totalRevenue - totalPurchases);
 
-  console.log(totalUnreceived, netProfit);
   return {
     revenue: { total: totalRevenue },
     purchases: { total: totalPurchases },

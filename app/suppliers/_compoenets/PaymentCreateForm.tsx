@@ -15,8 +15,10 @@ import { toast } from "sonner";
 export function PaymentCreateForm({
   supplier,
   supplier_name,
+  purchaseId,
 }: {
   supplier: any;
+  purchaseId: string;
   supplier_name: string;
 }) {
   const { register, handleSubmit, reset, watch } = useForm({
@@ -41,6 +43,8 @@ export function PaymentCreateForm({
         user.userId,
         user.companyId,
         {
+          status: supplier.status,
+          purchaseId,
           createdBy: user.userId,
           supplierId: supplier.supplier.id,
           amount: Number(data.amount),

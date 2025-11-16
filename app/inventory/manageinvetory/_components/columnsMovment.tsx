@@ -196,22 +196,38 @@ export const inventoryColumns: ColumnDef<any>[] = [
     accessorKey: "product.supplier.name",
     header: "المورد",
   },
-
+  {
+    accessorKey: "product.type",
+    header: "المورد",
+  },
   {
     accessorKey: "warehouse.location",
     header: "الموقع",
   },
-  // {
-  //   accessorKey: "stockQuantity",
-  //   header: "الكمية في المخزون",
-  // },
+  {
+    accessorKey: "receiptNo",
+    header: "الكمية في المخزون",
+  },
   {
     accessorKey: "reservedQuantity",
     header: "الكمية المحجوزة",
   },
   {
     accessorKey: "availableQuantity",
-    header: "الكمية المتاحة",
+    header: "الكمية المتاحة (وحدات)",
+    cell: ({ row }) => {
+      const item = row.original;
+
+      // Show the correct available quantity based on product type
+      const parts: string[] = [];
+      if (item.availableUnits > 0) parts.push(`${item.availableUnits} وحدة`);
+      if (item.availablePackets > 0)
+        parts.push(`${item.availablePackets} علبة`);
+      if (item.availableCartons > 0)
+        parts.push(`${item.availableCartons} كرتون`);
+
+      return parts.join(" / ") || "0";
+    },
   },
   {
     accessorKey: "reorderLevel",

@@ -487,8 +487,10 @@ export const purchaseColumns: ColumnDef<any>[] = [
     cell: ({ row }) => {
       const supplierId = row.original;
       const supplier_name = row.original.name;
+      const purchaseId = row.original.id;
       return (
         <PaymentCreateForm
+          purchaseId={purchaseId}
           supplier={supplierId}
           supplier_name={supplier_name}
         />

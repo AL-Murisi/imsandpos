@@ -61,12 +61,16 @@ interface ExtendedInventoryUpdateData {
   warehouseId: string;
   lastStockTake?: string | Date; // 💡 FIX: Allow Date object or string for compatibility with form input/default values
 }
+function generateArabicPurchaseReceiptNumber(lastNumber: number) {
+  const padded = String(lastNumber).padStart(5, "0"); // 00001
+  const year = new Date().getFullYear();
+  return `مشتريات-${year}-${padded}`; // مشتريات-2025-00001
+}
 
 export async function updateInventory(
   data: ExtendedInventoryUpdateData,
   userId: string,
   companyId: string,
-  purchaseType?: "purchases",
 ) {
   try {
     const {
@@ -91,6 +95,12 @@ export async function updateInventory(
       include: { product: true, warehouse: true },
     });
     if (!currentInventory) throw new Error("سجل المخزون غير موجود");
+    let nextNumber = 1;
+    if (currentInventory?.receiptNo) {
+      const match = currentInventory.receiptNo.match(/(\d+)$/);
+      if (match) nextNumber = parseInt(match[1]) + 1;
+    }
+    const receiptNo = await generateArabicPurchaseReceiptNumber(nextNumber);
 
     const product = currentInventory.product;
     const unitsPerPacket = product.unitsPerPacket || 1;
@@ -151,27 +161,30 @@ export async function updateInventory(
       inventoryTarget.availableQuantity + availableUnits;
     const finalStockQty = inventoryTarget.stockQuantity + stockUnits;
     const finalReorderLevel = inventoryTarget.reorderLevel;
-
     let calculatedStatus: "available" | "low" | "out_of_stock" = "available";
     if (finalAvailableQty <= 0) calculatedStatus = "out_of_stock";
     else if (finalAvailableQty < finalReorderLevel) calculatedStatus = "low";
+    let purchaseItemId: string | null = null;
 
     // 5️⃣ إنشاء عملية شراء إذا كانت الكمية من المورد
     let purchaseId: string | null = null;
     if (updateType === "supplier" && inputCartons && unitCost) {
       const totalCost = inputCartons * unitCost;
-
+      const paid = paymentAmount ?? 0;
+      const due = Math.abs(totalCost - paid);
       const purchase = await prisma.purchase.create({
         data: {
           companyId,
           supplierId,
           totalAmount: totalCost,
-          amountDue: totalCost,
+          amountPaid: paid,
+          purchaseType: "purchases",
+          amountDue: due,
           status: "pending",
         },
       });
 
-      await prisma.purchaseItem.create({
+      const purchaseItems = await prisma.purchaseItem.create({
         data: {
           companyId,
           purchaseId: purchase.id,
@@ -183,7 +196,7 @@ export async function updateInventory(
       });
 
       purchaseId = purchase.id;
-
+      purchaseItemId = purchaseItems.id;
       // تسجيل الدفع إذا وجد
       if (paymentMethod && paymentAmount && paymentAmount > 0) {
         await prisma.supplierPayment.create({
@@ -200,13 +213,25 @@ export async function updateInventory(
         await prisma.purchase.update({
           where: { id: purchase.id },
           data: {
-            purchaseType: purchaseType,
             amountPaid: paymentAmount,
             amountDue: Math.max(0, totalCost - paymentAmount),
             status: paymentAmount >= totalCost ? "paid" : "partial",
           },
         });
       }
+      const outstanding = Math.abs(totalCost - paid);
+      await prisma.supplier.update({
+        where: { id: supplierId, companyId },
+        data: {
+          totalPurchased: { increment: totalCost },
+
+          totalPaid: { increment: paymentAmount },
+
+          outstandingBalance: {
+            increment: outstanding,
+          },
+        },
+      });
     }
 
     // 6️⃣ تحديث المخزون النهائي
@@ -214,9 +239,11 @@ export async function updateInventory(
       where: { id: inventoryTarget.id },
       data: {
         ...updateData,
-
+        lastPurchaseId: purchaseId,
+        lastPurchaseItemId: purchaseItemId,
         availableQuantity: finalAvailableQty,
         stockQuantity: finalStockQty,
+        receiptNo,
         status: calculatedStatus,
         ...(data.lastStockTake && {
           lastStockTake: new Date(data.lastStockTake),
@@ -276,9 +303,9 @@ export async function updateInventory(
 }
 
 interface PurchaseReturnData {
-  productId: string;
+  purchaseId: string; // Changed from productId
+  purchaseItemId: string; // Added to identify specific item
   warehouseId: string;
-  supplierId: string;
   returnQuantity: number;
   returnUnit: "unit" | "packet" | "carton";
   unitCost: number;
@@ -293,9 +320,9 @@ export async function processPurchaseReturn(
   companyId: string,
 ) {
   const {
-    productId,
+    purchaseId,
+    purchaseItemId,
     warehouseId,
-    supplierId,
     returnQuantity,
     returnUnit,
     unitCost,
@@ -307,15 +334,35 @@ export async function processPurchaseReturn(
   try {
     const result = await prisma.$transaction(
       async (tx) => {
-        // 1. Get product and inventory
-        const product = await tx.product.findUnique({
-          where: { id: productId },
+        // 1. Get original purchase and item
+        const originalPurchase = await tx.purchase.findUnique({
+          where: { id: purchaseId, companyId },
+          include: {
+            purchaseItems: {
+              where: { id: purchaseItemId },
+              include: {
+                product: true,
+              },
+            },
+            supplier: true,
+          },
         });
 
-        if (!product) {
-          throw new Error("المنتج غير موجود");
+        if (!originalPurchase) {
+          throw new Error("الشراء الأصلي غير موجود");
         }
 
+        if (originalPurchase.purchaseItems.length === 0) {
+          throw new Error("عنصر الشراء غير موجود");
+        }
+
+        const purchaseItem = originalPurchase.purchaseItems[0];
+        const product = purchaseItem.product;
+        const supplier = originalPurchase.supplier;
+        const productId = product.id;
+        const supplierId = supplier.id;
+
+        // 2. Get inventory
         const inventory = await tx.inventory.findUnique({
           where: {
             companyId_productId_warehouseId: {
@@ -330,7 +377,7 @@ export async function processPurchaseReturn(
           throw new Error("سجل المخزون غير موجود");
         }
 
-        // 2. Convert return quantity to base units
+        // 3. Convert return quantity to base units
         function convertToBaseUnits(
           qty: number,
           unit: string,
@@ -358,67 +405,65 @@ export async function processPurchaseReturn(
           );
         }
 
-        // 3. Calculate return cost (ALWAYS POSITIVE)
-        const returnTotalCost = Math.abs(returnQuantity * unitCost);
+        // Validate: Can't return more than originally purchased
+        const originalPurchasedInUnits = convertToBaseUnits(
+          purchaseItem.quantity,
+          returnUnit,
+          product.unitsPerPacket || 1,
+          product.packetsPerCarton || 1,
+        );
 
-        // 4. Get original purchase to determine payment status
-        // Find the most recent purchase from this supplier for this product
-        const originalPurchase = await tx.purchase.findFirst({
-          where: {
-            companyId,
-            supplierId,
-            purchaseType: { not: "return" },
-            purchaseItems: {
-              some: {
-                productId,
-              },
-            },
-          },
-          orderBy: {
-            createdAt: "desc",
-          },
-        });
-
-        let originalPaymentStatus: "paid" | "partial" | "unpaid" = "unpaid";
-        if (originalPurchase) {
-          if (originalPurchase.amountPaid >= originalPurchase.totalAmount) {
-            originalPaymentStatus = "paid";
-          } else if (originalPurchase.amountPaid.toNumber() > 0) {
-            originalPaymentStatus = "partial";
-          }
+        if (returnQuantityInUnits > originalPurchasedInUnits) {
+          throw new Error(
+            `لا يمكن إرجاع كمية أكبر من الكمية المشتراة الأصلية (${purchaseItem.quantity})`,
+          );
         }
 
-        // 5. Create purchase return record (POSITIVE VALUES)
-        const purchaseReturn = await tx.purchase.create({
+        // 4. Calculate return cost (ALWAYS POSITIVE)
+        const returnTotalCost = Math.abs(returnQuantity * unitCost);
+
+        // 5. Calculate outstanding balance adjustments
+        const amountDue = Number(originalPurchase.amountDue || 0);
+        let outstandingDecrease = 0;
+        console.log(amountDue);
+        if (refundAmount > 0) {
+          outstandingDecrease = Math.min(amountDue, refundAmount);
+        } else {
+          // If no refund, reduce outstanding by return cost
+          outstandingDecrease = Math.min(amountDue, returnTotalCost);
+        }
+        console.log(outstandingDecrease);
+        // 6. Create purchase return record (POSITIVE VALUES)
+        const purchaseReturn = await tx.purchase.update({
+          where: { id: purchaseId },
           data: {
             companyId,
             supplierId,
             purchaseType: "return",
-            totalAmount: returnTotalCost, // ✅ Positive value
-            amountPaid: refundAmount, // ✅ Positive value
-            amountDue: Math.max(0, returnTotalCost - refundAmount),
-            status:
-              refundAmount >= returnTotalCost
-                ? "paid"
-                : refundAmount > 0
-                  ? "partial"
-                  : "unpaid",
+            totalAmount: returnTotalCost,
+            amountPaid: refundAmount,
+            amountDue:
+              Number(originalPurchase.amountDue) > 0
+                ? Math.max(0, Number(originalPurchase.amountDue) - refundAmount)
+                : 0,
+            status: "مرتجع",
+            // Link to original purchase
           },
         });
 
-        // 6. Create purchase item for return (POSITIVE QUANTITY)
+        // 7. Create purchase item for return (POSITIVE QUANTITY)
         await tx.purchaseItem.create({
           data: {
             companyId,
             purchaseId: purchaseReturn.id,
             productId,
-            quantity: returnQuantity, // ✅ Positive quantity
+            quantity: returnQuantity,
             unitCost,
-            totalCost: returnTotalCost, // ✅ Positive value
+            totalCost: returnTotalCost,
           },
         });
 
-        // 7. Update inventory (DECREASE stock)
+        // 8. Update inventory (DECREASE stock)
         const newStockQty = inventory.stockQuantity - returnQuantityInUnits;
         const newAvailableQty =
           inventory.availableQuantity - returnQuantityInUnits;
@@ -443,7 +488,7 @@ export async function processPurchaseReturn(
           },
         });
 
-        // 8. Record stock movement
+        // 9. Record stock movement
         await tx.stockMovement.create({
           data: {
             companyId,
@@ -457,11 +502,13 @@ export async function processPurchaseReturn(
             quantityAfter: newStockQty,
             referenceType: "purchase_return",
             referenceId: purchaseReturn.id,
-            notes: reason || `إرجاع ${returnQuantity} ${returnUnit}`,
+            notes:
+              reason ||
+              `إرجاع ${returnQuantity} ${returnUnit} من فاتورة ${purchaseId}`,
           },
         });
 
-        // 9. Handle refund payment if any
+        // 10. Handle refund payment if any
         if (refundAmount > 0 && paymentMethod) {
           await tx.supplierPayment.create({
             data: {
@@ -469,27 +516,33 @@ export async function processPurchaseReturn(
               supplierId,
               purchaseId: purchaseReturn.id,
               createdBy: userId,
-              amount: refundAmount, // ✅ Positive value (money back from supplier)
+              amount: refundAmount,
               paymentMethod,
-              note: reason || "استرداد مبلغ من المورد",
+              note: reason || `استرداد مبلغ من المورد - فاتورة ${purchaseId}`,
             },
           });
         }
 
-        // 10. Update supplier balance
+        // 11. Update supplier balance
         await tx.supplier.update({
-          where: { id: supplierId, companyId },
+          where: { id: supplierId },
           data: {
-            totalPurchased: { decrement: returnTotalCost },
+            totalPurchased: {
+              set: Math.max(
+                0,
+                Number(supplier.totalPurchased) - returnTotalCost,
+              ),
+            },
             ...(refundAmount > 0 && {
-              totalPaid: { decrement: refundAmount },
+              totalPaid: {
+                set: Math.max(0, Number(supplier.totalPaid) - refundAmount),
+              },
             }),
             outstandingBalance: {
-              increment:
-                originalPaymentStatus === "unpaid" ||
-                originalPaymentStatus === "partial"
-                  ? returnTotalCost - refundAmount
-                  : 0,
+              set: Math.max(
+                0,
+                Number(supplier.outstandingBalance) - outstandingDecrease,
+              ),
             },
           },
         });
@@ -500,7 +553,7 @@ export async function processPurchaseReturn(
           purchaseReturn,
           returnAmount: returnTotalCost,
           refundAmount,
-          originalPaymentStatus,
+          originalPurchaseId: purchaseId,
         };
       },
       {
@@ -510,6 +563,7 @@ export async function processPurchaseReturn(
     );
 
     revalidatePath("/manageinvetory");
+    revalidatePath("/purchases"); // Add this path too
 
     return result;
   } catch (error: any) {
@@ -520,205 +574,6 @@ export async function processPurchaseReturn(
     };
   }
 }
-// export async function updateInventory(
-//   data: ExtendedInventoryUpdateData,
-//   userId: string,
-//   companyId: string,
-// ) {
-//   try {
-//     const {
-//       id,
-//       reason = "تحديث_يدوي",
-//       notes,
-//       updateType,
-//       availableQuantity: inputCartons,
-//       stockQuantity: inputCartonsStock,
-//       quantity: purchaseQty,
-//       unitCost,
-//       paymentMethod,
-//       paymentAmount,
-//       supplierId: providedSupplierId,
-//       warehouseId: targetWarehouseId,
-//       ...updateData
-//     } = data;
-
-//     const currentInventory = await prisma.inventory.findUnique({
-//       where: { id, companyId },
-//       include: { product: true, warehouse: true },
-//     });
-//     if (!currentInventory) throw new Error("سجل المخزون غير موجود");
-
-//     const product = currentInventory.product;
-//     const unitsPerPacket = product.unitsPerPacket || 1;
-//     const packetsPerCarton = product.packetsPerCarton || 1;
-//     const supplierId = providedSupplierId || product.supplierId;
-//     if (!supplierId) throw new Error("يجب تحديد المورد");
-
-//     const supplierExists = await prisma.supplier.findUnique({
-//       where: { id: supplierId },
-//     });
-//     if (!supplierExists) throw new Error("المورد غير موجود");
-
-//     const cartonToUnits = (cartons: number) =>
-//       cartons * packetsPerCarton * unitsPerPacket;
-
-//     const availableUnits = inputCartons ? cartonToUnits(inputCartons) : 0;
-//     const stockUnits = inputCartonsStock ? cartonToUnits(inputCartonsStock) : 0;
-
-//     // 👇 Determine which inventory record to update
-//     let inventoryTarget =
-//       targetWarehouseId === currentInventory.warehouseId
-//         ? currentInventory
-//         : await prisma.inventory.upsert({
-//             where: {
-//               companyId_productId_warehouseId: {
-//                 companyId,
-//                 productId: product.id,
-//                 warehouseId: targetWarehouseId!,
-//               },
-//             },
-//             update: {},
-//             create: {
-//               companyId,
-//               productId: product.id,
-//               warehouseId: targetWarehouseId!,
-//               availableQuantity: 0,
-//               stockQuantity: 0,
-//               reorderLevel: currentInventory.reorderLevel,
-//               maxStockLevel: currentInventory.maxStockLevel,
-//               status: "متوفر",
-//               lastStockTake: new Date(),
-//             },
-//           });
-
-//     const finalAvailableQty =
-//       inventoryTarget.availableQuantity + availableUnits;
-//     const finalStockQty = inventoryTarget.stockQuantity + stockUnits;
-
-//     let calculatedStatus: "available" | "low" | "out_of_stock" = "available";
-//     if (finalAvailableQty <= 0) calculatedStatus = "out_of_stock";
-//     else if (finalAvailableQty < inventoryTarget.reorderLevel)
-//       calculatedStatus = "low";
-
-//     // ✅ 1. Create purchase record if supplier update
-//     let purchaseId: string | null = null;
-//     if (updateType === "supplier" && inputCartons && unitCost) {
-//       const totalCost = inputCartons * unitCost;
-
-//       const purchase = await prisma.purchase.create({
-//         data: {
-//           companyId,
-//           supplierId,
-//           totalAmount: totalCost,
-//           amountDue: totalCost,
-//           status: "pending",
-//         },
-//       });
-
-//       await prisma.purchaseItem.create({
-//         data: {
-//           companyId,
-//           purchaseId: purchase.id,
-//           productId: product.id,
-//           quantity: inputCartons,
-//           unitCost,
-//           totalCost,
-//         },
-//       });
-
-//       purchaseId = purchase.id;
-
-//       // ✅ 2. If payment exists, record payment + journal entries
-//       if (paymentMethod && paymentAmount && paymentAmount > 0) {
-//         await recordSupplierPaymentWithJournalEntries(
-//           {
-//             supplierId,
-//             amount: paymentAmount,
-//             paymentMethod,
-//             note: notes,
-//           },
-//           userId,
-//           companyId,
-//         );
-
-//         await prisma.purchase.update({
-//           where: { id: purchase.id },
-//           data: {
-//             amountPaid: paymentAmount,
-//             amountDue: Math.max(0, totalCost - paymentAmount),
-//             status: paymentAmount >= totalCost ? "paid" : "partial",
-//           },
-//         });
-//       }
-//     }
-
-//     // ✅ 3. Update final inventory
-//     const updatedInventory = await prisma.inventory.update({
-//       where: { id: inventoryTarget.id },
-//       data: {
-//         ...updateData,
-//         availableQuantity: finalAvailableQty,
-//         stockQuantity: finalStockQty,
-//         status: calculatedStatus,
-//         ...(data.lastStockTake && {
-//           lastStockTake: new Date(data.lastStockTake),
-//         }),
-//       },
-//       include: {
-//         product: { select: { name: true, sku: true } },
-//         warehouse: { select: { name: true, location: true } },
-//       },
-//     });
-
-//     // ✅ 4. Record stock movement
-//     const stockDifference = finalStockQty - inventoryTarget.stockQuantity;
-//     if (stockDifference !== 0) {
-//       await prisma.stockMovement.create({
-//         data: {
-//           companyId,
-//           productId: product.id,
-//           warehouseId: inventoryTarget.warehouseId,
-//           userId,
-//           movementType: stockDifference > 0 ? "وارد" : "صادر",
-//           quantity: Math.abs(stockDifference),
-//           reason: supplierId ? "تم_استلام_المورد" : reason,
-//           quantityBefore: inventoryTarget.stockQuantity,
-//           quantityAfter: finalStockQty,
-//           notes:
-//             notes ||
-//             `${supplierId ? "Stock from supplier" : "Inventory update"}: ${
-//               stockDifference > 0 ? "+" : ""
-//             }${stockDifference}`,
-//         },
-//       });
-//     }
-
-//     // ✅ 5. Log activity
-//     await prisma.activityLogs.create({
-//       data: {
-//         userId,
-//         companyId,
-//         action:
-//           updateType === "supplier"
-//             ? "تم_استلام_مخزون_المورد"
-//             : "تم_تحديث_المخزون",
-//         details: `المنتج: ${product.name}, المخزون النهائي: ${finalStockQty}${
-//           paymentAmount ? `, الدفع: ${paymentAmount}` : ""
-//         }`,
-//       },
-//     });
-
-//     revalidatePath("/manageinvetory");
-//     return { success: true, data: updatedInventory };
-//   } catch (error) {
-//     console.error("خطأ في تحديث المخزون:", error);
-//     return {
-//       success: false,
-//       error: error instanceof Error ? error.message : "فشل تحديث المخزون",
-//     };
-//   }
-// }
-
 export async function adjustStock(
   productId: string,
   warehouseId: string,
@@ -1054,7 +909,9 @@ export async function getInventoryById(
             sku: true,
             costPrice: true,
             unitsPerPacket: true,
+            type: true,
             packetsPerCarton: true,
+
             supplier: { select: { id: true, name: true } }, // ✅ تأكد أن هذا موجود
           },
         },
@@ -1066,6 +923,9 @@ export async function getInventoryById(
             location: true,
           },
         },
+        receiptNo: true,
+        lastPurchaseId: true,
+        lastPurchaseItemId: true,
         warehouseId: true,
         stockQuantity: true,
         reservedQuantity: true,
@@ -1098,27 +958,109 @@ export async function getInventoryById(
 
       return { availablePackets, availableCartons };
     }
-
     const convertedInventory = inventory.map((item) => {
-      const { availableCartons } = convertFromBaseUnit(
+      const availableUnits = item.availableQuantity ?? 0;
+
+      const { availablePackets, availableCartons } = convertFromBaseUnit(
         item.product,
         item.availableQuantity,
       );
-      const { availableCartons: stockCartons } = convertFromBaseUnit(
-        item.product,
-        item.availableQuantity,
-      );
-      const { availableCartons: reservedCartons } = convertFromBaseUnit(
-        item.product,
-        item.reservedQuantity,
-      );
+
+      const { availablePackets: stockPackets, availableCartons: stockCartons } =
+        convertFromBaseUnit(item.product, item.stockQuantity);
+
+      const {
+        availablePackets: reservedPackets,
+        availableCartons: reservedCartons,
+      } = convertFromBaseUnit(item.product, item.reservedQuantity);
+
+      let finalAvailableUnits = 0;
+      let finalAvailablePackets = 0;
+      let finalAvailableCartons = 0;
+
+      let finalStockUnits = 0;
+      let finalStockPackets = 0;
+      let finalStockCartons = 0;
+
+      let finalReservedUnits = 0;
+      let finalReservedPackets = 0;
+      let finalReservedCartons = 0;
+
+      if (item.product.type === "full") {
+        finalAvailableUnits = availableUnits;
+        finalAvailablePackets = availablePackets;
+        finalAvailableCartons = availableCartons;
+
+        finalStockUnits = availableUnits;
+        finalStockPackets = stockPackets;
+        finalStockCartons = stockCartons;
+
+        finalReservedUnits = availableUnits;
+        finalReservedPackets = reservedPackets;
+        finalReservedCartons = reservedCartons;
+      } else if (item.product.type === "cartonUnit") {
+        finalAvailableUnits = availableUnits;
+        finalAvailableCartons = availableCartons;
+        finalAvailablePackets = 0;
+
+        finalStockUnits = availableUnits;
+        finalStockCartons = stockCartons;
+        finalStockPackets = 0;
+
+        finalReservedUnits = availableUnits;
+        finalReservedCartons = reservedCartons;
+        finalReservedPackets = 0;
+      } else if (item.product.type === "cartonOnly") {
+        finalAvailableCartons = availableCartons;
+        finalAvailableUnits = 0;
+        finalAvailablePackets = 0;
+
+        finalStockCartons = stockCartons;
+        finalStockUnits = 0;
+        finalStockPackets = 0;
+
+        finalReservedCartons = reservedCartons;
+        finalReservedUnits = 0;
+        finalReservedPackets = 0;
+      } else if (item.product.type === "unit") {
+        finalAvailableUnits = availableUnits;
+        finalAvailablePackets = 0;
+        finalAvailableCartons = 0;
+
+        finalStockUnits = availableUnits;
+        finalStockPackets = 0;
+        finalStockCartons = 0;
+
+        finalReservedUnits = availableUnits;
+        finalReservedPackets = 0;
+        finalReservedCartons = 0;
+      } else if (item.product.type === "packetUnit") {
+        finalAvailableUnits = availableUnits;
+        finalAvailablePackets = availablePackets;
+        finalAvailableCartons = 0;
+
+        finalStockUnits = availableUnits;
+        finalStockPackets = stockPackets;
+        finalStockCartons = 0;
+
+        finalReservedUnits = availableUnits;
+        finalReservedPackets = reservedPackets;
+        finalReservedCartons = 0;
+      }
 
       return {
         ...item,
+        availableUnits: finalAvailableUnits,
+        availablePackets: finalAvailablePackets,
+        availableCartons: finalAvailableCartons,
 
-        availableQuantity: availableCartons, // 👈 show in cartons
-        stockQuantity: stockCartons,
-        reservedQuantity: reservedCartons,
+        stockUnits: finalStockUnits,
+        stockPackets: finalStockPackets,
+        stockCartons: finalStockCartons,
+
+        reservedUnits: finalReservedUnits,
+        reservedPackets: finalReservedPackets,
+        reservedCartons: finalReservedCartons,
       };
     });
     const inventories = serializeData(convertedInventory);

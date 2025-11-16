@@ -41,6 +41,8 @@ interface SectionCardsProps {
       unreceivedChart: Array<{ date: string; value: number }>;
       receivedChart: Array<{ date: string; value: number }>;
     };
+    profit: { total: number; chart: Array<{ date: string; value: number }> };
+
     netProfit: any;
   };
   productStats: {
@@ -110,10 +112,10 @@ export default function SectionCards({
   const sections = [
     {
       description: "revenue",
-      title: `${salesSummary.revenue.total} `,
+      title: `${salesSummary.sales.total} `,
       label: t("revenue"),
       link: "",
-      chartData: salesSummary.revenue.chart,
+      chartData: salesSummary.sales.chart,
       bg: "bg-gradient-to-r dark:from-blue-500 dark:to-indigo-700 from-chart-2 to-chart-3",
     },
     {
@@ -134,10 +136,10 @@ export default function SectionCards({
     },
     {
       description: "receivedDebt",
-      title: `${salesSummary.netProfit} `,
+      title: `${salesSummary.profit.total} `,
       label: "صافي الربح",
       link: "/chartOfAccount",
-      chartData: salesSummary.sales.chart,
+      chartData: salesSummary.profit.chart,
       bg: "bg-gradient-to-r dark:from-pink-500 dark:to-rose-700 from-chart-1 to-chart-3",
     },
   ];

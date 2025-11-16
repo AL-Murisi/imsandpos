@@ -46,7 +46,82 @@ export default function PurchaseReturnForm({ inventory }: { inventory: any }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuth();
   if (!user) return null;
+  const UnitOption = [
+    { id: "unit", name: "وحدة" },
+    { id: "packet", name: "علبة" },
+    { id: "carton", name: "كرتون" },
+  ];
+  // How many individual units in a carton or packet
+  const unitConversion = (product: any) => {
+    switch (product.type) {
+      case "full":
+      case "cartonUnit":
+        return {
+          carton: 1, // costPrice is per carton
+          packet: product.packetSize || 10, // units in a packet
+          unit: product.cartonSize || 100, // units in a carton
+        };
+      case "cartonOnly":
+        return {
+          carton: 1,
+        };
+      case "unit":
+        return {
+          unit: 1,
+        };
+      default:
+        return {
+          unit: 1,
+        };
+    }
+  };
+  const getUnitCost = (
+    product: any,
+    returnUnit: "unit" | "packet" | "carton",
+  ) => {
+    const conversion = unitConversion(product);
 
+    if (returnUnit === "carton") return product.costPrice;
+
+    if (returnUnit === "packet") {
+      const unitsInPacket = conversion.packet;
+      return product.costPrice / unitsInPacket; // price per packet
+    }
+
+    if (returnUnit === "unit") {
+      const unitsInCarton = conversion.unit;
+      return product.costPrice / unitsInCarton; // price per unit
+    }
+
+    return product.costPrice;
+  };
+
+  // inventory.product.type example: "full", "carton", "unit", "unit_carton"
+  const productType = inventory.product.type;
+  type UnitType = "unit" | "packet" | "carton";
+
+  function getUnitsByProductType(type: string): UnitType[] {
+    switch (type) {
+      case "full":
+        return ["unit", "packet", "carton"];
+
+      case "cartonOnly":
+        return ["carton"];
+
+      case "cartonUnit":
+        return ["carton", "unit"];
+
+      default:
+        return ["unit"]; // fallback
+    }
+  }
+
+  // filter based on product type
+  const filteredUnitIds = getUnitsByProductType(productType);
+  const filteredUnits = UnitOption.filter((u) =>
+    filteredUnitIds.includes(u.id as UnitType),
+  );
+  const allowedUnits = getUnitsByProductType(inventory.product.type);
   const {
     register,
     handleSubmit,
@@ -57,7 +132,7 @@ export default function PurchaseReturnForm({ inventory }: { inventory: any }) {
   } = useForm<FormValues>({
     resolver: zodResolver(PurchaseReturnSchema),
     defaultValues: {
-      returnUnit: "unit",
+      returnUnit: allowedUnits[0],
       supplierId: inventory.product?.supplier?.id || "",
       warehouseId: inventory.warehouseId || "",
       unitCost:
@@ -70,12 +145,12 @@ export default function PurchaseReturnForm({ inventory }: { inventory: any }) {
   const supplierId = watch("supplierId");
   const warehouseId = watch("warehouseId");
   const quantity = watch("returnQuantity");
-  const unitCost = watch("unitCost");
   const refundAmount = watch("refundAmount");
   const paymentMethod = watch("paymentMethod");
   const returnUnit = watch("returnUnit");
+  const unitCost = getUnitCost(inventory.product, returnUnit);
 
-  const totalCost = (quantity || 0) * (unitCost || 0);
+  const totalCost = (quantity || 0) * unitCost;
 
   const paymentMethods = [
     { id: "cash", name: "نقداً" },
@@ -83,6 +158,11 @@ export default function PurchaseReturnForm({ inventory }: { inventory: any }) {
     { id: "check", name: "شيك" },
     { id: "credit", name: "ائتمان" },
   ];
+  useEffect(() => {
+    if (filteredUnitIds.length > 0) {
+      setValue("returnUnit", filteredUnitIds[0]);
+    }
+  }, [productType]);
 
   useEffect(() => {
     if (!open) {
@@ -100,6 +180,27 @@ export default function PurchaseReturnForm({ inventory }: { inventory: any }) {
     loadData();
   }, [open, user.companyId, reset]);
 
+  useEffect(() => {
+    if (!inventory) return;
+
+    let maxQty = 0;
+    switch (returnUnit) {
+      case "unit":
+        maxQty = inventory.availableUnits ?? 0;
+        break;
+      case "packet":
+        maxQty = inventory.availablePackets ?? 0;
+        break;
+      case "carton":
+        maxQty = inventory.availableCartons ?? 0;
+        break;
+    }
+    setValue("unitCost", unitCost);
+    if (quantity > maxQty) {
+      setValue("returnQuantity", maxQty); // auto-correct to max available
+    }
+  }, [quantity, returnUnit, inventory, setValue]);
+
   const onSubmit = async (data: FormValues) => {
     if (!inventory.product?.id) {
       return toast.error("المنتج غير موجود");
@@ -115,6 +216,8 @@ export default function PurchaseReturnForm({ inventory }: { inventory: any }) {
 
     try {
       const payload = {
+        purchaseId: inventory.lastPurchaseId,
+        purchaseItemId: inventory.lastPurchaseItemId,
         productId: inventory.product.id,
         warehouseId,
         supplierId,
@@ -204,14 +307,12 @@ export default function PurchaseReturnForm({ inventory }: { inventory: any }) {
 
           <div className="grid gap-2">
             <Label>الوحدة</Label>
-            <select
-              {...register("returnUnit")}
-              className="rounded-md border border-gray-300 px-2 py-2"
-            >
-              <option value="unit">وحدة</option>
-              <option value="packet">علبة</option>
-              <option value="carton">كرتون</option>
-            </select>
+
+            <SelectField
+              options={filteredUnits}
+              value={returnUnit}
+              action={(val) => setValue("returnUnit", val as UnitType)}
+            />
           </div>
 
           <div className="grid gap-2">
@@ -225,7 +326,7 @@ export default function PurchaseReturnForm({ inventory }: { inventory: any }) {
 
         {/* الإجمالي */}
         {quantity && unitCost ? (
-          <div className="rounded-md bg-gray-50 p-3 text-sm font-medium">
+          <div className="rounded-md p-3 text-sm font-medium">
             الإجمالي: <span className="font-bold">{totalCost}</span>
           </div>
         ) : null}

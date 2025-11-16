@@ -201,6 +201,7 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
           value: d.revenue,
         })),
       },
+
       purchases: {
         total: summaryCards.purchases.total,
         chart: dashboardData.salesOverview.data.map((d) => ({
@@ -208,6 +209,7 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
           value: d.purchases,
         })),
       },
+
       revenue: {
         total: summaryCards.revenue.total,
         chart: dashboardData.revenueChart.map((d) => ({
@@ -215,16 +217,28 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
           value: d.total,
         })),
       },
+
       debt: {
         unreceived: summaryCards.debt.unreceived,
-        received: 0, // TODO: Add received debt logic
+        received: 0, // TODO: add logic later
         unreceivedChart: dashboardData.salesOverview.data.map((d) => ({
           date: d.date,
           value: d.debts,
-        })), // TODO: Add chart data
+        })),
         receivedChart: [],
       },
-      netProfit: summaryCards.netProfit,
+
+      // ✅ ADD PROFIT HERE
+      profit: {
+        total: summaryCards.netProfit, // total profit for card
+        chart: dashboardData.salesOverview.data.map((d) => ({
+          date: d.date,
+          value: d.profit, // daily profit from getSalesOverview
+        })),
+      },
+
+      netProfit: summaryCards.netProfit, // keep if used elsewhere
+
       expenseBreakdown: dashboardData.expenseBreakdown,
     };
 
