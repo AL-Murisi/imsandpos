@@ -8,10 +8,11 @@ import { getSession } from "@/lib/session";
 
 export async function POST(
   req: Request,
-  { params }: { params: { reportType: string } },
+  context: { params: { reportType: string } },
 ) {
+  const { reportType } = context.params;
+
   try {
-    const reportType = params.reportType; // ✅ FIXED
     const { from, to } = await req.json();
     const user = await getSession();
     if (!user)
