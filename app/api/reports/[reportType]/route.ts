@@ -11,7 +11,7 @@ export async function POST(
   { params }: { params: { reportType: string } },
 ) {
   try {
-    const { reportType } = await params;
+    const reportType = params.reportType; // ✅ FIXED
     const { from, to } = await req.json();
     const user = await getSession();
     if (!user)
