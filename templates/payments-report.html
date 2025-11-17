@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <title>تقرير المدفوعات</title>
+    <style>
+      body {
+        font-family: "Tahoma", sans-serif;
+        direction: rtl;
+        text-align: right;
+        margin: 40px;
+        background: #f8f9fa;
+        color: #333;
+      }
+      .header {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+      .header h1 {
+        font-size: 28px;
+        color: #2c3e50;
+        margin-bottom: 5px;
+      }
+      .header h3 {
+        font-size: 18px;
+        color: #34495e;
+        margin-bottom: 3px;
+      }
+      .header p {
+        font-size: 16px;
+        color: #555;
+      }
+      .section-title {
+        font-size: 20px;
+        background: #9b59b6;
+        color: #fff;
+        padding: 8px 12px;
+        border-radius: 5px;
+        margin-top: 30px;
+        margin-bottom: 10px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 25px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+      }
+      table th,
+      table td {
+        padding: 12px;
+        border: 1px solid #ddd;
+        font-size: 15px;
+        text-align: center;
+      }
+      table th {
+        background: #8e44ad;
+        color: #fff;
+      }
+      .total-row {
+        background: #ecf0f1;
+        font-weight: bold;
+        color: #2c3e50;
+      }
+      .footer {
+        margin-top: 50px;
+        text-align: center;
+        font-size: 14px;
+        color: #777;
+      }
+      .currency {
+        font-family: "Tahoma", sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>تقرير المدفوعات</h1>
+      <h3>{{companyName}}</h3>
+      <p>الفترة: {{dateFrom}} إلى {{dateTo}}</p>
+    </div>
+
+    <div class="section-title">المدفوعات</div>
+    <table>
+      <thead>
+        <tr>
+          <th>المستفيد</th>
+          <th>طريقة الدفع</th>
+          <th>المبلغ</th>
+          <th>تاريخ الدفع</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each payments}}
+        <tr>
+          <td>{{this.payee}}</td>
+          <td>{{this.method}}</td>
+          <td class="currency">{{this.amount}}</td>
+          <td>{{this.date}}</td>
+        </tr>
+        {{/each}}
+        <tr class="total-row">
+          <td colspan="2">إجمالي المدفوعات</td>
+          <td class="currency">{{totalPayments}}</td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="footer">
+      تم إنشاء هذا التقرير بواسطة نظام إدارة المخزون والمحاسبة.
+    </div>
+  </body>
+</html>

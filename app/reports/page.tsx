@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -11,54 +12,94 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { CalendarIcon, DownloadIcon } from "lucide-react";
+import { DownloadIcon } from "lucide-react";
 import { format } from "date-fns/format";
+import { SelectField } from "@/components/common/selection";
+import { Calendar22 } from "@/components/common/DatePicker";
 
 const reports = [
-  { value: "sales", label: "Sales Report" },
-  { value: "inventory", label: "Inventory Report" },
-  { value: "payments", label: "Payments Report" },
-  { value: "customers", label: "Customers Report" },
+  { id: "sales", name: "تقرير المبيعات" },
+  { id: "inventory", name: "تقرير المخزون" },
+  { id: "payments", name: "تقرير المدفوعات" },
+  { id: "customers", name: "تقرير العملاء" },
+  { id: "profit-loss", name: "تقرير الربح والخسارة" },
 ];
 
 export default function ReportsPage() {
-  const [reportType, setReportType] = useState<string>("");
-  const [fromDate, setFromDate] = useState<string>("");
-  const [toDate, setToDate] = useState<string>("");
+  const searchParams = useSearchParams();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  // Get initial values from URL params
+  const [fromDate, setFromDate] = useState<string>(
+    searchParams.get("from") || "",
+  );
+  const [toDate, setToDate] = useState<string>(searchParams.get("to") || "");
+  const [reportType, setReportType] = useState<string>(
+    searchParams.get("reportType") || "",
+  );
+
+  // Update state if URL params change
+  useEffect(() => {
+    const from = searchParams.get("from");
+    const to = searchParams.get("to");
+    const type = searchParams.get("reportType");
+
+    if (from) setFromDate(from);
+    if (to) setToDate(to);
+    if (type) setReportType(type);
+  }, [searchParams]);
 
   const handleDownload = async () => {
-    if (!reportType) return alert("Please select a report type");
+    if (!reportType) return alert("الرجاء اختيار نوع التقرير");
+    setIsSubmitting(true);
+    const endpoint = `/api/reports/${reportType}`;
 
-    // Example API call
-    const query = new URLSearchParams({
-      reportType,
-      fromDate,
-      toDate,
-    });
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fromDate,
+          toDate,
+        }),
+      });
 
-    const res = await fetch(`/api/reports/download?${query.toString()}`);
-    if (!res.ok) return alert("Failed to download report");
+      if (!res.ok) return alert("فشل تحميل التقرير");
 
-    const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${reportType}-${format(new Date(), "yyyy-MM-dd")}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${reportType}-${format(new Date(), "yyyy-MM-dd")}.pdf`;
+      a.click();
+
+      window.URL.revokeObjectURL(url);
+      setIsSubmitting(false);
+    } catch (err) {
+      console.error(err);
+      setIsSubmitting(false);
+      alert("حدث خطأ أثناء تحميل التقرير");
+    }
   };
 
   return (
     <div className="mx-auto max-w-4xl p-4">
-      <h1 className="mb-6 text-2xl font-bold">📊 Reports</h1>
+      <h1 className="mb-6 text-2xl font-bold">📊 التقارير</h1>
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2">
         {/* Report Type */}
-        <div>
-          <Label>Report Type</Label>
-          <Select value={reportType} onValueChange={setReportType}>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3">
+            <SelectField
+              placeholder="اختر التقرير"
+              options={reports}
+              paramKey={"reportType"}
+            />
+          </div>
+
+          {/* <Select value={reportType} onValueChange={setReportType}>
             <SelectTrigger>
-              <SelectValue placeholder="Select a report" />
+              <SelectValue placeholder="اختر التقرير" />
             </SelectTrigger>
             <SelectContent>
               {reports.map((r) => (
@@ -67,35 +108,23 @@ export default function ReportsPage() {
                 </SelectItem>
               ))}
             </SelectContent>
-          </Select>
+          </Select> */}
+          <div>
+            {" "}
+            <Calendar22 />
+          </div>
         </div>
 
         {/* From Date */}
-        <div>
-          <Label>From</Label>
-          <Input
-            type="date"
-            value={fromDate}
-            onChange={(e) => setFromDate(e.target.value)}
-            placeholder="Start date"
-          />
-        </div>
-
-        {/* To Date */}
-        <div>
-          <Label>To</Label>
-          <Input
-            type="date"
-            value={toDate}
-            onChange={(e) => setToDate(e.target.value)}
-            placeholder="End date"
-          />
-        </div>
       </div>
 
-      <Button onClick={handleDownload} className="flex items-center gap-2">
+      <Button
+        disabled={isSubmitting}
+        onClick={handleDownload}
+        className="flex items-center gap-2"
+      >
         <DownloadIcon className="h-4 w-4" />
-        Download Report
+        {isSubmitting ? "  تنزيل التقرير" : "تحميل التقرير"}
       </Button>
     </div>
   );

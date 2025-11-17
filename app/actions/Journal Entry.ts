@@ -603,92 +603,98 @@ export async function getProfitAndLoss(
 }
 
 // Balance Sheet
-export async function getBalanceSheet(companyId: string, asOfDate: Date) {
+export async function getBalanceSheet(from?: string, to?: string) {
+  const company = await getSession();
+  if (!company) return [];
+  const fromatDate = from ? new Date(from).toISOString() : undefined;
+  const toDate = to ? new Date(to).toISOString() : undefined;
+
   const assets = await prisma.accounts.findMany({
     where: {
-      company_id: companyId,
+      company_id: company.companyId,
       account_type: "ASSET",
       is_active: true,
-    },
-    include: {
-      journal_entries: {
-        where: {
-          is_posted: true,
-          entry_date: { lte: asOfDate },
-        },
+      updated_at: {
+        ...(fromatDate && {
+          gte: fromatDate,
+        }),
+        ...(toDate && {
+          lte: toDate,
+        }),
       },
+    },
+    select: {
+      balance: true,
+      account_name_en: true,
     },
   });
 
   const liabilities = await prisma.accounts.findMany({
     where: {
-      company_id: companyId,
+      company_id: company.companyId,
       account_type: "LIABILITY",
       is_active: true,
-    },
-    include: {
-      journal_entries: {
-        where: {
-          is_posted: true,
-          entry_date: { lte: asOfDate },
-        },
+
+      updated_at: {
+        ...(fromatDate && {
+          gte: fromatDate,
+        }),
+        ...(toDate && {
+          lte: toDate,
+        }),
       },
+    },
+    select: {
+      balance: true,
+      account_name_en: true,
     },
   });
 
   const equity = await prisma.accounts.findMany({
     where: {
-      company_id: companyId,
+      company_id: company.companyId,
       account_type: "EQUITY",
       is_active: true,
-    },
-    include: {
-      journal_entries: {
-        where: {
-          is_posted: true,
-          entry_date: { lte: asOfDate },
-        },
+      updated_at: {
+        ...(fromatDate && {
+          gte: fromatDate,
+        }),
+        ...(toDate && {
+          lte: toDate,
+        }),
       },
+    },
+    select: {
+      balance: true,
+      account_name_en: true,
     },
   });
 
-  const calculateBalance = (accounts: any[]) => {
-    return accounts.reduce((sum, account) => {
-      const accountBalance = account.journal_entries.reduce(
-        (accSum: number, entry: any) => {
-          return accSum + Number(entry.debit) - Number(entry.credit);
-        },
-        0,
-      );
-      return sum + accountBalance;
-    }, 0);
-  };
-
-  const totalAssets = calculateBalance(assets);
-  const totalLiabilities = calculateBalance(liabilities);
-  const totalEquity = calculateBalance(equity);
-
+  const totalAssets = assets.reduce(
+    (sum, account) => sum + Number(account.balance),
+    0,
+  );
+  const totalLiabilities = liabilities.reduce(
+    (sum, account) => sum + Number(account.balance),
+    0,
+  );
+  const totalEquity = equity.reduce(
+    (sum, account) => sum + Number(account.balance),
+    0,
+  );
+  console.log(totalAssets);
   return {
     assets: assets.map((acc) => ({
       name: acc.account_name_en,
-      balance: acc.journal_entries.reduce(
-        (sum: number, e: any) => sum + Number(e.debit) - Number(e.credit),
-        0,
-      ),
+      balance: Number(acc.balance),
     })),
     liabilities: liabilities.map((acc) => ({
       name: acc.account_name_en,
-      balance: acc.journal_entries.reduce(
-        (sum: number, e: any) => sum + Number(e.credit) - Number(e.debit),
-        0,
-      ),
+      balance: Number(acc.balance),
     })),
     equity: equity.map((acc) => ({
       name: acc.account_name_en,
-      balance: acc.journal_entries.reduce(
-        (sum: number, e: any) => sum + Number(e.credit) - Number(e.debit),
-        0,
-      ),
+      balance: Number(acc.balance),
     })),
     totalAssets,
     totalLiabilities,

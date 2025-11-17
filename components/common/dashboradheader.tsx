@@ -10,7 +10,6 @@ const DateRangeFilter = dynamic(
   () => import("./testting").then((mod) => mod.DateRangeFilter),
   {
     ssr: false, // Don't render on the server
-    loading: () => <input type="date" />, // Fallback while loading
   },
 );
 
