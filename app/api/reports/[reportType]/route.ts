@@ -1,11 +1,15 @@
 import prisma from "@/lib/prisma";
 import fs from "fs";
+import path from "path";
 import Handlebars from "handlebars";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { getBrowser } from "@/lib/puppeteerInstance";
 import { getSession } from "@/lib/session";
 import { getCompany } from "@/app/actions/createcompnayacc";
 
+export const runtime = "nodejs"; // MUST for puppeteer + fs
+
+// Correct interface in Next.js App Router
 // Updated interface - params is now a Promise
 interface RouteContext {
   params: Promise<{
@@ -18,14 +22,14 @@ export async function POST(req: NextRequest, context: RouteContext) {
     // Await the params Promise
     const { reportType } = await context.params;
 
-    // Destructure raw date strings from the client body (e.g., "2025-11-01")
+    // Parse body
     const { from: rawFrom, to: rawTo } = await req.json();
 
-    // 1. ISO Dates for Prisma Queries (compatible with database WHERE clauses)
-    const fromatDate = rawFrom ? new Date(rawFrom).toISOString() : undefined;
+    // Query-compatible ISO dates
+    const fromDate = rawFrom ? new Date(rawFrom).toISOString() : undefined;
     const toDate = rawTo ? new Date(rawTo).toISOString() : undefined;
 
-    // 2. Display Dates for Handlebars Template (formatted for 'ar-EG')
+    // Display dates for template
     const fromDisplayDate = rawFrom
       ? new Date(rawFrom).toLocaleDateString("ar-EG")
       : "";
@@ -33,44 +37,45 @@ export async function POST(req: NextRequest, context: RouteContext) {
       ? new Date(rawTo).toLocaleDateString("ar-EG")
       : "";
 
+    // Auth
     const user = await getSession();
     if (!user)
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const company = await getCompany(user.companyId);
-    let data: any = {};
-    let templatePath = "";
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+      });
 
+    const company = await getCompany(user.companyId);
+
+    let data: any = {};
+    let templateFile = "";
+
+    /* ===========================
+        REPORT SWITCH
+    ============================*/
     switch (reportType) {
       case "sales":
-        templatePath = "templates/sales-report.html";
+        templateFile = "sales-report.html";
+
         const sales = await prisma.saleItem.findMany({
           where: {
             companyId: user.companyId,
             createdAt: {
-              ...(fromatDate && {
-                gte: fromatDate,
-              }),
-              ...(toDate && {
-                lte: toDate,
-              }),
+              ...(fromDate && { gte: fromDate }),
+              ...(toDate && { lte: toDate }),
             },
           },
-          include: {
-            product: true,
-            sale: true,
-          },
+          include: { product: true, sale: true },
         });
 
         data = {
           sales: sales.map((s) => ({
             product: s.product.name,
             quantity: s.quantity,
-            total: s.totalPrice,
+            total: Number(s.totalPrice),
             sellingUnit: s.sellingUnit,
           })),
           company: company.data,
           totalSales: sales.reduce((sum, s) => sum + Number(s.totalPrice), 0),
-          // Use the Display Dates for the template keys 'from' and 'to'
           from: fromDisplayDate,
           to: toDisplayDate,
           createby: user.name,
@@ -78,17 +83,14 @@ export async function POST(req: NextRequest, context: RouteContext) {
         break;
 
       case "inventory":
-        templatePath = "templates/inventory-report.html";
+        templateFile = "inventory-report.html";
+
         const inventory = await prisma.inventory.findMany({
           where: {
             companyId: user.companyId,
             updatedAt: {
-              ...(fromatDate && {
-                gte: fromatDate,
-              }),
-              ...(toDate && {
-                lte: toDate,
-              }),
+              ...(fromDate && { gte: fromDate }),
+              ...(toDate && { lte: toDate }),
             },
           },
           select: {
@@ -101,17 +103,16 @@ export async function POST(req: NextRequest, context: RouteContext) {
                 unitsPerPacket: true,
                 type: true,
                 packetsPerCarton: true,
-
-                supplier: { select: { id: true, name: true } }, // ✅ تأكد أن هذا موجود
+                supplier: { select: { id: true, name: true } },
               },
             },
-
             warehouse: true,
             stockQuantity: true,
             availableQuantity: true,
             lastStockTake: true,
           },
         });
+
         data = {
           inventory: inventory.map((i) => ({
             product: i.product.name,
@@ -126,27 +127,21 @@ export async function POST(req: NextRequest, context: RouteContext) {
             (sum, p) => sum + Number(p.product.costPrice),
             0,
           ),
-          createby: user.name,
-          // Use the Display Dates for the template keys 'from' and 'to'
           from: fromDisplayDate,
           to: toDisplayDate,
+          createby: user.name,
         };
-
         break;
 
       case "payments":
-        templatePath = "templates/payments-report.html";
+        templateFile = "payments-report.html";
 
         const payments = await prisma.payment.findMany({
           where: {
             companyId: user.companyId,
             createdAt: {
-              ...(fromatDate && {
-                gte: fromatDate,
-              }),
-              ...(toDate && {
-                lte: toDate,
-              }),
+              ...(fromDate && { gte: fromDate }),
+              ...(toDate && { lte: toDate }),
             },
           },
           select: {
@@ -157,6 +152,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
             paymentMethod: true,
           },
         });
+
         data = {
           payments: payments.map((p) => ({
             payee: p.payment_type,
@@ -167,7 +163,6 @@ export async function POST(req: NextRequest, context: RouteContext) {
           })),
           company: company.data,
           totalPayments: payments.reduce((sum, p) => sum + Number(p.amount), 0),
-          // FIXED: Use the Display Dates defined above
           from: fromDisplayDate,
           to: toDisplayDate,
           createby: user.name,
@@ -175,20 +170,18 @@ export async function POST(req: NextRequest, context: RouteContext) {
         break;
 
       case "customers":
-        templatePath = "templates/customers-report.html";
+        templateFile = "customers-report.html";
+
         const customers = await prisma.customer.findMany({
           where: {
             companyId: user.companyId,
             updatedAt: {
-              ...(fromatDate && {
-                gte: fromatDate,
-              }),
-              ...(toDate && {
-                lte: toDate,
-              }),
+              ...(fromDate && { gte: fromDate }),
+              ...(toDate && { lte: toDate }),
             },
           },
         });
+
         data = {
           customers: customers.map((c) => ({
             name: c.name,
@@ -196,7 +189,6 @@ export async function POST(req: NextRequest, context: RouteContext) {
             balance: c.balance,
             outstanding: c.outstandingBalance,
           })),
-          // Use the Display Dates for the template keys 'from' and 'to'
           from: fromDisplayDate,
           to: toDisplayDate,
           createby: user.name,
@@ -205,50 +197,40 @@ export async function POST(req: NextRequest, context: RouteContext) {
         break;
 
       case "profit-loss":
-        templatePath = "templates/profit-loss-report.html";
-        // Fetch revenue, cogs, expenses from accounts
+        templateFile = "profit-loss-report.html";
+
         const revenueAccounts = await prisma.accounts.findMany({
           where: {
             company_id: user.companyId,
             account_type: "REVENUE",
             updated_at: {
-              ...(fromatDate && {
-                gte: fromatDate,
-              }),
-              ...(toDate && {
-                lte: toDate,
-              }),
+              ...(fromDate && { gte: fromDate }),
+              ...(toDate && { lte: toDate }),
             },
           },
         });
+
         const cogsAccounts = await prisma.accounts.findMany({
           where: {
             company_id: user.companyId,
             account_type: "EXPENSE",
-            updated_at: {
-              ...(fromatDate && {
-                gte: fromatDate,
-              }),
-              ...(toDate && {
-                lte: toDate,
-              }),
-            },
             account_category: "COST_OF_GOODS_SOLD",
+            updated_at: {
+              ...(fromDate && { gte: fromDate }),
+              ...(toDate && { lte: toDate }),
+            },
           },
         });
+
         const expenseAccounts = await prisma.accounts.findMany({
           where: {
             company_id: user.companyId,
             account_type: "EXPENSE",
-            updated_at: {
-              ...(fromatDate && {
-                gte: fromatDate,
-              }),
-              ...(toDate && {
-                lte: toDate,
-              }),
-            },
             account_category: { not: "COST_OF_GOODS_SOLD" },
+            updated_at: {
+              ...(fromDate && { gte: fromDate }),
+              ...(toDate && { lte: toDate }),
+            },
           },
         });
 
@@ -256,67 +238,80 @@ export async function POST(req: NextRequest, context: RouteContext) {
           name: r.account_name_en,
           amount: Number(r.balance),
         }));
+
         const cogs = cogsAccounts.map((c) => ({
           name: c.account_name_en,
           amount: Number(c.balance),
         }));
+
         const expenses = expenseAccounts.map((e) => ({
           name: e.account_name_en,
           amount: Number(e.balance),
         }));
 
-        const totalRevenue = revenue.reduce((sum, r) => sum + r.amount, 0);
-        const totalCogs = cogs.reduce((sum, c) => sum + c.amount, 0);
-        const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
-        const grossProfit = totalRevenue - totalCogs;
-        const netProfit = grossProfit - totalExpenses;
+        const totalRevenue = revenue.reduce((s, r) => s + r.amount, 0);
+        const totalCogs = cogs.reduce((s, c) => s + c.amount, 0);
+        const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
 
         data = {
-          companyName: "اسم الشركة",
-          // Use the Display Dates for the template keys 'from' and 'to'
-          from: fromDisplayDate,
-          to: toDisplayDate,
           revenue,
           cogs,
           expenses,
           totalRevenue,
           totalCogs,
-          grossProfit,
+          grossProfit: totalRevenue - totalCogs,
           totalExpenses,
-          netProfit,
+          netProfit: totalRevenue - totalCogs - totalExpenses,
           company: company.data,
+          from: fromDisplayDate,
+          to: toDisplayDate,
           createby: user.name,
         };
         break;
 
       default:
-        return NextResponse.json(
-          { error: "Invalid report type" },
-          { status: 400 },
-        );
+        return new Response(JSON.stringify({ error: "Invalid report type" }), {
+          status: 400,
+        });
     }
 
-    // Compile template
+    /* ================================================
+        ✅ FIXED — Safe template path (production works)
+    ================================================ */
+    const templatePath = path.join(process.cwd(), "templates", templateFile);
+
     const htmlTemplate = fs.readFileSync(templatePath, "utf8");
     const template = Handlebars.compile(htmlTemplate);
     const html = template(data);
 
-    // Generate PDF
+    /* ================================================
+        PDF GENERATION
+    ================================================ */
     const browser = await getBrowser();
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle0" });
 
-    const pdfBuffer = await page.pdf({ format: "A4", printBackground: true });
+    const pdfBuffer = await page.pdf({
+      format: "A4",
+      printBackground: true,
+    });
 
-    return new NextResponse(pdfBuffer, {
+    /* ================================================
+        ❗ MOST IMPORTANT:
+        Return Uint8Array to prevent PDF corruption
+    ================================================ */
+    return new Response(new Uint8Array(pdfBuffer), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename=${reportType}.pdf`,
+        "Content-Disposition": `attachment; filename="${reportType}.pdf"`,
       },
     });
-  } catch (err) {
-    console.error(err);
-    return NextResponse.json({ error: "PDF generation failed", err });
+  } catch (err: any) {
+    console.error("PDF Error:", err);
+    return new Response(
+      JSON.stringify({ error: "PDF generation failed", details: err.message }),
+      { status: 500 },
+    );
   }
 }
