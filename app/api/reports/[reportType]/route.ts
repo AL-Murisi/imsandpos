@@ -2,18 +2,22 @@
 import prisma from "@/lib/prisma";
 import fs from "fs";
 import Handlebars from "handlebars";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getBrowser } from "@/lib/puppeteerInstance";
 import { getSession } from "@/lib/session";
 
-export async function POST(
-  req: Request,
-  context: { params: { reportType: string } },
-) {
-  const { reportType } = context.params;
+interface RouteContext {
+  params: {
+    reportType: string;
+    // Add other dynamic route segments if you have any, e.g., 'id: string'
+  };
+}
 
+export async function POST(
+  req: NextRequest, // Use NextRequest for the first argument (Request object)
+) {
   try {
-    const { from, to } = await req.json();
+    const { from, to, reportType } = await req.json();
     const user = await getSession();
     if (!user)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

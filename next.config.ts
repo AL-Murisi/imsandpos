@@ -72,7 +72,15 @@ const nextConfig: NextConfig = {
   },
 
   productionBrowserSourceMaps: true,
-
+  webpack: (config, { isServer }) => {
+    // Only apply this configuration for the server build
+    if (isServer) {
+      config.externals.push({
+        handlebars: "commonjs handlebars",
+      });
+    }
+    return config;
+  },
   // webpack: (config, { isServer }) => {
   //   if (!isServer) {
   //     config.optimization = config.optimization || {};
