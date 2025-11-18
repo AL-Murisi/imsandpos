@@ -125,7 +125,7 @@ export async function getChartOfAccounts() {
 
     // Calculate Net Income (صافي الربح)
     financialTotals.netIncome = Math.abs(
-      financialTotals.totalExpenses - financialTotals.totalRevenue,
+      financialTotals.totalRevenue - financialTotals.totalExpenses,
     );
 
     // 2. Prepare Detailed Accounts Data

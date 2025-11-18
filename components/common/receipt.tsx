@@ -231,7 +231,7 @@ export const Receipt: React.FC<ReceiptProps> = ({
 
                 <!-- Logo -->
                 <div class="flex flex-col items-center">
-<img src="${company?.logoUrl ?? ""}" style="width: 100px; height: 90px;" />
+                  <img src="${company?.logoUrl ?? ""}" style="width: 100px; height: 90px;" />
                 </div>
 
                 <!-- Branch -->
