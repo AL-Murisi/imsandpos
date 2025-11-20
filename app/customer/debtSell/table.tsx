@@ -51,7 +51,7 @@ export default function CustomerClinet({ users, total, role }: Props) {
       {/* Add dir="rtl" for proper RTL layout */}
       <div className="mb-2 flex flex-wrap gap-2">
         <Calendar22 />
-        <SearchInput placeholder={"بحث"} paramKey={"users"} />{" "}
+        <SearchInput placeholder={"بحث"} paramKey={"customers"} />{" "}
         {/* Translate placeholder */}
         <SelectField options={role} paramKey="role" placeholder="الفئة" />
         <CustomerForm />
@@ -71,6 +71,7 @@ export default function CustomerClinet({ users, total, role }: Props) {
         totalCount={total}
         highet="h-[68vh]"
       />
+      {/* <CustomerStatementPage customers={user.result} /> */}
     </div>
   );
 }

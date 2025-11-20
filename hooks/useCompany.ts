@@ -46,5 +46,5 @@ export function useCompany() {
     fetchCompany();
   }, [user?.companyId]);
 
-  return { company, loading };
+  return { company };
 }

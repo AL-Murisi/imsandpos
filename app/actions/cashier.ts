@@ -382,7 +382,15 @@ export async function getAllActiveProductsForSale(
   });
 }
 export async function processReturn(data: any, companyId: string) {
-  const { saleId, cashierId, customerId, returnNumber, reason, items } = data;
+  const {
+    saleId,
+    cashierId,
+    customerId,
+    returnNumber,
+    reason,
+    items,
+    returnToCustomer,
+  } = data;
 
   // Filter only items with quantity > 0
   const returnItems = items.filter((item: any) => item.quantity > 0);
@@ -451,7 +459,7 @@ export async function processReturn(data: any, companyId: string) {
         const itemReturnValue =
           saleItem.unitPrice.toNumber() * returnItem.quantity;
         returnSubtotal += itemReturnValue;
-
+        console.log(returnToCustomer);
         // Calculate COGS for this return
         const product = saleItem.product;
         const totalUnitsPerCarton =
@@ -487,12 +495,12 @@ export async function processReturn(data: any, companyId: string) {
           cashierId,
           sale_type: "return",
           status: "completed",
-          subtotal: -returnSubtotal, // Negative for return
+          subtotal: returnSubtotal, // Negative for return
           taxAmount: 0,
           discountAmount: 0,
-          totalAmount: -returnSubtotal,
-          amountPaid: -returnSubtotal, // Will be refunded
-          amountDue: 0,
+          totalAmount: originalSale.amountPaid,
+          amountPaid: returnToCustomer, // Will be refunded
+          amountDue: originalSale.amountDue,
           paymentStatus: "paid",
           originalSaleId: saleId,
         },
@@ -603,7 +611,7 @@ export async function processReturn(data: any, companyId: string) {
           // If original sale was unpaid/partial, reduce outstanding balance
           const amountToDeduct = Math.min(
             returnSubtotal,
-            originalSale.amountPaid?.toNumber() || 0,
+            originalSale.amountDue?.toNumber() || 0,
           );
 
           if (amountToDeduct > 0) {
@@ -618,17 +626,17 @@ export async function processReturn(data: any, companyId: string) {
           }
 
           // Remaining amount goes to customer balance (credit)
-          const remainingCredit = returnSubtotal - amountToDeduct;
-          if (remainingCredit > 0) {
-            customerUpdates.push(
-              tx.customer.update({
-                where: { id: customerId, companyId },
-                data: {
-                  balance: { increment: remainingCredit },
-                },
-              }),
-            );
-          }
+          // const remainingCredit = returnToCustomer - amountToDeduct;
+          // if (remainingCredit > 0) {
+          //   customerUpdates.push(
+          //     tx.customer.update({
+          //       where: { id: customerId, companyId },
+          //       data: {
+          //         balance: { increment: remainingCredit },
+          //       },
+          //     }),
+          //   );
+          // }
         } else {
           // If original sale was paid, add full amount to customer balance
           customerUpdates.push(
@@ -652,7 +660,7 @@ export async function processReturn(data: any, companyId: string) {
             customerId: originalSale.customerId,
             paymentMethod: "cash",
             payment_type: "return_refund",
-            amount: -returnSubtotal, // Negative for refund
+            amount: returnToCustomer, // Negative for refund
             status: "completed",
             notes: reason || "إرجاع بيع",
           },

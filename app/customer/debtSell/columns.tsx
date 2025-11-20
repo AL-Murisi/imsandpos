@@ -8,6 +8,7 @@ import {
   Clock,
   CheckCircle,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -205,6 +206,7 @@ export const customerColumns: ColumnDef<any>[] = [
     cell: ({ row }) => {
       const customer = row.original;
       const { user } = useAuth();
+      const router = useRouter();
       if (!user) return;
       return (
         <>
@@ -249,6 +251,12 @@ export const customerColumns: ColumnDef<any>[] = [
           </DropdownMenu>
           <DebtReport customerName={customer.name} customerID={customer.id} />
           <CustomerEditForm customer={customer} />
+          <Button
+            onClick={() => router.push(`/customer/debtSell/${customer.id}`)}
+          >
+            {" "}
+            customer
+          </Button>
         </>
       );
     },

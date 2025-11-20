@@ -30,10 +30,24 @@ function serializeData<T>(data: T): T {
 
   return plainObj;
 }
-export async function getCustomerById(companyId: string, customerId?: string) {
+export async function getCustomerById(
+  companyId: string,
+  customersquery?: string,
+  customerId?: string,
+) {
   try {
     const customers = await prisma.customer.findMany({
-      where: { id: customerId, companyId },
+      where: {
+        id: customerId,
+        companyId,
+        ...(customersquery && {
+          OR: [
+            { name: { contains: customersquery, mode: "insensitive" } },
+            { phoneNumber: { contains: customersquery } },
+            { email: { contains: customersquery, mode: "insensitive" } },
+          ],
+        }),
+      },
       select: {
         id: true,
         name: true,
@@ -88,6 +102,9 @@ export async function Fetchcustomerbyname(searchQuery?: string) {
       phoneNumber: true,
       creditLimit: true,
       outstandingBalance: true,
+      address: true,
+      city: true,
+      balance: true,
     },
   });
 

@@ -378,6 +378,8 @@ model Sale {
   createdAt        DateTime        @default(now()) @map("created_at")
   updatedAt        DateTime        @updatedAt @map("updated_at")
   point_of_sale_id String?
+  refunded         Decimal         @default(0) @map("refunded") @db.Decimal(10, 2)
+
   originalSaleId   String?         @map("original_sale_id")
   originalSale     Sale?           @relation("ReturnSale", fields: [originalSaleId], references: [id])
   returns          Sale[]    @relation("ReturnSale")
