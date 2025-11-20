@@ -209,7 +209,7 @@ export const customerColumns: ColumnDef<any>[] = [
       const router = useRouter();
       if (!user) return;
       return (
-        <>
+        <div className="flex gap-3">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-8 w-8 p-0">
@@ -256,7 +256,7 @@ export const customerColumns: ColumnDef<any>[] = [
           >
             كشف حساب
           </Button>
-        </>
+        </div>
       );
     },
   },

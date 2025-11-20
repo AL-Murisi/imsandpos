@@ -94,34 +94,24 @@ export default function CustomerStatement({
   return (
     <Card className="@container/card border-transparent bg-transparent px-2">
       {/* فورم البحث */}
-      <h1 className="text-3xl font-bold">كشف حساب عميل</h1>{" "}
-      <div className="flex justify-center gap-3 print:hidden">
-        {" "}
-        <Calendar22 />
-        <CustomerStatementPrint customers={customers} />
-        {/* <button
-              onClick={() => window.print()}
-              className="rounded bg-blue-600 px-6 py-2 text-white hover:bg-blue-700"
-            >
-              طباعة
-            </button> */}
-        {/* <button className="rounded bg-green-600 px-6 py-2 text-white hover:bg-green-700">
-              تصدير PDF
-            </button>
-            <button className="rounded bg-gray-600 px-6 py-2 text-white hover:bg-gray-700">
-              تصدير Excel
-            </button> */}
-      </div>{" "}
-      <div className="mt-6 text-left"></div>
+
       {/* عرض الكشف */}
       {customers && (
         <div className="bg-accent flex w-full flex-col rounded-lg p-6 shadow">
-          <div className="inline-block rounded border-2 px-6 py-3">
-            <strong className="text-lg">الرصيد الحالي: </strong>
-            <span className="text-2xl font-bold text-red-600">
-              {customers.closingBalance.toFixed(2)} ر.ي
-            </span>
-          </div>
+          <h1 className="text-3xl font-bold">كشف حساب عميل</h1>{" "}
+          <div className="grid grid-cols-1 justify-center gap-3 md:grid-cols-2 print:hidden">
+            {" "}
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-1 lg:grid-cols-2">
+              <Calendar22 />
+              <CustomerStatementPrint customers={customers} />
+            </div>
+            <div className="inline-block rounded px-6 py-3">
+              <strong className="text-lg">الرصيد الحالي: </strong>
+              <span className="text-2xl font-bold text-red-600">
+                {customers.closingBalance.toFixed(2)} ر.ي
+              </span>
+            </div>
+          </div>{" "}
           {/* رأس التقرير */}
           {/* <div className="mb-6 border-b pb-4 text-center">
             <h2 className="text-2xl font-bold">{company.name}</h2>

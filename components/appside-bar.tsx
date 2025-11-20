@@ -25,6 +25,8 @@ import {
   Wallet,
   Globe,
 } from "lucide-react";
+import Image from "next/image";
+import { useCompany } from "@/hooks/useCompany"; // adjust if different path
 
 import {
   Sidebar,
@@ -46,6 +48,8 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "./ui/collapsible";
+import { useSidebar } from "@/components/ui/sidebar";
+
 import { useAuth } from "@/lib/context/AuthContext";
 import { ModeToggle } from "./toggoletheme";
 import { usePathname } from "next/navigation";
@@ -75,6 +79,7 @@ import { useRouter } from "next/navigation";
 import CurrencySwitcher from "./common/CurrencySwitcher";
 import { useCurrency } from "./CurrencyProvider";
 import { ScrollArea } from "./ui/scroll-area";
+import { cn } from "@/lib/utils";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user, hasAnyRole, logoutAndRedirect } = useAuth();
@@ -233,15 +238,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const visibleMenuItems = menuItems.filter((item) => {
     return hasAnyRole(item.roles);
   });
-  let url;
-  if (user.company?.logoUrl) {
-    url = user.company.logoUrl;
-  } else {
-    url = "";
-  }
+
   // const visibleMenuItems = menuItems.filter((item) => {
   //   return item.roles.includes("admin"); // Hardcoded
   // });
+  const { open } = useSidebar();
+
+  const isCollapsed = !open;
+
   const router = useRouter();
   // const handelLogout = async () => {
   //   if (!user) return;
@@ -268,6 +272,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const filterSubItems = (subItems: any[]) => {
     return subItems.filter((subItem) => hasAnyRole(subItem.roles));
   };
+  const { company } = useCompany();
+  if (!company) return;
 
   return (
     <Sidebar
@@ -275,21 +281,45 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       {...props}
       className="dark:bg-accent dark:text-foreground text-sidebar bg-[#0b142a] py-4"
     >
-      <SidebarHeader className="bg-[#0b142a]">
-        <div className="flex items-center gap-2 transition-all">
-          <div
-            className={
-              "flex aspect-square size-8 items-center justify-center rounded-lg bg-amber-400"
-            }
-          >
-            <Package className="text-2xl" />
-          </div>
+      <SidebarHeader
+        data-state={isCollapsed ? "collapsed" : "expanded"}
+        className="flex items-center bg-[#0b142a]"
+      >
+        <div
+          className={cn(
+            "relative overflow-hidden rounded-full transition-all duration-300",
+            isCollapsed ? "h-8 w-8" : "h-16 w-16",
+          )}
+        >
+          {company.logoUrl ? (
+            <Image
+              src={company.logoUrl}
+              alt="Company Logo"
+              fill
+              sizes="100px"
+              className="rounded-full object-cover"
+            />
+          ) : (
+            <div className="flex items-center justify-center rounded-full bg-amber-400 transition-all duration-300 data-[state=collapsed]:h-8 data-[state=collapsed]:w-8 data-[state=expanded]:h-14 data-[state=expanded]:w-14">
+              <Package className="text-white" />
+            </div>
+          )}
+          {/* <div className="flex flex-col">
+            <SidebarGroupLabel className="text-sm text-white">
+              {company?.name ?? ""}
+            </SidebarGroupLabel>
+            <SidebarGroupLabel className="text-xs text-gray-300">
+              {t("welcome")} {user.name}
+            </SidebarGroupLabel>
+          </div> */}
         </div>
+      </SidebarHeader>
+      <SidebarHeader className="bg-[#0b142a]">
         <SidebarGroupLabel className="dark:text-foreground text-sidebar text-xs">
-          {t("welcome")} {user.name}
+          {company.name}
         </SidebarGroupLabel>
-        <SidebarGroupLabel className="dark:text-foreground text-sidebar mb-2 text-xs">
-          {t("role")} {user.roles.join(", ")}
+        <SidebarGroupLabel className="dark:text-foreground text-sidebar text-xs">
+          {t("welcome")} {user?.name}
         </SidebarGroupLabel>
       </SidebarHeader>{" "}
       <div className="dark:bg-accent dark:text-foreground text-sidebar flex h-[calc(100vh-8rem)] flex-col justify-between bg-[#0b142a]">
@@ -333,7 +363,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                       pathname === subItem.url
                                         ? "w-40 rounded-l-lg border-r-4 border-r-orange-600 bg-orange-400 text-white"
                                         : "text-white hover:bg-orange-300/20"
-                                    } !pl- !justify-start !pr-4`}
+                                    } !justify-start !pr-4 !pl-8`}
                                   >
                                     <Link href={subItem.url || "#"} dir="rtl">
                                       {subItem.icon}

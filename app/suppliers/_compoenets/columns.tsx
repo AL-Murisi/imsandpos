@@ -187,7 +187,7 @@ export const supplierColumns: ColumnDef<any>[] = [
       const supplier = row.original;
       const router = useRouter();
       return (
-        <>
+        <div className="flex gap-3">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-8 w-8 p-0">
@@ -217,7 +217,7 @@ export const supplierColumns: ColumnDef<any>[] = [
           <Button onClick={() => router.push(`/suppliers/${supplier.id}`)}>
             كشف حساب
           </Button>
-        </>
+        </div>
       );
     },
   },

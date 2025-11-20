@@ -1,6 +1,8 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { useCompany } from "@/hooks/useCompany";
+import { PrinterIcon } from "lucide-react";
 import React from "react";
 
 export default function SupplierStatementPrint({
@@ -244,11 +246,8 @@ export default function SupplierStatementPrint({
   };
 
   return (
-    <button
-      onClick={handlePrint}
-      className="rounded bg-blue-600 px-6 py-2 text-white hover:bg-blue-700"
-    >
-      طباعة
-    </button>
+    <Button onClick={handlePrint} className="rounded">
+      <PrinterIcon color="green" /> طباعة
+    </Button>
   );
 }

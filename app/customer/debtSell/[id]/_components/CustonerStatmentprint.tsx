@@ -4,6 +4,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Calendar22 } from "@/components/common/DatePicker";
 import { useCompany } from "@/hooks/useCompany";
 import React from "react";
+import { Button } from "@/components/ui/button";
+import { PrinterIcon } from "lucide-react";
 
 export default function CustomerStatementPrint({
   customers,
@@ -232,11 +234,8 @@ export default function CustomerStatementPrint({
   //  UI
   // ===========================
   return (
-    <button
-      onClick={handlePrint}
-      className="rounded bg-blue-600 px-6 py-2 text-white hover:bg-blue-700"
-    >
-      طباعة
-    </button>
+    <Button onClick={handlePrint} className="rounded">
+      <PrinterIcon color="green" /> طباعة
+    </Button>
   );
 }

@@ -216,10 +216,14 @@ export default function SectionCards({
 
         {/* Quick Actions */}
         <div className="grid w-80 grid-cols-2 gap-4 py-4 sm:w-sm md:w-md md:grid-cols-4 lg:w-full">
-          <ExportDashboardButtonAPI role={"admin"} filters={searchParams} />
           <Button asChild>
             <Link href="/users" prefetch={false}>
               إدارة المستخدمين
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href="/reports" prefetch={false}>
+              التقرير
             </Link>
           </Button>
           <Button asChild>

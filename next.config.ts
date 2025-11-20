@@ -2,7 +2,6 @@ import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 import withSerwist from "@serwist/next"; // ✅ correct import
 import { execSync } from "child_process";
-
 // Use git commit hash as cache version
 const revision = execSync("git rev-parse HEAD", { encoding: "utf8" })
   .trim()
@@ -48,12 +47,6 @@ const nextConfig: NextConfig = {
     removeConsole: process.env.NODE_ENV === "production",
   },
 
-  images: {
-    formats: ["image/avif", "image/webp"],
-    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
-    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
-  },
-
   serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core"],
 
   experimental: {
@@ -70,7 +63,20 @@ const nextConfig: NextConfig = {
       "zod",
     ],
   },
+  images: {
+    formats: ["image/avif", "image/webp"],
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
 
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "pdcllzxplhtrwuflkwtl.supabase.co",
+        port: "",
+        pathname: "/storage/v1/object/public/**",
+      },
+    ],
+  },
   productionBrowserSourceMaps: true,
   webpack: (config, { isServer }) => {
     // Only apply this configuration for the server build

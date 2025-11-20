@@ -45,25 +45,24 @@ export default function SupplierStatement({
   return (
     <Card className="@container/card border-transparent bg-transparent px-2">
       {/* Header */}
-      <h1 className="text-3xl font-bold">كشف حساب مورد</h1>
-
-      <div className="flex justify-center gap-3 print:hidden">
-        <Calendar22 />
-        <SupplierStatementPrint suppliers={suppliers} />
-      </div>
-
-      <div className="mt-6 text-left"></div>
 
       {/* Statement Display */}
       {suppliers && (
         <div className="bg-accent flex w-full flex-col rounded-lg p-6 shadow">
-          <div className="inline-block rounded border-2 px-6 py-3">
-            <strong className="text-lg">الرصيد الحالي: </strong>
-            <span className="text-2xl font-bold text-red-600">
-              {suppliers.closingBalance.toFixed(2)} ر.ي
-            </span>
-          </div>
+          <h1 className="text-3xl font-bold">كشف حساب مورد</h1>
+          <div className="grid grid-cols-1 justify-center gap-3 md:grid-cols-1 lg:grid-cols-2 print:hidden">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-1 lg:grid-cols-2">
+              <Calendar22 />
+              <SupplierStatementPrint suppliers={suppliers} />
+            </div>
 
+            <div className="inline-block rounded px-6 py-3">
+              <strong className="text-lg">الرصيد الحالي: </strong>
+              <span className="text-2xl font-bold text-red-600">
+                {suppliers.closingBalance.toFixed(2)} ر.ي
+              </span>
+            </div>
+          </div>
           {/* Supplier Information */}
           <div className="mb-6 rounded p-4">
             <div className="grid grid-cols-2 gap-4">
