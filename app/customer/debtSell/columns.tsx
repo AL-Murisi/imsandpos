@@ -254,8 +254,7 @@ export const customerColumns: ColumnDef<any>[] = [
           <Button
             onClick={() => router.push(`/customer/debtSell/${customer.id}`)}
           >
-            {" "}
-            customer
+            كشف حساب
           </Button>
         </>
       );
