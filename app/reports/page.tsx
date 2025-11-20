@@ -29,8 +29,10 @@ export default function ReportsPage() {
   const searchParams = useSearchParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
   // Get initial values from URL params
-  const [from, setFromDate] = useState<string>(searchParams.get("from") || "");
-  const [to, setToDate] = useState<string>(searchParams.get("to") || "");
+  const [fromDate, setFromDate] = useState<string>(
+    searchParams.get("from") || "",
+  );
+  const [toDate, setToDate] = useState<string>(searchParams.get("to") || "");
   const [reportType, setReportType] = useState<string>(
     searchParams.get("reportType") || "",
   );
@@ -56,8 +58,8 @@ export default function ReportsPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          from,
-          to,
+          fromDate,
+          toDate,
         }),
       });
 
