@@ -14,15 +14,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
-import { CreateSupplierSchema } from "@/lib/zod";
+import { CreateSupplierSchema, CreateSupplierInput } from "@/lib/zod";
 import { createSupplier } from "@/app/actions/suppliers";
 import { useAuth } from "@/lib/context/AuthContext";
 import { useState } from "react";
 import { Plus } from "lucide-react";
 import Dailogreuse from "../common/dailogreuse";
 import { ScrollArea } from "../ui/scroll-area";
-
-type FormValues = z.infer<typeof CreateSupplierSchema>;
 
 export default function SupplierForm() {
   const {
@@ -32,7 +30,7 @@ export default function SupplierForm() {
     reset,
     watch,
     formState: { errors },
-  } = useForm<FormValues>({
+  } = useForm<CreateSupplierInput>({
     resolver: zodResolver(CreateSupplierSchema),
     defaultValues: {
       name: "",
@@ -46,6 +44,9 @@ export default function SupplierForm() {
       postalCode: "",
       taxId: "",
       paymentTerms: "",
+      totalPaid: 0,
+      totalPurchased: 0,
+      outstandingBalance: 0,
     },
   });
   const [open, setOpen] = useState(false);
@@ -54,7 +55,7 @@ export default function SupplierForm() {
   const { user } = useAuth();
   if (!user) return;
   // Load roles on mount
-  const onSubmit = async (data: FormValues) => {
+  const onSubmit = async (data: CreateSupplierInput) => {
     setIsSubmitting(true);
 
     await createSupplier(data, user.companyId);
@@ -79,9 +80,9 @@ export default function SupplierForm() {
       description="أدخل تفاصيل المورد أدناه."
     >
       <ScrollArea className="max-h-[85vh]" dir="rtl">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" dir="rtl">
+        <form onSubmit={handleSubmit(onSubmit)} className="" dir="rtl">
           <div className="grid gap-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
               {/* Full Name */}
               <div className="grid gap-2">
                 <Label htmlFor="name">اسم المورد</Label>
@@ -98,9 +99,7 @@ export default function SupplierForm() {
                   <p className="text-xs text-red-500">{errors.email.message}</p>
                 )}
               </div>
-            </div>
 
-            <div className="grid grid-cols-2 gap-4">
               {/* Contact Person */}
               <div className="grid gap-2">
                 <Label htmlFor="contactPerson">شخص الاتصال</Label>
@@ -209,18 +208,17 @@ export default function SupplierForm() {
                   إجمالي المشتريات الافتتاحي
                 </Label>
                 <Input
-                  type="number"
+                  dir="rtl"
                   id="totalPurchased"
-                  {...register("totalPurchased")}
+                  {...register("totalPurchased", { valueAsNumber: true })}
                 />
               </div>
 
               <div className="grid gap-2">
                 <Label htmlFor="totalPaid">إجمالي المدفوع الافتتاحي</Label>
                 <Input
-                  type="number"
                   id="totalPaid"
-                  {...register("totalPaid")}
+                  {...register("totalPaid", { valueAsNumber: true })}
                 />
               </div>
 
@@ -229,9 +227,8 @@ export default function SupplierForm() {
                   الرصيد الافتتاحي (الديون)
                 </Label>
                 <Input
-                  type="number"
                   id="outstandingBalance"
-                  {...register("outstandingBalance")}
+                  {...register("outstandingBalance", { valueAsNumber: true })}
                 />
               </div>
             </div>

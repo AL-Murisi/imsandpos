@@ -201,9 +201,9 @@ export async function createSupplier(
         postalCode,
         taxId,
         paymentTerms,
-        totalPaid,
-        totalPurchased,
-        outstandingBalance,
+        totalPaid: totalPaid ?? 0,
+        totalPurchased: totalPurchased ?? 0,
+        outstandingBalance: outstandingBalance ?? 0,
       },
     });
     revalidatePath("/suppliers");
