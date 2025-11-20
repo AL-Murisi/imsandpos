@@ -677,8 +677,6 @@ export async function processReturn(data: any, companyId: string) {
         await Promise.all(customerUpdates);
       }
 
-      // The trigger function will handle the accounting entries automatically
-
       return {
         success: true,
         message: "تم إرجاع البيع بنجاح",
