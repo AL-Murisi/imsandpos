@@ -541,3 +541,242 @@ export async function getTopCustomers(
     return { success: false, error: "فشل في جلب أفضل العملاء" };
   }
 }
+
+// Helper: Calculate opening balance for supplier
+async function calculateSupplierOpeningBalance(
+  supplierId: string,
+  companyId: string,
+  dateFrom: Date,
+) {
+  try {
+    // Get all purchases before the start date
+    const purchasesBeforeDate = await prisma.purchase.findMany({
+      where: {
+        supplierId,
+        companyId,
+        createdAt: { lt: dateFrom },
+        status: { not: "cancelled" },
+      },
+      select: {
+        totalAmount: true,
+        amountPaid: true,
+        amountDue: true,
+        purchaseType: true,
+      },
+    });
+
+    // Get all supplier payments before the start date
+    const paymentsBeforeDate = await prisma.supplierPayment.findMany({
+      where: {
+        supplierId,
+        companyId,
+        createdAt: { lt: dateFrom },
+      },
+      select: {
+        amount: true,
+      },
+    });
+
+    // Calculate total purchases (subtract returns)
+    const totalPurchases = purchasesBeforeDate.reduce((sum, purchase) => {
+      const amount = Number(purchase.totalAmount);
+      return purchase.purchaseType === "return" ? sum - amount : sum + amount;
+    }, 0);
+
+    // Calculate total payments
+    const totalPayments = paymentsBeforeDate.reduce(
+      (sum, payment) => sum + Number(payment.amount),
+      0,
+    );
+
+    // Opening balance = Purchases - Payments (what we owe the supplier)
+    return totalPurchases - totalPayments;
+  } catch (error) {
+    console.error("Error calculating supplier opening balance:", error);
+    return 0;
+  }
+}
+
+// Main function: Get supplier statement
+export async function getSupplierStatement(
+  supplierId: string,
+  companyId: string,
+  dateFrom: string,
+  dateTo: string,
+) {
+  try {
+    const fromDate = new Date(dateFrom);
+    const toDate = new Date(dateTo);
+    toDate.setHours(23, 59, 59, 999);
+
+    // -------------------------------
+    // 1️⃣ Get Supplier
+    // -------------------------------
+    const supplier = await prisma.supplier.findUnique({
+      where: { id: supplierId, companyId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        address: true,
+        city: true,
+        phoneNumber: true,
+        totalPurchased: true,
+        totalPaid: true,
+        outstandingBalance: true,
+      },
+    });
+
+    if (!supplier) {
+      return { success: false, error: "المورد غير موجود" };
+    }
+
+    // -------------------------------
+    // 2️⃣ Opening Balance (Before From Date)
+    // -------------------------------
+    const openingBalance = await calculateSupplierOpeningBalance(
+      supplierId,
+      companyId,
+      fromDate,
+    );
+
+    // -------------------------------
+    // 3️⃣ Fetch Purchases (Normal + Returns)
+    // -------------------------------
+    const purchases = await prisma.purchase.findMany({
+      where: {
+        supplierId,
+        companyId,
+        createdAt: { gte: fromDate, lte: toDate },
+        status: { not: "cancelled" },
+      },
+      select: {
+        id: true,
+        totalAmount: true,
+        createdAt: true,
+        purchaseType: true,
+        status: true,
+      },
+      orderBy: { createdAt: "asc" },
+    });
+
+    // -------------------------------
+    // 4️⃣ Fetch Supplier Payments
+    // -------------------------------
+    const payments = await prisma.supplierPayment.findMany({
+      where: {
+        supplierId,
+        companyId,
+        createdAt: { gte: fromDate, lte: toDate },
+      },
+      select: {
+        id: true,
+        amount: true,
+        paymentMethod: true,
+        note: true,
+        createdAt: true,
+        purchase: { select: { id: true } },
+      },
+      orderBy: { createdAt: "asc" },
+    });
+
+    // -------------------------------
+    // 5️⃣ Merge Transactions
+    // -------------------------------
+    const transactions: any[] = [];
+    let runningBalance = openingBalance;
+
+    // Add Purchases (Normal + Return)
+    purchases.forEach((purchase, index) => {
+      const isReturn = purchase.purchaseType === "purchase_return";
+
+      // For supplier: debit = what we owe (purchase), credit = return
+      const debit = isReturn ? 0 : Number(purchase.totalAmount);
+      const credit = isReturn ? Number(purchase.totalAmount) : 0;
+
+      runningBalance = runningBalance + debit - credit;
+
+      transactions.push({
+        date: purchase.createdAt,
+        typeName: isReturn ? "مرتجع مشتريات" : "فاتورة مشتريات",
+        docNo: `PUR-${purchase.id.slice(0, 8)}`,
+        description: isReturn
+          ? `مرتجع مشتريات رقم ${purchase.id.slice(0, 8)}`
+          : `فاتورة مشتريات رقم ${purchase.id.slice(0, 8)}`,
+        debit,
+        credit,
+        balance: runningBalance,
+        referenceId: purchase.id,
+      });
+    });
+
+    // Add Payments
+    payments.forEach((payment) => {
+      // For supplier: payments are credits (reduce what we owe)
+      const debit = 0;
+      const credit = Number(payment.amount);
+
+      runningBalance = runningBalance + debit - credit;
+
+      transactions.push({
+        date: payment.createdAt,
+        typeName: "سند صرف",
+        docNo: `PAY-${payment.id.slice(0, 8)}`,
+        description: payment.note || `دفعة للمورد`,
+        debit,
+        credit,
+        balance: runningBalance,
+        referenceId: payment.id,
+      });
+    });
+
+    // -------------------------------
+    // 6️⃣ Sort and Recalculate Running Balance
+    // -------------------------------
+    transactions.sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+    );
+
+    let balance = openingBalance;
+    transactions.forEach((t) => {
+      balance = balance + t.debit - t.credit;
+      t.balance = balance;
+    });
+
+    // -------------------------------
+    // 7️⃣ Totals
+    // -------------------------------
+    const totalDebit = transactions.reduce((sum, t) => sum + t.debit, 0);
+    const totalCredit = transactions.reduce((sum, t) => sum + t.credit, 0);
+    const closingBalance = openingBalance + totalDebit - totalCredit;
+
+    // -------------------------------
+    // 8️⃣ Result
+    // -------------------------------
+    return {
+      success: true,
+      data: {
+        supplier: {
+          id: supplier.id,
+          name: supplier.name,
+          email: supplier.email,
+          address: supplier.address,
+          city: supplier.city,
+          phoneNumber: supplier.phoneNumber,
+          totalPurchased: supplier.totalPurchased,
+          totalPaid: supplier.totalPaid,
+          outstandingBalance: supplier.outstandingBalance,
+        },
+        openingBalance,
+        transactions,
+        totalDebit,
+        totalCredit,
+        closingBalance,
+        period: { from: dateFrom, to: dateTo },
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching supplier statement:", error);
+    return { success: false, error: "فشل في جلب كشف حساب المورد" };
+  }
+}

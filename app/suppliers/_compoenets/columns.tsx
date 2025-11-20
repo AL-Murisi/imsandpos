@@ -38,6 +38,7 @@ import { Badge } from "@/components/ui/badge";
 import dynamic from "next/dynamic";
 import SupplierForm from "@/components/forms/supplierform";
 import { EditSupplierForm } from "./editform";
+import { useRouter } from "next/navigation";
 const PaymentCreateForm = dynamic(
   () => import("./PaymentCreateForm").then((m) => m.PaymentCreateForm),
   {
@@ -184,7 +185,7 @@ export const supplierColumns: ColumnDef<any>[] = [
       const { user } = useAuth();
       if (!user) return;
       const supplier = row.original;
-
+      const router = useRouter();
       return (
         <>
           <DropdownMenu>
@@ -213,6 +214,9 @@ export const supplierColumns: ColumnDef<any>[] = [
             </DropdownMenuContent>
           </DropdownMenu>
           <EditSupplierForm supplier={supplier} />
+          <Button onClick={() => router.push(`/suppliers/${supplier.id}`)}>
+            كشف حساب
+          </Button>
         </>
       );
     },
