@@ -310,6 +310,7 @@ export async function FetchCustomerDebtReport(
     where: {
       customerId,
       companyId,
+      sale_type: { not: "return" },
       paymentStatus: { in: ["pending", "partial"] },
     },
     select: {
