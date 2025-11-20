@@ -9,6 +9,7 @@ import Debtupdate from "./form";
 import Recitp from "../cashiercontrol/_components/recitp";
 import { useCurrency } from "@/components/CurrencyProvider";
 import { ReturnForm } from "./Returnitems";
+import { useFormatter } from "@/hooks/usePrice";
 
 interface DebtSaleData {
   id: string;
@@ -148,14 +149,8 @@ export const debtSaleColumns: ColumnDef<any>[] = [
     header: ({ column }) => <SortableHeader column={column} label="المتبقي" />,
     cell: ({ row }) => {
       const price = row.getValue("amountDue") as number;
-      const { currency } = useCurrency();
-      return price
-        ? new Intl.NumberFormat(currency.locale, {
-            style: "currency",
-            currency: currency.currency,
-            numberingSystem: "latn",
-          }).format(price)
-        : "N/A";
+      const { formatCurrency } = useFormatter();
+      return formatCurrency(price);
     },
   },
   {
@@ -213,7 +208,9 @@ export const debtSaleColumns: ColumnDef<any>[] = [
 
       return (
         <div className="flex flex-row gap-2">
-          {amountDue > 0 && <Debtupdate debt={debt} />}
+          {amountDue > 0 && debt.sale_type !== "return" && (
+            <Debtupdate debt={debt} />
+          )}
           <Recitp id={debt.saleNumber} />
           {debt.sale_type === "sale" && <ReturnForm sale={debt} />}
         </div>

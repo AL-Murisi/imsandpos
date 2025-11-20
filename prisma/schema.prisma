@@ -696,7 +696,9 @@ model points_of_sale {
 }
 enum account_category {
   // Assets
-  CASH_AND_BANK
+    CASH_AND_BANK
+  CASH
+  BANK
   ACCOUNTS_RECEIVABLE
   INVENTORY
   OTHER_CURRENT_ASSETS

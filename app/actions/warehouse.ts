@@ -88,7 +88,7 @@ export async function updateInventory(
       warehouseId: targetWarehouseId, // المستودع المستهدف
       ...updateData
     } = data;
-
+    console.log(paymentMethod);
     // 1️⃣ جلب السجل الحالي للمخزون
     const currentInventory = await prisma.inventory.findUnique({
       where: { id, companyId },

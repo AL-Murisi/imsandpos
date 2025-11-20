@@ -5,8 +5,9 @@ import { useAuth } from "@/lib/context/AuthContext";
 import { useCompany } from "@/hooks/useCompany";
 import { getCustomerStatement } from "@/app/actions/test";
 import { Calendar22 } from "@/components/common/DatePicker";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import CustomerStatementPrint from "@/app/customer/debtSell/[id]/_components/CustonerStatmentprint";
+import { Card } from "@/components/ui/card";
 type Company =
   | {
       id: string;
@@ -91,38 +92,35 @@ export default function CustomerStatement({
   // };
 
   return (
-    <div className="flex w-full flex-col items-center p-6" dir="rtl">
+    <Card className="@container/card border-transparent bg-transparent px-2">
       {/* فورم البحث */}
-
-      {/* عرض الكشف */}
-      {customers && (
-        <div className="bg-accent flex w-full flex-col rounded-lg p-6 shadow">
-          {" "}
-          <h1 className="text-3xl font-bold">كشف حساب عميل</h1>{" "}
-          <div className="flex justify-center gap-3 print:hidden">
-            {" "}
-            <Calendar22 />
-            <CustomerStatementPrint customers={customers} />
-            {/* <button
+      <h1 className="text-3xl font-bold">كشف حساب عميل</h1>{" "}
+      <div className="flex justify-center gap-3 print:hidden">
+        {" "}
+        <Calendar22 />
+        <CustomerStatementPrint customers={customers} />
+        {/* <button
               onClick={() => window.print()}
               className="rounded bg-blue-600 px-6 py-2 text-white hover:bg-blue-700"
             >
               طباعة
             </button> */}
-            {/* <button className="rounded bg-green-600 px-6 py-2 text-white hover:bg-green-700">
+        {/* <button className="rounded bg-green-600 px-6 py-2 text-white hover:bg-green-700">
               تصدير PDF
             </button>
             <button className="rounded bg-gray-600 px-6 py-2 text-white hover:bg-gray-700">
               تصدير Excel
             </button> */}
-          </div>{" "}
-          <div className="mt-6 text-left">
-            <div className="inline-block rounded border-2 border-yellow-500 bg-yellow-50 px-6 py-3">
-              <strong className="text-lg">الرصيد الحالي: </strong>
-              <span className="text-2xl font-bold text-red-600">
-                {customers.closingBalance.toFixed(2)} ر.ي
-              </span>
-            </div>
+      </div>{" "}
+      <div className="mt-6 text-left"></div>
+      {/* عرض الكشف */}
+      {customers && (
+        <div className="bg-accent flex w-full flex-col rounded-lg p-6 shadow">
+          <div className="inline-block rounded border-2 px-6 py-3">
+            <strong className="text-lg">الرصيد الحالي: </strong>
+            <span className="text-2xl font-bold text-red-600">
+              {customers.closingBalance.toFixed(2)} ر.ي
+            </span>
           </div>
           {/* رأس التقرير */}
           {/* <div className="mb-6 border-b pb-4 text-center">
@@ -148,9 +146,9 @@ export default function CustomerStatement({
                 {customers.period.to}
               </div>
             </div>
-          </div>
-          {/* جدول الحركات */}
+          </div>{" "}
           <ScrollArea className="h-[95vh] p-2" dir="rtl">
+            {/* جدول الحركات */}
             <table className="w-full border">
               <thead className="">
                 <tr>
@@ -217,12 +215,13 @@ export default function CustomerStatement({
                   </td>
                 </tr>
               </tbody>
-            </table>
-            {/* الرصيد النهائي */}
+            </table>{" "}
+            <ScrollBar orientation="horizontal" />
           </ScrollArea>
+          {/* الرصيد النهائي */}
           {/* أزرار الإجراءات */}
         </div>
       )}
-    </div>
+    </Card>
   );
 }

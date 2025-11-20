@@ -88,7 +88,7 @@ export default function ReportsPage() {
       <div className="mb-6 grid gap-4 sm:grid-cols-2">
         {/* Report Type */}
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <div className="grid gap-3">
             <SelectField
               placeholder="اختر التقرير"

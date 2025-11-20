@@ -163,7 +163,8 @@ export default function AccountFormDialog({
 
   // ... (accountCategories array is unchanged)
   const accountCategories = [
-    { id: "CASH_AND_BANK", name: "نقد وبنوك", type: "ASSET" },
+    { id: "CASH", name: "نقد", type: "ASSET" },
+    { id: "BANK", name: "بنوك", type: "ASSET" },
     { id: "ACCOUNTS_RECEIVABLE", name: "ذمم مدينة", type: "ASSET" },
     { id: "INVENTORY", name: "مخزون", type: "ASSET" },
     { id: "FIXED_ASSETS", name: "أصول ثابتة", type: "ASSET" },

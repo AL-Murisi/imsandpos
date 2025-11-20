@@ -390,6 +390,7 @@ export async function processReturn(data: any, companyId: string) {
     reason,
     items,
     returnToCustomer,
+    paymentMethod,
   } = data;
 
   // Filter only items with quantity > 0
@@ -658,7 +659,7 @@ export async function processReturn(data: any, companyId: string) {
             saleId: returnSale.id,
             cashierId,
             customerId: originalSale.customerId,
-            paymentMethod: "cash",
+            paymentMethod: paymentMethod,
             payment_type: "return_refund",
             amount: returnToCustomer, // Negative for refund
             status: "completed",
@@ -666,7 +667,12 @@ export async function processReturn(data: any, companyId: string) {
           },
         }),
       );
-
+      await tx.sale.update({
+        where: { id: originalSale.id },
+        data: {
+          sale_type: "return",
+        },
+      });
       if (customerUpdates.length > 0) {
         await Promise.all(customerUpdates);
       }

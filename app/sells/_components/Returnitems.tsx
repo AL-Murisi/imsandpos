@@ -13,6 +13,8 @@ import Dailogreuse from "@/components/common/dailogreuse";
 import { processReturn } from "@/app/actions/cashier";
 import { useAuth } from "@/lib/context/AuthContext";
 import { AlertCircle } from "lucide-react";
+import { SelectField } from "@/components/common/selectproduct";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 const returnSchema = z.object({
   saleId: z.string(),
@@ -20,6 +22,7 @@ const returnSchema = z.object({
   customerId: z.string().optional().nullable(),
   returnNumber: z.string(),
   reason: z.string().optional(),
+  paymentMethod: z.string().optional(),
   items: z
     .array(
       z.object({
@@ -42,25 +45,27 @@ export function ReturnForm({ sale }: { sale: any }) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { handleSubmit, control, register, watch } = useForm<ReturnFormValues>({
-    resolver: zodResolver(returnSchema),
-    defaultValues: {
-      saleId: sale.id,
-      cashierId: user?.userId,
-      customerId: sale.customerId || null,
-      returnNumber: `RET-${Date.now()}`,
-      reason: "",
-      items: sale.saleItems.map((item: any) => ({
-        productId: item.productId,
-        warehouseId: item.product.warehouseId,
-        name: item.product.name,
-        sellingUnit: item.sellingUnit,
-        unitPrice: item.unitPrice,
-        quantitySold: item.quantity,
-      })),
-    },
-  });
-
+  const { handleSubmit, control, register, watch, setValue } =
+    useForm<ReturnFormValues>({
+      resolver: zodResolver(returnSchema),
+      defaultValues: {
+        saleId: sale.id,
+        cashierId: user?.userId,
+        customerId: sale.customerId || null,
+        returnNumber: `RET-${Date.now()}`,
+        reason: "",
+        paymentMethod: "cash",
+        items: sale.saleItems.map((item: any) => ({
+          productId: item.productId,
+          warehouseId: item.product.warehouseId,
+          name: item.product.name,
+          sellingUnit: item.sellingUnit,
+          unitPrice: item.unitPrice,
+          quantitySold: item.quantity,
+        })),
+      },
+    });
+  const paymentMethod = watch("paymentMethod");
   const { fields } = useFieldArray({
     control: control,
     name: "items",
@@ -120,6 +125,7 @@ export function ReturnForm({ sale }: { sale: any }) {
       ...values,
       cashierId: user.userId,
       items: selectedItems,
+      paymentMethod: paymentMethod,
       totalReturn,
       returnToCustomer,
     };
@@ -189,7 +195,12 @@ export function ReturnForm({ sale }: { sale: any }) {
   }, 0);
 
   const returnToCustomer = getReturnAmountForCustomer(sale, returnTotal);
-
+  const paymentMethods = [
+    { id: "cash", name: "نقداً" },
+    { id: "bank", name: "تحويل بنكي" },
+    { id: "check", name: "شيك" },
+    { id: "credit", name: "ائتمان" },
+  ];
   return (
     <Dailogreuse
       open={open}
@@ -198,139 +209,146 @@ export function ReturnForm({ sale }: { sale: any }) {
       style="sm:max-w-4xl"
       description="تفاصيل الإرجاع"
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={handleSubmit(onSubmit)} className="grid gap-3">
         {/* Sale Info */}
-        <div className="rounded-lg bg-blue-50 p-4 dark:bg-blue-950">
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              {watchedItems[0].unitPrice}
-              <span className="font-medium">رقم البيع:</span>{" "}
-              <span className="text-gray-700 dark:text-gray-300">
-                {sale.saleNumber}
-              </span>
-            </div>
-            <div>
-              <span className="font-medium">حالة الدفع:</span>{" "}
-              <span
-                className={`font-semibold ${
-                  sale.paymentStatus === "paid"
-                    ? "text-green-600"
-                    : sale.paymentStatus === "partial"
-                      ? "text-yellow-600"
-                      : "text-red-600"
-                }`}
-              >
-                {sale.paymentStatus === "paid"
-                  ? "مدفوع"
-                  : sale.paymentStatus === "partial"
-                    ? "دفعة جزئية"
-                    : "غير مدفوع"}
-              </span>
-            </div>
-            <div>
-              <span className="font-medium">إجمالي البيع:</span>{" "}
-              <span className="text-gray-700 dark:text-gray-300">
-                {parseFloat(sale.totalAmount).toFixed(2)} ر.س
-              </span>
-            </div>
-            {sale.customer && (
+        <div className="grid gap-2 rounded-lg bg-blue-50 p-4 dark:bg-blue-950">
+          <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
+            <div className="grid grid-rows-2 gap-5">
               <div>
-                <span className="font-medium">العميل:</span>{" "}
+                {watchedItems[0].unitPrice}
+                <span className="font-medium">رقم البيع:</span>{" "}
                 <span className="text-gray-700 dark:text-gray-300">
-                  {sale.customer.name}
+                  {sale.saleNumber}
+                </span>
+              </div>{" "}
+              {sale.customer && (
+                <div>
+                  <span className="font-medium">العميل:</span>{" "}
+                  <span className="text-gray-700 dark:text-gray-300">
+                    {sale.customer.name}
+                  </span>
+                </div>
+              )}
+            </div>
+            <div className="grid grid-rows-2 gap-5">
+              <div>
+                <span className="font-medium">حالة الدفع:</span>{" "}
+                <span
+                  className={`font-semibold ${
+                    sale.paymentStatus === "paid"
+                      ? "text-green-600"
+                      : sale.paymentStatus === "partial"
+                        ? "text-yellow-600"
+                        : "text-red-600"
+                  }`}
+                >
+                  {sale.paymentStatus === "paid"
+                    ? "مدفوع"
+                    : sale.paymentStatus === "partial"
+                      ? "دفعة جزئية"
+                      : "غير مدفوع"}
+                </span>
+              </div>{" "}
+              <div>
+                <span className="font-medium">إجمالي البيع:</span>{" "}
+                <span className="text-gray-700 dark:text-gray-300">
+                  {parseFloat(sale.totalAmount).toFixed(2)} ر.س
                 </span>
               </div>
-            )}
+            </div>
           </div>
         </div>
-
-        {/* Reason */}
-        <div>
-          <Label htmlFor="reason">سبب الإرجاع (اختياري)</Label>
-          <Input
-            id="reason"
-            {...register("reason")}
-            placeholder="أدخل السبب مثل: منتج تالف، خطأ في الطلب..."
-          />
-        </div>
-
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="grid gap-2">
+            <Label>طريقة الدفع</Label>
+            <SelectField
+              options={paymentMethods}
+              value={paymentMethod || ""}
+              placeholder="اختر الطريقة"
+              action={(val) => setValue("paymentMethod", val)}
+            />
+          </div>
+          {/* Reason */}
+          <div className="grid gap-2">
+            <Label htmlFor="reason">سبب الإرجاع (اختياري)</Label>
+            <Input
+              id="reason"
+              {...register("reason")}
+              placeholder="أدخل السبب مثل: منتج تالف، خطأ في الطلب..."
+            />
+          </div>
+        </div>{" "}
+        <Label className="text-base font-semibold">المنتجات</Label>
         <Separator />
-
         {/* Items Table */}
-        <div className="space-y-3">
-          <Label className="text-base font-semibold">المنتجات</Label>
+        <ScrollArea className="max-h-[400px] w-full overflow-y-auto rounded-lg border">
+          {" "}
+          <table className="min-w-full text-sm">
+            <thead className="bg-muted sticky top-0 text-right">
+              <tr>
+                <th className="p-3 font-semibold">المنتج</th>
+                <th className="p-3 text-center font-semibold">الوحدة</th>
+                <th className="p-3 text-center font-semibold">
+                  الكمية المباعة
+                </th>
+                <th className="p-3 text-center font-semibold">سعر الوحدة</th>
+                <th className="p-3 text-center font-semibold">كمية الإرجاع</th>
+                <th className="p-3 text-center font-semibold">المجموع</th>
+              </tr>
+            </thead>
+            <tbody>
+              {fields.map((field, index) => {
+                const quantity = watchedItems[index]?.quantity || 0;
+                const itemTotal = quantity * field.unitPrice;
 
-          <div className="max-h-[400px] overflow-y-auto rounded-lg border">
-            <table className="w-full border-collapse text-sm">
-              <thead className="bg-muted sticky top-0 text-right">
-                <tr>
-                  <th className="p-3 font-semibold">المنتج</th>
-                  <th className="p-3 text-center font-semibold">الوحدة</th>
-                  <th className="p-3 text-center font-semibold">
-                    الكمية المباعة
-                  </th>
-                  <th className="p-3 text-center font-semibold">سعر الوحدة</th>
-                  <th className="p-3 text-center font-semibold">
-                    كمية الإرجاع
-                  </th>
-                  <th className="p-3 text-center font-semibold">المجموع</th>
-                </tr>
-              </thead>
-              <tbody>
-                {fields.map((field, index) => {
-                  const quantity = watchedItems[index]?.quantity || 0;
-                  const itemTotal = quantity * field.unitPrice;
-
-                  return (
-                    <tr
-                      key={field.id}
-                      className="border-t hover:bg-gray-50 dark:hover:bg-gray-800"
-                    >
-                      <td className="p-3">
-                        <div className="font-medium">{field.name}</div>
-                      </td>
-                      <td className="p-3 text-center">
-                        <span className="inline-block rounded bg-gray-100 px-2 py-1 text-xs dark:bg-gray-700">
-                          {field.sellingUnit}
+                return (
+                  <tr
+                    key={field.id}
+                    className="border-t hover:bg-gray-50 dark:hover:bg-gray-800"
+                  >
+                    <td className="p-3">
+                      <div className="font-medium">{field.name}</div>
+                    </td>
+                    <td className="p-3 text-center">
+                      <span className="inline-block rounded bg-gray-100 px-2 py-1 text-xs dark:bg-gray-700">
+                        {field.sellingUnit}
+                      </span>
+                    </td>
+                    <td className="p-3 text-center font-medium">
+                      {field.quantitySold}
+                    </td>
+                    <td className="p-3 text-center">
+                      {field.unitPrice.toFixed(2)} ر.س
+                    </td>
+                    <td className="p-3 text-center">
+                      <Input
+                        type="number"
+                        min={0}
+                        max={field.quantitySold}
+                        step="any"
+                        className="w-28 text-center"
+                        {...register(`items.${index}.quantity`, {
+                          valueAsNumber: true,
+                        })}
+                      />
+                    </td>
+                    <td className="p-3 text-center font-semibold">
+                      {itemTotal > 0 ? (
+                        <span className="text-green-600">
+                          {itemTotal.toFixed(2)} ر.س
                         </span>
-                      </td>
-                      <td className="p-3 text-center font-medium">
-                        {field.quantitySold}
-                      </td>
-                      <td className="p-3 text-center">
-                        {field.unitPrice.toFixed(2)} ر.س
-                      </td>
-                      <td className="p-3 text-center">
-                        <Input
-                          type="number"
-                          min={0}
-                          max={field.quantitySold}
-                          step="any"
-                          className="w-28 text-center"
-                          {...register(`items.${index}.quantity`, {
-                            valueAsNumber: true,
-                          })}
-                        />
-                      </td>
-                      <td className="p-3 text-center font-semibold">
-                        {itemTotal > 0 ? (
-                          <span className="text-green-600">
-                            {itemTotal.toFixed(2)} ر.س
-                          </span>
-                        ) : (
-                          <span className="text-gray-400">0.00 ر.س</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
+                      ) : (
+                        <span className="text-gray-400">0.00 ر.س</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
         {/* Return Summary */}
-
         <div className="rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-950">
           <div className="flex items-center justify-between">
             <span className="text-lg font-semibold">إجمالي مبلغ الإرجاع:</span>
@@ -356,7 +374,6 @@ export function ReturnForm({ sale }: { sale: any }) {
             </div>
           )}
         </div>
-
         {/* Actions */}
         <div className="flex justify-end gap-3 pt-4">
           <Button

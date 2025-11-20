@@ -143,7 +143,8 @@ export const accountColumns: ColumnDef<any>[] = [
     cell: ({ row }) => {
       const category = row.getValue("account_category") as string;
       const categoryMap: Record<string, string> = {
-        CASH_AND_BANK: "نقد وبنوك",
+        CASH_AND_BANK: "نقد",
+        BANK: "بنك",
         ACCOUNTS_RECEIVABLE: "ذمم مدينة",
         INVENTORY: "مخزون",
         FIXED_ASSETS: "أصول ثابتة",
