@@ -50,7 +50,7 @@ export default function DebtReport({
   const t = useTranslations("debt");
   const { user } = useAuth();
   const { formatCurrency } = useFormatter();
-
+  const [isSubmitting, setIsSubmitting] = useState(false);
   if (!user) return null;
 
   useEffect(() => {
@@ -58,6 +58,14 @@ export default function DebtReport({
     const handleFetch = async () => {
       setLoading(true);
       const sales = await FetchCustomerDebtReport(customerID, user.companyId);
+
+      if (!Array.isArray(sales)) {
+        console.error("INVALID RESPONSE:", sales);
+        setDebts([]);
+        setLoading(false);
+        return;
+      }
+
       const mapped: Debt[] = sales.map((d: any) => ({
         id: d.id,
         date: new Date(d.saleDate).toLocaleDateString(),
@@ -69,6 +77,7 @@ export default function DebtReport({
         paid: parseFloat(d.amountPaid),
         remaining: parseFloat(d.amountDue),
       }));
+
       setDebts(mapped);
       setLoading(false);
     };
@@ -94,12 +103,15 @@ export default function DebtReport({
   };
 
   const onSubmit = async () => {
+    setIsSubmitting(true);
     if (paymentAmount <= 0) {
       toast.error("Please enter a valid payment amount.");
+      setIsSubmitting(false);
       return;
     }
     if (selectedIds.length === 0) {
       toast.error("Please select at least one invoice to pay.");
+      setIsSubmitting(false);
       return;
     }
 
@@ -114,9 +126,11 @@ export default function DebtReport({
       toast.success("Payment successfully applied!");
       setPaymentAmount(0);
       setSelectedIds([]);
+      setIsSubmitting(false);
       setOpen(false);
     } catch (error) {
       console.error("Error updating debt sales:", error);
+      setIsSubmitting(false);
       toast.error("Failed to apply payment. Please try again.");
     }
   };
@@ -223,8 +237,12 @@ export default function DebtReport({
               }
               className="w-32"
             />
-            <Button onClick={onSubmit} disabled={loading}>
-              {loading ? "Processing..." : "Apply Payment"}
+            <Button
+              onClick={onSubmit}
+              type="submit"
+              disabled={isSubmitting && loading}
+            >
+              {isSubmitting ? "جاري الحفظ..." : " تأكيد الدفع"}
             </Button>
           </div>
         </div>
