@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
-import { checkLowStockAndNotify } from "@/app/actions/debtSells";
 import { gzipSync } from "zlib";
 
 export async function GET() {
-  const lowStock = await checkLowStockAndNotify("admin");
-
-  const notifications = (lowStock ?? []).map((item) => ({
+  // const lowStock = await checkLowStockAndNotify("admin");
+  let lowStock: any;
+  const notifications = (lowStock ?? []).map((item: any) => ({
     id: `low-${item.product_id}`,
     type: "Low Stock",
     message: `${item.product_name} is low (Stock: ${item.stock_quantity}, Reorder: ${item.reorder_level})`,
