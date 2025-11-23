@@ -442,6 +442,7 @@ model Payment {
   status          String    @default("completed")
   notes           String?
   createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
   cashier         User      @relation(fields: [cashierId], references: [id])
   company         Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   customer        Customer? @relation(fields: [customerId], references: [id])

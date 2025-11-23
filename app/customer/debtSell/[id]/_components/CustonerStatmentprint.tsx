@@ -182,8 +182,8 @@ export default function CustomerStatementPrint({
                 <td>${t.typeName ?? ""}</td>
                 <td>${t.docNo ?? ""}</td>
                 <td>${t.description ?? ""}</td>
-                <td>${t.debit > 0 ? t.debit.toFixed(2) : "-"}</td>
-                <td>${t.credit > 0 ? t.credit.toFixed(2) : "-"}</td>
+                <td>${t.debit > 0 ? t.debit.toFixed(2) : ""}</td>
+                <td>${t.credit > 0 ? t.credit.toFixed(2) : ""}</td>
                 <td>${t.balance.toFixed(2)}</td>
               </tr>`,
               )

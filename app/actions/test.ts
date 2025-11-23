@@ -286,7 +286,7 @@ export async function getCustomerStatement(
         type: "payment",
         typeName:
           payment.payment_type === "outstanding_payment"
-            ? "سند قبض"
+            ? "سند قبض دين"
             : payment.payment_type == "sale_payment"
               ? "سند قبض"
               : payment.payment_type === "return_refund"
@@ -318,14 +318,14 @@ export async function getCustomerStatement(
       balance = balance + t.debit - t.credit;
       t.balance = balance;
     });
-
+    console.log(balance);
     // -------------------------------
     // 7️⃣ Totals
     // -------------------------------
     const totalDebit = transactions.reduce((sum, t) => sum + t.debit, 0);
     const totalCredit = transactions.reduce((sum, t) => sum + t.credit, 0);
     const closingBalance = openingBalance + totalDebit - totalCredit;
-
+    console.log(transactions);
     // -------------------------------
     // 8️⃣ Result
     // -------------------------------
@@ -588,6 +588,7 @@ async function calculateSupplierOpeningBalance(
       (sum, payment) => sum + Number(payment.amount),
       0,
     );
+    console.log(totalPayments, totalPurchases);
 
     // Opening balance = Purchases - Payments (what we owe the supplier)
     return totalPurchases - totalPayments;
