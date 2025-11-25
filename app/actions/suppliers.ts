@@ -7,6 +7,7 @@ import { revalidatePath, unstable_noStore } from "next/cache";
 import { CreateSupplierInput, CreateSupplierSchema } from "@/lib/zod";
 import { cache } from "react";
 import { getSession } from "@/lib/session";
+import { getActiveFiscalYears } from "./fiscalYear";
 function serializeData<T>(data: T): T {
   if (data === null || data === undefined) return data;
   if (typeof data !== "object") return data;
@@ -308,7 +309,6 @@ export const getPurchasesByCompany = cache(
         orderBy: { createdAt: "desc" },
       });
       const serialized = serializeData(purchases);
-      console.log(serialized);
       return { data: serialized, total };
     } catch (error) {
       console.error("Error fetching company purchases:", error);
@@ -563,17 +563,6 @@ export async function createSupplierPaymentFromPurchases(
       );
     }
 
-    console.log("💰 Payment Calculation:", {
-      purchaseId: purchase.id,
-      totalAmount,
-      currentAmountPaid,
-      currentAmountDue,
-      newPayment: amount,
-      newAmountPaid,
-      newAmountDue,
-      newStatus,
-    });
-
     // ✅ Transaction with proper sequencing
     const result = await prisma.$transaction(
       async (tx) => {
@@ -654,7 +643,13 @@ export async function createSupplierPaymentFromPurchases(
 
     revalidatePath("/suppliers");
     revalidatePath("/purchases");
-
+    createSupplierPaymentJournalEntries({
+      payment: supplierPayment,
+      companyId,
+      userId,
+    }).catch((err) => {
+      console.error("Failed to create supplier payment journal entries:", err);
+    });
     return {
       success: true,
       payment: serializeData(supplierPayment),
@@ -677,7 +672,87 @@ export async function createSupplierPaymentFromPurchases(
     };
   }
 }
+export async function createSupplierPaymentJournalEntries({
+  payment,
+  companyId,
+  userId,
+}: {
+  payment: any;
+  companyId: string;
+  userId: string;
+}) {
+  // Get all default account mappings for the company
+  const mappings = await prisma.account_mappings.findMany({
+    where: { company_id: companyId, is_default: true },
+  });
+  const fy = await getActiveFiscalYears();
+  if (!fy) return;
+  // Helper to get account ID by mapping type
+  const getAcc = (type: string) =>
+    mappings.find((m) => m.mapping_type === type)?.account_id;
 
+  const payableAccount = getAcc("accounts_payable");
+  const cashAccount = getAcc("cash");
+  const bankAccount = getAcc("bank");
+
+  if (!payableAccount || !cashAccount || !bankAccount) {
+    throw new Error("الحسابات الأساسية للسداد غير موجودة");
+  }
+
+  const paymentAccount =
+    payment.paymentMethod === "bank" ? bankAccount : cashAccount;
+  const entry_number = `SP-${payment.id.slice(0, 6)}`;
+  const description = `${payment.id} سداد للمورد`;
+
+  // Helper to update account balance
+  const updateAccountBalance = async (
+    account_id: string,
+    debit: number,
+    credit: number,
+  ) => {
+    await prisma.accounts.update({
+      where: { id: account_id },
+      data: { balance: { increment: debit - credit } },
+    });
+  };
+
+  // 1️⃣ Debit Accounts Payable
+  await prisma.journal_entries.create({
+    data: {
+      company_id: companyId,
+      account_id: payableAccount,
+      description,
+      debit: payment.amount,
+      credit: 0,
+      fiscal_period: fy.period_name,
+      reference_type: "سداد_دين_المورد",
+
+      reference_id: payment.id,
+      entry_number: entry_number + "-D",
+      created_by: userId,
+      is_automated: true,
+    },
+  });
+  await updateAccountBalance(payableAccount, payment.amount, 0);
+
+  // 2️⃣ Credit Cash/Bank
+  await prisma.journal_entries.create({
+    data: {
+      company_id: companyId,
+      account_id: paymentAccount,
+      description,
+      debit: 0,
+      fiscal_period: fy.period_name,
+      credit: payment.amount,
+      reference_type: "سداد_دين_المورد",
+      reference_id: payment.id,
+      entry_number: entry_number + "-C",
+      created_by: userId,
+      is_automated: true,
+    },
+  });
+  await updateAccountBalance(paymentAccount, 0, payment.amount);
+}
 // ✅ New function to update existing payment
 // export async function updateSupplierPayment(
 //   userId: string,

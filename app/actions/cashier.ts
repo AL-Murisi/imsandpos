@@ -5,8 +5,7 @@ import prisma from "@/lib/prisma";
 import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 import { logActivity } from "./activitylogs";
 import { Prisma } from "@prisma/client";
-import { Decimal } from "@prisma/client/runtime/library";
-import { after } from "next/server";
+import { getActiveFiscalYears } from "./fiscalYear";
 
 type CartItem = {
   id: string;
@@ -313,8 +312,8 @@ export async function createSaleJournalEntries({
     const exists = await prisma.journal_entries.findFirst({
       where: { reference_id: sale.id, reference_type: "sale" },
     });
-
-    if (exists) return;
+    const fy = await getActiveFiscalYears();
+    if (exists && !fy) return;
 
     // ============================================
     // 3️⃣ Compute COGS exactly like the trigger
@@ -429,6 +428,7 @@ export async function createSaleJournalEntries({
           debit: total,
           entry_date: new Date(),
           credit: 0,
+          fiscal_period: fy?.period_name,
           reference_id: sale.id,
           reference_type: "sale",
           entry_number: `${entryBase}-D`,
@@ -443,6 +443,7 @@ export async function createSaleJournalEntries({
           description: desc,
           debit: 0,
           credit: total,
+          fiscal_period: fy?.period_name,
           entry_date: new Date(),
           reference_id: sale.id,
           reference_type: "دفوعة نقداً",
@@ -462,6 +463,7 @@ export async function createSaleJournalEntries({
           description: desc,
           debit: paid,
           credit: 0,
+          fiscal_period: fy?.period_name,
           entry_date: new Date(),
           reference_id: sale.id,
           entry_number: `${entryBase}-D1`,
@@ -476,6 +478,7 @@ export async function createSaleJournalEntries({
           description: desc,
           debit: 0,
           credit: total,
+          fiscal_period: fy?.period_name,
           entry_date: new Date(),
           reference_id: sale.id,
           entry_number: `${entryBase}-C1`,
@@ -494,6 +497,7 @@ export async function createSaleJournalEntries({
         company_id: companyId,
         account_id: cash,
         description: desc,
+        fiscal_period: fy?.period_name,
         debit: paid,
         credit: 0,
         entry_date: new Date(),
@@ -510,6 +514,7 @@ export async function createSaleJournalEntries({
         description: desc,
         debit: due,
         credit: 0,
+        fiscal_period: fy?.period_name,
         entry_date: new Date(),
         reference_id: sale.id,
         entry_number: `${entryBase}-P2`,
@@ -523,6 +528,7 @@ export async function createSaleJournalEntries({
         account_id: revenue,
         description: desc,
         debit: 0,
+        fiscal_period: fy?.period_name,
         entry_date: new Date(),
         credit: total,
         reference_id: sale.id,
@@ -544,6 +550,7 @@ export async function createSaleJournalEntries({
         entry_date: new Date(),
         debit: total,
         credit: 0,
+        fiscal_period: fy?.period_name,
         reference_id: sale.id,
         entry_number: `${entryBase}-U1`,
         reference_type: " غير مدفوع",
@@ -558,6 +565,7 @@ export async function createSaleJournalEntries({
         entry_date: new Date(),
         debit: 0,
         credit: total,
+        fiscal_period: fy?.period_name,
         reference_id: sale.id,
         reference_type: " غير مدفوع",
         entry_number: `${entryBase}-U2`,
@@ -574,6 +582,7 @@ export async function createSaleJournalEntries({
         company_id: companyId,
         account_id: cogs,
         description: desc,
+        fiscal_period: fy?.period_name,
         entry_date: new Date(),
         debit: totalCOGS,
         credit: 0,
@@ -591,6 +600,7 @@ export async function createSaleJournalEntries({
         entry_date: new Date(),
         debit: 0,
         credit: totalCOGS,
+        fiscal_period: fy?.period_name,
         reference_id: sale.id,
         reference_type: "  تكلفة البضاعة المباعة",
         entry_number: `${entryBase}-CG2`,
@@ -1101,7 +1111,8 @@ export async function createReturnJournalEntries(
     const mappings = await tx.account_mappings.findMany({
       where: { company_id: companyId },
     });
-
+    const fy = await getActiveFiscalYears();
+    if (!fy) return;
     const getAccountId = (type: string) =>
       mappings.find((m: any) => m.mapping_type === type)?.account_id;
 
@@ -1146,6 +1157,7 @@ export async function createReturnJournalEntries(
       debit: returnSubtotal,
       credit: 0,
       is_automated: true,
+      fiscal_period: fy?.period_name,
       reference_type: "sale_return",
       reference_id: returnSaleId,
       created_by: cashierId,
@@ -1159,6 +1171,7 @@ export async function createReturnJournalEntries(
       description: `عكس تكلفة البضاعة المباعة (إرجاع) ${returnNumber}`,
       entry_date: new Date(),
       debit: 0,
+      fiscal_period: fy?.period_name,
       credit: returnTotalCOGS,
       is_automated: true,
       reference_type: "sale_return",
@@ -1175,6 +1188,7 @@ export async function createReturnJournalEntries(
       entry_date: new Date(),
       debit: returnTotalCOGS, // Inventory is returned at cost (COGS)
       credit: 0,
+      fiscal_period: fy?.period_name,
       is_automated: true,
       reference_type: "sale_return",
       reference_id: returnSaleId,
@@ -1192,6 +1206,7 @@ export async function createReturnJournalEntries(
         entry_date: new Date(),
         // Note: Credit to decrease the AR asset balance
         debit: 0,
+        fiscal_period: fy?.period_name,
         credit: refundFromAR,
         is_automated: true,
         reference_type: "sale_return",
@@ -1221,6 +1236,7 @@ export async function createReturnJournalEntries(
         debit: 0,
         credit: refundFromCashBank,
         is_automated: true,
+        fiscal_period: fy?.period_name,
         reference_type: "sale_return",
         reference_id: returnSaleId,
         created_by: cashierId,

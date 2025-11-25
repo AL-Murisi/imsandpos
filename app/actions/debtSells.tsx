@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { fetchProductStats } from "./Product";
 import { success } from "zod";
+import { getActiveFiscalYears } from "./fiscalYear";
 
 export async function updateSales(
   companyId: string,
@@ -108,6 +109,7 @@ export async function updateSalesBulk(
   saleIds: string[],
   paymentAmount: number,
   cashierId: string,
+  paymentMethod: string,
 ) {
   if (paymentAmount <= 0)
     throw new Error("Payment amount must be greater than zero.");
@@ -160,7 +162,7 @@ export async function updateSalesBulk(
       customerId: s.customerId, // ✅ REQUIRED!
       cashierId,
       payment_type: "outstanding_payment",
-      paymentMethod: "cash",
+      paymentMethod: paymentMethod,
       amount: payNow,
       status: "completed",
       notes: `تسديد الدين للفاتورة رقم ${s.saleNumber}`,
@@ -259,7 +261,8 @@ export async function createPaymentJournalEntries({
 }) {
   try {
     const { saleId, customerId, amount } = payment;
-
+    const fy = await getActiveFiscalYears();
+    if (!fy) return;
     // ============================================
     // 1️⃣ Fetch related sale
     // ============================================
@@ -317,6 +320,7 @@ export async function createPaymentJournalEntries({
 
     const cashAcc = getAcc("cash");
     const arAcc = getAcc("accounts_receivable");
+    const bank = getAcc("bank");
 
     if (!cashAcc || !arAcc) return;
 
@@ -327,34 +331,75 @@ export async function createPaymentJournalEntries({
       sale.customerId ? " - " + sale.customer?.name : ""
     }`;
 
-    const entries: any[] = [
-      {
-        company_id: companyId,
-        account_id: cashAcc,
-        description: desc,
-        debit: amount,
-        credit: 0,
-        entry_date: new Date(),
-        reference_id: payment.id,
-        reference_type: "payment",
-        entry_number: `${entryBase}-D`,
-        created_by: cashierId,
-        is_automated: true,
-      },
-      {
-        company_id: companyId,
-        account_id: arAcc,
-        description: desc,
-        debit: 0,
-        credit: amount,
-        entry_date: new Date(),
-        reference_id: payment.id,
-        reference_type: "payment",
-        entry_number: `${entryBase}-C`,
-        created_by: cashierId,
-        is_automated: true,
-      },
-    ];
+    let entries: any[] = [];
+    if (payment.paymentMethod === "cash") {
+      entries = [
+        {
+          company_id: companyId,
+          account_id: cashAcc,
+          description: desc,
+          debit: amount,
+          credit: 0,
+          fiscal_period: fy.period_name,
+          entry_date: new Date(),
+          reference_id: payment.id,
+          reference_type: "تسديد دين",
+          entry_number: `${entryBase}-D`,
+          created_by: cashierId,
+          is_automated: true,
+        },
+        {
+          company_id: companyId,
+          account_id: arAcc,
+          description: desc,
+          debit: 0,
+          credit: amount,
+          fiscal_period: fy.period_name,
+          entry_date: new Date(),
+          reference_id: payment.id,
+          reference_type: "سند قبض",
+          entry_number: `${entryBase}-C`,
+          created_by: cashierId,
+          is_automated: true,
+        },
+      ];
+      return entries;
+    } else if (payment.paymentMethod === "bank") {
+      entries = [
+        {
+          company_id: companyId,
+          account_id: bank,
+          description: desc,
+          debit: amount,
+          credit: 0,
+          fiscal_period: fy.period_name,
+          entry_date: new Date(),
+          reference_id: payment.id,
+          reference_type: "تسديد دين",
+          entry_number: `${entryBase}-D`,
+          created_by: cashierId,
+          is_automated: true,
+        },
+        {
+          company_id: companyId,
+          account_id: arAcc,
+          description: desc,
+          debit: 0,
+          fiscal_period: fy.period_name,
+          credit: amount,
+          entry_date: new Date(),
+          reference_id: payment.id,
+          reference_type: "سند قبض",
+          entry_number: `${entryBase}-C`,
+          created_by: cashierId,
+          is_automated: true,
+        },
+      ];
+    }
+
+    if (entries.length === 0) {
+      throw new Error("Unsupported payment method: " + payment.paymentMethod);
+    }
 
     // ============================================
     // 6️⃣ Insert entries in bulk

@@ -48,7 +48,7 @@ const nextConfig: NextConfig = {
   },
 
   serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core"],
-
+  productionBrowserSourceMaps: false,
   experimental: {
     inlineCss: true,
     staleTimes: {
@@ -77,7 +77,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  productionBrowserSourceMaps: true,
+
   webpack: (config, { isServer }) => {
     // Only apply this configuration for the server build
     if (isServer) {

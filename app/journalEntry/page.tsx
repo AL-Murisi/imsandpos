@@ -4,6 +4,7 @@ import {
   getExpenseCategories,
   getJournalEntries,
 } from "../actions/Journal Entry";
+import { getFiscalYears } from "../actions/fiscalYear";
 
 type JournalProps = {
   searchParams: Promise<{
@@ -51,6 +52,9 @@ export default async function Page({ searchParams }: JournalProps) {
     pageSize,
   );
   const accounts = getExpenseCategories();
+  const fy = getFiscalYears();
 
-  return <JournalEntriesTable dataj={data} acounts={accounts} />;
+  return (
+    <JournalEntriesTable dataj={data} acounts={accounts} fiscalYears={fy} />
+  );
 }

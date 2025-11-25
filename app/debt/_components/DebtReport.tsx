@@ -19,6 +19,8 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { updateSalesBulk } from "@/app/actions/debtSells";
+import { Label } from "@/components/ui/label";
+import { SelectField } from "@/components/common/selectproduct";
 
 interface Debt {
   id: string;
@@ -46,7 +48,7 @@ export default function DebtReport({
   const [paymentAmount, setPaymentAmount] = useState<number>(0);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [open, setOpen] = useState(false);
-
+  const [paymentMethod, setPaymentMethod] = useState("");
   const t = useTranslations("debt");
   const { user } = useAuth();
   const { formatCurrency } = useFormatter();
@@ -105,12 +107,19 @@ export default function DebtReport({
   const onSubmit = async () => {
     setIsSubmitting(true);
     if (paymentAmount <= 0) {
-      toast.error("Please enter a valid payment amount.");
+      toast.error("يرجى إدخال مبلغ دفع صحيح.");
       setIsSubmitting(false);
       return;
     }
+
     if (selectedIds.length === 0) {
-      toast.error("Please select at least one invoice to pay.");
+      toast.error("يرجى اختيار فاتورة واحدة على الأقل للسداد.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!paymentMethod) {
+      toast.error("يرجى اختيار طريقة الدفع.");
       setIsSubmitting(false);
       return;
     }
@@ -121,6 +130,7 @@ export default function DebtReport({
         selectedIds,
         paymentAmount,
         user.userId,
+        paymentMethod,
       );
 
       toast.success("Payment successfully applied!");
@@ -134,7 +144,12 @@ export default function DebtReport({
       toast.error("Failed to apply payment. Please try again.");
     }
   };
-
+  const paymentMethods = [
+    { id: "cash", name: "نقداً" },
+    { id: "bank", name: "تحويل بنكي" },
+    { id: "check", name: "شيك" },
+    { id: "credit", name: "ائتمان" },
+  ];
   return (
     <Dailogreuse
       open={open}
@@ -226,7 +241,15 @@ export default function DebtReport({
             {t("totalOutstanding") || "Total Outstanding"}:{" "}
             {formatCurrency(totalRemaining)}
           </p>
-
+          <div className="grid gap-2">
+            <Label>طريقة الدفع</Label>
+            <SelectField
+              options={paymentMethods}
+              value={paymentMethod || ""}
+              placeholder="اختر الطريقة"
+              action={(val) => setPaymentMethod(val)}
+            />
+          </div>
           <div className="flex items-center gap-2">
             <Input
               type="number"
