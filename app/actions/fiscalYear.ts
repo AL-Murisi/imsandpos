@@ -52,3 +52,11 @@ export async function setActiveFiscalYear(fyId: string) {
     data: { is_closed: true },
   });
 }
+export async function getActiveFiscalYears() {
+  const user = await getSession();
+  if (!user) return;
+  return await prisma.fiscal_periods.findFirst({
+    where: { company_id: user.companyId, is_closed: false },
+    orderBy: { start_date: "desc" },
+  });
+}
