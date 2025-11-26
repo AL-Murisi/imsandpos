@@ -468,7 +468,7 @@ export async function createSaleJournalEntries({
           credit: 0,
           fiscal_period: fy?.period_name,
           entry_date: new Date(),
-          reference_id: sale.id,
+          reference_id: customerId,
           entry_number: `${entryBase}-D1`,
           created_by: cashierId,
           reference_type: " نقداً",
