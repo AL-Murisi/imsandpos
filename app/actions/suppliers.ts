@@ -209,6 +209,15 @@ export async function createSupplier(
     });
     revalidatePath("/suppliers");
     revalidatePath("/products");
+    createSupplierJournalEnteries({
+      supplierId: user.id,
+      companyId,
+      outstandingBalance,
+      totalPaid,
+      totalPurchased,
+    }).catch((err) => {
+      console.error("Failed to create supplier payment journal entries:", err);
+    });
     const users = serializeData(user);
     return users;
   } catch (error) {
@@ -216,7 +225,19 @@ export async function createSupplier(
     throw error;
   }
 }
-
+export async function createSupplierJournalEnteries({
+  supplierId,
+  companyId,
+  outstandingBalance,
+  totalPaid,
+  totalPurchased,
+}: {
+  supplierId: string;
+  companyId: string;
+  outstandingBalance?: number;
+  totalPaid?: number;
+  totalPurchased?: number;
+}) {}
 // ============================================
 export const getPurchasesByCompany = cache(
   async (
@@ -753,172 +774,7 @@ export async function createSupplierPaymentJournalEntries({
   });
   await updateAccountBalance(paymentAccount, 0, payment.amount);
 }
-// ✅ New function to update existing payment
-// export async function updateSupplierPayment(
-//   userId: string,
-//   companyId: string,
-//   paymentId: string,
-//   data: {
-//     amount: number;
-//     paymentMethod?: string;
-//     note?: string;
-//     paymentDate?: Date;
-//   },
-// ) {
-//   try {
-//     // Get existing payment
-//     const existingPayment = await prisma.supplierPayment.findUnique({
-//       where: { id: paymentId },
-//       include: {
-//         purchase: true,
-//         supplier: true,
-//       },
-//     });
 
-//     if (!existingPayment) {
-//       throw new Error("Payment not found");
-//     }
-
-//     if (!existingPayment.purchaseId) {
-//       throw new Error("Payment is not linked to a purchase");
-//     }
-
-//     const oldAmount = Number(existingPayment.amount);
-//     const newAmount = data.amount;
-//     const amountDifference = newAmount - oldAmount;
-
-//     // Get purchase
-//     const purchase = await prisma.purchase.findUnique({
-//       where: { id: existingPayment.purchaseId },
-//     });
-
-//     if (!purchase) {
-//       throw new Error("Related purchase not found");
-//     }
-
-//     const currentAmountPaid = Number(purchase.amountPaid);
-//     const currentAmountDue = Number(purchase.amountDue);
-
-//     // Calculate new amounts
-//     const newAmountPaid = currentAmountPaid + amountDifference;
-//     const newAmountDue = Math.max(0, currentAmountDue - amountDifference);
-
-//     // Determine new status
-//     let newStatus: string;
-//     if (newAmountDue === 0) {
-//       newStatus = "paid";
-//     } else if (newAmountPaid > 0) {
-//       newStatus = "partial";
-//     } else {
-//       newStatus = "pending";
-//     }
-
-//     // Validate
-//     if (newAmountDue < 0) {
-//       throw new Error(
-//         `Updated payment would result in overpayment. Maximum allowed: ${currentAmountDue + oldAmount}`
-//       );
-//     }
-
-//     console.log("💰 Payment Update Calculation:", {
-//       paymentId,
-//       purchaseId: purchase.id,
-//       oldAmount,
-//       newAmount,
-//       amountDifference,
-//       currentAmountPaid,
-//       newAmountPaid,
-//       currentAmountDue,
-//       newAmountDue,
-//       newStatus,
-//     });
-
-//     // Transaction
-//     const result = await prisma.$transaction(
-//       async (tx) => {
-//         // 1. Update payment record
-//         const updatedPayment = await tx.supplierPayment.update({
-//           where: { id: paymentId },
-//           data: {
-//             amount: newAmount,
-//             paymentMethod: data.paymentMethod ?? existingPayment.paymentMethod,
-//             note: data.note ?? existingPayment.note,
-//             paymentDate: data.paymentDate ?? existingPayment.paymentDate,
-//           },
-//           include: {
-//             supplier: true,
-//             purchase: true,
-//           },
-//         });
-
-//         // 2. Update purchase
-//         const updatedPurchase = await tx.purchase.update({
-//           where: { id: existingPayment.purchaseId },
-//           data: {
-//             amountPaid: newAmountPaid,
-//             amountDue: newAmountDue,
-//             status: newStatus,
-//             purchaseType: "outstandingpayment", // ✅ Trigger update
-//           },
-//         });
-
-//         // 3. Update supplier totals
-//         await tx.supplier.update({
-//           where: { id: existingPayment.supplierId, companyId },
-//           data: {
-//             totalPaid: { increment: amountDifference },
-//             outstandingBalance: { decrement: amountDifference },
-//           },
-//         });
-
-//         return {
-//           updatedPayment,
-//           updatedPurchase,
-//         };
-//       },
-//       {
-//         timeout: 30000,
-//         isolationLevel: 'ReadCommitted',
-//       },
-//     );
-
-//     // Log activity
-//     await prisma.activityLogs.create({
-//       data: {
-//         userId,
-//         companyId,
-//         action: "Updated supplier payment",
-//         details: `Payment ID: ${paymentId}, Old amount: ${oldAmount}, New amount: ${newAmount}, Difference: ${amountDifference}`,
-//       },
-//     });
-
-//     revalidatePath("/suppliers");
-//     revalidatePath("/purchases");
-
-//     return {
-//       success: true,
-//       payment: serializeData(result.updatedPayment),
-//       updatedPurchase: serializeData(result.updatedPurchase),
-//       summary: {
-//         oldAmount,
-//         newAmount,
-//         amountDifference,
-//         newAmountPaid,
-//         newAmountDue,
-//         newStatus,
-//       },
-//     };
-//   } catch (error) {
-//     console.error("❌ Error updating supplier payment:", error);
-//     return {
-//       success: false,
-//       error:
-//         error instanceof Error ? error.message : "Failed to update payment",
-//     };
-//   }
-// }
-
-// ✅ Function to get payment history for a purchase
 export async function getPurchasePaymentHistory(
   purchaseId: string,
   companyId: string,

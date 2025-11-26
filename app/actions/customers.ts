@@ -230,12 +230,31 @@ export async function createCutomer(form: createCusomer, companyId: string) {
       },
     });
     revalidatePath("/customer");
+    createCustomerJournalEnteries({
+      supplierId: customer.id,
+      companyId,
+      outstandingBalance,
+      balance,
+    }).catch((err) => {
+      console.error("Failed to create supplier payment journal entries:", err);
+    });
     return { success: true, customer };
   } catch (error) {
     console.error("Failed to create customer:", error);
     throw error;
   }
 }
+export async function createCustomerJournalEnteries({
+  supplierId,
+  companyId,
+  outstandingBalance,
+  balance,
+}: {
+  supplierId: string;
+  companyId: string;
+  outstandingBalance?: number;
+  balance?: number;
+}) {}
 export async function updatedCustomer(
   form: createCusomer,
   id: string,

@@ -468,7 +468,7 @@ export async function createSaleJournalEntries({
           credit: 0,
           fiscal_period: fy?.period_name,
           entry_date: new Date(),
-          reference_id: customerId,
+          reference_id: sale.id,
           entry_number: `${entryBase}-D1`,
           created_by: cashierId,
           reference_type: "دفوعة نقداً",
@@ -483,10 +483,10 @@ export async function createSaleJournalEntries({
           credit: total,
           fiscal_period: fy?.period_name,
           entry_date: new Date(),
-          reference_id: sale.id,
+          reference_id: customerId,
           entry_number: `${entryBase}-C1`,
           created_by: cashierId,
-          reference_type: "دفوعة نقداً",
+          reference_type: "دفع نقداً",
           is_automated: true,
         });
       }
@@ -495,53 +495,78 @@ export async function createSaleJournalEntries({
     // ----------------------------
     // PARTIAL PAYMENT
     // ----------------------------
+    // ============================================
+    // PARTIAL PAYMENT (Revised Logic)
+    // ============================================
     else if (sale.paymentStatus === "partial") {
-      entries.push({
-        company_id: companyId,
-        account_id: cash,
-        description: desc + "مدفوع جزئياً",
-        fiscal_period: fy?.period_name,
-        debit: paid,
-        credit: 0,
-        entry_date: new Date(),
-        reference_id: customerId,
-        reference_type: "فاتورة مبيعات",
-        entry_number: `${entryBase}-P1`,
-        created_by: cashierId,
-        is_automated: true,
-      });
-
+      // 1. Record the FULL sale amount as Accounts Receivable (AR)
+      // Debit AR (Customer Debt Increases)
       entries.push({
         company_id: companyId,
         account_id: ar,
-        description: desc + "مدفوع جزئياً",
-        debit: due,
-        credit: 0,
+        description: desc + " - فاتورة بيع",
         fiscal_period: fy?.period_name,
+        debit: total, // <--- Debit FULL TOTAL
+        credit: 0,
         entry_date: new Date(),
         reference_id: customerId,
-        entry_number: `${entryBase}-P2`,
-        created_by: cashierId,
         reference_type: "فاتورة مبيعات",
+        entry_number: `${entryBase}-PS-DR`,
+        created_by: cashierId,
         is_automated: true,
       });
 
+      // Credit Revenue (Revenue Recognized)
       entries.push({
         company_id: companyId,
         account_id: revenue,
-        description: desc + "مدفوع جزئياً",
+        description: desc + " - فاتورة بيع",
         debit: 0,
         fiscal_period: fy?.period_name,
         entry_date: new Date(),
-        credit: total,
+        credit: total, // <--- Credit FULL TOTAL
         reference_id: sale.id,
         reference_type: "فاتورة مبيعات",
-        entry_number: `${entryBase}-PR`,
+        entry_number: `${entryBase}-PS-CR`,
         created_by: cashierId,
         is_automated: true,
       });
-    }
 
+      // 2. Record the Payment Received (Only if amountPaid > 0)
+      if (paid > 0) {
+        // Debit Cash (Company Cash Increases)
+        entries.push({
+          company_id: companyId,
+          account_id: cash,
+          description: desc + " - دفعة فورية",
+          fiscal_period: fy?.period_name,
+          debit: paid, // <--- Debit PAID amount
+          credit: 0,
+          entry_date: new Date(),
+          reference_id: customerId, // Use customerId for the payment reference
+          reference_type: "دفعة من عميل", // New type for payments
+          entry_number: `${entryBase}-PP-DR`,
+          created_by: cashierId,
+          is_automated: true,
+        });
+
+        // Credit AR (Customer Debt Decreases)
+        entries.push({
+          company_id: companyId,
+          account_id: ar,
+          description: desc + " - دفعة فورية",
+          debit: 0,
+          fiscal_period: fy?.period_name,
+          entry_date: new Date(),
+          credit: paid, // <--- Credit PAID amount
+          reference_id: customerId, // Use customerId for the payment reference
+          reference_type: "دفعة من عميل", // New type for payments
+          entry_number: `${entryBase}-PP-CR`,
+          created_by: cashierId,
+          is_automated: true,
+        });
+      }
+    }
     // ----------------------------
     // UNPAID (full AR)
     // ----------------------------
