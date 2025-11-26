@@ -367,7 +367,6 @@ export async function createPaymentJournalEntries({
           is_automated: true,
         },
       ];
-      return entries;
     } else if (payment.paymentMethod === "bank") {
       entries = [
         {
