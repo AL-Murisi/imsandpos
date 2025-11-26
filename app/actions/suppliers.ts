@@ -727,7 +727,7 @@ export async function createSupplierPaymentJournalEntries({
       fiscal_period: fy.period_name,
       reference_type: "سداد_دين_المورد",
 
-      reference_id: payment.id,
+      reference_id: payment.supplierId,
       entry_number: entry_number + "-D",
       created_by: userId,
       is_automated: true,
@@ -745,7 +745,7 @@ export async function createSupplierPaymentJournalEntries({
       fiscal_period: fy.period_name,
       credit: payment.amount,
       reference_type: "سداد_دين_المورد",
-      reference_id: payment.id,
+      reference_id: payment.supplierId,
       entry_number: entry_number + "-C",
       created_by: userId,
       is_automated: true,

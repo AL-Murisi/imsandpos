@@ -43,9 +43,5 @@ export default async function SupplierStatementPage({
     );
   }
 
-  return (
-    <ScrollArea className="max-h-[95vh] p-2" dir="rtl">
-      <SupplierStatement suppliers={result.data} />
-    </ScrollArea>
-  );
+  return <SupplierStatement suppliers={result.data} />;
 }

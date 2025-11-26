@@ -154,9 +154,202 @@ function serializeData<T>(data: T): T {
 // ===============================
 // 4. جلب كشف حساب العميل
 // ===============================
+// export async function getCustomerStatement(
+//   customerId: string,
+//   companyId: string,
+//   dateFrom: string,
+//   dateTo: string,
+// ) {
+//   try {
+//     const fromDate = new Date(dateFrom);
+//     const toDate = new Date(dateTo);
+//     toDate.setHours(23, 59, 59, 999);
+
+//     // -------------------------------
+//     // 1️⃣ Get Customer
+//     // -------------------------------
+//     const customer = await prisma.customer.findUnique({
+//       where: { id: customerId, companyId },
+//       select: {
+//         id: true,
+//         name: true,
+//         email: true,
+//         address: true,
+//         city: true,
+//         phoneNumber: true,
+//         balance: true,
+//         outstandingBalance: true,
+//       },
+//     });
+
+//     if (!customer) {
+//       return { success: false, error: "العميل غير موجود" };
+//     }
+
+//     // -------------------------------
+//     // 2️⃣ Opening Balance (Before From Date)
+//     // -------------------------------
+//     const openingBalance = await calculateOpeningBalance(
+//       customerId,
+//       companyId,
+//       fromDate,
+//     );
+
+//     // -------------------------------
+//     // 3️⃣ Fetch Sales (Invoices + Returns)
+//     // -------------------------------
+//     const sales = await prisma.sale.findMany({
+//       where: {
+//         customerId,
+//         companyId,
+//         saleDate: { gte: fromDate, lte: toDate },
+//         status: { not: "cancelled" },
+//       },
+//       select: {
+//         id: true,
+//         saleNumber: true,
+//         saleDate: true,
+//         totalAmount: true,
+//         sale_type: true, // "normal" | "return"
+//       },
+//       orderBy: { saleDate: "asc" },
+//     });
+
+//     // -------------------------------
+//     // 4️⃣ Fetch Payments
+//     // -------------------------------
+//     const payments = await prisma.payment.findMany({
+//       where: {
+//         customerId,
+//         companyId,
+//         createdAt: {
+//           ...(fromDate && { gte: fromDate }),
+//           ...(toDate && { lte: toDate }),
+//         },
+//       },
+//       select: {
+//         id: true,
+//         amount: true,
+//         paymentMethod: true,
+//         referenceNumber: true,
+//         notes: true,
+//         createdAt: true,
+//         payment_type: true,
+//         sale: { select: { saleNumber: true } },
+//       },
+//       orderBy: { createdAt: "asc" },
+//     });
+
+//     // -------------------------------
+//     // 5️⃣ Merge Transactions
+//     // -------------------------------
+//     const transactions: any[] = [];
+//     let runningBalance = openingBalance;
+
+//     // Add Sales (Normal + Return)
+//     sales.forEach((sale) => {
+//       const isReturn = sale.sale_type === "return";
+
+//       const debit = isReturn ? 0 : Number(sale.totalAmount);
+//       const credit = isReturn ? Number(sale.totalAmount) : 0;
+
+//       runningBalance = runningBalance + debit - credit;
+
+//       transactions.push({
+//         date: sale.saleDate,
+//         // typeName: isReturn ? "return" : "sale",
+//         typeName: isReturn ? "مرتجع مبيعات" : "فاتورة مبيعات",
+//         docNo: sale.saleNumber,
+//         description: isReturn
+//           ? `مرتجع مبيعات رقم ${sale.saleNumber}`
+//           : `فاتورة مبيعات رقم ${sale.saleNumber}`,
+//         debit,
+//         credit,
+//         balance: runningBalance,
+//         referenceId: sale.id,
+//       });
+//     });
+
+//     // Add Payments
+//     payments.forEach((payment) => {
+//       const isReturn = payment.payment_type === "return_refund";
+//       const credit = isReturn ? 0 : Number(payment.amount);
+//       const debit = isReturn ? Number(payment.amount) : 0;
+
+//       // const debit = 0;
+//       // const credit = Number(payment.amount);
+
+//       runningBalance = runningBalance + debit - credit;
+
+//       transactions.push({
+//         date: payment.createdAt,
+//         type: "payment",
+//         typeName:
+//           payment.payment_type === "outstanding_payment"
+//             ? "سند قبض دين"
+//             : payment.payment_type == "sale_payment"
+//               ? "سند قبض"
+//               : payment.payment_type === "return_refund"
+//                 ? "إرجاع بيع"
+//                 : "رصيد افتتاحي",
+//         docNo:
+//           payment.referenceNumber || `PAY-${payment.id.toString().slice(0, 8)}`,
+//         description:
+//           payment.notes ||
+//           (payment.sale
+//             ? `دفعة على فاتورة ${payment.sale.saleNumber}`
+//             : "دفعة نقدية"),
+//         debit,
+//         credit,
+//         balance: runningBalance,
+//         referenceId: payment.id,
+//       });
+//     });
+
+//     // -------------------------------
+//     // 6️⃣ Sort and Recalculate Running Balance
+//     // -------------------------------
+//     transactions.sort(
+//       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+//     );
+
+//     let balance = openingBalance;
+//     transactions.forEach((t) => {
+//       balance = balance + t.debit - t.credit;
+//       t.balance = balance;
+//     });
+//     console.log(balance);
+//     // -------------------------------
+//     // 7️⃣ Totals
+//     // -------------------------------
+//     const totalDebit = transactions.reduce((sum, t) => sum + t.debit, 0);
+//     const totalCredit = transactions.reduce((sum, t) => sum + t.credit, 0);
+//     const closingBalance = openingBalance + totalDebit - totalCredit;
+//     console.log(transactions);
+//     // -------------------------------
+//     // 8️⃣ Result
+//     // -------------------------------
+//     return {
+//       success: true,
+//       data: {
+//         customer: serializeData(customer),
+//         openingBalance,
+//         transactions,
+//         totalDebit,
+//         totalCredit,
+//         closingBalance,
+//         period: { from: dateFrom, to: dateTo },
+//       },
+//     };
+//   } catch (error) {
+//     console.error("Error fetching customer statement:", error);
+//     return { success: false, error: "فشل في جلب كشف الحساب" };
+//   }
+// }
 export async function getCustomerStatement(
   customerId: string,
   companyId: string,
+
   dateFrom: string,
   dateTo: string,
 ) {
@@ -165,9 +358,8 @@ export async function getCustomerStatement(
     const toDate = new Date(dateTo);
     toDate.setHours(23, 59, 59, 999);
 
-    // -------------------------------
-    // 1️⃣ Get Customer
-    // -------------------------------
+    // 1️⃣ جلب حساب المدينون
+
     const customer = await prisma.customer.findUnique({
       where: { id: customerId, companyId },
       select: {
@@ -186,165 +378,89 @@ export async function getCustomerStatement(
       return { success: false, error: "العميل غير موجود" };
     }
 
-    // -------------------------------
-    // 2️⃣ Opening Balance (Before From Date)
-    // -------------------------------
-    const openingBalance = await calculateOpeningBalance(
-      customerId,
-      companyId,
-      fromDate,
+    // 2️⃣ الرصيد الافتتاحي قبل الفترة
+    const openingEntries = await prisma.journal_entries.findMany({
+      where: {
+        company_id: companyId,
+        reference_id: customerId,
+        entry_date: { lt: fromDate },
+      },
+      select: {
+        debit: true,
+        credit: true,
+      },
+    });
+
+    const openingBalance = openingEntries.reduce(
+      (sum, e) => sum + Number(e.debit) - Number(e.credit),
+      0,
     );
 
-    // -------------------------------
-    // 3️⃣ Fetch Sales (Invoices + Returns)
-    // -------------------------------
-    const sales = await prisma.sale.findMany({
+    // 3️⃣ قيود الفترة
+    const entries = await prisma.journal_entries.findMany({
       where: {
-        customerId,
-        companyId,
-        saleDate: { gte: fromDate, lte: toDate },
-        status: { not: "cancelled" },
+        company_id: companyId,
+        reference_id: customerId,
+        entry_date: { gte: fromDate, lte: toDate },
       },
+      orderBy: { entry_date: "asc" },
       select: {
         id: true,
-        saleNumber: true,
-        saleDate: true,
-        totalAmount: true,
-        sale_type: true, // "normal" | "return"
+        entry_date: true,
+        debit: true,
+        credit: true,
+        description: true,
+        entry_number: true,
+        reference_type: true,
       },
-      orderBy: { saleDate: "asc" },
     });
 
-    // -------------------------------
-    // 4️⃣ Fetch Payments
-    // -------------------------------
-    const payments = await prisma.payment.findMany({
-      where: {
-        customerId,
-        companyId,
-        createdAt: {
-          ...(fromDate && { gte: fromDate }),
-          ...(toDate && { lte: toDate }),
-        },
-      },
-      select: {
-        id: true,
-        amount: true,
-        paymentMethod: true,
-        referenceNumber: true,
-        notes: true,
-        createdAt: true,
-        payment_type: true,
-        sale: { select: { saleNumber: true } },
-      },
-      orderBy: { createdAt: "asc" },
-    });
-
-    // -------------------------------
-    // 5️⃣ Merge Transactions
-    // -------------------------------
-    const transactions: any[] = [];
+    // 4️⃣ بناء كشف الحساب
     let runningBalance = openingBalance;
+    const transactions = entries.map((entry) => {
+      runningBalance = Math.abs(
+        runningBalance + Number(entry.debit) - Number(entry.credit),
+      );
 
-    // Add Sales (Normal + Return)
-    sales.forEach((sale) => {
-      const isReturn = sale.sale_type === "return";
-
-      const debit = isReturn ? 0 : Number(sale.totalAmount);
-      const credit = isReturn ? Number(sale.totalAmount) : 0;
-
-      runningBalance = runningBalance + debit - credit;
-
-      transactions.push({
-        date: sale.saleDate,
-        // typeName: isReturn ? "return" : "sale",
-        typeName: isReturn ? "مرتجع مبيعات" : "فاتورة مبيعات",
-        docNo: sale.saleNumber,
-        description: isReturn
-          ? `مرتجع مبيعات رقم ${sale.saleNumber}`
-          : `فاتورة مبيعات رقم ${sale.saleNumber}`,
-        debit,
-        credit,
+      return {
+        date: entry.entry_date,
+        debit: Number(entry.debit),
+        credit: Number(entry.credit),
         balance: runningBalance,
-        referenceId: sale.id,
-      });
+        description: entry.description,
+        docNo: entry.entry_number,
+        typeName: mapType(entry.reference_type),
+      };
     });
+    const totalDebit = transactions.reduce((s, t) => s + t.debit, 0);
+    const totalCredit = transactions.reduce((s, t) => s + t.credit, 0);
 
-    // Add Payments
-    payments.forEach((payment) => {
-      const isReturn = payment.payment_type === "return_refund";
-      const credit = isReturn ? 0 : Number(payment.amount);
-      const debit = isReturn ? Number(payment.amount) : 0;
-
-      // const debit = 0;
-      // const credit = Number(payment.amount);
-
-      runningBalance = runningBalance + debit - credit;
-
-      transactions.push({
-        date: payment.createdAt,
-        type: "payment",
-        typeName:
-          payment.payment_type === "outstanding_payment"
-            ? "سند قبض دين"
-            : payment.payment_type == "sale_payment"
-              ? "سند قبض"
-              : payment.payment_type === "return_refund"
-                ? "إرجاع بيع"
-                : "رصيد افتتاحي",
-        docNo:
-          payment.referenceNumber || `PAY-${payment.id.toString().slice(0, 8)}`,
-        description:
-          payment.notes ||
-          (payment.sale
-            ? `دفعة على فاتورة ${payment.sale.saleNumber}`
-            : "دفعة نقدية"),
-        debit,
-        credit,
-        balance: runningBalance,
-        referenceId: payment.id,
-      });
-    });
-
-    // -------------------------------
-    // 6️⃣ Sort and Recalculate Running Balance
-    // -------------------------------
-    transactions.sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
-    );
-
-    let balance = openingBalance;
-    transactions.forEach((t) => {
-      balance = balance + t.debit - t.credit;
-      t.balance = balance;
-    });
-    console.log(balance);
-    // -------------------------------
-    // 7️⃣ Totals
-    // -------------------------------
-    const totalDebit = transactions.reduce((sum, t) => sum + t.debit, 0);
-    const totalCredit = transactions.reduce((sum, t) => sum + t.credit, 0);
-    const closingBalance = openingBalance + totalDebit - totalCredit;
-    console.log(transactions);
-    // -------------------------------
-    // 8️⃣ Result
-    // -------------------------------
     return {
       success: true,
       data: {
         customer: serializeData(customer),
         openingBalance,
-        transactions,
+        closingBalance: Math.abs(openingBalance + totalDebit - totalCredit),
         totalDebit,
         totalCredit,
-        closingBalance,
+        transactions,
         period: { from: dateFrom, to: dateTo },
       },
     };
   } catch (error) {
-    console.error("Error fetching customer statement:", error);
-    return { success: false, error: "فشل في جلب كشف الحساب" };
+    console.error("Error loading journal-based statement:", error);
+    return { success: false, error: "خطأ في جلب كشف الحساب" };
   }
+}
+
+// 🔍 لتحسين أسماء العمليات حسب نوع القيد
+function mapType(ref: string | null) {
+  if (!ref) return "عملية";
+  if (ref.includes("مدفوع")) return "دفعة";
+  if (ref.includes("غير مدفوع")) return "فاتورة غير مدفوعة";
+  if (ref.includes("تكلفة")) return "قيد مخزون";
+  if (ref.includes("مرتجع")) return "مرتجع";
+  return ref;
 }
 
 // ===============================
@@ -610,9 +726,8 @@ export async function getSupplierStatement(
     const toDate = new Date(dateTo);
     toDate.setHours(23, 59, 59, 999);
 
-    // -------------------------------
-    // 1️⃣ Get Supplier
-    // -------------------------------
+    // 1️⃣ جلب حساب المدينون
+
     const supplier = await prisma.supplier.findUnique({
       where: { id: supplierId, companyId },
       select: {
@@ -632,152 +747,77 @@ export async function getSupplierStatement(
       return { success: false, error: "المورد غير موجود" };
     }
 
-    // -------------------------------
-    // 2️⃣ Opening Balance (Before From Date)
-    // -------------------------------
-    const openingBalance = await calculateSupplierOpeningBalance(
-      supplierId,
-      companyId,
-      fromDate,
+    // 2️⃣ الرصيد الافتتاحي قبل الفترة
+    const openingEntries = await prisma.journal_entries.findMany({
+      where: {
+        company_id: companyId,
+        reference_id: supplierId,
+        entry_date: { lt: fromDate },
+      },
+      select: {
+        debit: true,
+        credit: true,
+      },
+    });
+
+    const openingBalance = openingEntries.reduce(
+      (sum, e) => sum + Number(e.debit) - Number(e.credit),
+      0,
     );
 
-    // -------------------------------
-    // 3️⃣ Fetch Purchases (Normal + Returns)
-    // -------------------------------
-    const purchases = await prisma.purchase.findMany({
+    // 3️⃣ قيود الفترة
+    const entries = await prisma.journal_entries.findMany({
       where: {
-        supplierId,
-        companyId,
-        createdAt: { gte: fromDate, lte: toDate },
-        status: { not: "cancelled" },
+        company_id: companyId,
+        reference_id: supplierId,
+        entry_date: { gte: fromDate, lte: toDate },
       },
+      orderBy: { entry_date: "asc" },
       select: {
         id: true,
-        totalAmount: true,
-        createdAt: true,
-        purchaseType: true,
-        status: true,
+        entry_date: true,
+        debit: true,
+        credit: true,
+        description: true,
+        entry_number: true,
+        reference_type: true,
       },
-      orderBy: { createdAt: "asc" },
     });
 
-    // -------------------------------
-    // 4️⃣ Fetch Supplier Payments
-    // -------------------------------
-    const payments = await prisma.supplierPayment.findMany({
-      where: {
-        supplierId,
-        companyId,
-        createdAt: { gte: fromDate, lte: toDate },
-      },
-      select: {
-        id: true,
-        amount: true,
-        paymentMethod: true,
-        note: true,
-        createdAt: true,
-        purchase: { select: { id: true } },
-      },
-      orderBy: { createdAt: "asc" },
-    });
-
-    // -------------------------------
-    // 5️⃣ Merge Transactions
-    // -------------------------------
-    const transactions: any[] = [];
+    // 4️⃣ بناء كشف الحساب
     let runningBalance = openingBalance;
+    const transactions = entries.map((entry) => {
+      runningBalance = Math.abs(
+        runningBalance + Number(entry.debit) - Number(entry.credit),
+      );
 
-    // Add Purchases (Normal + Return)
-    purchases.forEach((purchase, index) => {
-      const isReturn = purchase.purchaseType === "purchase_return";
-
-      // For supplier: debit = what we owe (purchase), credit = return
-      const debit = isReturn ? 0 : Number(purchase.totalAmount);
-      const credit = isReturn ? Number(purchase.totalAmount) : 0;
-
-      runningBalance = runningBalance + debit - credit;
-
-      transactions.push({
-        date: purchase.createdAt,
-        typeName: isReturn ? "مرتجع مشتريات" : "فاتورة مشتريات",
-        docNo: `PUR-${purchase.id.slice(0, 8)}`,
-        description: isReturn
-          ? `مرتجع مشتريات رقم ${purchase.id.slice(0, 8)}`
-          : `فاتورة مشتريات رقم ${purchase.id.slice(0, 8)}`,
-        debit,
-        credit,
+      return {
+        date: entry.entry_date,
+        debit: Number(entry.debit),
+        credit: Number(entry.credit),
         balance: runningBalance,
-        referenceId: purchase.id,
-      });
+        description: entry.description,
+        docNo: entry.entry_number,
+        typeName: mapType(entry.reference_type),
+      };
     });
+    const totalDebit = transactions.reduce((s, t) => s + t.debit, 0);
+    const totalCredit = transactions.reduce((s, t) => s + t.credit, 0);
 
-    // Add Payments
-    payments.forEach((payment) => {
-      // For supplier: payments are credits (reduce what we owe)
-      const debit = 0;
-      const credit = Number(payment.amount);
-
-      runningBalance = runningBalance + debit - credit;
-
-      transactions.push({
-        date: payment.createdAt,
-        typeName: "سند صرف",
-        docNo: `PAY-${payment.id.slice(0, 8)}`,
-        description: payment.note || `دفعة للمورد`,
-        debit,
-        credit,
-        balance: runningBalance,
-        referenceId: payment.id,
-      });
-    });
-
-    // -------------------------------
-    // 6️⃣ Sort and Recalculate Running Balance
-    // -------------------------------
-    transactions.sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
-    );
-
-    let balance = openingBalance;
-    transactions.forEach((t) => {
-      balance = balance + t.debit - t.credit;
-      t.balance = balance;
-    });
-
-    // -------------------------------
-    // 7️⃣ Totals
-    // -------------------------------
-    const totalDebit = transactions.reduce((sum, t) => sum + t.debit, 0);
-    const totalCredit = transactions.reduce((sum, t) => sum + t.credit, 0);
-    const closingBalance = openingBalance + totalDebit - totalCredit;
-
-    // -------------------------------
-    // 8️⃣ Result
-    // -------------------------------
     return {
       success: true,
       data: {
-        supplier: {
-          id: supplier.id,
-          name: supplier.name,
-          email: supplier.email,
-          address: supplier.address,
-          city: supplier.city,
-          phoneNumber: supplier.phoneNumber,
-          totalPurchased: supplier.totalPurchased,
-          totalPaid: supplier.totalPaid,
-          outstandingBalance: supplier.outstandingBalance,
-        },
+        supplier: serializeData(supplier),
         openingBalance,
-        transactions,
+        closingBalance: Math.abs(openingBalance + totalDebit - totalCredit),
         totalDebit,
         totalCredit,
-        closingBalance,
+        transactions,
         period: { from: dateFrom, to: dateTo },
       },
     };
   } catch (error) {
-    console.error("Error fetching supplier statement:", error);
-    return { success: false, error: "فشل في جلب كشف حساب المورد" };
+    console.error("Error loading journal-based statement:", error);
+    return { success: false, error: "خطأ في جلب كشف الحساب" };
   }
 }

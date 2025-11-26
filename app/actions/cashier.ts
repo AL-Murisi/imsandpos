@@ -275,6 +275,7 @@ export async function processSale(data: any, companyId: string) {
       await createSaleJournalEntries({
         companyId,
         sale: result.sale,
+        customerId: customerId,
         saleItems: cart,
         cashierId,
       });
@@ -292,10 +293,12 @@ export async function createSaleJournalEntries({
   companyId,
   sale,
   saleItems,
+  customerId,
   cashierId,
 }: {
   companyId: string;
   sale: any;
+  customerId: string;
   saleItems: any[];
   cashierId: string;
 }) {
@@ -413,8 +416,8 @@ export async function createSaleJournalEntries({
           debit: 0,
           credit: change,
           entry_date: new Date(),
-          reference_id: sale.id,
-          reference_type: "sale",
+          reference_id: customerId,
+          reference_type: "فاتورة مبيعات",
           entry_number: `${entryBase}-C`,
           created_by: cashierId,
           is_automated: true,
@@ -429,8 +432,8 @@ export async function createSaleJournalEntries({
           entry_date: new Date(),
           credit: 0,
           fiscal_period: fy?.period_name,
-          reference_id: sale.id,
-          reference_type: "sale",
+          reference_id: customerId,
+          reference_type: "فاتورة مبيعات",
           entry_number: `${entryBase}-D`,
           created_by: cashierId,
           is_automated: true,
@@ -465,7 +468,7 @@ export async function createSaleJournalEntries({
           credit: 0,
           fiscal_period: fy?.period_name,
           entry_date: new Date(),
-          reference_id: sale.id,
+          reference_id: customerId,
           entry_number: `${entryBase}-D1`,
           created_by: cashierId,
           reference_type: "دفوعة نقداً",
@@ -496,13 +499,13 @@ export async function createSaleJournalEntries({
       entries.push({
         company_id: companyId,
         account_id: cash,
-        description: desc,
+        description: desc + "مدفوع جزئياً",
         fiscal_period: fy?.period_name,
         debit: paid,
         credit: 0,
         entry_date: new Date(),
-        reference_id: sale.id,
-        reference_type: "مدفوع جزئياً",
+        reference_id: customerId,
+        reference_type: "فاتورة مبيعات",
         entry_number: `${entryBase}-P1`,
         created_by: cashierId,
         is_automated: true,
@@ -511,28 +514,28 @@ export async function createSaleJournalEntries({
       entries.push({
         company_id: companyId,
         account_id: ar,
-        description: desc,
+        description: desc + "مدفوع جزئياً",
         debit: due,
         credit: 0,
         fiscal_period: fy?.period_name,
         entry_date: new Date(),
-        reference_id: sale.id,
+        reference_id: customerId,
         entry_number: `${entryBase}-P2`,
         created_by: cashierId,
-        reference_type: "مدفوع جزئياً",
+        reference_type: "فاتورة مبيعات",
         is_automated: true,
       });
 
       entries.push({
         company_id: companyId,
         account_id: revenue,
-        description: desc,
+        description: desc + "مدفوع جزئياً",
         debit: 0,
         fiscal_period: fy?.period_name,
         entry_date: new Date(),
         credit: total,
         reference_id: sale.id,
-        reference_type: "مدفوع جزئياً",
+        reference_type: "فاتورة مبيعات",
         entry_number: `${entryBase}-PR`,
         created_by: cashierId,
         is_automated: true,
@@ -546,14 +549,15 @@ export async function createSaleJournalEntries({
       entries.push({
         company_id: companyId,
         account_id: ar,
-        description: desc,
+        description: desc + " غير مدفوع",
         entry_date: new Date(),
         debit: total,
         credit: 0,
         fiscal_period: fy?.period_name,
-        reference_id: sale.id,
+        reference_id: customerId,
         entry_number: `${entryBase}-U1`,
-        reference_type: " غير مدفوع",
+        reference_type: "فاتورة مبيعات",
+
         created_by: cashierId,
         is_automated: true,
       });
@@ -561,13 +565,13 @@ export async function createSaleJournalEntries({
       entries.push({
         company_id: companyId,
         account_id: revenue,
-        description: desc,
+        description: desc + " غير مدفوع",
         entry_date: new Date(),
         debit: 0,
         credit: total,
         fiscal_period: fy?.period_name,
         reference_id: sale.id,
-        reference_type: " غير مدفوع",
+        reference_type: "فاتورة مبيعات",
         entry_number: `${entryBase}-U2`,
         created_by: cashierId,
         is_automated: true,

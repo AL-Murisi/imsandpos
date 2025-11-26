@@ -81,7 +81,8 @@ export default function SupplierStatement({
             </div>
           </div>
 
-          <ScrollArea className="h-[95vh] p-2" dir="rtl">
+          <ScrollArea className="h-[65vh] p-2" dir="rtl">
+            {" "}
             {/* Transactions Table */}
             <table className="w-full border">
               <thead>

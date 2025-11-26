@@ -34,9 +34,5 @@ export default async function CustomerStatementPage({
     return <div>Error: {result.error}</div>;
   }
 
-  return (
-    <ScrollArea className="max-h-[95vh] p-2" dir="rtl">
-      <CustomerStatement customers={result.data} />
-    </ScrollArea>
-  );
+  return <CustomerStatement customers={result?.data} />;
 }

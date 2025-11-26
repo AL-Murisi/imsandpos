@@ -35,7 +35,10 @@ export default function CustomerStatementPrint({
            
               margin: 0;
           }
-
+.balance-highlight {
+            background: #ecf0f1;
+            font-weight: bold;
+          }
           h1, h2 {
             text-align: center;
             margin: 0;
@@ -146,8 +149,7 @@ export default function CustomerStatementPrint({
           <p><strong>الهاتف:</strong> ${customers.customer?.phoneNumber ?? ""}</p>
           <p><strong>من تاريخ:</strong> ${customers.period.from}</p>
           <p><strong>إلى تاريخ:</strong> ${customers.period.to}</p>
-          <p><strong>الرصيد الافتتاحي:</strong> ${customers.openingBalance.toFixed(2)} ر.ي</p>
-          <p><strong>الرصيد الحالي:</strong> ${customers.closingBalance.toFixed(2)} ر.ي</p>
+   
         </div>
 
         <table>
@@ -188,6 +190,13 @@ export default function CustomerStatementPrint({
               </tr>`,
               )
               .join("")}
+                <tr class="balance-highlight">
+              <td colspan="3"><strong>الإجمالي</strong></td>
+              <td></td>
+              <td><strong>${customers.totalDebit.toFixed(2)}</strong></td>
+              <td><strong>${customers.totalCredit.toFixed(2)}</strong></td>
+              <td><strong>${customers.closingBalance.toFixed(2)}</strong></td>
+            </tr>
           </tbody>
         </table>
 

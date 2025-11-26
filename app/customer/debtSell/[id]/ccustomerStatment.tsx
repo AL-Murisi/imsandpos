@@ -36,7 +36,15 @@ interface CustomerStatement {
   totalDebit: number;
   totalCredit: number;
   closingBalance: number;
-  transactions: any[];
+  transactions: {
+    date: Date | null;
+    debit: number;
+    credit: number;
+    balance: number;
+    description: string | null;
+    docNo: string;
+    typeName: string;
+  }[];
   period: {
     from: string;
     to: string;
@@ -137,7 +145,7 @@ export default function CustomerStatement({
               </div>
             </div>
           </div>{" "}
-          <ScrollArea className="h-[95vh] p-2" dir="rtl">
+          <ScrollArea className="h-[65vh] p-2" dir="rtl">
             {/* جدول الحركات */}
             <table className="w-full border">
               <thead className="">
@@ -168,7 +176,9 @@ export default function CustomerStatement({
                 {customers.transactions.map((trans, idx) => (
                   <tr key={idx}>
                     <td className="border p-2">
-                      {new Date(trans.date).toLocaleDateString("ar-EG")}
+                      {trans.date
+                        ? new Date(trans.date).toLocaleDateString("ar-EG")
+                        : "-"}
                     </td>
 
                     <td className="border p-2">{trans.typeName ?? ""}</td>
@@ -191,9 +201,10 @@ export default function CustomerStatement({
 
                 {/* الإجماليات */}
                 <tr className="font-bold">
-                  <td className="border p-2">
+                  <td className="border p-2" colSpan={3}>
                     <strong>الإجمالي</strong>
-                  </td>
+                  </td>{" "}
+                  <td className="border p-2"></td>
                   <td className="border p-2 text-center">
                     {customers.totalDebit.toFixed(2)}
                   </td>
