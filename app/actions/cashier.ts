@@ -471,7 +471,7 @@ export async function createSaleJournalEntries({
           reference_id: customerId,
           entry_number: `${entryBase}-D1`,
           created_by: cashierId,
-          reference_type: " نقداً",
+          reference_type: " فاتورة مبيعات نقداً",
           is_automated: true,
         });
 
@@ -581,7 +581,7 @@ export async function createSaleJournalEntries({
         fiscal_period: fy?.period_name,
         reference_id: customerId,
         entry_number: `${entryBase}-U1`,
-        reference_type: "فاتورة مبيعات",
+        reference_type: "فاتورة مبيعات اجل",
 
         created_by: cashierId,
         is_automated: true,
@@ -631,7 +631,7 @@ export async function createSaleJournalEntries({
         credit: totalCOGS,
         fiscal_period: fy?.period_name,
         reference_id: sale.id,
-        reference_type: "  تكلفة البضاعة المباعة",
+        reference_type: " خرج من المخزن",
         entry_number: `${entryBase}-CG2`,
         created_by: cashierId,
         is_automated: true,

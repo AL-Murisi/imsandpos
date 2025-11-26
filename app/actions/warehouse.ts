@@ -423,7 +423,7 @@ export async function createPurchaseJournalEntries({
     credit: number,
   ) => {
     await prisma.accounts.update({
-      where: { id: accountId },
+      where: { id: accountId, company_id: companyId },
       data: { balance: { increment: debit - credit } },
     });
   };

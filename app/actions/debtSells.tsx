@@ -267,7 +267,7 @@ export async function createPaymentJournalEntries({
     // 1️⃣ Fetch related sale
     // ============================================
     const sale = await prisma.sale.findUnique({
-      where: { id: saleId },
+      where: { id: saleId, companyId: companyId },
       select: {
         id: true,
         saleNumber: true,
@@ -285,7 +285,11 @@ export async function createPaymentJournalEntries({
     // 2️⃣ Avoid duplicate journal entries
     // ============================================
     const exists = await prisma.journal_entries.findFirst({
-      where: { reference_id: payment.id, reference_type: "payment" },
+      where: {
+        reference_id: payment.id,
+        reference_type: "payment",
+        company_id: companyId,
+      },
     });
     if (exists) return;
 
@@ -356,7 +360,7 @@ export async function createPaymentJournalEntries({
           credit: amount,
           fiscal_period: fy.period_name,
           entry_date: new Date(),
-          reference_id: sale.customerId,
+          reference_id: customerId,
           reference_type: "سند قبض",
           entry_number: `${entryBase}-C`,
           created_by: cashierId,
@@ -388,7 +392,7 @@ export async function createPaymentJournalEntries({
           fiscal_period: fy.period_name,
           credit: amount,
           entry_date: new Date(),
-          reference_id: sale.customerId,
+          reference_id: customerId,
           reference_type: "سند قبض",
           entry_number: `${entryBase}-C`,
           created_by: cashierId,
@@ -411,7 +415,7 @@ export async function createPaymentJournalEntries({
     // ============================================
     const balanceOps = entries.map((e) =>
       prisma.accounts.update({
-        where: { id: e.account_id },
+        where: { id: e.account_id, company_id: companyId },
         data: { balance: { increment: Number(e.debit) - Number(e.credit) } },
       }),
     );
