@@ -471,7 +471,7 @@ export async function createSaleJournalEntries({
           reference_id: sale.id,
           entry_number: `${entryBase}-D1`,
           created_by: cashierId,
-          reference_type: "دفوعة نقداً",
+          reference_type: " نقداً",
           is_automated: true,
         });
 
@@ -504,7 +504,7 @@ export async function createSaleJournalEntries({
       entries.push({
         company_id: companyId,
         account_id: ar,
-        description: desc + " - فاتورة بيع",
+        description: desc + " فاتورة بيع اجل",
         fiscal_period: fy?.period_name,
         debit: total, // <--- Debit FULL TOTAL
         credit: 0,
@@ -543,7 +543,7 @@ export async function createSaleJournalEntries({
           debit: paid, // <--- Debit PAID amount
           credit: 0,
           entry_date: new Date(),
-          reference_id: customerId, // Use customerId for the payment reference
+          reference_id: sale.id, // Use customerId for the payment reference
           reference_type: "دفعة من عميل", // New type for payments
           entry_number: `${entryBase}-PP-DR`,
           created_by: cashierId,
@@ -554,7 +554,7 @@ export async function createSaleJournalEntries({
         entries.push({
           company_id: companyId,
           account_id: ar,
-          description: desc + " - دفعة فورية",
+          description: desc + " المدفوع من المبلغ",
           debit: 0,
           fiscal_period: fy?.period_name,
           entry_date: new Date(),
