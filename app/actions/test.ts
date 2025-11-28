@@ -787,9 +787,8 @@ export async function getSupplierStatement(
     // 4️⃣ بناء كشف الحساب
     let runningBalance = openingBalance;
     const transactions = entries.map((entry) => {
-      runningBalance = Math.abs(
-        runningBalance + Number(entry.debit) - Number(entry.credit),
-      );
+      runningBalance =
+        runningBalance + Number(entry.debit) - Number(entry.credit);
 
       return {
         date: entry.entry_date,
@@ -809,7 +808,7 @@ export async function getSupplierStatement(
       data: {
         supplier: serializeData(supplier),
         openingBalance,
-        closingBalance: Math.abs(openingBalance + totalDebit - totalCredit),
+        closingBalance: openingBalance + totalDebit - totalCredit,
         totalDebit,
         totalCredit,
         transactions,

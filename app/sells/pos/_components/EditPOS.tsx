@@ -44,7 +44,7 @@ export default function EditPoS() {
   const onSubmit = async (data: CreateCustomer) => {
     const result = await createCutomer(data, user.companyId);
 
-    if (result.error) {
+    if (result?.error) {
       toast.error(result.error);
       return;
     }

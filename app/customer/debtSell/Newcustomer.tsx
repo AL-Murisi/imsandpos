@@ -53,7 +53,7 @@ export default function CustomerForm() {
 
     const result = await createCutomer(data, user.companyId);
 
-    if (result.error) {
+    if (result?.error) {
       toast.error(result.error);
       setIsSubmitting(false);
       return;

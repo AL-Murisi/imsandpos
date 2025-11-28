@@ -9,10 +9,7 @@ const SuppliersTable = dynamic(() => import("./table"), {
   ssr: false,
   loading: () => <TableSkeleton />,
 });
-const PurchasesTable = dynamic(() => import("./PurchasesTable"), {
-  ssr: false,
-  loading: () => <TableSkeleton />,
-});
+
 const PaymentsTable = dynamic(() => import("./paymentsTable"), {
   ssr: false,
   loading: () => <TableSkeleton />,
@@ -30,7 +27,7 @@ export function TabsController({
 }: TabsControllerProps) {
   // 🧩 Use React 19 `use()` hook to unwrap server data
   const suppliers = use(suppliersPromise);
-  const purchases = use(purchasesPromise);
+
   const payments = use(paymentsPromise);
 
   const [tab, setTab] = useState("suppliers");
@@ -63,13 +60,7 @@ export function TabsController({
             />
           ),
         },
-        {
-          value: "purchases",
-          label: "الطلبات",
-          content: (
-            <PurchasesTable data={purchases.data} total={purchases.total} />
-          ),
-        },
+
         {
           value: "payments",
           label: "الدفعات",

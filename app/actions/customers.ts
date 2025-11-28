@@ -1,5 +1,6 @@
 "use server";
 import prisma from "@/lib/prisma";
+import { getSession } from "@/lib/session";
 import { createCusomer, CreateCustomerSchema } from "@/lib/zod";
 import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
@@ -192,7 +193,8 @@ export async function createCutomer(form: createCusomer, companyId: string) {
     outstandingBalance,
     balance,
   } = pared.data;
-  console.log(pared.data);
+  const session = await getSession();
+  if (!session) return;
   const emailValue = email?.trim() || null;
   const outstanding = outstandingBalance?.toString() ?? 0;
   try {
@@ -231,10 +233,11 @@ export async function createCutomer(form: createCusomer, companyId: string) {
     });
     revalidatePath("/customer");
     createCustomerJournalEnteries({
-      supplierId: customer.id,
+      customerId: customer.id,
       companyId,
       outstandingBalance,
       balance,
+      createdBy: session.userId,
     }).catch((err) => {
       console.error("Failed to create supplier payment journal entries:", err);
     });
@@ -245,16 +248,88 @@ export async function createCutomer(form: createCusomer, companyId: string) {
   }
 }
 export async function createCustomerJournalEnteries({
-  supplierId,
+  customerId,
   companyId,
-  outstandingBalance,
-  balance,
+  outstandingBalance = 0,
+  balance = 0, // رصيد لصالح العميل (سلف / مبالغ مدفوعة مقدماً)
+  createdBy,
 }: {
-  supplierId: string;
+  customerId: string;
   companyId: string;
   outstandingBalance?: number;
   balance?: number;
-}) {}
+  createdBy: string;
+}) {
+  // 1️⃣ fetch account mappings
+  const mappings = await prisma.account_mappings.findMany({
+    where: { company_id: companyId, is_default: true },
+  });
+
+  const getAcc = (type: string) =>
+    mappings.find((m) => m.mapping_type === type)?.account_id;
+
+  const ar = getAcc("accounts_receivable"); // العملاء (مدينون)
+  const payable = getAcc("accounts_payable"); // دائنون (رصيد لصالح العميل)
+
+  if (!ar || !payable) {
+    throw new Error("Missing account mappings for customers");
+  }
+
+  // 2️⃣ entry number base
+  const year = new Date().getFullYear();
+  const seq = Date.now().toString().slice(-6);
+  const entryBase = `${year}-${seq}-CUST`;
+
+  const desc = `الرصيد الافتتاحي للعميل`;
+
+  const entries: any[] = [];
+
+  // ==============================
+  // 1️⃣ العميل عليه دين (outstandingBalance)
+  // ==============================
+  if (outstandingBalance > 0) {
+    entries.push({
+      company_id: companyId,
+      account_id: ar,
+      description: desc,
+      debit: outstandingBalance,
+      credit: 0,
+      entry_date: new Date(),
+      reference_id: customerId,
+      reference_type: "رصيد افتتاحي عميل",
+      entry_number: `${entryBase}-1`,
+      created_by: createdBy,
+      is_automated: true,
+    });
+  }
+
+  // ==============================
+  // 2️⃣ لديك رصيد لصالح العميل (balance)
+  // ==============================
+  if (balance > 0) {
+    entries.push({
+      company_id: companyId,
+      account_id: ar,
+      description: desc,
+      debit: 0,
+      credit: balance,
+      entry_date: new Date(),
+      reference_id: customerId,
+      reference_type: "رصيد افتتاحي عميل",
+      entry_number: `${entryBase}-2`,
+      created_by: createdBy,
+      is_automated: true,
+    });
+  }
+
+  if (entries.length === 0)
+    return { success: true, msg: "No opening balance detected" };
+
+  await prisma.journal_entries.createMany({ data: entries });
+
+  return { success: true };
+}
+
 export async function updatedCustomer(
   form: createCusomer,
   id: string,

@@ -167,6 +167,8 @@ export async function createSupplier(
   form: CreateSupplierInput,
   companyId: string,
 ) {
+  const session = await getSession();
+  if (!session) return;
   const parsed = CreateSupplierSchema.safeParse(form);
   if (!parsed.success) {
     throw new Error("Invalid user data");
@@ -211,10 +213,12 @@ export async function createSupplier(
     revalidatePath("/products");
     createSupplierJournalEnteries({
       supplierId: user.id,
+      supplierName: user.name,
       companyId,
       outstandingBalance,
       totalPaid,
       totalPurchased,
+      createdBy: session?.userId,
     }).catch((err) => {
       console.error("Failed to create supplier payment journal entries:", err);
     });
@@ -227,17 +231,104 @@ export async function createSupplier(
 }
 export async function createSupplierJournalEnteries({
   supplierId,
+  supplierName,
   companyId,
-  outstandingBalance,
-  totalPaid,
-  totalPurchased,
+  outstandingBalance = 0,
+  totalPaid = 0,
+  totalPurchased = 0,
+  createdBy,
 }: {
   supplierId: string;
+  supplierName: string;
   companyId: string;
   outstandingBalance?: number;
   totalPaid?: number;
   totalPurchased?: number;
-}) {}
+  createdBy: string;
+}) {
+  // 🔎 Fetch default mappings
+  const mappings = await prisma.account_mappings.findMany({
+    where: { company_id: companyId, is_default: true },
+  });
+
+  const getAcc = (type: string) =>
+    mappings.find((m) => m.mapping_type === type)?.account_id;
+
+  const payable = getAcc("accounts_payable");
+  const receivable = getAcc("accounts_receivable");
+
+  // Generate entry number
+  const year = new Date().getFullYear();
+  const seq = Date.now().toString().slice(-6); // quick unique number
+  const entryBase = `${year}-${seq}-S`;
+
+  const desc = `الرصيد الافتتاحي للمورد ${supplierName}`;
+
+  const entries: any[] = [];
+
+  // =============================
+  // 1️⃣ رصيد دائن عليك (Outstanding Balance)
+  // =============================
+  if (outstandingBalance > 0) {
+    entries.push({
+      company_id: companyId,
+      account_id: payable,
+      description: desc,
+      debit: 0,
+      credit: outstandingBalance,
+      entry_date: new Date(),
+      reference_id: supplierId,
+      reference_type: "رصيد افتتاحي مورد",
+      entry_number: `${entryBase}-1`,
+      created_by: createdBy,
+      is_automated: true,
+    });
+  }
+
+  // =============================
+  // 2️⃣ رصيد مدين لصالحك (supplierDebit)
+  // totalPaid > totalPurchased
+  // =============================
+  const supplierDebit = totalPaid - totalPurchased;
+
+  if (supplierDebit > 0) {
+    // 2.1 المورد مدين لنا
+    entries.push({
+      company_id: companyId,
+      account_id: receivable,
+      description: desc,
+      debit: supplierDebit,
+      credit: 0,
+      entry_date: new Date(),
+      reference_id: supplierId,
+      reference_type: "رصيد افتتاحي مورد",
+      entry_number: `${entryBase}-2`,
+      created_by: createdBy,
+      is_automated: true,
+    });
+
+    // 2.2 تقليل الدائنين
+    entries.push({
+      company_id: companyId,
+      account_id: payable,
+      description: desc,
+      debit: supplierDebit,
+      credit: 0,
+      entry_date: new Date(),
+      reference_id: supplierId,
+      reference_type: "رصيد افتتاحي مورد",
+      entry_number: `${entryBase}-3`,
+      created_by: createdBy,
+      is_automated: true,
+    });
+  }
+
+  // Nothing to insert
+  if (entries.length === 0) return;
+
+  await prisma.journal_entries.createMany({ data: entries });
+}
+
 // ============================================
 export const getPurchasesByCompany = cache(
   async (
@@ -766,7 +857,7 @@ export async function createSupplierPaymentJournalEntries({
       fiscal_period: fy.period_name,
       credit: payment.amount,
       reference_type: "سداد_دين_المورد",
-      reference_id: payment.supplierId,
+      reference_id: payment.id,
       entry_number: entry_number + "-C",
       created_by: userId,
       is_automated: true,

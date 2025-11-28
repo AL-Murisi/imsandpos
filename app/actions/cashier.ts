@@ -31,6 +31,263 @@ type SaleData = {
   saleNumber: string;
   receivedAmount: number;
 };
+// export async function processSale(data: any, companyId: string) {
+//   const {
+//     cart,
+//     totalBeforeDiscount,
+//     totalDiscount,
+//     totalAfterDiscount,
+//     cashierId,
+//     customerId,
+//     saleNumber,
+//     receivedAmount,
+//   } = data;
+
+//   const result = await prisma.$transaction(
+//     async (tx) => {
+//       // 1. Create the main Sale record
+//       const sale = await tx.sale.create({
+//         data: {
+//           companyId,
+//           saleNumber,
+//           customerId,
+//           cashierId,
+//           taxAmount: 0,
+//           sale_type: "sale",
+//           status: "completed",
+//           subtotal: totalBeforeDiscount,
+//           discountAmount: totalDiscount,
+//           totalAmount: totalAfterDiscount,
+//           amountPaid: receivedAmount,
+//           amountDue: Math.max(0, totalAfterDiscount - receivedAmount),
+//           paymentStatus:
+//             receivedAmount >= totalAfterDiscount ? "paid" : "partial",
+//         },
+//       });
+
+//       // ✅ Helper function to convert selling unit to base units
+//       function convertToBaseUnits(
+//         qty: number,
+//         sellingUnit: string,
+//         unitsPerPacket: number,
+//         packetsPerCarton: number,
+//       ): number {
+//         if (sellingUnit === "unit") return qty;
+//         if (sellingUnit === "packet") return qty * unitsPerPacket;
+//         if (sellingUnit === "carton")
+//           return qty * unitsPerPacket * packetsPerCarton;
+//         return qty;
+//       }
+
+//       // 🚀 OPTIMIZATION 1: Batch fetch all inventories at once
+//       const productIds = cart.map((item: any) => item.id);
+//       const warehouseIds = cart.map((item: any) => item.warehouseId);
+
+//       const inventories = await tx.inventory.findMany({
+//         where: {
+//           companyId,
+//           productId: { in: productIds },
+//           warehouseId: { in: warehouseIds },
+//         },
+//       });
+
+//       // Create a map for quick lookup
+//       const inventoryMap = new Map(
+//         inventories.map((inv) => [`${inv.productId}-${inv.warehouseId}`, inv]),
+//       );
+
+//       // 🚀 OPTIMIZATION 2: Prepare all operations in parallel arrays
+//       const saleItemsData = [];
+//       const stockMovementsData = [];
+//       const inventoryUpdates = [];
+
+//       // Process all items and prepare batch operations
+//       for (const item of cart) {
+//         const quantityInUnits = convertToBaseUnits(
+//           item.selectedQty,
+//           item.sellingUnit,
+//           item.unitsPerPacket || 1,
+//           item.packetsPerCarton || 1,
+//         );
+
+//         const inventoryKey = `${item.id}-${item.warehouseId}`;
+//         const inventory = inventoryMap.get(inventoryKey);
+
+//         if (!inventory || inventory.availableQuantity < quantityInUnits) {
+//           throw new Error(
+//             `Insufficient stock for ${item.name}. Available: ${inventory?.availableQuantity || 0}, Requested: ${quantityInUnits}.`,
+//           );
+//         }
+
+//         const newStock = inventory.stockQuantity - quantityInUnits;
+//         const newAvailable = inventory.availableQuantity - quantityInUnits;
+
+//         // Get the correct unit price
+//         let unitPrice = 0;
+//         if (item.sellingUnit === "unit") {
+//           unitPrice = item.pricePerUnit || 0;
+//         } else if (item.sellingUnit === "packet") {
+//           unitPrice = item.pricePerPacket || 0;
+//         } else if (item.sellingUnit === "carton") {
+//           unitPrice = item.pricePerCarton || 0;
+//         }
+
+//         const totalPrice = unitPrice * item.selectedQty;
+
+//         // Prepare data for batch operations
+//         saleItemsData.push({
+//           companyId,
+//           saleId: sale.id,
+//           productId: item.id,
+//           quantity: item.selectedQty,
+//           sellingUnit: item.sellingUnit,
+//           unitPrice: unitPrice,
+//           totalPrice: totalPrice,
+//         });
+
+//         stockMovementsData.push({
+//           companyId,
+//           productId: item.id,
+//           warehouseId: item.warehouseId,
+//           userId: cashierId,
+//           movementType: "صادر",
+//           quantity: quantityInUnits,
+//           reason: "بيع",
+//           quantityBefore: inventory.stockQuantity,
+//           quantityAfter: newStock,
+//           referenceType: "بيع",
+//           referenceId: sale.id,
+//         });
+
+//         inventoryUpdates.push({
+//           where: {
+//             companyId_productId_warehouseId: {
+//               companyId,
+//               productId: item.id,
+//               warehouseId: item.warehouseId,
+//             },
+//           },
+//           data: {
+//             stockQuantity: newStock,
+//             availableQuantity: newAvailable,
+//             status:
+//               newAvailable <= inventory.reorderLevel
+//                 ? "low"
+//                 : newAvailable === 0
+//                   ? "out_of_stock"
+//                   : "available",
+//           },
+//         });
+//       }
+
+//       // 🚀 OPTIMIZATION 3: Execute all operations in parallel
+//       await Promise.all([
+//         // Batch create sale items
+//         tx.saleItem.createMany({ data: saleItemsData }),
+
+//         // Batch create stock movements
+//         tx.stockMovement.createMany({ data: stockMovementsData }),
+
+//         // Batch update inventories
+//         ...inventoryUpdates.map((update) => tx.inventory.update(update)),
+//       ]);
+
+//       // 7. Update Customer Balance (if applicable)
+//       const customerUpdates = [];
+
+//       if (customerId && totalAfterDiscount > receivedAmount) {
+//         const amountDue = totalAfterDiscount - receivedAmount;
+//         customerUpdates.push(
+//           tx.customer.update({
+//             where: { id: customerId, companyId },
+//             data: {
+//               outstandingBalance: { increment: amountDue },
+//             },
+//           }),
+//         );
+//       }
+
+//       if (customerId && receivedAmount > totalAfterDiscount) {
+//         const change = receivedAmount - totalAfterDiscount;
+//         customerUpdates.push(
+//           tx.customer.update({
+//             where: { id: customerId, companyId },
+//             data: { balance: { increment: change } },
+//           }),
+//         );
+//       }
+
+//       // 8. Create Payment record (if amount received)
+//       if (receivedAmount > 0) {
+//         customerUpdates.push(
+//           tx.payment.create({
+//             data: {
+//               companyId,
+//               saleId: sale.id,
+//               cashierId,
+//               customerId,
+//               paymentMethod: "cash",
+//               payment_type: "sale_payment",
+//               amount: receivedAmount,
+//               status: "completed",
+//             },
+//           }),
+//         );
+//       }
+
+//       // Execute customer updates and payment in parallel
+//       if (customerUpdates.length > 0) {
+//         await Promise.all(customerUpdates);
+//       }
+
+//       // 9. Log Activity (don't await - fire and forget for speed)
+//       logActivity(
+//         cashierId,
+//         companyId,
+//         "أمين الصندوق", // cashier
+//         "قام ببيع منتج", // sells a product
+//         "889", // (keep as is, transaction or code)
+//         "وكيل المستخدم",
+//       ).catch(console.error); // Handle errors silently
+
+//       // 10. Prepare response
+//       const saleForClient = {
+//         ...sale,
+//         taxAmount: sale.taxAmount.toString(),
+//         subtotal: sale.subtotal.toString(),
+//         discountAmount: sale.discountAmount.toString(),
+//         totalAmount: sale.totalAmount.toString(),
+//         amountPaid: sale.amountPaid.toString(),
+//         amountDue: sale.amountDue.toString(),
+//       };
+
+//       return { message: "Sale processed successfully", sale: saleForClient };
+//     },
+//     {
+//       timeout: 20000,
+//       maxWait: 5000, // Add maxWait to prevent long queue times
+//     },
+//   );
+
+//   revalidatePath("/cashiercontrol");
+//   if (result.sale) {
+//     try {
+//       await createSaleJournalEntries({
+//         companyId,
+//         sale: result.sale,
+//         customerId: customerId,
+//         saleItems: cart,
+//         cashierId,
+//       });
+
+//       console.log(`Journal entry created for saleId=${result.sale.id}`);
+//     } catch (err) {
+//       console.error("Background journal creation failed:", err);
+//     }
+//   }
+
+//   return result;
+// }
 export async function processSale(data: any, companyId: string) {
   const {
     cart,
@@ -45,7 +302,7 @@ export async function processSale(data: any, companyId: string) {
 
   const result = await prisma.$transaction(
     async (tx) => {
-      // 1. Create the main Sale record
+      // 1️⃣ Create main Sale record
       const sale = await tx.sale.create({
         data: {
           companyId,
@@ -65,21 +322,36 @@ export async function processSale(data: any, companyId: string) {
         },
       });
 
-      // ✅ Helper function to convert selling unit to base units
-      function convertToBaseUnits(
+      // ===== Helper functions =====
+      const convertToBaseUnits = (
         qty: number,
         sellingUnit: string,
-        unitsPerPacket: number,
-        packetsPerCarton: number,
-      ): number {
+        unitsPerPacket: number = 1,
+        packetsPerCarton: number = 1,
+      ) => {
         if (sellingUnit === "unit") return qty;
         if (sellingUnit === "packet") return qty * unitsPerPacket;
         if (sellingUnit === "carton")
           return qty * unitsPerPacket * packetsPerCarton;
         return qty;
-      }
+      };
 
-      // 🚀 OPTIMIZATION 1: Batch fetch all inventories at once
+      const getUnitPrice = (item: any) =>
+        item.sellingUnit === "unit"
+          ? item.pricePerUnit || 0
+          : item.sellingUnit === "packet"
+            ? item.pricePerPacket || 0
+            : item.sellingUnit === "carton"
+              ? item.pricePerCarton || 0
+              : 0;
+
+      const getInventoryStatus = (available: number, reorderLevel: number) => {
+        if (available === 0) return "out_of_stock";
+        if (available <= reorderLevel) return "low";
+        return "available";
+      };
+
+      // ===== Fetch all inventories once =====
       const productIds = cart.map((item: any) => item.id);
       const warehouseIds = cart.map((item: any) => item.warehouseId);
 
@@ -91,17 +363,15 @@ export async function processSale(data: any, companyId: string) {
         },
       });
 
-      // Create a map for quick lookup
       const inventoryMap = new Map(
         inventories.map((inv) => [`${inv.productId}-${inv.warehouseId}`, inv]),
       );
 
-      // 🚀 OPTIMIZATION 2: Prepare all operations in parallel arrays
-      const saleItemsData = [];
-      const stockMovementsData = [];
-      const inventoryUpdates = [];
+      // ===== Prepare batch operations =====
+      const saleItemsData: any[] = [];
+      const stockMovementsData: any[] = [];
+      const inventoryUpdates: any[] = [];
 
-      // Process all items and prepare batch operations
       for (const item of cart) {
         const quantityInUnits = convertToBaseUnits(
           item.selectedQty,
@@ -122,27 +392,17 @@ export async function processSale(data: any, companyId: string) {
         const newStock = inventory.stockQuantity - quantityInUnits;
         const newAvailable = inventory.availableQuantity - quantityInUnits;
 
-        // Get the correct unit price
-        let unitPrice = 0;
-        if (item.sellingUnit === "unit") {
-          unitPrice = item.pricePerUnit || 0;
-        } else if (item.sellingUnit === "packet") {
-          unitPrice = item.pricePerPacket || 0;
-        } else if (item.sellingUnit === "carton") {
-          unitPrice = item.pricePerCarton || 0;
-        }
-
+        const unitPrice = getUnitPrice(item);
         const totalPrice = unitPrice * item.selectedQty;
 
-        // Prepare data for batch operations
         saleItemsData.push({
           companyId,
           saleId: sale.id,
           productId: item.id,
           quantity: item.selectedQty,
           sellingUnit: item.sellingUnit,
-          unitPrice: unitPrice,
-          totalPrice: totalPrice,
+          unitPrice,
+          totalPrice,
         });
 
         stockMovementsData.push({
@@ -160,97 +420,105 @@ export async function processSale(data: any, companyId: string) {
         });
 
         inventoryUpdates.push({
-          where: {
-            companyId_productId_warehouseId: {
-              companyId,
-              productId: item.id,
-              warehouseId: item.warehouseId,
-            },
-          },
+          companyId,
+          productId: item.id,
+          warehouseId: item.warehouseId,
+          stockQuantity: newStock,
+          availableQuantity: newAvailable,
+          status: getInventoryStatus(newAvailable, inventory.reorderLevel),
+        });
+      }
+
+      // ===== Execute sale items and stock movements in parallel =====
+      await Promise.all([
+        tx.saleItem.createMany({ data: saleItemsData }),
+        tx.stockMovement.createMany({ data: stockMovementsData }),
+      ]);
+
+      // ===== Raw SQL batch update for inventories =====
+      if (inventoryUpdates.length > 0) {
+        const casesStock: string[] = [];
+        const casesAvailable: string[] = [];
+        const casesStatus: string[] = [];
+        const ids: string[] = [];
+
+        for (const inv of inventoryUpdates) {
+          const {
+            companyId,
+            productId,
+            warehouseId,
+            stockQuantity,
+            availableQuantity,
+            status,
+          } = inv;
+          ids.push(`${companyId}-${productId}-${warehouseId}`);
+          casesStock.push(
+            `WHEN company_id='${companyId}' AND product_id='${productId}' AND warehouse_id='${warehouseId}' THEN ${stockQuantity}`,
+          );
+          casesAvailable.push(
+            `WHEN company_id='${companyId}' AND product_id='${productId}' AND warehouse_id='${warehouseId}' THEN ${availableQuantity}`,
+          );
+          casesStatus.push(
+            `WHEN company_id='${companyId}' AND product_id='${productId}' AND warehouse_id='${warehouseId}' THEN '${status}'`,
+          );
+        }
+
+        const sql = `
+          UPDATE inventory
+          SET
+            stock_quantity = CASE ${casesStock.join(" ")} ELSE stock_quantity END,
+            available_quantity = CASE ${casesAvailable.join(" ")} ELSE available_quantity END,
+            status = CASE ${casesStatus.join(" ")} ELSE status END
+          WHERE CONCAT(company_id, '-', product_id, '-', warehouse_id) IN (${ids.map((id) => `'${id}'`).join(",")})
+        `;
+
+        await tx.$executeRawUnsafe(sql);
+      }
+
+      // ===== Customer updates & payment =====
+      if (customerId) {
+        const customerData: any = {};
+        if (totalAfterDiscount > receivedAmount)
+          customerData.outstandingBalance = {
+            increment: totalAfterDiscount - receivedAmount,
+          };
+        if (receivedAmount > totalAfterDiscount)
+          customerData.balance = {
+            increment: receivedAmount - totalAfterDiscount,
+          };
+        if (Object.keys(customerData).length)
+          await tx.customer.update({
+            where: { id: customerId, companyId },
+            data: customerData,
+          });
+      }
+
+      if (receivedAmount > 0) {
+        await tx.payment.create({
           data: {
-            stockQuantity: newStock,
-            availableQuantity: newAvailable,
-            status:
-              newAvailable <= inventory.reorderLevel
-                ? "low"
-                : newAvailable === 0
-                  ? "out_of_stock"
-                  : "available",
+            companyId,
+            saleId: sale.id,
+            cashierId,
+            customerId,
+            paymentMethod: "cash",
+            payment_type: "sale_payment",
+            amount: receivedAmount,
+            status: "completed",
           },
         });
       }
 
-      // 🚀 OPTIMIZATION 3: Execute all operations in parallel
-      await Promise.all([
-        // Batch create sale items
-        tx.saleItem.createMany({ data: saleItemsData }),
-
-        // Batch create stock movements
-        tx.stockMovement.createMany({ data: stockMovementsData }),
-
-        // Batch update inventories
-        ...inventoryUpdates.map((update) => tx.inventory.update(update)),
-      ]);
-
-      // 7. Update Customer Balance (if applicable)
-      const customerUpdates = [];
-
-      if (customerId && totalAfterDiscount > receivedAmount) {
-        const amountDue = totalAfterDiscount - receivedAmount;
-        customerUpdates.push(
-          tx.customer.update({
-            where: { id: customerId, companyId },
-            data: {
-              outstandingBalance: { increment: amountDue },
-            },
-          }),
-        );
-      }
-
-      if (customerId && receivedAmount > totalAfterDiscount) {
-        const change = receivedAmount - totalAfterDiscount;
-        customerUpdates.push(
-          tx.customer.update({
-            where: { id: customerId, companyId },
-            data: { balance: { increment: change } },
-          }),
-        );
-      }
-
-      // 8. Create Payment record (if amount received)
-      if (receivedAmount > 0) {
-        customerUpdates.push(
-          tx.payment.create({
-            data: {
-              companyId,
-              saleId: sale.id,
-              cashierId,
-              customerId,
-              paymentMethod: "cash",
-              payment_type: "sale_payment",
-              amount: receivedAmount,
-              status: "completed",
-            },
-          }),
-        );
-      }
-
-      // Execute customer updates and payment in parallel
-      if (customerUpdates.length > 0) {
-        await Promise.all(customerUpdates);
-      }
-
-      // 9. Log Activity (don't await - fire and forget for speed)
+      // ===== Log activity (fire & forget) =====
       logActivity(
         cashierId,
         companyId,
-        "أمين الصندوق", // cashier
-        "قام ببيع منتج", // sells a product
-        "889", // (keep as is, transaction or code)
+        "أمين الصندوق",
+        "قام ببيع منتج",
+        "889",
         "وكيل المستخدم",
-      ).catch(console.error); // Handle errors silently
+      ).catch(console.error);
 
-      // 10. Prepare response
+      // ===== Prepare response =====
       const saleForClient = {
         ...sale,
         taxAmount: sale.taxAmount.toString(),
@@ -265,30 +533,27 @@ export async function processSale(data: any, companyId: string) {
     },
     {
       timeout: 20000,
-      maxWait: 5000, // Add maxWait to prevent long queue times
+      maxWait: 5000,
     },
   );
 
   revalidatePath("/cashiercontrol");
-  if (result.sale) {
-    try {
-      await createSaleJournalEntries({
-        companyId,
-        sale: result.sale,
-        customerId: customerId,
-        saleItems: cart,
-        cashierId,
-      });
 
-      console.log(`Journal entry created for saleId=${result.sale.id}`);
-    } catch (err) {
-      console.error("Background journal creation failed:", err);
-    }
+  // ===== Background journal entry creation =====
+  if (result.sale) {
+    createSaleJournalEntries({
+      companyId,
+      sale: result.sale,
+      customerId,
+      saleItems: cart,
+      cashierId,
+    }).catch((err) =>
+      console.error("Background journal creation failed:", err),
+    );
   }
 
   return result;
 }
-
 export async function createSaleJournalEntries({
   companyId,
   sale,
@@ -322,16 +587,25 @@ export async function createSaleJournalEntries({
     // 3️⃣ Compute COGS exactly like the trigger
     // ============================================
     let totalCOGS = 0;
+    // 1️⃣ Batch fetch products for all sale items
+    const productIds = saleItems.map((item) => item.id);
+
+    const products = await prisma.product.findMany({
+      where: { id: { in: productIds } },
+      select: {
+        id: true,
+        costPrice: true,
+        unitsPerPacket: true,
+        packetsPerCarton: true,
+      },
+    });
+
+    // 2️⃣ Create a map for fast lookup
+    const productMap = new Map(products.map((p) => [p.id, p]));
 
     for (const item of saleItems) {
-      const product = await prisma.product.findUnique({
-        where: { id: item.id },
-        select: {
-          costPrice: true,
-          unitsPerPacket: true,
-          packetsPerCarton: true,
-        },
-      });
+      const product = productMap.get(item.id);
+      if (!product) continue; // skip if product not found
 
       const qty = item.selectedQty;
       if (!product) return null;
@@ -646,16 +920,29 @@ export async function createSaleJournalEntries({
     // ============================================
     // 9️⃣ Update account balances
     // ============================================
-    const balanceOps = entries.map((e) =>
-      prisma.accounts.update({
-        where: { id: e.account_id },
-        data: {
-          balance: { increment: Number(e.debit) - Number(e.credit) },
-        },
-      }),
-    );
+    const accountDeltas = new Map<string, number>();
 
-    await Promise.all(balanceOps);
+    for (const e of entries) {
+      const delta = Number(e.debit) - Number(e.credit);
+      if (accountDeltas.has(e.account_id)) {
+        accountDeltas.set(
+          e.account_id,
+          accountDeltas.get(e.account_id)! + delta,
+        );
+      } else {
+        accountDeltas.set(e.account_id, delta);
+      }
+    }
+
+    // Batch updates
+    await Promise.all(
+      Array.from(accountDeltas.entries()).map(([accountId, delta]) =>
+        prisma.accounts.update({
+          where: { id: accountId },
+          data: { balance: { increment: delta } },
+        }),
+      ),
+    );
 
     console.log("Journal entries created for sale", sale.id);
   } catch (err) {
@@ -958,8 +1245,8 @@ export async function processReturn(data: any, companyId: string) {
           reason: reason ?? "إرجاع بيع",
           quantityBefore: inventory.stockQuantity,
           quantityAfter: newStock,
-          reference_type: "إرجاع",
-          reference_id: returnSale.id,
+          referenceType: "إرجاع",
+          referenceId: returnSale.id,
           notes: reason || undefined,
         });
 
@@ -1084,39 +1371,40 @@ export async function processReturn(data: any, companyId: string) {
 
   // The 'after' block logic needs to be attached to the result of the transaction
   // and use the properties returned by the transaction.
-  if (result.success) {
-    try {
-      // Determine refund allocation
-      // Use the correct variable name: result.returnTotalCOGS
-      // Use the correct variable name: result.originalSaleAmountDue
-      const refundFromAR = Math.min(
-        result.returnSubtotal,
-        result.originalSaleAmountDue || 0,
-      );
-      const refundFromCashBank = result.returnSubtotal - refundFromAR;
-
-      await createReturnJournalEntries(
-        companyId,
-        cashierId,
-        returnNumber,
-        result.returnSubtotal,
-        result.returnTotalCOGS, // Corrected variable name
-        refundFromAR,
-        refundFromCashBank,
-        result.returnSale.id,
-        paymentMethod,
-        reason,
-      );
-
-      console.log(
-        `Journal entries created for returnSaleId=${result.returnSale.id}`,
-      );
-    } catch (err) {
-      console.error("Background journal creation failed:", err);
-    }
-  }
 
   revalidatePath("/sells");
+
+  try {
+    // Determine refund allocation
+    // Use the correct variable name: result.returnTotalCOGS
+    // Use the correct variable name: result.originalSaleAmountDue
+    const refundFromAR = Math.min(
+      result.returnSubtotal,
+      result.originalSaleAmountDue || 0,
+    );
+    const refundFromCashBank = result.returnSubtotal - refundFromAR;
+
+    createReturnJournalEntries(
+      companyId,
+      customerId,
+      cashierId,
+      returnNumber,
+      result.returnSubtotal,
+      result.returnTotalCOGS, // Corrected variable name
+      refundFromAR,
+      refundFromCashBank,
+      result.returnSale.id,
+      paymentMethod,
+      reason,
+    );
+
+    console.log(
+      `Journal entries created for returnSaleId=${result.returnSale.id}`,
+    );
+  } catch (err) {
+    console.error("Background journal creation failed:", err);
+  }
+
   return result;
 }
 
@@ -1124,6 +1412,7 @@ export async function processReturn(data: any, companyId: string) {
 
 export async function createReturnJournalEntries(
   companyId: string,
+  customerId: string,
   cashierId: string,
   returnNumber: string,
   returnSubtotal: number,
@@ -1134,188 +1423,153 @@ export async function createReturnJournalEntries(
   refundAccountMethod: "cash" | "bank" = "cash",
   reason?: string,
 ) {
-  // Use a transaction only for the journal entries and related account lookups
-  const result = await prisma.$transaction(async (tx) => {
-    // 1) Load Account Mappings
-    const mappings = await tx.account_mappings.findMany({
-      where: { company_id: companyId },
-    });
-    const fy = await getActiveFiscalYears();
-    if (!fy) return;
-    const getAccountId = (type: string) =>
-      mappings.find((m: any) => m.mapping_type === type)?.account_id;
-
-    const revenueAccount = getAccountId("sales_revenue");
-    const cogsAccount = getAccountId("cogs");
-    const inventoryAccount = getAccountId("inventory");
-    const cashAccount = getAccountId("cash");
-    const bankAccount = getAccountId("bank");
-    const arAccount = getAccountId("accounts_receivable");
-
-    // Check for essential accounts
-    if (!revenueAccount || !cogsAccount || !inventoryAccount) {
-      throw new Error(
-        "Missing essential GL account mappings (Sales, COGS, Inventory).",
-      );
-    }
-
-    // 2) Prepare Journal Entry Number
-    // The base entry number for the transaction (will be suffixed for line items)
-    const v_year = new Date().getFullYear();
-
-    // Generate a highly unique base number using a timestamp
-    // This is safer than using a hardcoded sequence or just hhmmss.
-    const uniqueTimeSuffix = `${Date.now()}`;
-    const baseEntryNumber = `JE-${v_year}-${returnNumber}-${uniqueTimeSuffix}-RET`;
-    // -------------------------------------------------------------------
-
-    const journalData: any[] = [];
-    let entryCounter = 1;
-
-    // --- Journal Entry Components ---
-    // The `entry_number` is now suffixed (e.g., -1, -2, -3) to ensure uniqueness
-    // for each line item, mirroring your trigger logic (-D1, -C1, etc.).
-
-    // 1. Reverse Revenue: Debit Sales Revenue (decrease revenue/equity)
-    journalData.push({
-      company_id: companyId,
-      entry_number: `${baseEntryNumber}-${entryCounter++}`, // Unique suffix
-      account_id: revenueAccount,
-      description: `إرجاع بيع ${returnNumber}`,
-      entry_date: new Date(),
-      debit: returnSubtotal,
-      credit: 0,
-      is_automated: true,
-      fiscal_period: fy?.period_name,
-      reference_type: "sale_return",
-      reference_id: returnSaleId,
-      created_by: cashierId,
-    });
-
-    // 2. Reverse COGS: Credit COGS (decrease expense/equity)
-    journalData.push({
-      company_id: companyId,
-      entry_number: `${baseEntryNumber}-${entryCounter++}`, // Unique suffix
-      account_id: cogsAccount,
-      description: `عكس تكلفة البضاعة المباعة (إرجاع) ${returnNumber}`,
-      entry_date: new Date(),
-      debit: 0,
-      fiscal_period: fy?.period_name,
-      credit: returnTotalCOGS,
-      is_automated: true,
-      reference_type: "sale_return",
-      reference_id: returnSaleId,
-      created_by: cashierId,
-    });
-
-    // 3. Reverse COGS: Debit Inventory (increase asset)
-    journalData.push({
-      company_id: companyId,
-      entry_number: `${baseEntryNumber}-${entryCounter++}`, // Unique suffix
-      account_id: inventoryAccount,
-      description: `زيادة مخزون (إرجاع) ${returnNumber}`,
-      entry_date: new Date(),
-      debit: returnTotalCOGS, // Inventory is returned at cost (COGS)
-      credit: 0,
-      fiscal_period: fy?.period_name,
-      is_automated: true,
-      reference_type: "sale_return",
-      reference_id: returnSaleId,
-      created_by: cashierId,
-    });
-
-    // 4. Refund Handling: Credit Accounts Receivable (decrease asset)
-    if (refundFromAR > 0 && arAccount) {
-      // Used to clear/reduce the customer's outstanding balance
-      journalData.push({
-        company_id: companyId,
-        entry_number: `${baseEntryNumber}-${entryCounter++}`, // Unique suffix
-        account_id: arAccount,
-        description: `تخفيض مديونية العميل بسبب إرجاع ${returnNumber}`,
-        entry_date: new Date(),
-        // Note: Credit to decrease the AR asset balance
-        debit: 0,
-        fiscal_period: fy?.period_name,
-        credit: refundFromAR,
-        is_automated: true,
-        reference_type: "sale_return",
-        reference_id: returnSaleId,
-        created_by: cashierId,
-      });
-    }
-
-    // 5. Refund Handling: Credit Cash/Bank (decrease asset)
-    if (refundFromCashBank > 0) {
-      const refundAccountId =
-        refundAccountMethod === "bank" ? bankAccount : cashAccount;
-
-      if (!refundAccountId) {
-        throw new Error(
-          `Missing GL account mapping for refund method: ${refundAccountMethod}`,
-        );
-      }
-
-      // Money going out to customer -> Credit cash/bank (decrease asset)
-      journalData.push({
-        company_id: companyId,
-        entry_number: `${baseEntryNumber}-${entryCounter++}`, // Unique suffix
-        account_id: refundAccountId,
-        description: `صرف مبلغ مسترجع للعميل (إرجاع) ${returnNumber}`,
-        entry_date: new Date(),
-        debit: 0,
-        credit: refundFromCashBank,
-        is_automated: true,
-        fiscal_period: fy?.period_name,
-        reference_type: "sale_return",
-        reference_id: returnSaleId,
-        created_by: cashierId,
-      });
-    }
-
-    // Double-check the total Debit and Credit columns for balance
-    const totalDebit = journalData.reduce((sum, item) => sum + item.debit, 0);
-    const totalCredit = journalData.reduce((sum, item) => sum + item.credit, 0);
-
-    // The sum of Debits should equal the sum of Credits for the entry to be balanced
-    if (totalDebit !== totalCredit) {
-      throw new Error(
-        `Journal entry is unbalanced: Debit ${totalDebit} vs Credit ${totalCredit}`,
-      );
-    }
-
-    // 3) Write journal entries
-    if (journalData.length > 0) {
-      // Using createMany for bulk insert
-      await tx.journal_entries.createMany({ data: journalData });
-    }
-    // 3) Write journal entries
-    if (journalData.length > 0) {
-      await tx.journal_entries.createMany({ data: journalData });
-    }
-
-    // 4) Update account balances (exactly like trigger)
-    for (const entry of journalData) {
-      if (entry.debit > 0) {
-        await tx.accounts.update({
-          where: { id: entry.account_id },
-          data: { balance: { increment: entry.debit } },
-        });
-      }
-      if (entry.credit > 0) {
-        await tx.accounts.update({
-          where: { id: entry.account_id },
-          data: { balance: { decrement: entry.credit } },
-        });
-      }
-    }
-
-    // Return success
-    return {
-      success: true,
-      message: "تم إنشاء قيود اليومية للإرجاع بنجاح",
-      entry_number: baseEntryNumber, // Return the base number for reference
-    };
+  // 1️⃣ Load Account Mappings
+  const mappings = await prisma.account_mappings.findMany({
+    where: { company_id: companyId },
   });
 
-  return result;
+  const fy = await getActiveFiscalYears();
+  if (!fy) throw new Error("No active fiscal year");
+
+  const getAccountId = (type: string) =>
+    mappings.find((m: any) => m.mapping_type === type)?.account_id;
+
+  const revenueAccount = getAccountId("sales_revenue");
+  const cogsAccount = getAccountId("cogs");
+  const inventoryAccount = getAccountId("inventory");
+  const cashAccount = getAccountId("cash");
+  const bankAccount = getAccountId("bank");
+  const arAccount = getAccountId("accounts_receivable");
+
+  if (!revenueAccount || !cogsAccount || !inventoryAccount) {
+    throw new Error(
+      "Missing essential GL account mappings (Sales, COGS, Inventory).",
+    );
+  }
+
+  // 2️⃣ Prepare unique entry number generator
+  const v_year = new Date().getFullYear();
+  let entryCounter = 0;
+  const nextEntryNumber = () => {
+    entryCounter++;
+    const ts = Date.now();
+    return `JE-${v_year}-${returnNumber}-${ts}-${entryCounter}-RET`;
+  };
+
+  const journalData: any[] = [];
+
+  // 3️⃣ Build journal entries
+
+  // Reverse Revenue
+  journalData.push({
+    company_id: companyId,
+    entry_number: nextEntryNumber(),
+    account_id: revenueAccount,
+    description: `إرجاع بيع ${returnNumber}`,
+    entry_date: new Date(),
+    debit: returnSubtotal,
+    credit: 0,
+    is_automated: true,
+    fiscal_period: fy.period_name,
+    reference_type: "sale_return",
+    reference_id: returnSaleId,
+    created_by: cashierId,
+  });
+
+  // Reverse COGS
+  journalData.push({
+    company_id: companyId,
+    entry_number: nextEntryNumber(),
+    account_id: cogsAccount,
+    description: `عكس تكلفة البضاعة المباعة (إرجاع) ${returnNumber}`,
+    entry_date: new Date(),
+    debit: 0,
+    credit: returnTotalCOGS,
+    is_automated: true,
+    fiscal_period: fy.period_name,
+    reference_type: "sale_return",
+    reference_id: returnSaleId,
+    created_by: cashierId,
+  });
+
+  // Increase Inventory
+  journalData.push({
+    company_id: companyId,
+    entry_number: nextEntryNumber(),
+    account_id: inventoryAccount,
+    description: `زيادة مخزون (إرجاع) ${returnNumber}`,
+    entry_date: new Date(),
+    debit: returnTotalCOGS,
+    credit: 0,
+    is_automated: true,
+    fiscal_period: fy.period_name,
+    reference_type: "sale_return",
+    reference_id: returnSaleId,
+    created_by: cashierId,
+  });
+
+  // Refund from AR
+  if (refundFromAR > 0 && arAccount) {
+    journalData.push({
+      company_id: companyId,
+      entry_number: nextEntryNumber(),
+      account_id: arAccount,
+      description: `تخفيض مديونية العميل بسبب إرجاع ${returnNumber}`,
+      entry_date: new Date(),
+      debit: 0,
+      credit: refundFromAR,
+      is_automated: true,
+      fiscal_period: fy.period_name,
+      reference_type: "إرجاع",
+      reference_id: customerId ?? returnSaleId,
+      created_by: cashierId,
+    });
+  }
+
+  // Refund from Cash/Bank
+  if (refundFromCashBank > 0) {
+    const refundAccountId =
+      refundAccountMethod === "bank" ? bankAccount : cashAccount;
+    if (!refundAccountId)
+      throw new Error(
+        `Missing GL account mapping for refund method: ${refundAccountMethod}`,
+      );
+
+    journalData.push({
+      company_id: companyId,
+      entry_number: nextEntryNumber(),
+      account_id: refundAccountId,
+      description: `صرف مبلغ مسترجع للعميل (إرجاع) ${returnNumber}`,
+      entry_date: new Date(),
+      debit: 0,
+      credit: refundFromCashBank,
+      is_automated: true,
+      fiscal_period: fy.period_name,
+      reference_type: "sale_return",
+      reference_id: returnSaleId,
+      created_by: cashierId,
+    });
+  }
+
+  // 5️⃣ Insert journal entries
+  if (journalData.length > 0) {
+    await prisma.journal_entries.createMany({ data: journalData });
+  }
+
+  // 6️⃣ Update accounts balances
+  for (const entry of journalData) {
+    const delta = (entry.debit || 0) - (entry.credit || 0);
+    if (delta !== 0) {
+      await prisma.accounts.update({
+        where: { id: entry.account_id },
+        data: { balance: { increment: delta } },
+      });
+    }
+  }
+
+  return {
+    success: true,
+    message: "تم إنشاء قيود اليومية للإرجاع بنجاح",
+    entry_number: journalData[0]?.entry_number,
+  };
 }

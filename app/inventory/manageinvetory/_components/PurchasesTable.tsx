@@ -10,7 +10,7 @@ import SearchInput from "@/components/common/searchtest";
 import { useTranslations } from "next-intl";
 
 import { PrintPurchasesTable } from "@/components/printItems";
-import { purchaseColumns } from "./columns";
+import { purchaseColumns } from "./columnsMovment";
 import { Calendar22 } from "@/components/common/DatePicker";
 
 type ProductClientProps = {

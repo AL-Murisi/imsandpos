@@ -50,6 +50,7 @@ interface ExtendedInventoryUpdateData {
   notes?: string;
   availableQuantity?: number;
   stockQuantity?: number;
+  productId?: string;
   supplierId?: string;
   quantity?: number;
   unitCost?: number;
@@ -85,23 +86,28 @@ export async function updateInventory(
       unitCost,
       paymentMethod,
       paymentAmount,
+      productId: productId,
       supplierId: providedSupplierId,
       warehouseId: targetWarehouseId, // المستودع المستهدف
       ...updateData
     } = data;
     console.log(paymentMethod);
     // 1️⃣ جلب السجل الحالي للمخزون
-    const currentInventory = await prisma.inventory.findUnique({
-      where: { id, companyId },
+    const currentInventory = await prisma.inventory.findFirst({
+      where: { companyId, productId, warehouseId: targetWarehouseId },
       include: { product: true, warehouse: true },
     });
+    console.log(paymentAmount);
     if (!currentInventory) throw new Error("سجل المخزون غير موجود");
     let nextNumber = 1;
     if (currentInventory?.receiptNo) {
       const match = currentInventory.receiptNo.match(/(\d+)$/);
       if (match) nextNumber = parseInt(match[1]) + 1;
     }
-    const receiptNo = await generateArabicPurchaseReceiptNumber(nextNumber);
+    const padded = String(nextNumber).padStart(5, "0"); // 00001
+    const year = new Date().getFullYear();
+    const now = Date.now(); // e.g., 1698992999999
+    const receiptNo = `مشتريات-${year}-${padded}Q-${now}`;
     let purchase;
     const product = currentInventory.product;
     const unitsPerPacket = product.unitsPerPacket || 1;
@@ -172,7 +178,7 @@ export async function updateInventory(
     if (updateType === "supplier" && inputCartons && unitCost) {
       const totalCost = inputCartons * unitCost;
       const paid = paymentAmount ?? 0;
-      const due = Math.abs(totalCost - paid);
+      const due = totalCost - paid;
       purchase = await prisma.purchase.create({
         data: {
           companyId,
@@ -220,13 +226,14 @@ export async function updateInventory(
           },
         });
       }
-      const outstanding = Math.abs(totalCost - paid);
+      const outstanding = totalCost - paid;
+      const payment = paymentAmount ?? 0;
       await prisma.supplier.update({
         where: { id: supplierId, companyId },
         data: {
           totalPurchased: { increment: totalCost },
 
-          totalPaid: { increment: paymentAmount },
+          totalPaid: { increment: Prisma.Decimal(payment) },
 
           outstandingBalance: {
             increment: outstanding,
@@ -309,67 +316,7 @@ export async function updateInventory(
     };
   }
 }
-// export async function createSupplierPaymentJournalEntries({
-//   payment,
-//   companyId,
-//   userId,
-// }: {
-//   payment: any;
-//   companyId: string;
-//   userId: string;
-//   }) {
 
-//   const mappings = await prisma.account_mappings.findMany({
-//       where: { company_id: companyId, is_default: true },
-//     });
-
-//     const getAcc = (type: string) =>
-//       mappings.find((m) => m.mapping_type === type)?.account_id;
-
-//   const payableAccount =getAcc("accounts_payable")
-//   const cashAccount = getAcc("cash")
-
-//   const bankAccount = getAcc("bank")
-
-//   const paymentAccount =
-//     payment.paymentMethod === "bank"
-//       ? bankAccount
-//       : cashAccount;
-
-//   const entryNumber = `SP-${payment.id.slice(0, 6)}`;
-
-//   await prisma.journal_entries.create({
-//     data: {
-//         company_id: companyId,
-//       account_id: payableAccount,
-//       description: `سداد للمورد`,
-//       debit: payment.amount,
-//       credit: 0,
-//       reference_type: "supplier_payment",
-//       reference_id: payment.id,
-//       entry_number: `${entryNumber} -D`,
-//       entry_date: new Date(),
-//       created_by: userId,
-//       is_automated: true,
-//     },
-//   });
-
-//   await prisma.journal_entries.create({
-//     data: {
-//           company_id: companyId,
-//       account_id: paymentAccount,
-//       description: `سداد للمورد`,
-//       debit: 0,
-//       credit: payment.amount,
-//       reference_type: "supplier_payment",
-//       reference_id: payment.id,
-//       entry_date: new Date(),
-//       entry_number: entryNumber + "-C",
-//       created_by: userId,
-//       is_automated: true,
-//     },
-//   });
-// }
 type PurchaseOrReturn = {
   id: string;
   totalAmount: number;
@@ -378,7 +325,6 @@ type PurchaseOrReturn = {
   paymentMethod?: "cash" | "bank";
   type: "purchase" | "return";
 };
-
 export async function createPurchaseJournalEntries({
   purchase,
   companyId,
@@ -407,10 +353,9 @@ export async function createPurchaseJournalEntries({
     throw new Error("الحسابات الأساسية غير موجودة");
   }
 
-  const entryNumber = `JE-${new Date().getFullYear()}-${purchase.id.slice(
-    0,
-    6,
-  )}`;
+  // Base Entry Number for the whole transaction
+  const entryNumber = `JE-${new Date().getFullYear()}-${purchase.id.slice(0, 7)}-${Math.floor(Math.random() * 10000)}`;
+
   const description =
     type === "purchase"
       ? `مشتريات - فاتورة رقم ${purchase.id}`
@@ -427,198 +372,251 @@ export async function createPurchaseJournalEntries({
       data: { balance: { increment: debit - credit } },
     });
   };
+  const entries: any[] = [];
 
-  if (purchase.type === "purchase") {
-    // ================= PURCHASE =================
-    // 1. Debit Inventory
-    await prisma.journal_entries.create({
-      data: {
-        company_id: companyId,
-        account_id: inventoryAccount,
-        description,
-        debit: purchase.totalAmount,
-        credit: 0,
-        fiscal_period: fy.period_name,
-        entry_date: new Date(),
-        reference_type: "purchase",
-        reference_id: purchase.id,
-        entry_number: entryNumber + "-D",
-        created_by: userId,
-        is_automated: true,
-      },
-    });
-    await updateAccountBalance(inventoryAccount, purchase.totalAmount, 0);
+  if (type === "purchase") {
+    // 🛑 Removed the redundant re-declaration of entryNumber here
 
-    // 2. Credit Payables / Cash / Bank
-    if (purchase.amountPaid === 0) {
-      // Full credit
-      await prisma.journal_entries.create({
-        data: {
-          company_id: companyId,
-          account_id: payableAccount,
-          description: description + " - آجل كامل",
-          debit: 0,
-          fiscal_period: fy.period_name,
-          credit: purchase.totalAmount,
-          entry_date: new Date(),
-          reference_type: "purchase",
-          reference_id: purchase.supplierId,
-          entry_number: entryNumber + "-C",
-          created_by: userId,
-          is_automated: true,
-        },
-      });
-      await updateAccountBalance(payableAccount, 0, purchase.totalAmount);
-    } else if (purchase.amountPaid < purchase.totalAmount) {
-      const due = purchase.amountDue;
+    // ================= PURCHASE JOURNAL ENTRY =================
+    // 1. Debit Inventory (Increase Inventory Asset)
 
-      // Remaining payable
-      await prisma.journal_entries.create({
-        data: {
-          company_id: companyId,
-          account_id: payableAccount,
-          description: description + " - دفع جزئي",
-          debit: 0,
-          credit: due,
-          fiscal_period: fy.period_name,
-          entry_date: new Date(),
-          reference_type: "purchase",
-          reference_id: purchase.supplierId,
-          entry_number: entryNumber + "-C1",
-          created_by: userId,
-          is_automated: true,
-        },
-      });
-      await updateAccountBalance(payableAccount, 0, due);
+    console.log(Number(purchase.amountPaid));
+    // 2. Credit Payables / Cash / Bank (Increase Liability or Decrease Asset)
+    if (Number(purchase.amountPaid) === Number(purchase.totalAmount)) {
+      // ============================================================
+      // 1️⃣ PURCHASE - Fully Paid (مدفوع بالكامل)
+      // ============================================================
 
-      // Paid part
       const paymentAccount =
         purchase.paymentMethod === "bank" ? bankAccount : cashAccount;
-      await prisma.journal_entries.create({
-        data: {
-          company_id: companyId,
-          account_id: paymentAccount,
-          description: description + " - دفع جزئي",
-          debit: 0,
-          fiscal_period: fy.period_name,
-          credit: purchase.amountPaid,
-          entry_date: new Date(),
-          reference_type: "purchase",
-          reference_id: purchase.supplierId,
-          entry_number: entryNumber + "-C2",
-          created_by: userId,
-          is_automated: true,
-        },
-      });
-      await updateAccountBalance(paymentAccount, 0, purchase.amountPaid);
-    } else {
-      // Fully paid
-      const paymentAccount =
-        purchase.paymentMethod === "bank" ? bankAccount : cashAccount;
-      await prisma.journal_entries.create({
-        data: {
-          company_id: companyId,
-          account_id: paymentAccount,
-          description: description + " - مدفوع بالكامل",
-          debit: 0,
-          fiscal_period: fy.period_name,
-          credit: purchase.totalAmount,
-          entry_date: new Date(),
-          reference_type: "purchase",
-          reference_id: purchase.supplierId,
-          entry_number: entryNumber + "-C",
-          created_by: userId,
-          is_automated: true,
-        },
-      });
-      await updateAccountBalance(paymentAccount, 0, purchase.totalAmount);
-    }
-  } else {
-    // ================= PURCHASE RETURN =================
-    // 1. Credit Inventory (reduce inventory value)
-    await prisma.journal_entries.create({
-      data: {
+
+      // (1) Credit Cash/Bank  (خروج نقدية/بنكية)
+      entries.push({
         company_id: companyId,
-        account_id: inventoryAccount,
-        description: description + " - تخفيض المخزون",
+        account_id: paymentAccount,
+        description: description + " - مدفوع بالكامل",
         debit: 0,
         fiscal_period: fy.period_name,
         credit: purchase.totalAmount,
         entry_date: new Date(),
-        reference_type: " مرتجع مشتريات",
+        reference_type: "سداد مشتريات",
         reference_id: purchase.id,
-        entry_number: entryNumber + "-C1",
+        entry_number: entryNumber + "-CR1",
         created_by: userId,
         is_automated: true,
-      },
+      });
+      await updateAccountBalance(paymentAccount, 0, purchase.totalAmount);
+
+      // (2) Debit Inventory (إضافة للمخزون)
+      entries.push({
+        company_id: companyId,
+        account_id: inventoryAccount,
+        description: description + " - إضافة للمخزون",
+        debit: purchase.totalAmount,
+        credit: 0,
+        fiscal_period: fy.period_name,
+        entry_date: new Date(),
+        reference_type: "إضافة مخزون",
+        reference_id: purchase.id,
+        entry_number: entryNumber + "-DR1",
+        created_by: userId,
+        is_automated: true,
+      });
+      await updateAccountBalance(inventoryAccount, purchase.totalAmount, 0);
+    } else if (
+      Number(purchase.amountPaid) > 0 &&
+      Number(purchase.amountPaid) < Number(purchase.totalAmount)
+    ) {
+      // ============================================================
+      // 2️⃣ PURCHASE - Partial Payment (دفع جزئي)
+      // ============================================================
+
+      const due = Number(purchase.totalAmount) - Number(purchase.amountPaid);
+      const paymentAccount =
+        purchase.paymentMethod === "bank" ? bankAccount : cashAccount;
+
+      // (1) Debit Inventory (إضافة للمخزون بقيمة الفاتورة كاملة)
+      entries.push({
+        company_id: companyId,
+        account_id: inventoryAccount,
+        description: description + " - إضافة للمخزون",
+        debit: purchase.totalAmount,
+        credit: 0,
+        fiscal_period: fy.period_name,
+        entry_date: new Date(),
+        reference_type: "إضافة مخزون",
+        reference_id: purchase.id,
+        entry_number: entryNumber + "-DR1",
+        created_by: userId,
+        is_automated: true,
+      });
+      await updateAccountBalance(inventoryAccount, purchase.totalAmount, 0);
+
+      // (2) Credit Cash/Bank (المبلغ المدفوع)
+      entries.push({
+        company_id: companyId,
+        account_id: paymentAccount,
+        description: description + " - دفع جزئي",
+        debit: 0,
+        credit: purchase.amountPaid,
+        fiscal_period: fy.period_name,
+        entry_date: new Date(),
+        reference_type: "دفع مشتريات",
+        reference_id: purchase.id,
+        entry_number: entryNumber + "-CR1",
+        created_by: userId,
+        is_automated: true,
+      });
+      await updateAccountBalance(paymentAccount, 0, purchase.amountPaid);
+
+      // (3) Credit Accounts Payable (الباقي آجل على المورد)
+      entries.push({
+        company_id: companyId,
+        account_id: payableAccount,
+        description: description + " - آجل للمورد",
+        debit: 0,
+        credit: due,
+        fiscal_period: fy.period_name,
+        entry_date: new Date(),
+        reference_type: "آجل مشتريات",
+        reference_id: purchase.supplierId,
+        entry_number: entryNumber + "-CR2",
+        created_by: userId,
+        is_automated: true,
+      });
+      await updateAccountBalance(payableAccount, 0, due);
+    } else {
+      // ============================================================
+      // PURCHASE - Fully On Credit (آجل كامل)
+      // ============================================================
+
+      // 1️⃣ Debit Inventory — إضافة للمخزون
+      entries.push({
+        company_id: companyId,
+        account_id: inventoryAccount,
+        description: description + " - إضافة للمخزون",
+        debit: purchase.totalAmount,
+        credit: 0,
+        fiscal_period: fy.period_name,
+        entry_date: new Date(),
+        reference_type: "إضافة مخزون",
+        reference_id: purchase.id,
+        entry_number: entryNumber + "-DR1",
+        created_by: userId,
+        is_automated: true,
+      });
+      await updateAccountBalance(inventoryAccount, purchase.totalAmount, 0);
+
+      // 2️⃣ Credit Payables — مديونية للمورد
+      entries.push({
+        company_id: companyId,
+        account_id: payableAccount,
+        description: description + " - آجل كامل",
+        debit: 0,
+        credit: purchase.totalAmount,
+        fiscal_period: fy.period_name,
+        entry_date: new Date(),
+        reference_type: "ذمم دائنة للمورد",
+        reference_id: purchase.supplierId,
+        entry_number: entryNumber + "-CR1",
+        created_by: userId,
+        is_automated: true,
+      });
+      await updateAccountBalance(payableAccount, 0, purchase.totalAmount);
+    }
+  } else {
+    // ============================================================
+    // PURCHASE RETURN (مرتجع مشتريات)
+    // ============================================================
+
+    // 1️⃣ تخفيض المخزون — Credit Inventory
+    entries.push({
+      company_id: companyId,
+      account_id: inventoryAccount,
+      description: description + " - تخفيض المخزون",
+      debit: 0,
+      credit: purchase.totalAmount,
+      fiscal_period: fy.period_name,
+      entry_date: new Date(),
+      reference_type: "تخفيض مخزون بسبب مرتجع مشتريات",
+      reference_id: purchase.id,
+      entry_number: entryNumber + "-CR1",
+      created_by: userId,
+      is_automated: true,
     });
     await updateAccountBalance(inventoryAccount, 0, purchase.totalAmount);
 
     const remainingAmount = purchase.totalAmount - purchase.amountPaid;
 
+    // --------------------------------------------------------------------
+    // 2️⃣ لو كان فيه مبلغ مدفوع → نعيده نقدًا/بنكًا + تخفيض المتبقي على المورد
+    // --------------------------------------------------------------------
     if (purchase.amountPaid > 0) {
-      // Debit Cash/Bank
       const paymentAccount =
         purchase.paymentMethod === "bank" ? bankAccount : cashAccount;
-      await prisma.journal_entries.create({
-        data: {
-          company_id: companyId,
-          account_id: paymentAccount,
-          description: description + " - استرداد نقدي/بنكي",
-          debit: purchase.amountPaid,
-          credit: 0,
-          fiscal_period: fy.period_name,
-          entry_date: new Date(),
-          reference_type: "مرتجع مشتريات دفع",
-          reference_id: purchase.supplierId,
-          entry_number: entryNumber + "-D1",
-          created_by: userId,
-          is_automated: true,
-        },
+
+      // 2A — ردّ المبلغ المدفوع Cash/Bank (Debit)
+      entries.push({
+        company_id: companyId,
+        account_id: paymentAccount,
+        description: description + " - استرداد نقدي/بنكي",
+        debit: purchase.amountPaid,
+        credit: 0,
+        fiscal_period: fy.period_name,
+        entry_date: new Date(),
+        reference_type: "استرداد مدفوعات للمرتجع",
+        reference_id: purchase.id,
+        entry_number: entryNumber + "-DR1",
+        created_by: userId,
+        is_automated: true,
       });
       await updateAccountBalance(paymentAccount, purchase.amountPaid, 0);
 
-      // If partial refund, debit remaining to payables
+      // 2B — إذا كان هناك مبلغ تبقى على المورد → خفض الذمم الدائنة
       if (remainingAmount > 0) {
-        await prisma.journal_entries.create({
-          data: {
-            company_id: companyId,
-            account_id: payableAccount,
-            description: description + " - تخفيض الذمم الدائنة",
-            debit: remainingAmount,
-            credit: 0,
-            fiscal_period: fy.period_name,
-            entry_date: new Date(),
-            reference_type: "purchase_return",
-            reference_id: purchase.supplierId,
-            entry_number: entryNumber + "-D2",
-            created_by: userId,
-            is_automated: true,
-          },
-        });
-        await updateAccountBalance(payableAccount, remainingAmount, 0);
-      }
-    } else {
-      // No refund: debit payables
-      await prisma.journal_entries.create({
-        data: {
+        entries.push({
           company_id: companyId,
           account_id: payableAccount,
           description: description + " - تخفيض الذمم الدائنة",
-          debit: purchase.totalAmount,
+          debit: remainingAmount,
           credit: 0,
           fiscal_period: fy.period_name,
           entry_date: new Date(),
-          reference_type: "purchase_return",
+          reference_type: "تخفيض مديونية المورد بسبب مرتجع",
           reference_id: purchase.supplierId,
-          entry_number: entryNumber + "-D1",
+          entry_number: entryNumber + "-DR2",
           created_by: userId,
           is_automated: true,
-        },
+        });
+        await updateAccountBalance(payableAccount, remainingAmount, 0);
+      }
+    }
+
+    // --------------------------------------------------------------------
+    // 3️⃣ لو لم يتم دفع أي مبلغ أصلاً → خفض كامل للذمم الدائنة
+    // --------------------------------------------------------------------
+    else {
+      entries.push({
+        company_id: companyId,
+        account_id: payableAccount,
+        description: description + " - تخفيض الذمم الدائنة",
+        debit: purchase.totalAmount,
+        credit: 0,
+        fiscal_period: fy.period_name,
+        entry_date: new Date(),
+        reference_type: "تخفيض ذمم دائنة للمرتجع",
+        reference_id: purchase.supplierId,
+        entry_number: entryNumber + "-DR1",
+        created_by: userId,
+        is_automated: true,
       });
+
       await updateAccountBalance(payableAccount, purchase.totalAmount, 0);
     }
   }
+
+  // The line that caused the unique constraint failure is now safe:
+  await prisma.journal_entries.createMany({ data: entries });
 }
 
 interface PurchaseReturnData {
@@ -633,6 +631,170 @@ interface PurchaseReturnData {
   reason?: string;
 }
 
+export async function getPurchaseReturnData(
+  purchaseId: string,
+  companyId: string,
+) {
+  try {
+    // 1️⃣ Fetch Purchase + Supplier + Items + Product
+    const purchase = await prisma.purchase.findFirst({
+      where: { id: purchaseId, companyId },
+      include: {
+        supplier: true,
+        purchaseItems: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                sku: true,
+                costPrice: true,
+                unitsPerPacket: true,
+                packetsPerCarton: true,
+                type: true,
+                warehouseId: true,
+                supplier: { select: { id: true, name: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!purchase) {
+      return { success: false, message: "لم يتم العثور على المشتريات" };
+    }
+
+    const item = purchase.purchaseItems[0];
+
+    if (!item) {
+      return { success: false, message: "لا توجد منتجات في هذه المشتريات" };
+    }
+
+    // 2️⃣ Fetch inventory for the product
+    const inventory = await prisma.inventory.findFirst({
+      where: {
+        companyId,
+        productId: item.productId,
+        warehouseId: item.product.warehouseId || undefined,
+      },
+    });
+
+    // 3️⃣ Get available quantity (base unit)
+    const availableUnits = inventory?.availableQuantity ?? 0;
+
+    // 4️⃣ Convert base units to packets and cartons based on product type
+    function convertFromBaseUnit(product: any, availableCartons: number) {
+      const unitsPerPacket = product.unitsPerPacket || 1;
+      const packetsPerCarton = product.packetsPerCarton || 1;
+
+      // 1 carton → packetsPerCarton packets
+      const availablePackets = Number(
+        (availableCartons * packetsPerCarton).toFixed(2),
+      );
+
+      // 1 packet → unitsPerPacket units
+      const availableUnits = Number(
+        (availablePackets * unitsPerPacket).toFixed(2),
+      );
+
+      return {
+        availableCartons,
+        availablePackets,
+        availableUnits,
+      };
+    }
+
+    const calculatedInventory = convertFromBaseUnit(
+      item.product,
+      item.quantity,
+    );
+
+    // 5️⃣ Filter available quantities based on product type
+    let inventoryByType: any = {};
+
+    switch (item.product.type) {
+      case "full":
+        // Full products have all three: units, packets, cartons
+        inventoryByType = {
+          availableUnits: calculatedInventory.availableUnits,
+          availablePackets: calculatedInventory.availablePackets,
+          availableCartons: calculatedInventory.availableCartons,
+        };
+        break;
+
+      case "cartonOnly":
+        // Only cartons available
+        inventoryByType = {
+          availableCartons: calculatedInventory.availableCartons,
+        };
+        break;
+
+      case "cartonUnit":
+        // Only cartons and units (no packets)
+        inventoryByType = {
+          availableUnits: calculatedInventory.availableUnits,
+          availableCartons: calculatedInventory.availableCartons,
+        };
+        break;
+
+      case "unit":
+      default:
+        // Only units available
+        inventoryByType = {
+          availableUnits: calculatedInventory.availableUnits,
+        };
+        break;
+    }
+    const supplierdata = serializeData(purchase.supplier);
+    const products = serializeData(item.product);
+    // 6️⃣ Final Return Object
+    return {
+      success: true,
+      data: {
+        purchase: {
+          id: purchase.id,
+          totalAmount: Number(purchase.totalAmount),
+          amountPaid: Number(purchase.amountPaid),
+          amountDue: Number(purchase.amountDue),
+          status: purchase.status,
+          supplierId: purchase.supplierId,
+          createdAt: purchase.createdAt,
+        },
+
+        supplier: supplierdata,
+
+        product: products,
+
+        purchaseItem: {
+          id: item.id,
+          quantity: item.quantity,
+          unitCost: Number(item.unitCost),
+          totalCost: Number(item.totalCost),
+        },
+
+        inventory: inventoryByType,
+      },
+    };
+  } catch (error) {
+    console.error("Error loading purchase return data", error);
+    return { success: false, message: "حدث خطأ في الخادم" };
+  }
+}
+
+// Helper function to determine allowed units based on product type
+function getUnitsByProductType(type: string): ("unit" | "packet" | "carton")[] {
+  switch (type) {
+    case "full":
+      return ["unit", "packet", "carton"];
+    case "cartonOnly":
+      return ["carton"];
+    case "cartonUnit":
+      return ["carton", "unit"];
+    default:
+      return ["unit"];
+  }
+}
 export async function processPurchaseReturn(
   data: PurchaseReturnData,
   userId: string,
@@ -740,12 +902,11 @@ export async function processPurchaseReturn(
         }
 
         // 4. Calculate return cost (ALWAYS POSITIVE)
-        const returnTotalCost = Math.abs(returnQuantity * unitCost);
+        const returnTotalCost = returnQuantity * unitCost;
 
         // 5. Calculate outstanding balance adjustments
         const amountDue = Number(originalPurchase.amountDue || 0);
         let outstandingDecrease = 0;
-        console.log(amountDue);
         if (refundAmount > 0) {
           outstandingDecrease = Math.min(amountDue, refundAmount);
         } else {
@@ -883,7 +1044,6 @@ export async function processPurchaseReturn(
     );
 
     revalidatePath("/manageinvetory");
-    revalidatePath("/purchases"); // Add this path too
     createPurchaseJournalEntries({
       purchase: purchaseReturn,
       companyId,
@@ -1137,7 +1297,7 @@ export async function getStockMovements(
         }),
       };
     }
-    console.log(dateRange);
+
     // If you want to support global filter search, add to where using OR on fields:
 
     // Get total count for pagination

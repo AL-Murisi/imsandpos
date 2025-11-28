@@ -6,6 +6,7 @@ import { Prisma } from "@prisma/client";
 import { SortingState } from "@tanstack/react-table";
 import { getSession } from "@/lib/session";
 import InventoryTabs from "./_components/tabs";
+import { getPurchasesByCompany } from "@/app/actions/suppliers";
 
 type DashboardProps = {
   searchParams: Promise<{
@@ -91,7 +92,13 @@ export default async function Manageinvetory({ searchParams }: DashboardProps) {
     inventoryParams.pageSize,
     inventoryParams.parsedSort,
   );
-
+  const purchasesPromise = getPurchasesByCompany(user.companyId, {
+    pageIndex,
+    pageSize,
+    from,
+    to,
+    parsedSort,
+  });
   const movementData = getStockMovements(
     user.companyId,
     movementParams.query,
@@ -106,6 +113,7 @@ export default async function Manageinvetory({ searchParams }: DashboardProps) {
     <InventoryTabs
       inventoryData={inventoryData}
       movementData={movementData}
+      purchasesPromise={purchasesPromise}
       formData={formData}
       currentTab={currentTab}
     />

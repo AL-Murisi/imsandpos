@@ -65,13 +65,14 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
       availableQuantity: undefined,
       maxStockLevel: inventory.maxStockLevel || undefined,
       lastStockTake: new Date().toISOString(),
-      updateType: "manual",
+      updateType: "supplier",
       quantity: undefined,
       unitCost:
         inventory.product?.costPrice && inventory.product?.costPrice !== 0
           ? Number(inventory.product.costPrice)
           : undefined,
       paymentAmount: undefined,
+      paymentMethod: "cash",
       warehouseId: inventory.warehouseId ?? undefined,
       supplierId: inventory.product?.supplier?.id ?? undefined,
     },
@@ -160,11 +161,12 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
         id: inventory.id,
         updateType,
         supplierId,
+        productId: inventory.product.id,
         warehouseId,
         quantity: updateType === "supplier" ? quantity : undefined,
         unitCost: updateType === "supplier" ? unitCost : undefined,
-        paymentMethod: showPayment ? method : undefined,
-        paymentAmount: showPayment ? amount : undefined,
+        paymentMethod: updateType === "supplier" ? method : undefined,
+        paymentAmount: updateType === "supplier" ? amount : undefined,
         notes: data.reason,
       };
 
@@ -233,34 +235,25 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
         {updateType === "supplier" && (
           <div className="rounded-lg border border-blue-200 p-4">
             {/* المورد */}
-            <div className="mb-4 grid gap-2">
-              <Label>اختر المورد</Label>
-              <SelectField
-                options={suppliers}
-                value={supplierId || ""}
-                action={(val) => setValue("supplierId", val)}
-                placeholder="اختر المورد"
-              />
-              {!supplierId && (
-                <p className="text-xs text-red-500">المورد مطلوب</p>
-              )}
-            </div>
 
             {/* الكمية والسعر */}
 
             {/* الدفع */}
             <div className="mt-4 border-t border-blue-200 pt-4">
-              <label className="flex cursor-pointer items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={showPayment}
-                  onChange={(e) => setShowPayment(e.target.checked)}
-                />
-                <span className="text-sm font-medium">تسجيل دفع الآن</span>
-              </label>
-
-              {showPayment && updateType == "supplier" && (
-                <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-3">
+              {updateType == "supplier" && (
+                <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-4">
+                  <div className="grid gap-2">
+                    <Label>اختر المورد</Label>
+                    <SelectField
+                      options={suppliers}
+                      value={supplierId || ""}
+                      action={(val) => setValue("supplierId", val)}
+                      placeholder="اختر المورد"
+                    />
+                    {!supplierId && (
+                      <p className="text-xs text-red-500">المورد مطلوب</p>
+                    )}
+                  </div>
                   <div className="grid gap-2">
                     <Label>طريقة الدفع</Label>
                     <SelectField
