@@ -178,7 +178,7 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
     [dispatch],
   );
 
-  const handlePayment = useCallback(async () => {
+  const handlePayment = async () => {
     if (!user) return;
     if (selectedUser?.creditLimit !== undefined) {
       if (debtLimit > selectedUser.creditLimit && receivedAmount == 0) {
@@ -239,18 +239,7 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
     } finally {
       setIsSubmitting(false);
     }
-  }, [
-    user,
-    items,
-    totals,
-    receivedAmount,
-    discountValue,
-    discountType,
-    saleNumber,
-    users,
-    activeCartId,
-    dispatch,
-  ]);
+  };
 
   if (!user) return null;
 
@@ -379,58 +368,62 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
         <div className="flex w-full flex-col gap-4">
           <div className="flex items-end justify-between">
             {/* Discount controls */}
-            <div className="flex flex-col gap-1">
-              {tt("customer")}: <Badge>{selectedUser?.name ?? ""}</Badge>
-              <label
-                htmlFor="discount"
-                className="text-sm font-semibold text-gray-700 dark:text-gray-300"
-              >
-                {t("discount")}
-              </label>
-              <div className="flex gap-2">
-                <Select
-                  value={discountType}
-                  onValueChange={(value: "fixed" | "percentage") => {
-                    dispatch(
-                      setDiscount({
-                        type: value,
-                        value: discountValue || 0,
-                      }),
-                    );
-                    setDiscountType(value);
-                  }}
-                >
-                  <SelectTrigger className="rounded border px-2 py-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="fixed">{t("fixed")}</SelectItem>
-                    <SelectItem value="percentage">
-                      {t("percentage")}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <input
-                  value={discountValue}
-                  onChange={(e) => {
-                    const val = Math.max(0, Number(e.target.value));
-                    dispatch(
-                      setDiscount({
-                        type: discountType ?? "fixed",
-                        value: val,
-                      }),
-                    );
-                    setDiscountsValue(val);
-                  }}
-                  className="w-20 rounded border border-gray-300 px-2 py-1 text-sm dark:border-gray-600"
-                  max={discountType === "percentage" ? 100 : totals.totalBefore}
-                />
+            <div className="grid grid-cols-1 gap-1 md:grid-rows-3">
+              <div>
+                {" "}
+                {tt("customer")}: <Badge>{selectedUser?.name ?? ""}</Badge>
+              </div>
+              <div className="w-20"> {t("discount")}</div>
+              <div className="grid grid-rows-1 gap-2 md:grid-cols-3">
+                <div className="">
+                  {" "}
+                  <Select
+                    value={discountType}
+                    onValueChange={(value: "fixed" | "percentage") => {
+                      dispatch(
+                        setDiscount({
+                          type: value,
+                          value: discountValue || 0,
+                        }),
+                      );
+                      setDiscountType(value);
+                    }}
+                  >
+                    <SelectTrigger className="rounded border px-2 py-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="fixed">{t("fixed")}</SelectItem>
+                      <SelectItem value="percentage">
+                        {t("percentage")}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="">
+                  <Input
+                    value={discountValue}
+                    onChange={(e) => {
+                      const val = Math.max(0, Number(e.target.value));
+                      dispatch(
+                        setDiscount({
+                          type: discountType ?? "fixed",
+                          value: val,
+                        }),
+                      );
+                      setDiscountsValue(val);
+                    }}
+                    className="w-20 rounded border border-gray-300 px-2 py-1 text-sm dark:border-gray-600"
+                    max={
+                      discountType === "percentage" ? 100 : totals.totalBefore
+                    }
+                  />
+                </div>
               </div>
             </div>
 
             {/* Totals display */}
-            <div className="flex flex-col gap-1 text-right">
+            <div className="grid grid-cols-1 gap-1 text-right md:grid-rows-4">
               <div className="flex justify-between gap-4">
                 <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">
                   {t("beforeDiscount")}
@@ -455,16 +448,18 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
                   {totals.totalAfter.toFixed(2)}
                 </span>
               </div>
-              <Input
-                value={receivedAmount === 0 ? "" : receivedAmount}
-                onChange={(e) => {
-                  const val = Number(e.target.value);
-                  setReceivedAmount(isNaN(val) ? 0 : val);
-                }}
-                placeholder="المبلغ المستلم"
-                className="w-40 border-2 sm:w-2xs md:w-2xs lg:w-[200px]"
-                type="number"
-              />
+              <div>
+                <Input
+                  value={receivedAmount === 0 ? "" : receivedAmount}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setReceivedAmount(isNaN(val) ? 0 : val);
+                  }}
+                  placeholder="المبلغ المستلم"
+                  className="w-40 border-2 sm:w-2xs md:w-2xs lg:w-[200px]"
+                  type="number"
+                />
+              </div>
             </div>
           </div>
 

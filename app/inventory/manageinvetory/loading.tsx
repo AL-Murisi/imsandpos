@@ -5,13 +5,13 @@ export default function Loading() {
   return (
     <div className="flex flex-col p-3">
       <div className="mb-2 flex gap-2">
-        {["inventory", "movement"].map((t) => (
+        {["inventory", "purchases", "movement"].map((t) => (
           <Button key={t} variant={t === "inventory" ? "default" : "outline"}>
             {t === "inventory"
               ? "المخزون"
-              : t === "movement"
-                ? "حركات المخزون"
-                : ""}
+              : t === "purchases"
+                ? "الطلبات"
+                : "حركات المخزون"}
           </Button>
         ))}
       </div>

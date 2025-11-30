@@ -15,7 +15,7 @@ import { useAuth } from "@/lib/context/AuthContext";
 import { AlertCircle } from "lucide-react";
 import { SelectField } from "@/components/common/selectproduct";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-
+import { useRouter } from "next/navigation";
 const returnSchema = z.object({
   saleId: z.string(),
   cashierId: z.string().optional().nullable(),
@@ -44,7 +44,7 @@ export function ReturnForm({ sale }: { sale: any }) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
+  const router = useRouter();
   const { handleSubmit, control, register, watch, setValue } =
     useForm<ReturnFormValues>({
       resolver: zodResolver(returnSchema),
@@ -135,9 +135,23 @@ export function ReturnForm({ sale }: { sale: any }) {
       const result = await processReturn(payload, user.companyId);
 
       if (result.success) {
+        // Single client-side refresh to update /sells data exactly once
+        try {
+          router.refresh();
+        } catch (err) {
+          // router.refresh() should normally work; fallback is window.location.reload
+          console.warn("router.refresh() failed:", err);
+          try {
+            window.location.reload();
+          } catch (err2) {
+            console.warn("fallback reload failed", err2);
+          }
+        }
+
         toast.success(result.message, {
           description: `مبلغ الإرجاع: ${returnToCustomer.toFixed(2)} ر.س`,
         });
+
         setOpen(false);
       } else {
         toast.error(result.message || "فشل في معالجة الإرجاع");

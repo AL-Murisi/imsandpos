@@ -10,6 +10,7 @@ import {
   CheckCircle,
   XCircle,
   EditIcon,
+  Power,
 } from "lucide-react";
 
 import { Button } from "../../../components/ui/button";
@@ -176,41 +177,44 @@ export const columns: ColumnDef<User>[] = [
       let state: boolean;
 
       return (
-        <>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Open menu</span>
-                <MoreHorizontal />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem
-                onClick={() => navigator.clipboard.writeText(userr?.id)}
-              ></DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <Changerole />
-              </DropdownMenuItem>
-
-              {userr.isActive ? (
-                <DropdownMenuItem
-                  onClick={() => updateUsers(false, userr.id, user.companyId)}
-                >
-                  <Label>Deactivate</Label>
-                </DropdownMenuItem>
-              ) : (
-                <DropdownMenuItem
-                  onClick={() => updateUsers(true, userr.id, user.companyId)}
-                >
-                  <Label>Activate</Label>
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <div className="grid grid-cols-3 gap-3">
+          {" "}
           <EditUserForm users={userr} />
-        </>
+          {userr.isActive ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`h-8 w-8 p-0 ${
+                userr.isActive
+                  ? "text-green-600 hover:bg-green-100"
+                  : "text-yellow-600 hover:bg-yellow-100"
+              }`}
+              onClick={() => {
+                // Toggle status functionality
+                updateUsers(true, userr.id, user.companyId);
+              }}
+            >
+              <Power className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`h-8 w-8 p-0 ${
+                userr.isActive
+                  ? "text-green-600 hover:bg-green-100"
+                  : "text-yellow-600 hover:bg-yellow-100"
+              }`}
+              onClick={() => {
+                // Toggle status functionality
+                updateUsers(false, userr.id, user.companyId);
+              }}
+            >
+              <Power className="h-4 w-4" />
+            </Button>
+          )}
+          <Changerole />
+        </div>
       );
     },
   },

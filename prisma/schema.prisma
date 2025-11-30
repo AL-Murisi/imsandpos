@@ -46,6 +46,7 @@ model Company {
   warehouses                                         Warehouse[]
 account_mappings     account_mappings[]
 fiscal_periods       fiscal_periods[]
+
   @@map("companies")
 }
 

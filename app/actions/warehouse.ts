@@ -338,6 +338,10 @@ export async function createPurchaseJournalEntries({
 }) {
   const mappings = await prisma.account_mappings.findMany({
     where: { company_id: companyId, is_default: true },
+    select: {
+      mapping_type: true,
+      account_id: true,
+    },
   });
   const fy = await getActiveFiscalYears();
   if (!fy) return;
@@ -389,7 +393,14 @@ export async function createPurchaseJournalEntries({
 
       const paymentAccount =
         purchase.paymentMethod === "bank" ? bankAccount : cashAccount;
+      const baseEntry = {
+        company_id: companyId,
+        entry_date: new Date(),
+        is_automated: true,
+        fiscal_period: fy.period_name,
 
+        created_by: userId,
+      };
       // (1) Credit Cash/Bank  (خروج نقدية/بنكية)
       entries.push({
         company_id: companyId,
@@ -640,7 +651,12 @@ export async function getPurchaseReturnData(
     const purchase = await prisma.purchase.findFirst({
       where: { id: purchaseId, companyId },
       include: {
-        supplier: true,
+        supplier: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         purchaseItems: {
           include: {
             product: {
@@ -681,7 +697,6 @@ export async function getPurchaseReturnData(
     });
 
     // 3️⃣ Get available quantity (base unit)
-    const availableUnits = inventory?.availableQuantity ?? 0;
 
     // 4️⃣ Convert base units to packets and cartons based on product type
     function convertFromBaseUnit(product: any, availableCartons: number) {
@@ -823,10 +838,23 @@ export async function processPurchaseReturn(
             purchaseItems: {
               where: { id: purchaseItemId },
               include: {
-                product: true,
+                product: {
+                  select: {
+                    id: true,
+                    unitsPerPacket: true,
+                    packetsPerCarton: true,
+                  },
+                },
               },
             },
-            supplier: true,
+            supplier: {
+              select: {
+                id: true,
+                totalPurchased: true,
+                totalPaid: true,
+                outstandingBalance: true,
+              },
+            },
           },
         });
 
@@ -852,6 +880,11 @@ export async function processPurchaseReturn(
               productId,
               warehouseId,
             },
+          },
+          select: {
+            stockQuantity: true,
+            availableQuantity: true,
+            reorderLevel: true,
           },
         });
 

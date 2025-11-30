@@ -126,7 +126,7 @@ export default function JournalEntriesTable({
                     {/* Data Table */}
                     <DataTable
                       search={
-                        <div className="flex flex-col gap-3 rounded-2xl md:flex-row">
+                        <div className="flex flex-wrap gap-2 p-1 md:flex-row lg:flex-row">
                           {" "}
                           <BulkPostButton
                             selectedEntries={selectedRows.map((row) => ({

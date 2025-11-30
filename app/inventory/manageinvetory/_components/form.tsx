@@ -7,6 +7,7 @@ import { SelectField } from "@/components/common/selectproduct";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/context/AuthContext";
 import { UpdateInventorySchema } from "@/lib/zod/inventory";
@@ -198,188 +199,192 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
       titel="إضافة فئة جديدة للمصروف"
       description="أدخل تفاصيل المنتج واحفظه"
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" dir="rtl">
-        {/* نوع التحديث */}
-        <div className="rounded-lg border border-gray-200 p-4">
-          <Label className="mb-3 block text-sm font-medium">نوع التحديث</Label>
-          <div className="flex gap-4">
-            {["manual", "supplier"].map((type) => (
-              <label
-                key={type}
-                className="flex cursor-pointer items-center gap-2"
-              >
-                <input
-                  type="radio"
-                  value={type}
-                  checked={updateType === type}
-                  onChange={(e) =>
-                    setUpdateType(e.target.value as "manual" | "supplier")
-                  }
-                  className="cursor-pointer"
-                />
-                <span>
-                  {type === "manual" ? "تحديث يدوي" : "استقبال من مورد"}
-                </span>
-              </label>
-            ))}
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          {updateType === "manual" && (
-            <div className="grid gap-3">
-              <Label>سبب التحديث اليدوي</Label>
-              <Textarea placeholder="أدخل السبب" {...register("reason")} />
+      <ScrollArea className="max-h-[85vh]" dir="rtl">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" dir="rtl">
+          {/* نوع التحديث */}
+          <div className="rounded-lg border border-gray-200 p-4">
+            <Label className="mb-3 block text-sm font-medium">
+              نوع التحديث
+            </Label>
+            <div className="flex gap-4">
+              {["manual", "supplier"].map((type) => (
+                <label
+                  key={type}
+                  className="flex cursor-pointer items-center gap-2"
+                >
+                  <input
+                    type="radio"
+                    value={type}
+                    checked={updateType === type}
+                    onChange={(e) =>
+                      setUpdateType(e.target.value as "manual" | "supplier")
+                    }
+                    className="cursor-pointer"
+                  />
+                  <span>
+                    {type === "manual" ? "تحديث يدوي" : "استقبال من مورد"}
+                  </span>
+                </label>
+              ))}
             </div>
-          )}
-        </div>
-        {updateType === "supplier" && (
-          <div className="rounded-lg border border-blue-200 p-4">
-            {/* المورد */}
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {updateType === "manual" && (
+              <div className="grid gap-3">
+                <Label>سبب التحديث اليدوي</Label>
+                <Textarea placeholder="أدخل السبب" {...register("reason")} />
+              </div>
+            )}
+          </div>
+          {updateType === "supplier" && (
+            <div className="rounded-lg border border-blue-200 p-4">
+              {/* المورد */}
 
-            {/* الكمية والسعر */}
+              {/* الكمية والسعر */}
 
-            {/* الدفع */}
-            <div className="mt-4 border-t border-blue-200 pt-4">
-              {updateType == "supplier" && (
-                <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-4">
-                  <div className="grid gap-2">
-                    <Label>اختر المورد</Label>
-                    <SelectField
-                      options={suppliers}
-                      value={supplierId || ""}
-                      action={(val) => setValue("supplierId", val)}
-                      placeholder="اختر المورد"
-                    />
-                    {!supplierId && (
-                      <p className="text-xs text-red-500">المورد مطلوب</p>
-                    )}
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>طريقة الدفع</Label>
-                    <SelectField
-                      options={paymentmethod}
-                      placeholder="اختر طريقة الدفع "
-                      action={(val) => setValue("paymentMethod", val)}
-                      value={method}
-                    />
-                    {/* <select
+              {/* الدفع */}
+              <div className="mt-4 border-t border-blue-200 pt-4">
+                {updateType == "supplier" && (
+                  <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-4">
+                    <div className="grid gap-2">
+                      <Label>اختر المورد</Label>
+                      <SelectField
+                        options={suppliers}
+                        value={supplierId || ""}
+                        action={(val) => setValue("supplierId", val)}
+                        placeholder="اختر المورد"
+                      />
+                      {!supplierId && (
+                        <p className="text-xs text-red-500">المورد مطلوب</p>
+                      )}
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>طريقة الدفع</Label>
+                      <SelectField
+                        options={paymentmethod}
+                        placeholder="اختر طريقة الدفع "
+                        action={(val) => setValue("paymentMethod", val)}
+                        value={method}
+                      />
+                      {/* <select
                         {...register("paymentMethod")}
                         className="rounded-md border border-gray-300 px-3 py-2"
                       > */}
-                  </div>
-
-                  <div className="grid gap-2">
-                    <Label>سعر الوحدة</Label>
-                    <Input
-                      type="number"
-                      value={unitCost}
-                      {...register("unitCost", { valueAsNumber: true })}
-                    />
-                  </div>
-
-                  {quantity && unitCost ? (
-                    <div className="mt-2 rounded p-3 text-sm font-medium">
-                      الإجمالي: <span className="font-bold">{totalCost}</span>
                     </div>
-                  ) : null}
-                  <div className="grid gap-2">
-                    <Label>مبلغ الدفع</Label>
-                    <Input
-                      {...register("paymentAmount", { valueAsNumber: true })}
-                    />
+
+                    <div className="grid gap-2">
+                      <Label>سعر الوحدة</Label>
+                      <Input
+                        type="number"
+                        value={unitCost}
+                        {...register("unitCost", { valueAsNumber: true })}
+                      />
+                    </div>
+
+                    {quantity && unitCost ? (
+                      <div className="mt-2 rounded p-3 text-sm font-medium">
+                        الإجمالي: <span className="font-bold">{totalCost}</span>
+                      </div>
+                    ) : null}
+                    <div className="grid gap-2">
+                      <Label>مبلغ الدفع</Label>
+                      <Input
+                        {...register("paymentAmount", { valueAsNumber: true })}
+                      />
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </div>
-        )}
-        {/* تحديث يدوي */}
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-          {[
-            "stockQuantity",
-            "reservedQuantity",
-            "availableQuantity",
-            "reorderLevel",
-          ].map((field) => (
-            <div key={field} className="grid grid-rows-2 gap-2">
-              <Label htmlFor={field}>
-                {
+          )}
+          {/* تحديث يدوي */}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+            {[
+              "stockQuantity",
+              "reservedQuantity",
+              "availableQuantity",
+              "reorderLevel",
+            ].map((field) => (
+              <div key={field} className="grid grid-rows-2 gap-2">
+                <Label htmlFor={field}>
                   {
-                    stockQuantity: "الكمية  المستقبلة",
-                    reservedQuantity: "الكمية المحجوزة",
-                    availableQuantity: "الكمية المتاحة",
-                    reorderLevel: "نقطة إعادة الطلب",
-                  }[field]
-                }
-              </Label>
+                    {
+                      stockQuantity: "الكمية  المستقبلة",
+                      reservedQuantity: "الكمية المحجوزة",
+                      availableQuantity: "الكمية المتاحة",
+                      reorderLevel: "نقطة إعادة الطلب",
+                    }[field]
+                  }
+                </Label>
 
+                <Input
+                  id={field}
+                  type="number"
+                  placeholder="أدخل القيمة"
+                  {...register(field as keyof FormValues, {
+                    valueAsNumber: true,
+                  })}
+                />
+
+                {errors[field as keyof FormValues] && (
+                  <p className="text-xs text-red-500">
+                    {(errors[field as keyof FormValues] as any)?.message}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="grid gap-2">
+              <Label>الحد الأقصى للمخزون</Label>
               <Input
-                id={field}
                 type="number"
-                placeholder="أدخل القيمة"
-                {...register(field as keyof FormValues, {
-                  valueAsNumber: true,
-                })}
+                {...register("maxStockLevel", { valueAsNumber: true })}
               />
-
-              {errors[field as keyof FormValues] && (
-                <p className="text-xs text-red-500">
-                  {(errors[field as keyof FormValues] as any)?.message}
-                </p>
+            </div>
+            <div className="grid gap-2">
+              <Label>آخر جرد</Label>
+              <Input
+                type="datetime-local"
+                className="text-end"
+                {...register("lastStockTake")}
+              />
+            </div>
+            <div className="grid gap-3">
+              <Label>اختر المستودع</Label>
+              <SelectField
+                options={warehouses}
+                value={warehouseId || ""}
+                action={(val) => setValue("warehouseId", val)}
+                placeholder="اختر المستودع"
+              />
+              {!warehouseId && (
+                <p className="text-xs text-red-500">المستودع مطلوب</p>
               )}
             </div>
-          ))}
-        </div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <div className="grid gap-2">
-            <Label>الحد الأقصى للمخزون</Label>
-            <Input
-              type="number"
-              {...register("maxStockLevel", { valueAsNumber: true })}
-            />
           </div>
-          <div className="grid gap-2">
-            <Label>آخر جرد</Label>
-            <Input
-              type="datetime-local"
-              className="text-end"
-              {...register("lastStockTake")}
-            />
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                reset();
+                setUpdateType("manual");
+                setShowPayment(false);
+              }}
+            >
+              إلغاء
+            </Button>
+            <Button
+              disabled={isSubmitting}
+              type="submit"
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {isSubmitting ? "جاري الحفظ..." : "تأكيد"}
+            </Button>
           </div>
-          <div className="grid gap-3">
-            <Label>اختر المستودع</Label>
-            <SelectField
-              options={warehouses}
-              value={warehouseId || ""}
-              action={(val) => setValue("warehouseId", val)}
-              placeholder="اختر المستودع"
-            />
-            {!warehouseId && (
-              <p className="text-xs text-red-500">المستودع مطلوب</p>
-            )}
-          </div>
-        </div>
-        <div className="flex justify-end gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              reset();
-              setUpdateType("manual");
-              setShowPayment(false);
-            }}
-          >
-            إلغاء
-          </Button>
-          <Button
-            disabled={isSubmitting}
-            type="submit"
-            className="bg-green-600 hover:bg-green-700"
-          >
-            {isSubmitting ? "جاري الحفظ..." : "تأكيد"}
-          </Button>
-        </div>
-      </form>
+        </form>
+      </ScrollArea>
     </Dailogreuse>
   );
 }

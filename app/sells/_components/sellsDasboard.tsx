@@ -94,15 +94,20 @@ export default function SellsDashboardClient({
         {/* Add more cashier KPIs */}
       </div>
       <div className="flex flex-wrap gap-4">
-        <Button asChild size="lg">
-          <Link href="/sells/cashiercontrol">بدء عملية بيع جديدة</Link>
-        </Button>
-        <Button asChild>
-          <Link href="/debt">عرض ديون العملاء</Link>
-        </Button>
-        {/* <Button asChild>
-            <Link href="/products">البحث عن منتج</Link>
-          </Button> */}
+        {/* <Button asChild size="lg"> */}
+        <Link
+          href="/sells/cashiercontrol"
+          className="bg-primary rounded-sm p-2 text-white dark:text-black"
+        >
+          عملية بيع
+        </Link>
+
+        <Link
+          href="/debt"
+          className="bg-primary rounded-sm p-2 text-white dark:text-black"
+        >
+          عرض ديون العملاء
+        </Link>
       </div>
       <DebtSells data={debtSales} total={totalSales} sort={[]} />
     </section>

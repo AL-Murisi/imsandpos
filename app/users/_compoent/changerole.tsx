@@ -21,14 +21,11 @@ export default function Changerole() {
   }, []);
 
   return (
-    <div className="grid gap-2">
-      <Label htmlFor="role">الدور</Label>
-      <SelectField
-        action={(value) => setSelectroled(value)}
-        value={selectedRole}
-        placeholder="اختر الدور"
-        options={role}
-      />
-    </div>
+    <SelectField
+      action={(value) => setSelectroled(value)}
+      value={selectedRole}
+      placeholder="اختر الدور"
+      options={role}
+    />
   );
 }

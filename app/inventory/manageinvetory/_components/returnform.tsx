@@ -497,6 +497,7 @@ import { SelectField } from "@/components/common/selectproduct";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/context/AuthContext";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -532,19 +533,6 @@ interface PurchaseReturnData {
   supplier: {
     id: string;
     name: string;
-    email?: string | null;
-    address?: string | null;
-    city?: string | null;
-    state?: string | null;
-    country?: string | null;
-    isActive: boolean;
-    createdAt: Date;
-    updatedAt: Date;
-    companyId: string;
-    phoneNumber?: string | null;
-    taxId?: string | null;
-    outstandingBalance: Decimal;
-    totalPaid: Decimal;
   };
   product: {
     id: string;
@@ -861,165 +849,170 @@ export default function PurchaseReturnForm({
       description="أدخل تفاصيل عملية الإرجاع واحفظها"
       style="sm:max-w-5xl"
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" dir="rtl">
-        {/* Product Info Display */}
-        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-          <h3 className="mb-2 font-medium">معلومات المنتج</h3>
-          <p className="text-sm">
-            <span className="font-medium">المنتج:</span>{" "}
-            {inventory.product.name}
-          </p>
-          {inventory.purchase.amountPaid}
-          <p className="text-sm">
-            <span className="font-medium">المخزون المتاح:</span>{" "}
-            {inventory.inventory.availableUnits && (
-              <span>{inventory.inventory.availableUnits} وحدة</span>
-            )}
-            {inventory.inventory.availablePackets && (
-              <span> | {inventory.inventory.availablePackets} علبة</span>
-            )}
-            {inventory.inventory.availableCartons && (
-              <span> | {inventory.inventory.availableCartons} كرتون</span>
-            )}
-          </p>
-        </div>
-
-        {/* المورد والمستودع */}
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="grid gap-2">
-            <Label>اختر المورد</Label>
-            <SelectField
-              options={suppliers}
-              value={supplierId || ""}
-              placeholder="اختر المورد"
-              action={(val) => setValue("supplierId", val)}
-            />
-            {errors.supplierId && (
-              <p className="text-xs text-red-500">
-                {errors.supplierId.message}
-              </p>
-            )}
+      <ScrollArea className="max-h-[85vh]" dir="rtl">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" dir="rtl">
+          {/* Product Info Display */}
+          <div className="rounded-lg border border-gray-200 p-4">
+            <h3 className="mb-2 font-medium">معلومات المنتج</h3>
+            <p className="text-sm">
+              <span className="font-medium">المنتج:</span>{" "}
+              {inventory.product.name}
+            </p>
+            {inventory.purchase.amountPaid}
+            <p className="text-sm">
+              <span className="font-medium">المخزون المتاح:</span>{" "}
+              {inventory.inventory.availableUnits && (
+                <span>{inventory.inventory.availableUnits} وحدة</span>
+              )}
+              {inventory.inventory.availablePackets && (
+                <span> | {inventory.inventory.availablePackets} علبة</span>
+              )}
+              {inventory.inventory.availableCartons && (
+                <span> | {inventory.inventory.availableCartons} كرتون</span>
+              )}
+            </p>
           </div>
 
-          <div className="grid gap-2">
-            <Label>اختر المستودع</Label>
-            <SelectField
-              options={warehouses}
-              value={warehouseId || ""}
-              placeholder="اختر المستودع"
-              action={(val) => setValue("warehouseId", val)}
-            />
-            {errors.warehouseId && (
-              <p className="text-xs text-red-500">
-                {errors.warehouseId.message}
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* الكمية والوحدة */}
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <div className="grid gap-2">
-            <Label>كمية الإرجاع</Label>
-            <Input
-              type="number"
-              {...register("returnQuantity", { valueAsNumber: true })}
-            />
-            {errors.returnQuantity && (
-              <p className="text-xs text-red-500">
-                {errors.returnQuantity.message}
-              </p>
-            )}
-          </div>
-
-          <div className="grid gap-2">
-            <Label>الوحدة</Label>
-            <SelectField
-              options={filteredUnits}
-              value={returnUnit}
-              action={(val) => setValue("returnUnit", val as UnitType)}
-            />
-          </div>
-
-          <div className="grid gap-2">
-            <Label>سعر الوحدة</Label>
-            <Input
-              type="number"
-              step="0.01"
-              {...register("unitCost", { valueAsNumber: true })}
-            />
-            {errors.unitCost && (
-              <p className="text-xs text-red-500">{errors.unitCost.message}</p>
-            )}
-          </div>
-        </div>
-
-        {/* الإجمالي */}
-        {quantity && unitCost ? (
-          <div className="rounded-md bg-blue-50 p-3 text-sm font-medium">
-            الإجمالي: <span className="font-bold">{totalCost.toFixed(2)}</span>
-          </div>
-        ) : null}
-
-        {/* الدفع */}
-        <div className="rounded-lg border border-gray-200 p-4">
-          <label className="flex cursor-pointer items-center gap-2">
-            <input
-              type="checkbox"
-              checked={showPayment}
-              onChange={(e) => setShowPayment(e.target.checked)}
-            />
-            <span className="text-sm font-medium">تسجيل استرجاع مالي</span>
-          </label>
-
-          {showPayment && (
-            <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="grid gap-2">
-                <Label>طريقة الدفع</Label>
-                <SelectField
-                  options={paymentMethods}
-                  value={paymentMethod || "cash"}
-                  placeholder="اختر الطريقة"
-                  action={(val) => setValue("paymentMethod", val)}
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <Label>مبلغ الاسترجاع</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  {...register("refundAmount", { valueAsNumber: true })}
-                />
-              </div>
+          {/* المورد والمستودع */}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="grid gap-2">
+              <Label>اختر المورد</Label>
+              <SelectField
+                options={suppliers}
+                value={supplierId || ""}
+                placeholder="اختر المورد"
+                action={(val) => setValue("supplierId", val)}
+              />
+              {errors.supplierId && (
+                <p className="text-xs text-red-500">
+                  {errors.supplierId.message}
+                </p>
+              )}
             </div>
-          )}
-        </div>
 
-        {/* السبب */}
-        <div className="grid gap-3">
-          <Label>سبب الإرجاع</Label>
-          <Textarea placeholder="أدخل سبب الإرجاع" {...register("reason")} />
-        </div>
+            <div className="grid gap-2">
+              <Label>اختر المستودع</Label>
+              <SelectField
+                options={warehouses}
+                value={warehouseId || ""}
+                placeholder="اختر المستودع"
+                action={(val) => setValue("warehouseId", val)}
+              />
+              {errors.warehouseId && (
+                <p className="text-xs text-red-500">
+                  {errors.warehouseId.message}
+                </p>
+              )}
+            </div>
+          </div>
 
-        <div className="flex justify-end gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setOpen(false)}
-            disabled={isSubmitting}
-          >
-            إلغاء
-          </Button>
-          <Button
-            type="submit"
-            disabled={isSubmitting}
-            className="bg-green-600 hover:bg-green-700"
-          >
-            {isSubmitting ? "جاري المعالجة..." : "تأكيد الإرجاع"}
-          </Button>
-        </div>
-      </form>
+          {/* الكمية والوحدة */}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="grid gap-2">
+              <Label>كمية الإرجاع</Label>
+              <Input
+                type="number"
+                {...register("returnQuantity", { valueAsNumber: true })}
+              />
+              {errors.returnQuantity && (
+                <p className="text-xs text-red-500">
+                  {errors.returnQuantity.message}
+                </p>
+              )}
+            </div>
+
+            <div className="grid gap-2">
+              <Label>الوحدة</Label>
+              <SelectField
+                options={filteredUnits}
+                value={returnUnit}
+                action={(val) => setValue("returnUnit", val as UnitType)}
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label>سعر الوحدة</Label>
+              <Input
+                type="number"
+                step="0.01"
+                {...register("unitCost", { valueAsNumber: true })}
+              />
+              {errors.unitCost && (
+                <p className="text-xs text-red-500">
+                  {errors.unitCost.message}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* الإجمالي */}
+          {quantity && unitCost ? (
+            <div className="rounded-md bg-blue-50 p-3 text-sm font-medium">
+              الإجمالي:{" "}
+              <span className="font-bold">{totalCost.toFixed(2)}</span>
+            </div>
+          ) : null}
+
+          {/* الدفع */}
+          <div className="rounded-lg border border-gray-200 p-4">
+            <label className="flex cursor-pointer items-center gap-2">
+              <input
+                type="checkbox"
+                checked={showPayment}
+                onChange={(e) => setShowPayment(e.target.checked)}
+              />
+              <span className="text-sm font-medium">تسجيل استرجاع مالي</span>
+            </label>
+
+            {showPayment && (
+              <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label>طريقة الدفع</Label>
+                  <SelectField
+                    options={paymentMethods}
+                    value={paymentMethod || "cash"}
+                    placeholder="اختر الطريقة"
+                    action={(val) => setValue("paymentMethod", val)}
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label>مبلغ الاسترجاع</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    {...register("refundAmount", { valueAsNumber: true })}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* السبب */}
+          <div className="grid gap-3">
+            <Label>سبب الإرجاع</Label>
+            <Textarea placeholder="أدخل سبب الإرجاع" {...register("reason")} />
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+              disabled={isSubmitting}
+            >
+              إلغاء
+            </Button>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {isSubmitting ? "جاري المعالجة..." : "تأكيد الإرجاع"}
+            </Button>
+          </div>
+        </form>
+      </ScrollArea>
     </Dailogreuse>
   );
 }

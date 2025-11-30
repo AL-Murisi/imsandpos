@@ -84,7 +84,7 @@ export default function EditUserForm({ users }: any) {
     <Dailogreuse
       open={open}
       setOpen={setOpen}
-      btnLabl={"تعديل مستخدم"}
+      btnLabl={"تعديل "}
       style="w-sm"
       description="أدخل تفاصيل المنتج واحفظه"
     >
