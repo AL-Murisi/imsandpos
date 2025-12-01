@@ -77,7 +77,6 @@ export async function updateInventory(
   try {
     const {
       id,
-
       notes,
       updateType,
       availableQuantity: inputCartons,
@@ -86,228 +85,291 @@ export async function updateInventory(
       unitCost,
       paymentMethod,
       paymentAmount,
-      productId: productId,
+      productId,
       supplierId: providedSupplierId,
-      warehouseId: targetWarehouseId, // المستودع المستهدف
+      warehouseId: targetWarehouseId,
       ...updateData
     } = data;
-    console.log(paymentMethod);
-    // 1️⃣ جلب السجل الحالي للمخزون
-    const currentInventory = await prisma.inventory.findFirst({
-      where: { companyId, productId, warehouseId: targetWarehouseId },
-      include: { product: true, warehouse: true },
-    });
-    console.log(paymentAmount);
-    if (!currentInventory) throw new Error("سجل المخزون غير موجود");
-    let nextNumber = 1;
-    if (currentInventory?.receiptNo) {
-      const match = currentInventory.receiptNo.match(/(\d+)$/);
-      if (match) nextNumber = parseInt(match[1]) + 1;
+
+    // ============================================
+    // 1️⃣ PARALLEL FETCH: Inventory + Supplier
+    // ============================================
+    const [currentInventory, supplierExists] = await Promise.all([
+      prisma.inventory.findFirst({
+        where: { companyId, productId, warehouseId: targetWarehouseId },
+        include: {
+          product: {
+            select: {
+              id: true,
+              name: true,
+              sku: true,
+              unitsPerPacket: true,
+              packetsPerCarton: true,
+              supplierId: true,
+            },
+          },
+          warehouse: {
+            select: {
+              id: true,
+              name: true,
+              location: true,
+            },
+          },
+        },
+      }),
+      providedSupplierId
+        ? prisma.supplier.findUnique({
+            where: { id: providedSupplierId },
+            select: { id: true },
+          })
+        : Promise.resolve(null),
+    ]);
+
+    if (!currentInventory) {
+      throw new Error("سجل المخزون غير موجود");
     }
-    const padded = String(nextNumber).padStart(5, "0"); // 00001
-    const year = new Date().getFullYear();
-    const now = Date.now(); // e.g., 1698992999999
-    const receiptNo = `مشتريات-${year}-${padded}Q-${now}`;
-    let purchase;
+
     const product = currentInventory.product;
-    const unitsPerPacket = product.unitsPerPacket || 1;
-    const packetsPerCarton = product.packetsPerCarton || 1;
     const supplierId = providedSupplierId || product.supplierId;
 
-    if (!supplierId) throw new Error("يجب تحديد المورد");
+    if (updateType === "supplier" && !supplierId) {
+      throw new Error("يجب تحديد المورد");
+    }
 
-    // 2️⃣ التحقق من وجود المورد
-    const supplierExists = await prisma.supplier.findUnique({
-      where: { id: supplierId },
-    });
-    if (!supplierExists) throw new Error("المورد غير موجود");
+    if (updateType === "supplier" && !supplierExists) {
+      throw new Error("المورد غير موجود");
+    }
 
+    // ============================================
+    // 2️⃣ HELPER FUNCTIONS & CALCULATIONS
+    // ============================================
+    const unitsPerPacket = product.unitsPerPacket || 1;
+    const packetsPerCarton = product.packetsPerCarton || 1;
     const cartonToUnits = (cartons: number) =>
       cartons * packetsPerCarton * unitsPerPacket;
 
     const availableUnits = inputCartons ? cartonToUnits(inputCartons) : 0;
     const stockUnits = inputCartonsStock ? cartonToUnits(inputCartonsStock) : 0;
 
-    // 3️⃣ تحديد المخزون المستهدف (نفس المستودع أو مستودع جديد)
+    // Generate receipt number
+    const nextNumber = currentInventory.receiptNo
+      ? parseInt(currentInventory.receiptNo.match(/(\d+)$/)?.[1] || "0") + 1
+      : 1;
+    const receiptNo = `مشتريات-${new Date().getFullYear()}-${String(nextNumber).padStart(5, "0")}Q-${Date.now()}`;
+
+    // ============================================
+    // 3️⃣ DETERMINE TARGET INVENTORY
+    // ============================================
     let inventoryTarget;
     if (targetWarehouseId === currentInventory.warehouseId) {
-      // تحديث المخزون الحالي
       inventoryTarget = currentInventory;
     } else {
-      // التحقق من وجود المخزون لنفس المنتج في المستودع الجديد
-      const existingInTarget = await prisma.inventory.findFirst({
-        where: {
-          productId: product.id,
-          warehouseId: targetWarehouseId,
-          companyId,
-        },
-      });
-
-      if (existingInTarget) {
-        inventoryTarget = existingInTarget;
-      } else {
-        // إنشاء سجل جديد للمخزون
-        inventoryTarget = await prisma.inventory.create({
+      // Check if inventory exists in target warehouse
+      inventoryTarget =
+        (await prisma.inventory.findFirst({
+          where: {
+            productId: product.id,
+            warehouseId: targetWarehouseId,
+            companyId,
+          },
+        })) ||
+        (await prisma.inventory.create({
           data: {
             companyId,
             productId: product.id,
-            warehouseId: targetWarehouseId!,
+            warehouseId: targetWarehouseId,
             availableQuantity: 0,
             stockQuantity: 0,
             reorderLevel: currentInventory.reorderLevel,
             maxStockLevel: currentInventory.maxStockLevel,
-            status: "متوفر",
+            status: "available",
             lastStockTake: new Date(),
           },
-        });
-      }
+        }));
     }
 
-    // 4️⃣ حساب الكميات النهائية
+    // ============================================
+    // 4️⃣ CALCULATE FINAL QUANTITIES
+    // ============================================
     const finalAvailableQty =
       inventoryTarget.availableQuantity + availableUnits;
     const finalStockQty = inventoryTarget.stockQuantity + stockUnits;
     const finalReorderLevel = inventoryTarget.reorderLevel;
+
     let calculatedStatus: "available" | "low" | "out_of_stock" = "available";
     if (finalAvailableQty <= 0) calculatedStatus = "out_of_stock";
     else if (finalAvailableQty < finalReorderLevel) calculatedStatus = "low";
-    let purchaseItemId: string | null = null;
 
-    // 5️⃣ إنشاء عملية شراء إذا كانت الكمية من المورد
-    let purchaseId: string | null = null;
-    if (updateType === "supplier" && inputCartons && unitCost) {
-      const totalCost = inputCartons * unitCost;
-      const paid = paymentAmount ?? 0;
-      const due = totalCost - paid;
-      purchase = await prisma.purchase.create({
-        data: {
-          companyId,
-          supplierId,
-          totalAmount: totalCost,
-          amountPaid: paid,
-          purchaseType: "purchases",
-          amountDue: due,
-          status: "pending",
-        },
-      });
+    // ============================================
+    // 5️⃣ TRANSACTION: CREATE PURCHASE & UPDATE INVENTORY
+    // ============================================
+    const result = await prisma.$transaction(
+      async (tx) => {
+        let purchase = null;
+        let purchaseId: string | null = null;
+        let purchaseItemId: string | null = null;
 
-      const purchaseItems = await prisma.purchaseItem.create({
-        data: {
-          companyId,
-          purchaseId: purchase.id,
-          productId: product.id,
-          quantity: inputCartons,
-          unitCost,
-          totalCost,
-        },
-      });
+        // Create purchase if from supplier
+        if (updateType === "supplier" && inputCartons && unitCost) {
+          const totalCost = inputCartons * unitCost;
+          const paid = paymentAmount ?? 0;
+          const due = totalCost - paid;
 
-      purchaseId = purchase.id;
-      purchaseItemId = purchaseItems.id;
-      // تسجيل الدفع إذا وجد
-      if (paymentMethod && paymentAmount && paymentAmount > 0) {
-        await prisma.supplierPayment.create({
+          purchase = await tx.purchase.create({
+            data: {
+              companyId,
+              supplierId: supplierId!,
+              totalAmount: totalCost,
+              amountPaid: paid,
+              purchaseType: "purchases",
+              amountDue: due,
+              status:
+                paid >= totalCost ? "paid" : paid > 0 ? "partial" : "pending",
+            },
+          });
+
+          const purchaseItem = await tx.purchaseItem.create({
+            data: {
+              companyId,
+              purchaseId: purchase.id,
+              productId: product.id,
+              quantity: inputCartons,
+              unitCost,
+              totalCost,
+            },
+          });
+
+          purchaseId = purchase.id;
+          purchaseItemId = purchaseItem.id;
+
+          // Prepare batch operations
+          const operations = [];
+
+          // Create supplier payment if applicable
+          if (paymentMethod && paymentAmount && paymentAmount > 0) {
+            operations.push(
+              tx.supplierPayment.create({
+                data: {
+                  companyId,
+                  supplierId: supplierId!,
+                  createdBy: userId,
+                  purchaseId: purchase.id,
+                  amount: paymentAmount,
+                  paymentMethod,
+                  note: notes || "دفعة مشتريات",
+                },
+              }),
+            );
+          }
+
+          // Update supplier totals
+          const outstanding = totalCost - paid;
+          operations.push(
+            tx.supplier.update({
+              where: { id: supplierId!, companyId },
+              data: {
+                totalPurchased: { increment: totalCost },
+                totalPaid: { increment: paid },
+                outstandingBalance: { increment: outstanding },
+              },
+            }),
+          );
+
+          // Execute all supplier operations in parallel
+          await Promise.all(operations);
+        }
+
+        // Update inventory
+        const updatedInventory = await tx.inventory.update({
+          where: { id: inventoryTarget.id },
           data: {
+            ...updateData,
+            lastPurchaseId: purchaseId,
+            lastPurchaseItemId: purchaseItemId,
+            availableQuantity: finalAvailableQty,
+            stockQuantity: finalStockQty,
+            receiptNo,
+            status: calculatedStatus,
+            ...(data.lastStockTake && {
+              lastStockTake: new Date(data.lastStockTake),
+            }),
+          },
+          include: {
+            product: { select: { name: true, sku: true } },
+            warehouse: { select: { name: true, location: true } },
+          },
+        });
+
+        // Record stock movement if there's a difference
+        const stockDifference = finalStockQty - inventoryTarget.stockQuantity;
+        const stockMovementPromise =
+          stockDifference !== 0
+            ? tx.stockMovement.create({
+                data: {
+                  companyId,
+                  productId: product.id,
+                  warehouseId: inventoryTarget.warehouseId,
+                  userId,
+                  movementType: stockDifference > 0 ? "وارد" : "صادر",
+                  quantity: Math.abs(stockDifference),
+                  reason: updateData.reason || "تم_استلام_المورد",
+                  notes:
+                    notes ||
+                    `${supplierId ? "المخزون من المورد" : "تحديث المخزون"}`,
+                  quantityBefore: inventoryTarget.stockQuantity,
+                  quantityAfter: finalStockQty,
+                },
+              })
+            : Promise.resolve(null);
+
+        // Record activity log
+        const activityLogPromise = tx.activityLogs.create({
+          data: {
+            userId,
             companyId,
-            supplierId,
-            createdBy: userId,
-            amount: paymentAmount,
-            paymentMethod,
-            note: notes,
+            action:
+              updateType === "supplier"
+                ? "تم_استلام_مخزون_المورد"
+                : "تم_تحديث_المخزون",
+            details: `المنتج: ${product.name}, المخزون النهائي: ${finalStockQty}${
+              paymentAmount ? `, الدفع: ${paymentAmount}` : ""
+            }`,
           },
         });
 
-        await prisma.purchase.update({
-          where: { id: purchase.id },
-          data: {
-            amountPaid: paymentAmount,
-            amountDue: Math.max(0, totalCost - paymentAmount),
-            status: paymentAmount >= totalCost ? "paid" : "partial",
-          },
-        });
-      }
-      const outstanding = totalCost - paid;
-      const payment = paymentAmount ?? 0;
-      await prisma.supplier.update({
-        where: { id: supplierId, companyId },
-        data: {
-          totalPurchased: { increment: totalCost },
+        // Execute final operations in parallel
+        await Promise.all([stockMovementPromise, activityLogPromise]);
 
-          totalPaid: { increment: Prisma.Decimal(payment) },
-
-          outstandingBalance: {
-            increment: outstanding,
-          },
-        },
-      });
-    }
-
-    // 6️⃣ تحديث المخزون النهائي
-    const updatedInventory = await prisma.inventory.update({
-      where: { id: inventoryTarget.id },
-      data: {
-        ...updateData,
-        lastPurchaseId: purchaseId,
-        lastPurchaseItemId: purchaseItemId,
-        availableQuantity: finalAvailableQty,
-        stockQuantity: finalStockQty,
-        receiptNo,
-        status: calculatedStatus,
-        ...(data.lastStockTake && {
-          lastStockTake: new Date(data.lastStockTake),
-        }),
+        return {
+          updatedInventory,
+          purchase,
+        };
       },
-      include: {
-        product: { select: { name: true, sku: true } },
-        warehouse: { select: { name: true, location: true } },
+      {
+        timeout: 20000,
+        maxWait: 5000,
       },
-    });
+    );
+
+    // Fire non-blocking operations
     revalidatePath("/manageinvetory");
 
-    // 7️⃣ تسجيل حركة المخزون
-    const stockDifference = finalStockQty - inventoryTarget.stockQuantity;
-    if (stockDifference !== 0) {
-      await prisma.stockMovement.create({
-        data: {
-          companyId,
-          productId: product.id,
-          warehouseId: inventoryTarget.warehouseId,
-          userId,
-          movementType: stockDifference > 0 ? "وارد" : "صادر",
-          quantity: Math.abs(stockDifference),
-          reason: updateData.reason ? updateData.reason : "تم_استلام_المورد",
-          notes:
-            notes ||
-            `${supplierId ? "المخزون من المورد" : "تحديث المخزون"}: ...`,
-          quantityBefore: inventoryTarget.stockQuantity,
-          quantityAfter: finalStockQty,
-        },
-      });
+    // Create journal entries with retry if purchase was made
+    if (result.purchase) {
+      createPurchaseJournalEntriesWithRetry({
+        purchase: result.purchase,
+        companyId,
+        userId,
+        type: "purchase",
+      }).catch((err) =>
+        console.error(
+          "❌ Purchase journal entries failed after all retries:",
+          err,
+        ),
+      );
     }
 
-    // 8️⃣ تسجيل النشاط
-    await prisma.activityLogs.create({
-      data: {
-        userId,
-        companyId,
-        action:
-          updateType === "supplier"
-            ? "تم_استلام_مخزون_المورد"
-            : "تم_تحديث_المخزون",
-        details: `المنتج: ${product.name}, المخزون النهائي: ${finalStockQty}${
-          paymentAmount ? `, الدفع: ${paymentAmount}` : ""
-        }`,
-      },
-    });
-    createPurchaseJournalEntries({
-      purchase,
-      companyId,
-      userId,
-      type: "purchase",
-    }).catch((err) => {
-      console.error("Failed to create purchase journal entries:", err);
-    });
-    return { success: true, data: updatedInventory };
+    return { success: true, data: result.updatedInventory };
   } catch (error) {
     console.error("خطأ في تحديث المخزون:", error);
     return {
@@ -317,14 +379,49 @@ export async function updateInventory(
   }
 }
 
-type PurchaseOrReturn = {
-  id: string;
-  totalAmount: number;
-  amountPaid: number;
-  amountDue: number;
-  paymentMethod?: "cash" | "bank";
-  type: "purchase" | "return";
-};
+// ============================================
+// 🔄 Purchase Journal Entries with Retry
+// ============================================
+async function createPurchaseJournalEntriesWithRetry(
+  params: { purchase: any; companyId: string; userId: string; type: string },
+  maxRetries = 3,
+  retryDelay = 1000,
+) {
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(
+        `📝 Creating purchase journal entries (attempt ${attempt}/${maxRetries})...`,
+      );
+      await createPurchaseJournalEntries(params);
+      console.log(
+        `✅ Purchase journal entries created successfully on attempt ${attempt}`,
+      );
+      return;
+    } catch (error: any) {
+      lastError = error;
+      console.error(
+        `❌ Purchase journal entries attempt ${attempt}/${maxRetries} failed:`,
+        error.message,
+      );
+
+      if (attempt < maxRetries) {
+        const waitTime = retryDelay * Math.pow(2, attempt - 1);
+        console.log(`⏳ Retrying in ${waitTime}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
+      }
+    }
+  }
+
+  throw new Error(
+    `Failed to create purchase journal entries after ${maxRetries} attempts. Last error: ${lastError?.message}`,
+  );
+}
+
+// ============================================
+// 📊 Optimized Purchase Journal Entries
+// ============================================
 export async function createPurchaseJournalEntries({
   purchase,
   companyId,
@@ -336,298 +433,247 @@ export async function createPurchaseJournalEntries({
   userId: string;
   type: string;
 }) {
-  const mappings = await prisma.account_mappings.findMany({
-    where: { company_id: companyId, is_default: true },
-    select: {
-      mapping_type: true,
-      account_id: true,
-    },
-  });
-  const fy = await getActiveFiscalYears();
-  if (!fy) return;
-  const getAcc = (type: string) =>
-    mappings.find((m) => m.mapping_type === type)?.account_id;
+  // 1️⃣ Fetch mappings and fiscal year in parallel
+  const [mappings, fy] = await Promise.all([
+    prisma.account_mappings.findMany({
+      where: { company_id: companyId, is_default: true },
+      select: { mapping_type: true, account_id: true },
+    }),
+    getActiveFiscalYears(),
+  ]);
 
-  const payableAccount = getAcc("accounts_payable");
-  const cashAccount = getAcc("cash");
-  const bankAccount = getAcc("bank");
-  const inventoryAccount = getAcc("inventory");
+  if (!fy) {
+    console.warn("No active fiscal year - skipping journal entries");
+    return;
+  }
+
+  // 2️⃣ Create account map
+  const accountMap = new Map(
+    mappings.map((m) => [m.mapping_type, m.account_id]),
+  );
+
+  const payableAccount = accountMap.get("accounts_payable");
+  const cashAccount = accountMap.get("cash");
+  const bankAccount = accountMap.get("bank");
+  const inventoryAccount = accountMap.get("inventory");
 
   if (!inventoryAccount || !payableAccount || !bankAccount || !cashAccount) {
     throw new Error("الحسابات الأساسية غير موجودة");
   }
 
-  // Base Entry Number for the whole transaction
-  const entryNumber = `JE-${new Date().getFullYear()}-${purchase.id.slice(0, 7)}-${Math.floor(Math.random() * 10000)}`;
+  // 3️⃣ Generate entry number
 
+  const entryBase = `JE-${new Date().getFullYear()}-${purchase.id.slice(0, 7)}-${Math.floor(Math.random() * 10000)}`;
   const description =
     type === "purchase"
-      ? `مشتريات - فاتورة رقم ${purchase.id}`
-      : `إرجاع مشتريات - فاتورة رقم ${purchase.id}`;
+      ? `مشتريات - فاتورة رقم ${purchase.id.slice(0, 8)}`
+      : `إرجاع مشتريات - فاتورة رقم ${purchase.id.slice(0, 8)}`;
 
-  // Helper to update account balance
-  const updateAccountBalance = async (
-    accountId: string,
-    debit: number,
-    credit: number,
-  ) => {
-    await prisma.accounts.update({
-      where: { id: accountId, company_id: companyId },
-      data: { balance: { increment: debit - credit } },
-    });
+  // 4️⃣ Build journal entries
+  const baseEntry = {
+    company_id: companyId,
+    entry_date: new Date(),
+    is_automated: true,
+    fiscal_period: fy.period_name,
+    created_by: userId,
   };
+
   const entries: any[] = [];
+  const totalAmount = Number(purchase.totalAmount);
+  const amountPaid = Number(purchase.amountPaid);
 
   if (type === "purchase") {
-    // 🛑 Removed the redundant re-declaration of entryNumber here
+    // ===============================
+    // PURCHASE SCENARIOS
+    // ===============================
 
-    // ================= PURCHASE JOURNAL ENTRY =================
-    // 1. Debit Inventory (Increase Inventory Asset)
-
-    console.log(Number(purchase.amountPaid));
-    // 2. Credit Payables / Cash / Bank (Increase Liability or Decrease Asset)
-    if (Number(purchase.amountPaid) === Number(purchase.totalAmount)) {
-      // ============================================================
-      // 1️⃣ PURCHASE - Fully Paid (مدفوع بالكامل)
-      // ============================================================
-
-      const paymentAccount =
-        purchase.paymentMethod === "bank" ? bankAccount : cashAccount;
-      const baseEntry = {
-        company_id: companyId,
-        entry_date: new Date(),
-        is_automated: true,
-        fiscal_period: fy.period_name,
-
-        created_by: userId,
-      };
-      // (1) Credit Cash/Bank  (خروج نقدية/بنكية)
-      entries.push({
-        company_id: companyId,
-        account_id: paymentAccount,
-        description: description + " - مدفوع بالكامل",
-        debit: 0,
-        fiscal_period: fy.period_name,
-        credit: purchase.totalAmount,
-        entry_date: new Date(),
-        reference_type: "سداد مشتريات",
-        reference_id: purchase.id,
-        entry_number: entryNumber + "-CR1",
-        created_by: userId,
-        is_automated: true,
-      });
-      await updateAccountBalance(paymentAccount, 0, purchase.totalAmount);
-
-      // (2) Debit Inventory (إضافة للمخزون)
-      entries.push({
-        company_id: companyId,
-        account_id: inventoryAccount,
-        description: description + " - إضافة للمخزون",
-        debit: purchase.totalAmount,
-        credit: 0,
-        fiscal_period: fy.period_name,
-        entry_date: new Date(),
-        reference_type: "إضافة مخزون",
-        reference_id: purchase.id,
-        entry_number: entryNumber + "-DR1",
-        created_by: userId,
-        is_automated: true,
-      });
-      await updateAccountBalance(inventoryAccount, purchase.totalAmount, 0);
-    } else if (
-      Number(purchase.amountPaid) > 0 &&
-      Number(purchase.amountPaid) < Number(purchase.totalAmount)
-    ) {
-      // ============================================================
-      // 2️⃣ PURCHASE - Partial Payment (دفع جزئي)
-      // ============================================================
-
-      const due = Number(purchase.totalAmount) - Number(purchase.amountPaid);
+    if (amountPaid === totalAmount) {
+      // 1️⃣ Fully Paid
       const paymentAccount =
         purchase.paymentMethod === "bank" ? bankAccount : cashAccount;
 
-      // (1) Debit Inventory (إضافة للمخزون بقيمة الفاتورة كاملة)
-      entries.push({
-        company_id: companyId,
-        account_id: inventoryAccount,
-        description: description + " - إضافة للمخزون",
-        debit: purchase.totalAmount,
-        credit: 0,
-        fiscal_period: fy.period_name,
-        entry_date: new Date(),
-        reference_type: "إضافة مخزون",
-        reference_id: purchase.id,
-        entry_number: entryNumber + "-DR1",
-        created_by: userId,
-        is_automated: true,
-      });
-      await updateAccountBalance(inventoryAccount, purchase.totalAmount, 0);
+      entries.push(
+        // Debit Inventory
+        {
+          ...baseEntry,
+          account_id: inventoryAccount,
+          description: description + " - إضافة للمخزون",
+          debit: totalAmount,
+          credit: 0,
+          reference_type: "إضافة مخزون",
+          reference_id: purchase.id,
+          entry_number: `${entryBase}-DR1`,
+        },
+        // Credit Cash/Bank
+        {
+          ...baseEntry,
+          account_id: paymentAccount,
+          description: description + " - مدفوع بالكامل",
+          debit: 0,
+          credit: totalAmount,
+          reference_type: "سداد مشتريات",
+          reference_id: purchase.id,
+          entry_number: `${entryBase}-CR1`,
+        },
+      );
+    } else if (amountPaid > 0 && amountPaid < totalAmount) {
+      // 2️⃣ Partial Payment
+      const due = totalAmount - amountPaid;
+      const paymentAccount =
+        purchase.paymentMethod === "bank" ? bankAccount : cashAccount;
 
-      // (2) Credit Cash/Bank (المبلغ المدفوع)
-      entries.push({
-        company_id: companyId,
-        account_id: paymentAccount,
-        description: description + " - دفع جزئي",
-        debit: 0,
-        credit: purchase.amountPaid,
-        fiscal_period: fy.period_name,
-        entry_date: new Date(),
-        reference_type: "دفع مشتريات",
-        reference_id: purchase.id,
-        entry_number: entryNumber + "-CR1",
-        created_by: userId,
-        is_automated: true,
-      });
-      await updateAccountBalance(paymentAccount, 0, purchase.amountPaid);
-
-      // (3) Credit Accounts Payable (الباقي آجل على المورد)
-      entries.push({
-        company_id: companyId,
-        account_id: payableAccount,
-        description: description + " - آجل للمورد",
-        debit: 0,
-        credit: due,
-        fiscal_period: fy.period_name,
-        entry_date: new Date(),
-        reference_type: "آجل مشتريات",
-        reference_id: purchase.supplierId,
-        entry_number: entryNumber + "-CR2",
-        created_by: userId,
-        is_automated: true,
-      });
-      await updateAccountBalance(payableAccount, 0, due);
+      entries.push(
+        // Debit Inventory
+        {
+          ...baseEntry,
+          account_id: inventoryAccount,
+          description: description + " - إضافة للمخزون",
+          debit: totalAmount,
+          credit: 0,
+          reference_type: "إضافة مخزون",
+          reference_id: purchase.id,
+          entry_number: `${entryBase}-DR1`,
+        },
+        // Credit Cash/Bank (paid amount)
+        {
+          ...baseEntry,
+          account_id: paymentAccount,
+          description: description + " - دفع جزئي",
+          debit: 0,
+          credit: amountPaid,
+          reference_type: "دفع مشتريات",
+          reference_id: purchase.id,
+          entry_number: `${entryBase}-CR1`,
+        },
+        // Credit Accounts Payable (remaining)
+        {
+          ...baseEntry,
+          account_id: payableAccount,
+          description: description + " - آجل للمورد",
+          debit: 0,
+          credit: due,
+          reference_type: "آجل مشتريات",
+          reference_id: purchase.supplierId,
+          entry_number: `${entryBase}-CR2`,
+        },
+      );
     } else {
-      // ============================================================
-      // PURCHASE - Fully On Credit (آجل كامل)
-      // ============================================================
-
-      // 1️⃣ Debit Inventory — إضافة للمخزون
-      entries.push({
-        company_id: companyId,
-        account_id: inventoryAccount,
-        description: description + " - إضافة للمخزون",
-        debit: purchase.totalAmount,
-        credit: 0,
-        fiscal_period: fy.period_name,
-        entry_date: new Date(),
-        reference_type: "إضافة مخزون",
-        reference_id: purchase.id,
-        entry_number: entryNumber + "-DR1",
-        created_by: userId,
-        is_automated: true,
-      });
-      await updateAccountBalance(inventoryAccount, purchase.totalAmount, 0);
-
-      // 2️⃣ Credit Payables — مديونية للمورد
-      entries.push({
-        company_id: companyId,
-        account_id: payableAccount,
-        description: description + " - آجل كامل",
-        debit: 0,
-        credit: purchase.totalAmount,
-        fiscal_period: fy.period_name,
-        entry_date: new Date(),
-        reference_type: "ذمم دائنة للمورد",
-        reference_id: purchase.supplierId,
-        entry_number: entryNumber + "-CR1",
-        created_by: userId,
-        is_automated: true,
-      });
-      await updateAccountBalance(payableAccount, 0, purchase.totalAmount);
+      // 3️⃣ Fully On Credit
+      entries.push(
+        // Debit Inventory
+        {
+          ...baseEntry,
+          account_id: inventoryAccount,
+          description: description + " - إضافة للمخزون",
+          debit: totalAmount,
+          credit: 0,
+          reference_type: "إضافة مخزون",
+          reference_id: purchase.id,
+          entry_number: `${entryBase}-DR1`,
+        },
+        // Credit Accounts Payable
+        {
+          ...baseEntry,
+          account_id: payableAccount,
+          description: description + " - آجل كامل",
+          debit: 0,
+          credit: totalAmount,
+          reference_type: "ذمم دائنة للمورد",
+          reference_id: purchase.supplierId,
+          entry_number: `${entryBase}-CR1`,
+        },
+      );
     }
   } else {
-    // ============================================================
-    // PURCHASE RETURN (مرتجع مشتريات)
-    // ============================================================
+    // ===============================
+    // PURCHASE RETURN SCENARIOS
+    // ===============================
 
-    // 1️⃣ تخفيض المخزون — Credit Inventory
+    const remainingAmount = totalAmount - amountPaid;
+
+    // Always credit inventory (reduce)
     entries.push({
-      company_id: companyId,
+      ...baseEntry,
       account_id: inventoryAccount,
       description: description + " - تخفيض المخزون",
       debit: 0,
-      credit: purchase.totalAmount,
-      fiscal_period: fy.period_name,
-      entry_date: new Date(),
+      credit: totalAmount,
       reference_type: "تخفيض مخزون بسبب مرتجع مشتريات",
       reference_id: purchase.id,
-      entry_number: entryNumber + "-CR1",
-      created_by: userId,
-      is_automated: true,
+      entry_number: `${entryBase}-CR1`,
     });
-    await updateAccountBalance(inventoryAccount, 0, purchase.totalAmount);
 
-    const remainingAmount = purchase.totalAmount - purchase.amountPaid;
-
-    // --------------------------------------------------------------------
-    // 2️⃣ لو كان فيه مبلغ مدفوع → نعيده نقدًا/بنكًا + تخفيض المتبقي على المورد
-    // --------------------------------------------------------------------
-    if (purchase.amountPaid > 0) {
+    if (amountPaid > 0) {
+      // Has payment - refund cash/bank
       const paymentAccount =
         purchase.paymentMethod === "bank" ? bankAccount : cashAccount;
 
-      // 2A — ردّ المبلغ المدفوع Cash/Bank (Debit)
       entries.push({
-        company_id: companyId,
+        ...baseEntry,
         account_id: paymentAccount,
         description: description + " - استرداد نقدي/بنكي",
-        debit: purchase.amountPaid,
+        debit: amountPaid,
         credit: 0,
-        fiscal_period: fy.period_name,
-        entry_date: new Date(),
         reference_type: "استرداد مدفوعات للمرتجع",
         reference_id: purchase.id,
-        entry_number: entryNumber + "-DR1",
-        created_by: userId,
-        is_automated: true,
+        entry_number: `${entryBase}-DR1`,
       });
-      await updateAccountBalance(paymentAccount, purchase.amountPaid, 0);
 
-      // 2B — إذا كان هناك مبلغ تبقى على المورد → خفض الذمم الدائنة
+      // If there's remaining payable, reduce it
       if (remainingAmount > 0) {
         entries.push({
-          company_id: companyId,
+          ...baseEntry,
           account_id: payableAccount,
           description: description + " - تخفيض الذمم الدائنة",
           debit: remainingAmount,
           credit: 0,
-          fiscal_period: fy.period_name,
-          entry_date: new Date(),
           reference_type: "تخفيض مديونية المورد بسبب مرتجع",
           reference_id: purchase.supplierId,
-          entry_number: entryNumber + "-DR2",
-          created_by: userId,
-          is_automated: true,
+          entry_number: `${entryBase}-DR2`,
         });
-        await updateAccountBalance(payableAccount, remainingAmount, 0);
       }
-    }
-
-    // --------------------------------------------------------------------
-    // 3️⃣ لو لم يتم دفع أي مبلغ أصلاً → خفض كامل للذمم الدائنة
-    // --------------------------------------------------------------------
-    else {
+    } else {
+      // No payment - reduce payables only
       entries.push({
-        company_id: companyId,
+        ...baseEntry,
         account_id: payableAccount,
         description: description + " - تخفيض الذمم الدائنة",
-        debit: purchase.totalAmount,
+        debit: totalAmount,
         credit: 0,
-        fiscal_period: fy.period_name,
-        entry_date: new Date(),
         reference_type: "تخفيض ذمم دائنة للمرتجع",
         reference_id: purchase.supplierId,
-        entry_number: entryNumber + "-DR1",
-        created_by: userId,
-        is_automated: true,
+        entry_number: `${entryBase}-DR1`,
       });
-
-      await updateAccountBalance(payableAccount, purchase.totalAmount, 0);
     }
   }
 
-  // The line that caused the unique constraint failure is now safe:
-  await prisma.journal_entries.createMany({ data: entries });
+  // 5️⃣ Insert entries and update balances in transaction
+  await prisma.$transaction(async (tx) => {
+    // Insert all journal entries
+    await tx.journal_entries.createMany({ data: entries });
+
+    // Calculate account balance deltas
+    const accountDeltas = new Map<string, number>();
+    for (const entry of entries) {
+      const delta = (entry.debit || 0) - (entry.credit || 0);
+      accountDeltas.set(
+        entry.account_id,
+        (accountDeltas.get(entry.account_id) || 0) + delta,
+      );
+    }
+
+    // Update all account balances in parallel
+    await Promise.all(
+      Array.from(accountDeltas.entries()).map(([accountId, delta]) =>
+        tx.accounts.update({
+          where: { id: accountId, company_id: companyId },
+          data: { balance: { increment: delta } },
+        }),
+      ),
+    );
+  });
+
+  console.log(`✅ Purchase journal entries created for ${purchase.id}`);
 }
 
 interface PurchaseReturnData {

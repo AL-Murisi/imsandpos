@@ -24,7 +24,7 @@ export default function Changerole() {
     <SelectField
       action={(value) => setSelectroled(value)}
       value={selectedRole}
-      placeholder="اختر الدور"
+      placeholder=" الدور"
       options={role}
     />
   );

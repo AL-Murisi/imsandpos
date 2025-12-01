@@ -918,7 +918,7 @@ export async function createSaleJournalEntries({
       ),
     );
   });
-
+  revalidatePath("/journalEntry");
   console.log("✅ Journal entries created for sale", sale.id);
 }
 export async function getAllActiveProductsForSale(
@@ -1789,3 +1789,754 @@ export async function createReturnJournalEntries({
 //     entry_number: journalData[0]?.entry_number,
 //   };
 // }
+// ============================================
+// 💰 OPTIMIZED PAYMENT PROCESSING
+// ============================================
+
+/**
+ * Process customer payment with automatic retry for journal entries
+ */
+export async function processCustomerPayment(data: {
+  companyId: string;
+  customerId: string;
+  cashierId: string;
+  amount: number;
+  paymentMethod: string;
+  paymentDate?: Date;
+  notes?: string;
+  saleIds?: string[]; // Optional: specific sales to apply payment to
+}) {
+  const {
+    companyId,
+    customerId,
+    cashierId,
+    amount,
+    paymentMethod,
+    paymentDate = new Date(),
+    notes,
+    saleIds,
+  } = data;
+
+  if (amount <= 0) {
+    throw new Error("Payment amount must be greater than zero");
+  }
+
+  const result = await prisma.$transaction(
+    async (tx) => {
+      // 1️⃣ Fetch customer and their unpaid/partial sales in parallel
+      const [customer, unpaidSales] = await Promise.all([
+        tx.customer.findUnique({
+          where: { id: customerId, companyId },
+          select: {
+            id: true,
+            name: true,
+            outstandingBalance: true,
+            balance: true,
+          },
+        }),
+        // Fetch specific sales or all unpaid sales
+        tx.sale.findMany({
+          where: {
+            companyId,
+            customerId,
+            paymentStatus: { in: ["unpaid", "partial"] },
+            ...(saleIds && saleIds.length > 0 && { id: { in: saleIds } }),
+          },
+          select: {
+            id: true,
+            saleNumber: true,
+            totalAmount: true,
+            amountPaid: true,
+            amountDue: true,
+            paymentStatus: true,
+          },
+          orderBy: { saleDate: "asc" }, // Pay oldest first
+        }),
+      ]);
+
+      if (!customer) {
+        throw new Error("Customer not found");
+      }
+
+      // 2️⃣ Calculate payment allocation
+      let remainingPayment = amount;
+      const paymentAllocations: Array<{
+        saleId: string;
+        saleNumber: string;
+        amountApplied: number;
+        previousDue: number;
+        newDue: number;
+        newStatus: string;
+      }> = [];
+
+      // Allocate payment to sales
+      for (const sale of unpaidSales) {
+        if (remainingPayment <= 0) break;
+
+        const saleAmountDue = sale.amountDue.toNumber();
+        const amountToApply = Math.min(remainingPayment, saleAmountDue);
+
+        if (amountToApply > 0) {
+          const newAmountDue = saleAmountDue - amountToApply;
+          const newAmountPaid = sale.amountPaid.toNumber() + amountToApply;
+          const newStatus =
+            newAmountDue <= 0
+              ? "paid"
+              : newAmountPaid > 0
+                ? "partial"
+                : "unpaid";
+
+          paymentAllocations.push({
+            saleId: sale.id,
+            saleNumber: sale.saleNumber,
+            amountApplied: amountToApply,
+            previousDue: saleAmountDue,
+            newDue: newAmountDue,
+            newStatus,
+          });
+
+          remainingPayment -= amountToApply;
+        }
+      }
+
+      // 3️⃣ Determine excess payment (goes to customer credit)
+      const totalAppliedToSales = amount - remainingPayment;
+      const excessAmount = remainingPayment;
+
+      // 4️⃣ Create main payment record
+      const payment = await tx.payment.create({
+        data: {
+          companyId,
+          customerId,
+          cashierId,
+          paymentMethod,
+          payment_type: "customer_payment",
+          amount,
+          status: "completed",
+          notes:
+            notes ||
+            `دفعة من العميل - تطبيق: ${totalAppliedToSales.toFixed(2)}`,
+          createdAt: paymentDate,
+        },
+      });
+
+      // 5️⃣ Update all affected sales in parallel
+      const saleUpdatePromises = paymentAllocations.map((allocation) =>
+        tx.sale.update({
+          where: { id: allocation.saleId },
+          data: {
+            amountPaid: { increment: allocation.amountApplied },
+            amountDue: { decrement: allocation.amountApplied },
+            paymentStatus: allocation.newStatus,
+          },
+        }),
+      );
+
+      // 6️⃣ Update customer balance
+      const customerUpdateData: any = {};
+
+      if (totalAppliedToSales > 0) {
+        customerUpdateData.outstandingBalance = {
+          decrement: totalAppliedToSales,
+        };
+      }
+
+      if (excessAmount > 0) {
+        customerUpdateData.balance = { increment: excessAmount };
+      }
+
+      const customerUpdatePromise =
+        Object.keys(customerUpdateData).length > 0
+          ? tx.customer.update({
+              where: { id: customerId, companyId },
+              data: customerUpdateData,
+            })
+          : Promise.resolve(null);
+
+      // Execute all updates in parallel
+      await Promise.all([...saleUpdatePromises, customerUpdatePromise]);
+
+      return {
+        success: true,
+        payment,
+        paymentAllocations,
+        totalAppliedToSales,
+        excessAmount,
+        customer,
+      };
+    },
+    {
+      timeout: 20000,
+      maxWait: 5000,
+    },
+  );
+
+  // 🔄 Create journal entries with retry (non-blocking)
+  createPaymentJournalEntriesWithRetry({
+    companyId,
+    customerId,
+    cashierId,
+    paymentId: result.payment.id,
+    amount,
+    paymentMethod,
+    totalAppliedToSales: result.totalAppliedToSales,
+    excessAmount: result.excessAmount,
+    paymentAllocations: result.paymentAllocations,
+  }).catch((err) =>
+    console.error("❌ Payment journal entries failed after all retries:", err),
+  );
+
+  return result;
+}
+
+// ============================================
+// 🔄 Payment Journal Entries with Retry
+// ============================================
+async function createPaymentJournalEntriesWithRetry(
+  data: {
+    companyId: string;
+    customerId: string;
+    cashierId: string;
+    paymentId: string;
+    amount: number;
+    paymentMethod: string;
+    totalAppliedToSales: number;
+    excessAmount: number;
+    paymentAllocations: any[];
+  },
+  maxRetries = 3,
+  retryDelay = 1000,
+) {
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(
+        `📝 Creating payment journal entries (attempt ${attempt}/${maxRetries})...`,
+      );
+      await createPaymentJournalEntries(data);
+      console.log(
+        `✅ Payment journal entries created successfully on attempt ${attempt}`,
+      );
+      return;
+    } catch (error: any) {
+      lastError = error;
+      console.error(
+        `❌ Payment journal entries attempt ${attempt}/${maxRetries} failed:`,
+        error.message,
+      );
+
+      if (attempt < maxRetries) {
+        const waitTime = retryDelay * Math.pow(2, attempt - 1);
+        console.log(`⏳ Retrying in ${waitTime}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
+      }
+    }
+  }
+
+  throw new Error(
+    `Failed to create payment journal entries after ${maxRetries} attempts. Last error: ${lastError?.message}`,
+  );
+}
+
+// ============================================
+// 📊 Optimized Payment Journal Entries
+// ============================================
+async function createPaymentJournalEntries({
+  companyId,
+  customerId,
+  cashierId,
+  paymentId,
+  amount,
+  paymentMethod,
+  totalAppliedToSales,
+  excessAmount,
+  paymentAllocations,
+}: {
+  companyId: string;
+  customerId: string;
+  cashierId: string;
+  paymentId: string;
+  amount: number;
+  paymentMethod: string;
+  totalAppliedToSales: number;
+  excessAmount: number;
+  paymentAllocations: any[];
+}) {
+  // 1️⃣ Fetch mappings and fiscal year in parallel
+  const [mappings, fy] = await Promise.all([
+    prisma.account_mappings.findMany({
+      where: { company_id: companyId, is_default: true },
+      select: { mapping_type: true, account_id: true },
+    }),
+    getActiveFiscalYears(),
+  ]);
+
+  if (!fy) {
+    console.warn("No active fiscal year - skipping journal entries");
+    return;
+  }
+
+  // 2️⃣ Create account map
+  const accountMap = new Map(
+    mappings.map((m) => [m.mapping_type, m.account_id]),
+  );
+
+  const getAccountId = (type: string) => accountMap.get(type);
+
+  const cashAccount = getAccountId("cash");
+  const bankAccount = getAccountId("bank");
+  const arAccount = getAccountId("accounts_receivable");
+  const customerCreditAccount = getAccountId("customer_credit"); // For excess
+
+  // Determine payment account (cash or bank)
+  const paymentAccountId =
+    paymentMethod.toLowerCase() === "bank" ? bankAccount : cashAccount;
+
+  if (!paymentAccountId) {
+    throw new Error(
+      `Missing GL account mapping for payment method: ${paymentMethod}`,
+    );
+  }
+
+  if (!arAccount) {
+    throw new Error("Missing accounts receivable GL account mapping");
+  }
+
+  // 3️⃣ Generate entry number
+  const year = new Date().getFullYear();
+  const timestamp = Date.now();
+  const entryBase = `JE-${year}-PAY-${paymentId.slice(0, 8)}-${timestamp}`;
+
+  // 4️⃣ Build journal entries
+  const baseEntry = {
+    company_id: companyId,
+    entry_date: new Date(),
+    is_automated: true,
+    fiscal_period: fy.period_name,
+    reference_type: "customer_payment",
+    reference_id: paymentId,
+    created_by: cashierId,
+  };
+
+  const entries: any[] = [];
+
+  // Entry 1: Debit Cash/Bank (Money received)
+  entries.push({
+    ...baseEntry,
+    entry_number: `${entryBase}-1`,
+    account_id: paymentAccountId,
+    description: `استلام دفعة من العميل - ${paymentMethod}`,
+    debit: amount,
+    credit: 0,
+  });
+
+  // Entry 2: Credit AR for amount applied to sales
+  if (totalAppliedToSales > 0) {
+    entries.push({
+      ...baseEntry,
+      entry_number: `${entryBase}-2`,
+      account_id: arAccount,
+      description: `تخفيض المديونية - دفعة عميل`,
+      debit: 0,
+      credit: totalAppliedToSales,
+      reference_id: customerId,
+    });
+  }
+
+  // Entry 3: Credit Customer Credit for excess amount
+  if (excessAmount > 0 && customerCreditAccount) {
+    entries.push({
+      ...baseEntry,
+      entry_number: `${entryBase}-3`,
+      account_id: customerCreditAccount,
+      description: `رصيد زائد للعميل`,
+      debit: 0,
+      credit: excessAmount,
+      reference_id: customerId,
+    });
+  }
+
+  // 5️⃣ Insert entries and update balances in transaction
+  await prisma.$transaction(async (tx) => {
+    // Insert all journal entries
+    if (entries.length > 0) {
+      await tx.journal_entries.createMany({ data: entries });
+    }
+
+    // Calculate account balance deltas
+    const accountDeltas = new Map<string, number>();
+    for (const entry of entries) {
+      const delta = (entry.debit || 0) - (entry.credit || 0);
+      accountDeltas.set(
+        entry.account_id,
+        (accountDeltas.get(entry.account_id) || 0) + delta,
+      );
+    }
+
+    // Update all account balances in parallel
+    if (accountDeltas.size > 0) {
+      await Promise.all(
+        Array.from(accountDeltas.entries()).map(([accountId, delta]) =>
+          tx.accounts.update({
+            where: { id: accountId },
+            data: { balance: { increment: delta } },
+          }),
+        ),
+      );
+    }
+  });
+
+  console.log(`✅ Payment journal entries created for payment ${paymentId}`);
+}
+
+// ============================================
+// 🔄 OPTIMIZED SUPPLIER PAYMENT PROCESSING
+// ============================================
+
+/**
+ * Process supplier payment with automatic retry for journal entries
+ */
+export async function processSupplierPayment(data: {
+  companyId: string;
+  supplierId: string;
+  cashierId: string;
+  amount: number;
+  paymentMethod: string;
+  paymentDate?: Date;
+  notes?: string;
+  purchaseId?: string; // Optional: specific purchase to apply payment to
+}) {
+  const {
+    companyId,
+    supplierId,
+    cashierId,
+    amount,
+    paymentMethod,
+    paymentDate = new Date(),
+    notes,
+    purchaseId,
+  } = data;
+
+  if (amount <= 0) {
+    throw new Error("Payment amount must be greater than zero");
+  }
+
+  const result = await prisma.$transaction(
+    async (tx) => {
+      // 1️⃣ Fetch supplier and optionally specific purchase
+      const [supplier, purchases] = await Promise.all([
+        tx.supplier.findUnique({
+          where: { id: supplierId, companyId },
+          select: {
+            id: true,
+            name: true,
+            outstandingBalance: true,
+            totalPaid: true,
+          },
+        }),
+        // Fetch specific purchase or all unpaid purchases
+        purchaseId
+          ? tx.purchase.findMany({
+              where: { id: purchaseId, companyId, supplierId },
+              select: {
+                id: true,
+                totalAmount: true,
+                amountPaid: true,
+                amountDue: true,
+                status: true,
+              },
+            })
+          : tx.purchase.findMany({
+              where: {
+                companyId,
+                supplierId,
+                status: { in: ["pending", "partial"] },
+              },
+              select: {
+                id: true,
+                totalAmount: true,
+                amountPaid: true,
+                amountDue: true,
+                status: true,
+              },
+              orderBy: { createdAt: "asc" },
+            }),
+      ]);
+
+      if (!supplier) {
+        throw new Error("Supplier not found");
+      }
+
+      // 2️⃣ Calculate payment allocation
+      let remainingPayment = amount;
+      const paymentAllocations: Array<{
+        purchaseId: string;
+        amountApplied: number;
+        previousDue: number;
+        newDue: number;
+        newStatus: string;
+      }> = [];
+
+      for (const purchase of purchases) {
+        if (remainingPayment <= 0) break;
+
+        const purchaseAmountDue = purchase.amountDue.toNumber();
+        const amountToApply = Math.min(remainingPayment, purchaseAmountDue);
+
+        if (amountToApply > 0) {
+          const newAmountDue = purchaseAmountDue - amountToApply;
+          const newStatus = newAmountDue <= 0 ? "paid" : "partial";
+
+          paymentAllocations.push({
+            purchaseId: purchase.id,
+            amountApplied: amountToApply,
+            previousDue: purchaseAmountDue,
+            newDue: newAmountDue,
+            newStatus,
+          });
+
+          remainingPayment -= amountToApply;
+        }
+      }
+
+      const totalAppliedToPurchases = amount - remainingPayment;
+      const excessAmount = remainingPayment;
+
+      // 3️⃣ Create supplier payment record
+      const payment = await tx.supplierPayment.create({
+        data: {
+          companyId,
+          supplierId,
+          purchaseId: purchaseId || null,
+          createdBy: cashierId,
+          amount,
+          paymentMethod,
+          paymentDate,
+          note:
+            notes ||
+            `دفعة لمورد - تطبيق: ${totalAppliedToPurchases.toFixed(2)}`,
+        },
+      });
+
+      // 4️⃣ Update all affected purchases in parallel
+      const purchaseUpdatePromises = paymentAllocations.map((allocation) =>
+        tx.purchase.update({
+          where: { id: allocation.purchaseId },
+          data: {
+            amountPaid: { increment: allocation.amountApplied },
+            amountDue: { decrement: allocation.amountApplied },
+            status: allocation.newStatus,
+          },
+        }),
+      );
+
+      // 5️⃣ Update supplier balance
+      const supplierUpdatePromise = tx.supplier.update({
+        where: { id: supplierId, companyId },
+        data: {
+          totalPaid: { increment: amount },
+          outstandingBalance: { decrement: totalAppliedToPurchases },
+        },
+      });
+
+      await Promise.all([...purchaseUpdatePromises, supplierUpdatePromise]);
+
+      return {
+        success: true,
+        payment,
+        paymentAllocations,
+        totalAppliedToPurchases,
+        excessAmount,
+        supplier,
+      };
+    },
+    {
+      timeout: 20000,
+      maxWait: 5000,
+    },
+  );
+
+  // 🔄 Create journal entries with retry (non-blocking)
+  createSupplierPaymentJournalEntriesWithRetry({
+    companyId,
+    supplierId,
+    cashierId,
+    paymentId: result.payment.id,
+    amount,
+    paymentMethod,
+    totalAppliedToPurchases: result.totalAppliedToPurchases,
+  }).catch((err) =>
+    console.error(
+      "❌ Supplier payment journal entries failed after all retries:",
+      err,
+    ),
+  );
+
+  return result;
+}
+
+// ============================================
+// 🔄 Supplier Payment Journal Entries with Retry
+// ============================================
+async function createSupplierPaymentJournalEntriesWithRetry(
+  data: {
+    companyId: string;
+    supplierId: string;
+    cashierId: string;
+    paymentId: string;
+    amount: number;
+    paymentMethod: string;
+    totalAppliedToPurchases: number;
+  },
+  maxRetries = 3,
+  retryDelay = 1000,
+) {
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(
+        `📝 Creating supplier payment journal entries (attempt ${attempt}/${maxRetries})...`,
+      );
+      await createSupplierPaymentJournalEntries(data);
+      console.log(
+        `✅ Supplier payment journal entries created successfully on attempt ${attempt}`,
+      );
+      return;
+    } catch (error: any) {
+      lastError = error;
+      console.error(
+        `❌ Supplier payment journal entries attempt ${attempt}/${maxRetries} failed:`,
+        error.message,
+      );
+
+      if (attempt < maxRetries) {
+        const waitTime = retryDelay * Math.pow(2, attempt - 1);
+        console.log(`⏳ Retrying in ${waitTime}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
+      }
+    }
+  }
+
+  throw new Error(
+    `Failed to create supplier payment journal entries after ${maxRetries} attempts. Last error: ${lastError?.message}`,
+  );
+}
+
+// ============================================
+// 📊 Supplier Payment Journal Entries
+// ============================================
+async function createSupplierPaymentJournalEntries({
+  companyId,
+  supplierId,
+  cashierId,
+  paymentId,
+  amount,
+  paymentMethod,
+  totalAppliedToPurchases,
+}: {
+  companyId: string;
+  supplierId: string;
+  cashierId: string;
+  paymentId: string;
+  amount: number;
+  paymentMethod: string;
+  totalAppliedToPurchases: number;
+}) {
+  // 1️⃣ Fetch mappings and fiscal year in parallel
+  const [mappings, fy] = await Promise.all([
+    prisma.account_mappings.findMany({
+      where: { company_id: companyId, is_default: true },
+      select: { mapping_type: true, account_id: true },
+    }),
+    getActiveFiscalYears(),
+  ]);
+
+  if (!fy) {
+    console.warn("No active fiscal year - skipping journal entries");
+    return;
+  }
+
+  // 2️⃣ Create account map
+  const accountMap = new Map(
+    mappings.map((m) => [m.mapping_type, m.account_id]),
+  );
+
+  const cashAccount = accountMap.get("cash");
+  const bankAccount = accountMap.get("bank");
+  const apAccount = accountMap.get("accounts_payable");
+
+  const paymentAccountId =
+    paymentMethod.toLowerCase() === "bank" ? bankAccount : cashAccount;
+
+  if (!paymentAccountId || !apAccount) {
+    throw new Error(
+      "Missing required GL account mappings for supplier payment",
+    );
+  }
+
+  // 3️⃣ Generate entry number
+  const year = new Date().getFullYear();
+  const timestamp = Date.now();
+  const entryBase = `JE-${year}-SUPPAY-${paymentId.slice(0, 8)}-${timestamp}`;
+
+  // 4️⃣ Build journal entries
+  const baseEntry = {
+    company_id: companyId,
+    entry_date: new Date(),
+    is_automated: true,
+    fiscal_period: fy.period_name,
+    reference_type: "supplier_payment",
+    reference_id: paymentId,
+    created_by: cashierId,
+  };
+
+  const entries = [
+    // Debit AP (reduce liability)
+    {
+      ...baseEntry,
+      entry_number: `${entryBase}-1`,
+      account_id: apAccount,
+      description: `دفع لمورد`,
+      debit: totalAppliedToPurchases,
+      credit: 0,
+      reference_id: supplierId,
+    },
+    // Credit Cash/Bank (money out)
+    {
+      ...baseEntry,
+      entry_number: `${entryBase}-2`,
+      account_id: paymentAccountId,
+      description: `دفع لمورد - ${paymentMethod}`,
+      debit: 0,
+      credit: amount,
+    },
+  ];
+
+  // 5️⃣ Insert entries and update balances in transaction
+  await prisma.$transaction(async (tx) => {
+    await tx.journal_entries.createMany({ data: entries });
+
+    // Calculate and update balances
+    const accountDeltas = new Map<string, number>();
+    for (const entry of entries) {
+      const delta = (entry.debit || 0) - (entry.credit || 0);
+      accountDeltas.set(
+        entry.account_id,
+        (accountDeltas.get(entry.account_id) || 0) + delta,
+      );
+    }
+
+    await Promise.all(
+      Array.from(accountDeltas.entries()).map(([accountId, delta]) =>
+        tx.accounts.update({
+          where: { id: accountId },
+          data: { balance: { increment: delta } },
+        }),
+      ),
+    );
+  });
+
+  console.log(`✅ Supplier payment journal entries created for ${paymentId}`);
+}
