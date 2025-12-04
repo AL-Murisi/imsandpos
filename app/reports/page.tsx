@@ -228,12 +228,9 @@
 //   );
 // }
 
+import { ScrollArea } from "@/components/ui/scroll-area";
 import ReportsPage from "./clinet";
 
 export default function page() {
-  return (
-    <div>
-      <ReportsPage />
-    </div>
-  );
+  return <ReportsPage />;
 }

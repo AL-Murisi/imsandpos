@@ -24,6 +24,7 @@ import {
   Moon,
   Wallet,
   Globe,
+  ShoppingCartIcon,
 } from "lucide-react";
 import Image from "next/image";
 import { useCompany } from "@/hooks/useCompany"; // adjust if different path
@@ -115,7 +116,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     },
     {
       title: t("inventory"),
-      icon: () => <IMSLogoIcon className="text-blue-600" />,
+      icon: () => <IMSLogoIcon className="text-yellow-600" />,
       roles: ["admin", "manager_wh"],
       isDropdown: true,
       subItems: [
@@ -203,7 +204,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         {
           title: t("cashierMain"),
           url: "/sells",
-          icon: <ShoppingCart className="text-blue-500" />,
+          icon: <ShoppingCartIcon className="text-white" />,
           roles: ["admin"],
         },
         {

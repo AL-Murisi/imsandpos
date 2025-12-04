@@ -32,6 +32,7 @@ import { format } from "date-fns/format";
 import { SelectField } from "@/components/common/selection";
 import { Calendar22 } from "@/components/common/DatePicker";
 import SearchInput from "@/components/common/searchlist";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const reports = [
   // Sales
@@ -351,54 +352,6 @@ export default function ReportsPage() {
           </Card>
         ))}
       </div>
-
-      {/* Report Selection Grid */}
-      <Card>
-        <CardHeader>
-          <CardTitle>اختر التقرير</CardTitle>
-          <CardDescription>
-            {filteredReports.length} تقرير متاح في هذه الفئة
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filteredReports.map((report) => (
-              <Card
-                key={report.id}
-                className={`cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg ${
-                  reportType === report.id
-                    ? "ring-primary bg-primary/5 ring-2"
-                    : ""
-                }`}
-                onClick={() => {
-                  setReportType(report.id);
-                  setSelectedReport(report);
-                  // Update URL
-                  const params = new URLSearchParams(searchParams.toString());
-                  params.set("reportType", report.id);
-                  router.push(`?${params.toString()}`);
-                }}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-3">
-                    <span className="text-3xl">{report.icon}</span>
-                    <div className="flex-1">
-                      <h3 className="mb-1 font-semibold">{report.name}</h3>
-                      <p className="text-muted-foreground text-xs">
-                        {report.description}
-                      </p>
-                    </div>
-                    {reportType === report.id && (
-                      <Badge variant="default">محدد</Badge>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Report Configuration */}
       {selectedReport && (
         <Card className="border-primary/50">
@@ -416,43 +369,43 @@ export default function ReportsPage() {
                 <label className="text-sm font-medium">📅 الفترة الزمنية</label>
                 <Calendar22 />
               </div>
+
+              {/* Customer Filter for customer reports */}
+              {reportType.includes("customer") && (
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-medium">
+                    👤 اختر عميل محدد (اختياري)
+                  </label>
+                  <SearchInput
+                    placeholder="ابحث عن العميل"
+                    paramKey="customer"
+                    options={[]}
+                    action={(user) => setSelectedCustomer(user)}
+                  />
+                  {selectedCustomer && (
+                    <Card className="bg-muted/50">
+                      <CardContent className="space-y-1 p-3 text-sm">
+                        <p className="flex items-center gap-2">
+                          <strong>👤 العميل:</strong> {selectedCustomer.label}
+                        </p>
+                        <p className="flex items-center gap-2">
+                          <strong>🆔 رقم العميل:</strong>{" "}
+                          {selectedCustomer.value}
+                        </p>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSelectedCustomer(null)}
+                          className="mt-2"
+                        >
+                          إلغاء التحديد
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              )}
             </div>
-
-            {/* Customer Filter for customer reports */}
-            {reportType.includes("customer") && (
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-medium">
-                  👤 اختر عميل محدد (اختياري)
-                </label>
-                <SearchInput
-                  placeholder="ابحث عن العميل"
-                  paramKey="customer"
-                  options={[]}
-                  action={(user) => setSelectedCustomer(user)}
-                />
-                {selectedCustomer && (
-                  <Card className="bg-muted/50">
-                    <CardContent className="space-y-1 p-3 text-sm">
-                      <p className="flex items-center gap-2">
-                        <strong>👤 العميل:</strong> {selectedCustomer.label}
-                      </p>
-                      <p className="flex items-center gap-2">
-                        <strong>🆔 رقم العميل:</strong> {selectedCustomer.value}
-                      </p>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setSelectedCustomer(null)}
-                        className="mt-2"
-                      >
-                        إلغاء التحديد
-                      </Button>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            )}
-
             {/* Download Button */}
             <div className="flex items-center gap-3 pt-4">
               <Button
@@ -475,6 +428,55 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
       )}
+
+      <ScrollArea className="h-[80vh] p-2" dir="rtl">
+        {/* Report Selection Grid */}
+        <Card>
+          <CardHeader>
+            <CardTitle>اختر التقرير</CardTitle>
+            <CardDescription>
+              {filteredReports.length} تقرير متاح في هذه الفئة
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:grid-cols-5">
+              {filteredReports.map((report) => (
+                <Card
+                  key={report.id}
+                  className={`cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg ${
+                    reportType === report.id
+                      ? "ring-primary bg-primary/5 ring-2"
+                      : ""
+                  }`}
+                  onClick={() => {
+                    setReportType(report.id);
+                    setSelectedReport(report);
+                    // Update URL
+                    const params = new URLSearchParams(searchParams.toString());
+                    params.set("reportType", report.id);
+                    router.push(`?${params.toString()}`);
+                  }}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                      <span className="text-3xl">{report.icon}</span>
+                      <div className="flex-1">
+                        <h3 className="mb-1 font-semibold">{report.name}</h3>
+                        <p className="text-muted-foreground text-xs">
+                          {report.description}
+                        </p>
+                      </div>
+                      {reportType === report.id && (
+                        <Badge variant="default">محدد</Badge>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </ScrollArea>
 
       {/* Quick Stats */}
       {!selectedReport && (
