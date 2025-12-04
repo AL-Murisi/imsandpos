@@ -232,5 +232,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import ReportsPage from "./clinet";
 
 export default function page() {
-  return <ReportsPage />;
+  return (
+    <ScrollArea className="max-h-[95vh] p-2" dir="rtl">
+      <ReportsPage />
+    </ScrollArea>
+  );
 }

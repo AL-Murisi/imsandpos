@@ -352,85 +352,89 @@ export default function ReportsPage() {
         ))}
       </div>
       {/* Report Configuration */}
-      {selectedReport && (
-        <Card className="border-primary/50 px-2 py-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <span>{selectedReport.icon}</span>
-              {selectedReport.name}
-            </CardTitle>
-            <CardDescription>{selectedReport.description}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Date Range */}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">📅 الفترة الزمنية</label>
-                <Calendar22 />
-              </div>
-
-              {/* Customer Filter for customer reports */}
-              {reportType.includes("customer") && (
+      <div className="px-2 py-2">
+        {selectedReport && (
+          <Card className="border-primary/50 px-2 py-2">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <span>{selectedReport.icon}</span>
+                {selectedReport.name}
+              </CardTitle>
+              <CardDescription>{selectedReport.description}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Date Range */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-sm font-medium">
-                    👤 اختر عميل محدد (اختياري)
+                  <label className="text-sm font-medium">
+                    📅 الفترة الزمنية
                   </label>
-                  <SearchInput
-                    placeholder="ابحث عن العميل"
-                    paramKey="customer"
-                    options={[]}
-                    action={(user) => setSelectedCustomer(user)}
-                  />
-                  {selectedCustomer && (
-                    <Card className="bg-muted/50">
-                      <CardContent className="space-y-1 p-3 text-sm">
-                        <p className="flex items-center gap-2">
-                          <strong>👤 العميل:</strong> {selectedCustomer.label}
-                        </p>
-                        <p className="flex items-center gap-2">
-                          <strong>🆔 رقم العميل:</strong>{" "}
-                          {selectedCustomer.value}
-                        </p>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setSelectedCustomer(null)}
-                          className="mt-2"
-                        >
-                          إلغاء التحديد
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  )}
+                  <Calendar22 />
                 </div>
-              )}
-            </div>
-            {/* Download Button */}
-            <div className="flex items-center gap-3 pt-4">
-              <Button
-                disabled={isSubmitting || !reportType}
-                onClick={handleDownload}
-                size="lg"
-                className="flex-1 md:flex-none"
-              >
-                <DownloadIcon className="mr-2 h-4 w-4" />
-                {isSubmitting ? "جاري التحميل..." : "تحميل التقرير"}
-              </Button>
 
-              {!reportType && (
-                <div className="text-muted-foreground flex items-center gap-2 text-sm">
-                  <AlertCircleIcon className="h-4 w-4" />
-                  الرجاء اختيار تقرير أولاً
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-      {/* Report Selection Grid */}
-      <Card>
-        {" "}
-        <ScrollArea className="h-[96vh] p-2" dir="rtl">
+                {/* Customer Filter for customer reports */}
+                {reportType.includes("customer") && (
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm font-medium">
+                      👤 اختر عميل محدد (اختياري)
+                    </label>
+                    <SearchInput
+                      placeholder="ابحث عن العميل"
+                      paramKey="customer"
+                      options={[]}
+                      action={(user) => setSelectedCustomer(user)}
+                    />
+                    {selectedCustomer && (
+                      <Card className="bg-muted/50">
+                        <CardContent className="space-y-1 p-3 text-sm">
+                          <p className="flex items-center gap-2">
+                            <strong>👤 العميل:</strong> {selectedCustomer.label}
+                          </p>
+                          <p className="flex items-center gap-2">
+                            <strong>🆔 رقم العميل:</strong>{" "}
+                            {selectedCustomer.value}
+                          </p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setSelectedCustomer(null)}
+                            className="mt-2"
+                          >
+                            إلغاء التحديد
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                )}
+              </div>
+              {/* Download Button */}
+              <div className="flex items-center gap-3 pt-4">
+                <Button
+                  disabled={isSubmitting || !reportType}
+                  onClick={handleDownload}
+                  size="lg"
+                  className="flex-1 md:flex-none"
+                >
+                  <DownloadIcon className="mr-2 h-4 w-4" />
+                  {isSubmitting ? "جاري التحميل..." : "تحميل التقرير"}
+                </Button>
+
+                {!reportType && (
+                  <div className="text-muted-foreground flex items-center gap-2 text-sm">
+                    <AlertCircleIcon className="h-4 w-4" />
+                    الرجاء اختيار تقرير أولاً
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+      {/* Report Selection Grid */}{" "}
+      <ScrollArea className="h-[96vh] p-2 px-2 py-2" dir="rtl">
+        <Card>
+          {" "}
           <CardHeader>
             <CardTitle>اختر التقرير</CardTitle>
             <CardDescription>
@@ -474,9 +478,9 @@ export default function ReportsPage() {
               ))}
             </div>
           </CardContent>
-        </ScrollArea>
-      </Card>{" "}
-      {/* Quick Stats */}
+        </Card>{" "}
+        {/* Quick Stats */}
+      </ScrollArea>
       {!selectedReport && (
         <Card>
           <CardHeader>
