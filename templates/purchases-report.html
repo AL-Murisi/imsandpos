@@ -1,5 +1,9 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap"
+    rel="stylesheet"
+  />
   <head>
     <meta charset="UTF-8" />
     <title>تقرير المشتريات</title>
@@ -10,10 +14,12 @@
         box-sizing: border-box;
       }
       body {
-        font-family: "Arial", sans-serif;
-        padding: 40px;
-        background: #f5f5f5;
+        font-family: "Cairo", sans-serif;
+        direction: rtl;
+        text-align: right;
+        margin: 40px;
       }
+
       .container {
         max-width: 1000px;
         margin: 0 auto;
@@ -21,12 +27,77 @@
         padding: 40px;
         box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
       }
+
       .header {
-        text-align: center;
-        border-bottom: 3px solid #6366f1;
-        padding-bottom: 20px;
-        margin-bottom: 30px;
+        border-bottom: 1px solid black;
+        border-radius: 6px;
       }
+      .flex {
+        display: flex;
+      }
+      .justify-between {
+        justify-content: space-between;
+      }
+      .items-center {
+        align-items: center;
+      }
+      .mb-2 {
+        margin-bottom: 8px;
+      }
+      .gap-2 {
+        gap: 8px;
+      }
+      .grid {
+        display: grid;
+      }
+      .grid-cols-2 {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .text-sm {
+        font-size: 12px;
+      }
+      .text-lg {
+        font-size: 16px;
+        font-weight: bold;
+      }
+      .text-center {
+        text-align: center;
+      }
+      .text-xs {
+        font-size: 10px;
+      }
+      .green {
+        color: green;
+      }
+      .grey {
+        color: grey;
+      }
+      .text-3xl {
+        font-size: 24px;
+        font-weight: bold;
+      }
+      .text-2xl {
+        font-size: 23px;
+        font-weight: bold;
+      }
+      .justify-between {
+        justify-content: space-between;
+      }
+      .items-center {
+        align-items: center;
+      }
+      .items-center {
+        align-items: center;
+      }
+
+      .section-title {
+        font-size: 20px;
+        border-bottom: 2px solid #444;
+        margin-top: 35px;
+        margin-bottom: 10px;
+        padding-bottom: 5px;
+      }
+
       .company-name {
         font-size: 28px;
         font-weight: bold;
@@ -43,17 +114,14 @@
         border-collapse: collapse;
         margin-bottom: 30px;
       }
-      thead {
-        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-        color: white;
-      }
-      th {
+
+      table th {
         padding: 15px;
         text-align: right;
         font-weight: 600;
         font-size: 14px;
       }
-      td {
+      table td {
         padding: 12px 15px;
         border-bottom: 1px solid #e2e8f0;
         font-size: 13px;
@@ -115,75 +183,98 @@
     </style>
   </head>
   <body>
-    <div class="container">
-      <div class="header">
-        <div class="company-name">{{company.name}}</div>
-        <div class="report-title">🛒 تقرير المشتريات</div>
-      </div>
+    <div class="section">
+      <div class="header mb-2 flex items-center justify-between" dir="rtl">
+        <!-- Company -->
+        <div class="grid grid-rows-3 items-baseline gap-2 text-right">
+          <span class="green text-3xl font-bold"> {{company.name}} </span>
+          <span class="text-2xl">{{company.name}} </span>
+        </div>
 
-      <div class="summary-box">
-        <div class="summary-card">
-          <h3>إجمالي المشتريات</h3>
-          <p>{{formatNumber totalPurchases}} ر.س</p>
+        <!-- Logo -->
+        <div class="flex flex-col items-center">
+          <img src="{{company.logoUrl}}" style="width: 100px; height: 90px" />
         </div>
-        <div
-          class="summary-card"
-          style="background: linear-gradient(135deg, #10b981 0%, #059669 100%)"
-        >
-          <h3>عدد المشتريات</h3>
-          <p>{{purchases.length}}</p>
-        </div>
-        <div
-          class="summary-card"
-          style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%)"
-        >
-          <h3>متوسط قيمة الشراء</h3>
-          <p>{{formatNumber (divide totalPurchases purchases.length)}} ر.س</p>
+
+        <!-- Branch -->
+        <div class="grid grid-rows-4">
+          <div class="text-lg">{{company.address}}</div>
+          <div class="text-lg">{{company.city}}</div>
+          <div>تلفون: {{company.phone}}</div>
         </div>
       </div>
+    </div>
+    <div class="">
+      <div class="report-title">🛒 تقرير المشتريات</div>
+    </div>
 
-      <table>
-        <thead>
-          <tr>
-            <th>رقم الشراء</th>
-            <th>المورد</th>
-            <th>التاريخ</th>
-            <th>عدد الأصناف</th>
-            <th>الإجمالي (ر.س)</th>
-            <th>الحالة</th>
-          </tr>
-        </thead>
-        <tbody>
-          {{#each purchases}}
-          <tr>
-            <td><strong>{{this.id}}</strong></td>
-            <td>{{this.supplier}}</td>
-            <td>{{this.date}}</td>
-            <td>{{this.items}}</td>
-            <td><strong>{{formatNumber this.total}}</strong></td>
-            <td>
-              <span
-                class="badge badge-{{#if (eq this.status 'COMPLETED')}}completed{{else if (eq this.status 'PENDING')}}pending{{else}}cancelled{{/if}}"
-              >
-                {{this.status}}
-              </span>
-            </td>
-          </tr>
-          {{/each}}
-          <tr class="total-row">
-            <td colspan="4">الإجمالي الكلي</td>
-            <td><strong>{{formatNumber totalPurchases}} ر.س</strong></td>
-            <td>-</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div class="footer">
-        <p>
-          تم إنشاء هذا التقرير بواسطة نظام {{company.name}} | {{createby}} | من
-          {{from}} إلى {{to}}
-        </p>
+    <div class="summary-box">
+      <div class="summary-card">
+        <h3>إجمالي المشتريات</h3>
+        <p>{{formatNumber totalPurchases}}</p>
       </div>
+      <div
+        class="summary-card"
+        style="background: linear-gradient(135deg, #10b981 0%, #059669 100%)"
+      >
+        <h3>عدد المشتريات</h3>
+        <p>{{purchases.length}}</p>
+      </div>
+      <div
+        class="summary-card"
+        style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%)"
+      >
+        <h3>متوسط قيمة الشراء</h3>
+        <p>{{formatNumber (divide totalPurchases purchases.length)}} ر.س</p>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>رقم الشراء</th>
+          <th>المورد</th>
+          <th>اسم المنتج</th>
+          <th>التاريخ</th>
+          <th>عدد الأصناف</th>
+          <th>سعر الواحده</th>
+          <th>الإجمالي</th>
+          <th>الحالة</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each purchases}}
+        <tr>
+          <td><strong>{{this.id}}</strong></td>
+          <td>{{this.supplier}}</td>
+          <td>{{this.product}}</td>
+          <td>{{this.date}}</td>
+          <td>{{this.quantity}}</td>
+          <td><strong>{{formatNumber this.unitPrice}}</strong></td>
+
+          <td><strong>{{formatNumber this.total}}</strong></td>
+          <td>
+            <span
+              class="badge badge-{{#if (eq this.status 'COMPLETED')}}completed{{else if (eq this.status 'PENDING')}}pending{{else}}cancelled{{/if}}"
+            >
+              {{this.status}}
+            </span>
+          </td>
+        </tr>
+        {{/each}}
+        <tr class="total-row">
+          <td colspan="4">الإجمالي الكلي</td>
+          <td><strong>{{formatNumber totalPurchases}} ر.س</strong></td>
+          <td>-</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="footer">
+      <p>
+        تم إنشاء هذا التقرير بواسطة نظام {{company.name}} | {{createby}} | من
+        {{from}} إلى {{to}}
+      </p>
     </div>
   </body>
 </html>

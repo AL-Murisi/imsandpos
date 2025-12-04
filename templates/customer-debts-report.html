@@ -1,6 +1,9 @@
-================================================== -->
 <!doctype html>
 <html lang="ar" dir="rtl">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap"
+    rel="stylesheet"
+  />
   <head>
     <meta charset="UTF-8" />
     <title>تقرير ديون العملاء</title>
@@ -11,9 +14,12 @@
         box-sizing: border-box;
       }
       body {
-        font-family: "Arial", sans-serif;
-        padding: 40px;
-        background: #f5f5f5;
+        font-family: "Cairo", sans-serif;
+        direction: rtl;
+        text-align: right;
+        margin: 40px;
+        background: #f8f9fa;
+        color: #333;
       }
       .container {
         max-width: 1000px;
@@ -22,11 +28,79 @@
         padding: 40px;
         box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
       }
+
       .header {
+        border-bottom: 1px solid black;
+        border-radius: 6px;
+      }
+      .flex {
+        display: flex;
+      }
+      .justify-between {
+        justify-content: space-between;
+      }
+      .items-center {
+        align-items: center;
+      }
+      .mb-2 {
+        margin-bottom: 8px;
+      }
+      .gap-2 {
+        gap: 8px;
+      }
+      .grid {
+        display: grid;
+      }
+      .grid-cols-2 {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .text-sm {
+        font-size: 12px;
+      }
+      .text-lg {
+        font-size: 16px;
+        font-weight: bold;
+      }
+      .text-center {
         text-align: center;
-        border-bottom: 3px solid #ef4444;
-        padding-bottom: 20px;
-        margin-bottom: 30px;
+      }
+      .text-xs {
+        font-size: 10px;
+      }
+      .green {
+        color: green;
+      }
+      .grey {
+        color: grey;
+      }
+      .text-3xl {
+        font-size: 24px;
+        font-weight: bold;
+      }
+      .text-2xl {
+        font-size: 23px;
+        font-weight: bold;
+      }
+      .justify-between {
+        justify-content: space-between;
+      }
+      .items-center {
+        align-items: center;
+      }
+      .items-center {
+        align-items: center;
+      }
+      .section {
+        padding: 6px 8px;
+      }
+      .section-title {
+        font-size: 20px;
+        background: #e67e22;
+        color: #fff;
+        padding: 8px 12px;
+        border-radius: 5px;
+        margin-top: 30px;
+        margin-bottom: 10px;
       }
       .company-name {
         font-size: 28px;
@@ -99,15 +173,35 @@
     </style>
   </head>
   <body>
+    <div class="section">
+      <div class="header mb-2 flex items-center justify-between" dir="rtl">
+        <!-- Company -->
+        <div class="grid grid-rows-3 items-baseline gap-2 text-right">
+          <span class="green text-3xl font-bold"> {{company.name}} </span>
+          <span class="text-2xl">{{company.name}} </span>
+        </div>
+
+        <!-- Logo -->
+        <div class="flex flex-col items-center">
+          <img src="{{company.logoUrl}}" style="width: 100px; height: 90px" />
+        </div>
+
+        <!-- Branch -->
+        <div class="grid grid-rows-4">
+          <div class="text-lg">{{company.address}}</div>
+          <div class="text-lg">${company.city}</div>
+          <div>تلفون: {{company.phone}}</div>
+        </div>
+      </div>
+    </div>
     <div class="container">
-      <div class="header">
-        <div class="company-name">{{company.name}}</div>
+      <div class="">
         <div class="report-title">📉 تقرير ديون العملاء</div>
       </div>
 
       <div class="alert-box">
         <h3>⚠️ إجمالي الديون المستحقة</h3>
-        <p>{{formatNumber totalDebt}} ر.س</p>
+        <p>{{formatNumber totalDebts}} ر.س</p>
       </div>
 
       <table>
@@ -125,14 +219,15 @@
             <td><strong>{{this.name}}</strong></td>
             <td>{{this.phone}}</td>
             <td>
-              <strong style="color: #dc2626">{{formatNumber this.debt}}</strong>
+              <strong style="color: #dc2626"
+                >{{formatNumber this.outstanding}}</strong
+              >
             </td>
-            <td>{{this.lastPurchase}}</td>
           </tr>
           {{/each}}
           <tr class="total-row">
             <td colspan="2">الإجمالي الكلي</td>
-            <td><strong>{{formatNumber totalDebt}} ر.س</strong></td>
+            <td><strong>{{formatNumber totalDebts}} ر.س</strong></td>
             <td>-</td>
           </tr>
         </tbody>

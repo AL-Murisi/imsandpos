@@ -1,14 +1,91 @@
-     ================================================== -->
+
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl"> <link
+    href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap"
+    rel="stylesheet"
+  />
 <head>
     <meta charset="UTF-8">
     <title>تقرير الجرد</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Arial', sans-serif; padding: 40px; background: #f5f5f5; }
+ body {
+        font-family: "Cairo", sans-serif;
+        direction: rtl;
+        text-align: right;
+        margin: 40px;
+      }
         .container { max-width: 1000px; margin: 0 auto; background: white; padding: 40px; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
-        .header { text-align: center; border-bottom: 3px solid #8b5cf6; padding-bottom: 20px; margin-bottom: 30px; }
+
+      .header {
+        border-bottom: 1px solid black;
+        border-radius: 6px;
+      }
+      .flex {
+        display: flex;
+      }
+      .justify-between {
+        justify-content: space-between;
+      }
+      .items-center {
+        align-items: center;
+      }
+      .mb-2 {
+        margin-bottom: 8px;
+      }
+      .gap-2 {
+        gap: 8px;
+      }
+      .grid {
+        display: grid;
+      }
+      .grid-cols-2 {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .text-sm {
+        font-size: 12px;
+      }
+      .text-lg {
+        font-size: 16px;
+        font-weight: bold;
+      }
+      .text-center {
+        text-align: center;
+      }
+      .text-xs {
+        font-size: 10px;
+      }
+      .green {
+        color: green;
+      }
+      .grey {
+        color: grey;
+      }
+      .text-3xl {
+        font-size: 24px;
+        font-weight: bold;
+      }
+      .text-2xl {
+        font-size: 23px;
+        font-weight: bold;
+      }
+      .justify-between {
+        justify-content: space-between;
+      }
+      .items-center {
+        align-items: center;
+      }
+      .items-center {
+        align-items: center;
+      }
+      .section-title {
+        font-size: 20px;
+        border-bottom: 2px solid #444;
+        margin-top: 35px;
+        margin-bottom: 10px;
+        padding-bottom: 5px;
+      }
+
         .company-name { font-size: 28px; font-weight: bold; color: #7c3aed; margin-bottom: 5px; }
         .report-title { font-size: 20px; color: #475569; margin-top: 10px; }
         table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
@@ -23,9 +100,28 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <div class="company-name">{{company.name}}</div>
+      <div class="section">
+      <div class="header mb-2 flex items-center justify-between" dir="rtl">
+        <!-- Company -->
+        <div class="grid grid-rows-3 items-baseline gap-2 text-right">
+          <span class="green text-3xl font-bold"> {{company.name}} </span>
+          <span class="text-2xl">{{company.name}} </span>
+        </div>
+
+        <!-- Logo -->
+        <div class="flex flex-col items-center">
+          <img src="{{company.logoUrl}}" style="width: 100px; height: 90px" />
+        </div>
+
+        <!-- Branch -->
+        <div class="grid grid-rows-4">
+          <div class="text-lg">{{company.address}}</div>
+          <div class="text-lg">{{company.city}}</div>
+          <div>تلفون: {{company.phone}}</div>
+        </div>
+      </div>
+    </div>
+        <div class="">
             <div class="report-title">📋 تقرير الجرد</div>
             <p style="margin-top: 10px; color: #64748b;">تاريخ: {{date}}</p>
         </div>
@@ -38,6 +134,7 @@
                     <th>المستودع</th>
                     <th>المخزون النظامي</th>
                     <th>المخزون الفعلي</th>
+                    <th>المخزون reserve</th>
                     <th>الفرق</th>
                     <th>آخر جرد</th>
                 </tr>
@@ -48,12 +145,13 @@
                     <td><strong>{{this.product}}</strong></td>
                     <td>{{this.sku}}</td>
                     <td>{{this.warehouse}}</td>
-                    <td>{{this.systemStock}}</td>
+                    <td>{{this.expectedStock}}</td>
                     <td><strong>{{this.actualStock}}</strong></td>
+                    <td>{{this.reserveStock}}</td>
                     <td class="{{#if (gt this.difference 0)}}diff-positive{{else if (lt this.difference 0)}}diff-negative{{else}}diff-zero{{/if}}">
                         {{this.difference}}
                     </td>
-                    <td>{{this.lastCount}}</td>
+                    <td>{{this.lastTake}}</td>
                 </tr>
                 {{/each}}
             </tbody>
@@ -62,7 +160,7 @@
         <div class="footer">
             <p>تم إنشاء هذا التقرير بواسطة نظام {{company.name}} | {{createby}}</p>
         </div>
-    </div>
+   
 </body>
 </html>
 

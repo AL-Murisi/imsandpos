@@ -86,9 +86,9 @@ export async function getCustomerById(
 }
 
 export async function Fetchcustomerbyname(searchQuery?: string) {
-  if (!searchQuery) return null;
-
   const combinedWhere: any = {
+    companyId: (await getSession())?.companyId,
+
     OR: [
       { name: { contains: searchQuery, mode: "insensitive" } },
       { phoneNumber: { contains: searchQuery, mode: "insensitive" } },
@@ -107,6 +107,8 @@ export async function Fetchcustomerbyname(searchQuery?: string) {
       city: true,
       balance: true,
     },
+    take: 10, // Limit to 10 results
+    orderBy: { name: "asc" },
   });
 
   if (!customer) return null;

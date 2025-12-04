@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, use } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,6 +33,7 @@ import { SelectField } from "@/components/common/selection";
 import { Calendar22 } from "@/components/common/DatePicker";
 import SearchInput from "@/components/common/searchlist";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Decimal } from "@prisma/client/runtime/library";
 
 const reports = [
   // Sales
@@ -161,20 +162,20 @@ const reports = [
     icon: "💸",
     description: "المصروفات التشغيلية",
   },
-  {
-    name: "تقرير الصندوق",
-    id: "cash-register",
-    type: "payments",
-    icon: "🏦",
-    description: "حركة النقدية",
-  },
-  {
-    name: "تقرير ضريبة المبيعات",
-    id: "tax",
-    type: "payments",
-    icon: "🧾",
-    description: "ضرائب المبيعات المحصلة",
-  },
+  // {
+  //   name: "تقرير الصندوق",
+  //   id: "cash-register",
+  //   type: "payments",
+  //   icon: "🏦",
+  //   description: "حركة النقدية",
+  // },
+  // {
+  //   name: "تقرير ضريبة المبيعات",
+  //   id: "tax",
+  //   type: "payments",
+  //   icon: "🧾",
+  //   description: "ضرائب المبيعات المحصلة",
+  // },
 
   // Customers
   {
@@ -239,7 +240,18 @@ const categories = [
   },
 ];
 
-export default function ReportsPage() {
+export default function ReportsPage({
+  users,
+}: {
+  users:
+    | {
+        id?: string;
+        name?: string;
+        phoneNumber?: string | null;
+        totalDebt?: number;
+      }[]
+    | null;
+}) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -289,7 +301,7 @@ export default function ReportsPage() {
         body: JSON.stringify({
           fromDate,
           toDate,
-          customerId: selectedCustomer?.value,
+          customerId: selectedCustomer?.id,
         }),
       });
 
@@ -381,14 +393,14 @@ export default function ReportsPage() {
                     <SearchInput
                       placeholder="ابحث عن العميل"
                       paramKey="customer"
-                      options={[]}
+                      options={users ?? []}
                       action={(user) => setSelectedCustomer(user)}
                     />
                     {selectedCustomer && (
                       <Card className="bg-muted/50">
                         <CardContent className="space-y-1 p-3 text-sm">
                           <p className="flex items-center gap-2">
-                            <strong>👤 العميل:</strong> {selectedCustomer.label}
+                            <strong>👤 العميل:</strong> {selectedCustomer.name}
                           </p>
                           <p className="flex items-center gap-2">
                             <strong>🆔 رقم العميل:</strong>{" "}

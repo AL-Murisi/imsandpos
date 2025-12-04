@@ -1,5 +1,9 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap"
+    rel="stylesheet"
+  />
   <head>
     <meta charset="UTF-8" />
     <title>تقرير الموردين</title>
@@ -10,10 +14,12 @@
         box-sizing: border-box;
       }
       body {
-        font-family: "Arial", sans-serif;
-        padding: 40px;
-        background: #f5f5f5;
+        font-family: "Cairo", sans-serif;
+        direction: rtl;
+        text-align: right;
+        margin: 40px;
       }
+
       .container {
         max-width: 1000px;
         margin: 0 auto;
@@ -21,12 +27,77 @@
         padding: 40px;
         box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
       }
+
       .header {
-        text-align: center;
-        border-bottom: 3px solid #06b6d4;
-        padding-bottom: 20px;
-        margin-bottom: 30px;
+        border-bottom: 1px solid black;
+        border-radius: 6px;
       }
+      .flex {
+        display: flex;
+      }
+      .justify-between {
+        justify-content: space-between;
+      }
+      .items-center {
+        align-items: center;
+      }
+      .mb-2 {
+        margin-bottom: 8px;
+      }
+      .gap-2 {
+        gap: 8px;
+      }
+      .grid {
+        display: grid;
+      }
+      .grid-cols-2 {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .text-sm {
+        font-size: 12px;
+      }
+      .text-lg {
+        font-size: 16px;
+        font-weight: bold;
+      }
+      .text-center {
+        text-align: center;
+      }
+      .text-xs {
+        font-size: 10px;
+      }
+      .green {
+        color: green;
+      }
+      .grey {
+        color: grey;
+      }
+      .text-3xl {
+        font-size: 24px;
+        font-weight: bold;
+      }
+      .text-2xl {
+        font-size: 23px;
+        font-weight: bold;
+      }
+      .justify-between {
+        justify-content: space-between;
+      }
+      .items-center {
+        align-items: center;
+      }
+      .items-center {
+        align-items: center;
+      }
+
+      .section-title {
+        font-size: 20px;
+        border-bottom: 2px solid #444;
+        margin-top: 35px;
+        margin-bottom: 10px;
+        padding-bottom: 5px;
+      }
+
       .company-name {
         font-size: 28px;
         font-weight: bold;
@@ -89,190 +160,61 @@
     </style>
   </head>
   <body>
-    <div class="container">
-      <div class="header">
-        <div class="company-name">{{company.name}}</div>
-        <div class="report-title">🏢 تقرير الموردين</div>
-      </div>
+    <div class="section">
+      <div class="header mb-2 flex items-center justify-between" dir="rtl">
+        <!-- Company -->
+        <div class="grid grid-rows-3 items-baseline gap-2 text-right">
+          <span class="green text-3xl font-bold"> {{company.name}} </span>
+          <span class="text-2xl">{{company.name}} </span>
+        </div>
 
-      <div class="summary-card">
-        <h3>إجمالي عدد الموردين</h3>
-        <p>{{totalSuppliers}}</p>
-      </div>
+        <!-- Logo -->
+        <div class="flex flex-col items-center">
+          <img src="{{company.logoUrl}}" style="width: 100px; height: 90px" />
+        </div>
 
-      <table>
-        <thead>
-          <tr>
-            <th>اسم المورد</th>
-            <th>رقم الهاتف</th>
-            <th>البريد الإلكتروني</th>
-            <th>الرصيد (ر.س)</th>
-            <th>عدد المشتريات</th>
-          </tr>
-        </thead>
-        <tbody>
-          {{#each suppliers}}
-          <tr>
-            <td><strong>{{this.name}}</strong></td>
-            <td>{{this.phone}}</td>
-            <td>{{this.email}}</td>
-            <td><strong>{{formatNumber this.balance}}</strong></td>
-            <td>{{this.purchasesCount}}</td>
-          </tr>
-          {{/each}}
-        </tbody>
-      </table>
-
-      <div class="footer">
-        <p>تم إنشاء هذا التقرير بواسطة نظام {{company.name}} | {{createby}}</p>
+        <!-- Branch -->
+        <div class="grid grid-rows-4">
+          <div class="text-lg">{{company.address}}</div>
+          <div class="text-lg">${company.city}</div>
+          <div>تلفون: {{company.phone}}</div>
+        </div>
       </div>
     </div>
-  </body>
-</html>
+    <div class="">
+      <div class="report-title">🏢 تقرير الموردين</div>
+    </div>
 
-<!-- ==================================================
-     SUPPLIER BALANCE TEMPLATE (supplier-balance-report.html)
-     ================================================== -->
-<!doctype html>
-<html lang="ar" dir="rtl">
-  <head>
-    <meta charset="UTF-8" />
-    <title>تقرير المبالغ المستحقة للموردين</title>
-    <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-      body {
-        font-family: "Arial", sans-serif;
-        padding: 40px;
-        background: #f5f5f5;
-      }
-      .container {
-        max-width: 1000px;
-        margin: 0 auto;
-        background: white;
-        padding: 40px;
-        box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-      }
-      .header {
-        text-align: center;
-        border-bottom: 3px solid #dc2626;
-        padding-bottom: 20px;
-        margin-bottom: 30px;
-      }
-      .company-name {
-        font-size: 28px;
-        font-weight: bold;
-        color: #b91c1c;
-        margin-bottom: 5px;
-      }
-      .report-title {
-        font-size: 20px;
-        color: #475569;
-        margin-top: 10px;
-      }
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 30px;
-      }
-      thead {
-        background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-        color: white;
-      }
-      th {
-        padding: 15px;
-        text-align: right;
-        font-weight: 600;
-        font-size: 14px;
-      }
-      td {
-        padding: 12px 15px;
-        border-bottom: 1px solid #e2e8f0;
-        font-size: 13px;
-      }
-      tbody tr:hover {
-        background: #fef2f2;
-      }
-      .total-row {
-        background: #fee2e2 !important;
-        font-weight: bold;
-        font-size: 16px;
-      }
-      .alert-box {
-        background: #fef2f2;
-        border-right: 4px solid #dc2626;
-        padding: 15px;
-        margin-bottom: 30px;
-        border-radius: 8px;
-      }
-      .alert-box h3 {
-        color: #dc2626;
-        margin-bottom: 10px;
-        font-size: 18px;
-      }
-      .alert-box p {
-        color: #991b1b;
-        font-size: 24px;
-        font-weight: bold;
-      }
-      .footer {
-        text-align: center;
-        color: #94a3b8;
-        font-size: 12px;
-        margin-top: 30px;
-        padding-top: 20px;
-        border-top: 1px solid #e2e8f0;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <div class="header">
-        <div class="company-name">{{company.name}}</div>
-        <div class="report-title">💳 تقرير المبالغ المستحقة للموردين</div>
-      </div>
+    <div class="summary-card">
+      <h3>إجمالي عدد الموردين</h3>
+      <p>{{totalSuppliers}}</p>
+    </div>
 
-      <div class="alert-box">
-        <h3>⚠️ إجمالي المبالغ المستحقة</h3>
-        <p>{{formatNumber totalBalance}} ر.س</p>
-      </div>
+    <table>
+      <thead>
+        <tr>
+          <th>اسم المورد</th>
+          <th>رقم الهاتف</th>
+          <th>البريد الإلكتروني</th>
+          <th>الرصيد (ر.س)</th>
+          <th>عدد المشتريات</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each suppliers}}
+        <tr>
+          <td><strong>{{this.name}}</strong></td>
+          <td>{{this.phone}}</td>
+          <td>{{this.email}}</td>
+          <td><strong>{{formatNumber this.balance}}</strong></td>
+          <td>{{this.purchaseCount}}</td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
 
-      <table>
-        <thead>
-          <tr>
-            <th>اسم المورد</th>
-            <th>رقم الهاتف</th>
-            <th>الرصيد المستحق (ر.س)</th>
-            <th>عدد المشتريات</th>
-          </tr>
-        </thead>
-        <tbody>
-          {{#each suppliers}}
-          <tr>
-            <td><strong>{{this.name}}</strong></td>
-            <td>{{this.phone}}</td>
-            <td>
-              <strong style="color: #dc2626"
-                >{{formatNumber this.balance}}</strong
-              >
-            </td>
-            <td>{{this.purchasesCount}}</td>
-          </tr>
-          {{/each}}
-          <tr class="total-row">
-            <td colspan="2">الإجمالي الكلي</td>
-            <td><strong>{{formatNumber totalBalance}} ر.س</strong></td>
-            <td>-</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div class="footer">
-        <p>تم إنشاء هذا التقرير بواسطة نظام {{company.name}} | {{createby}}</p>
-      </div>
+    <div class="footer">
+      <p>تم إنشاء هذا التقرير بواسطة نظام {{company.name}} | {{createby}}</p>
     </div>
   </body>
 </html>

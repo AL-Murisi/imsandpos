@@ -99,13 +99,27 @@ export default function SearchInput({
             <CommandEmpty>لا توجد نتائج</CommandEmpty>
             <CommandGroup>
               {filteredOptions.map((opt) => (
+                // <CommandItem
+                //   key={opt.id}
+                //   value={opt.name}
+                //   onSelect={() => {
+                //     action(opt);
+                //     setOpen(false);
+                //     setQuery(opt.name ?? "");
+                //   }}
+                // >
                 <CommandItem
                   key={opt.id}
                   value={opt.name}
                   onSelect={() => {
                     action(opt);
+
+                    // ❌ prevent re-fetching if value already exists
+                    if (!options.some((o) => o.name === opt.name)) {
+                      setQuery(opt.name ?? "");
+                    }
+
                     setOpen(false);
-                    setQuery(opt.name ?? "");
                   }}
                 >
                   {opt.name}
