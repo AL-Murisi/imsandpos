@@ -10,7 +10,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
-import { updatedCustomer } from "@/app/actions/customers";
+import { updatedCustomer } from "@/lib/actions/customers";
 import { useEffect, useState } from "react";
 import Dailogreuse from "@/components/common/dailogreuse";
 

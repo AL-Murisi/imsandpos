@@ -1,4 +1,4 @@
-import { getSupplierStatement } from "@/app/actions/test";
+import { getSupplierStatement } from "@/lib/actions/test";
 import { getSession } from "@/lib/session";
 import SupplierStatement from "./SupplierStatement";
 import { ScrollArea } from "@/components/ui/scroll-area";

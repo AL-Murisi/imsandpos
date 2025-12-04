@@ -1,4 +1,4 @@
-import { getCustomerStatement } from "@/app/actions/test";
+import { getCustomerStatement } from "@/lib/actions/test";
 import { getSession } from "@/lib/session";
 import CustomerStatement from "./ccustomerStatment";
 import { ScrollArea } from "@/components/ui/scroll-area";

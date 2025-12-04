@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import Dailogreuse from "@/components/common/dailogreuse";
-import { processReturn } from "@/app/actions/cashier";
+import { processReturn } from "@/lib/actions/cashier";
 import { useAuth } from "@/lib/context/AuthContext";
 import { AlertCircle } from "lucide-react";
 import { SelectField } from "@/components/common/selectproduct";

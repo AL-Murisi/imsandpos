@@ -8,7 +8,7 @@ import CustomDialog from "@/components/common/Dailog";
 import { Calendar22 } from "@/components/common/DatePicker";
 import { Plus } from "lucide-react";
 
-import CustomerForm from "./debtSell/Newcustomer";
+import CustomerForm from "./_components/Newcustomer";
 import { Button } from "@/components/ui/button";
 
 export default function Loading() {

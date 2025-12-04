@@ -1,0 +1,69 @@
+     ================================================== -->
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>تقرير الجرد</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; padding: 40px; background: #f5f5f5; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 40px; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
+        .header { text-align: center; border-bottom: 3px solid #8b5cf6; padding-bottom: 20px; margin-bottom: 30px; }
+        .company-name { font-size: 28px; font-weight: bold; color: #7c3aed; margin-bottom: 5px; }
+        .report-title { font-size: 20px; color: #475569; margin-top: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+        thead { background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; }
+        th { padding: 15px; text-align: right; font-weight: 600; font-size: 14px; }
+        td { padding: 12px 15px; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
+        tbody tr:hover { background: #faf5ff; }
+        .diff-positive { color: #10b981; font-weight: bold; }
+        .diff-negative { color: #ef4444; font-weight: bold; }
+        .diff-zero { color: #64748b; }
+        .footer { text-align: center; color: #94a3b8; font-size: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="company-name">{{company.name}}</div>
+            <div class="report-title">📋 تقرير الجرد</div>
+            <p style="margin-top: 10px; color: #64748b;">تاريخ: {{date}}</p>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>المنتج</th>
+                    <th>SKU</th>
+                    <th>المستودع</th>
+                    <th>المخزون النظامي</th>
+                    <th>المخزون الفعلي</th>
+                    <th>الفرق</th>
+                    <th>آخر جرد</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each stockTake}}
+                <tr>
+                    <td><strong>{{this.product}}</strong></td>
+                    <td>{{this.sku}}</td>
+                    <td>{{this.warehouse}}</td>
+                    <td>{{this.systemStock}}</td>
+                    <td><strong>{{this.actualStock}}</strong></td>
+                    <td class="{{#if (gt this.difference 0)}}diff-positive{{else if (lt this.difference 0)}}diff-negative{{else}}diff-zero{{/if}}">
+                        {{this.difference}}
+                    </td>
+                    <td>{{this.lastCount}}</td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+
+        <div class="footer">
+            <p>تم إنشاء هذا التقرير بواسطة نظام {{company.name}} | {{createby}}</p>
+        </div>
+    </div>
+</body>
+</html>
+
+<!--

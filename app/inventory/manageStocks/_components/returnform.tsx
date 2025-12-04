@@ -1,10 +1,10 @@
 // "use client";
 
-// import { fetchAllFormData } from "@/app/actions/roles";
+// import { fetchAllFormData } from "@/lib/actions/roles";
 // import {
 //   getPurchaseReturnData,
 //   processPurchaseReturn,
-// } from "@/app/actions/warehouse";
+// } from "@/lib/actions/warehouse";
 // import Dailogreuse from "@/components/common/dailogreuse";
 // import { SelectField } from "@/components/common/selectproduct";
 // import { Button } from "@/components/ui/button";
@@ -487,11 +487,11 @@
 // }
 "use client";
 
-import { fetchAllFormData } from "@/app/actions/roles";
+import { fetchAllFormData } from "@/lib/actions/roles";
 import {
   getPurchaseReturnData,
   processPurchaseReturn,
-} from "@/app/actions/warehouse";
+} from "@/lib/actions/warehouse";
 import Dailogreuse from "@/components/common/dailogreuse";
 import { SelectField } from "@/components/common/selectproduct";
 import { Button } from "@/components/ui/button";

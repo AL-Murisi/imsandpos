@@ -33,35 +33,35 @@ export default function Invonterynav() {
   const items = [
     {
       title: " المخزون",
-      url: "/inventory/manageinvetory",
-      icon: <FolderKanban className="w-4 h-4 text-orange-500" />,
+      url: "/inventory/manageStocks",
+      icon: <FolderKanban className="h-4 w-4 text-orange-500" />,
     },
     {
       title: "المنتجات",
       url: "/inventory/products",
-      icon: <Package className="w-4 h-4 text-teal-600" />,
+      icon: <Package className="h-4 w-4 text-teal-600" />,
     },
     {
       title: "الفئات",
       url: "/inventory/categories",
-      icon: <FolderKanban className="w-4 h-4 text-orange-500" />,
+      icon: <FolderKanban className="h-4 w-4 text-orange-500" />,
     },
 
     {
       title: "الموردون",
       url: "/inventory/suppliers",
-      icon: <Users className="w-4 h-4 text-purple-500" />,
+      icon: <Users className="h-4 w-4 text-purple-500" />,
     },
     {
       title: "المخازن",
       url: "/inventory/warehouses",
-      icon: <Building2 className="w-4 h-4 text-pink-500" />,
+      icon: <Building2 className="h-4 w-4 text-pink-500" />,
     },
   ];
 
   return (
     <SidebarGroupContent>
-      <SidebarGroupLabel className=" font-bold text-[15px] dark:text-foreground text-background ">
+      <SidebarGroupLabel className="dark:text-foreground text-background text-[15px] font-bold">
         المخزون
       </SidebarGroupLabel>
       <SidebarMenu>

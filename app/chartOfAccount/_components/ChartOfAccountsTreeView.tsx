@@ -18,7 +18,7 @@ import dynamic from "next/dynamic";
 import {
   toggleAccountStatus,
   deleteAccount,
-} from "@/app/actions/chartOfaccounts";
+} from "@/lib/actions/chartOfaccounts";
 import { toast } from "sonner";
 
 const AccountFormDialog = dynamic(() => import("./AccountFormDialog"), {

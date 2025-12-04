@@ -3,8 +3,8 @@ import JournalEntriesTable from "./_components/table";
 import {
   getExpenseCategories,
   getJournalEntries,
-} from "../actions/Journal Entry";
-import { getFiscalYears } from "../actions/fiscalYear";
+} from "@/lib/actions/Journal Entry";
+import { getFiscalYears } from "@/lib/actions/fiscalYear";
 
 type JournalProps = {
   searchParams: Promise<{

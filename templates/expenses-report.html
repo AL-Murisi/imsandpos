@@ -1,0 +1,145 @@
+================================================== -->
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <title>تقرير المصروفات</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: "Arial", sans-serif;
+        padding: 40px;
+        background: #f5f5f5;
+      }
+      .container {
+        max-width: 1000px;
+        margin: 0 auto;
+        background: white;
+        padding: 40px;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+      }
+      .header {
+        text-align: center;
+        border-bottom: 3px solid #ef4444;
+        padding-bottom: 20px;
+        margin-bottom: 30px;
+      }
+      .company-name {
+        font-size: 28px;
+        font-weight: bold;
+        color: #dc2626;
+        margin-bottom: 5px;
+      }
+      .report-title {
+        font-size: 20px;
+        color: #475569;
+        margin-top: 10px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 30px;
+      }
+      thead {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+      }
+      th {
+        padding: 15px;
+        text-align: right;
+        font-weight: 600;
+        font-size: 14px;
+      }
+      td {
+        padding: 12px 15px;
+        border-bottom: 1px solid #e2e8f0;
+        font-size: 13px;
+      }
+      tbody tr:hover {
+        background: #fef2f2;
+      }
+      .total-row {
+        background: #fee2e2 !important;
+        font-weight: bold;
+        font-size: 15px;
+      }
+      .summary-card {
+        background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
+        color: white;
+        padding: 25px;
+        border-radius: 10px;
+        text-align: center;
+        margin-bottom: 30px;
+      }
+      .summary-card h3 {
+        font-size: 16px;
+        margin-bottom: 10px;
+        opacity: 0.9;
+      }
+      .summary-card p {
+        font-size: 36px;
+        font-weight: bold;
+      }
+      .footer {
+        text-align: center;
+        color: #94a3b8;
+        font-size: 12px;
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #e2e8f0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <div class="company-name">{{company.name}}</div>
+        <div class="report-title">💸 تقرير المصروفات</div>
+      </div>
+
+      <div class="summary-card">
+        <h3>إجمالي المصروفات</h3>
+        <p>{{formatNumber totalExpenses}} ر.س</p>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>الفئة</th>
+            <th>الوصف</th>
+            <th>المبلغ (ر.س)</th>
+            <th>المستخدم</th>
+            <th>التاريخ</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each expenses}}
+          <tr>
+            <td><strong>{{this.category}}</strong></td>
+            <td>{{this.description}}</td>
+            <td><strong>{{formatNumber this.amount}}</strong></td>
+            <td>{{this.user}}</td>
+            <td>{{this.date}}</td>
+          </tr>
+          {{/each}}
+          <tr class="total-row">
+            <td colspan="2">الإجمالي الكلي</td>
+            <td><strong>{{formatNumber totalExpenses}} ر.س</strong></td>
+            <td colspan="2">-</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="footer">
+        <p>
+          تم إنشاء هذا التقرير بواسطة نظام {{company.name}} | {{createby}} | من
+          {{from}} إلى {{to}}
+        </p>
+      </div>
+    </div>
+  </body>
+</html>

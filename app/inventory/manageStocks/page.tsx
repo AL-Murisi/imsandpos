@@ -1,12 +1,12 @@
-import { fetchAllFormData } from "@/app/actions/roles";
-import { getInventoryById, getStockMovements } from "@/app/actions/warehouse";
+import { fetchAllFormData } from "@/lib/actions/roles";
+import { getInventoryById, getStockMovements } from "@/lib/actions/warehouse";
 import { TabsContent } from "@/components/ui/tabs";
 import { ParsedSort } from "@/hooks/sort";
 import { Prisma } from "@prisma/client";
 import { SortingState } from "@tanstack/react-table";
 import { getSession } from "@/lib/session";
 import InventoryTabs from "./_components/tabs";
-import { getPurchasesByCompany } from "@/app/actions/suppliers";
+import { getPurchasesByCompany } from "@/lib/actions/suppliers";
 
 type DashboardProps = {
   searchParams: Promise<{
@@ -25,7 +25,7 @@ type DashboardProps = {
   }>;
 };
 
-export default async function Manageinvetory({ searchParams }: DashboardProps) {
+export default async function manageStocks({ searchParams }: DashboardProps) {
   const params = await searchParams;
   const {
     from,

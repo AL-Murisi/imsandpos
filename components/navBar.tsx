@@ -1,6 +1,6 @@
 // "use client";
 
-// import { getCompany } from "@/app/actions/createcompnayacc";
+// import { getCompany } from "@/lib/actions/createcompnayacc";
 // import { useAuth } from "@/lib/context/AuthContext";
 // import React, { useEffect, useState } from "react";
 

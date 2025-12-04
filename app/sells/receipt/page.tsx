@@ -7,7 +7,7 @@ import { useSearchParams } from "next/navigation";
 import { Printer } from "lucide-react";
 import { useFormatter } from "@/hooks/usePrice";
 import { useAuth } from "@/lib/context/AuthContext";
-import { getCompany } from "@/app/actions/createcompnayacc";
+import { getCompany } from "@/lib/actions/createcompnayacc";
 export interface ReceiptItem {
   id: string;
   name: string;

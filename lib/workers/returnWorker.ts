@@ -2,7 +2,7 @@
 import { Worker } from "bullmq";
 import IORedis from "ioredis";
 import prisma from "@/lib/prisma";
-import { processReturn } from "@/app/actions/cashier";
+import { processReturn } from "@/lib/actions/cashier";
 
 const connection = new IORedis(process.env.REDIS_URL!);
 

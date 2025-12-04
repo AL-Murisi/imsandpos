@@ -1,6 +1,6 @@
 "use client";
 
-import { FetchCustomerDebtReport } from "@/app/actions/sells";
+import { FetchCustomerDebtReport } from "@/lib/actions/sells";
 import Dailogreuse from "@/components/common/dailogreuse";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
@@ -18,7 +18,7 @@ import { useAuth } from "@/lib/context/AuthContext";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { updateSalesBulk } from "@/app/actions/debtSells";
+import { updateSalesBulk } from "@/lib/actions/debtSells";
 import { Label } from "@/components/ui/label";
 import { SelectField } from "@/components/common/selectproduct";
 
@@ -56,7 +56,7 @@ export default function DebtReport({
   if (!user) return null;
 
   useEffect(() => {
-    if (!customerID) return;
+    if (!open) return;
     const handleFetch = async () => {
       setLoading(true);
       const sales = await FetchCustomerDebtReport(customerID, user.companyId);
@@ -84,7 +84,7 @@ export default function DebtReport({
       setLoading(false);
     };
     handleFetch();
-  }, [open, user?.companyId, customerID]);
+  }, [open]);
   // Add a derived state for "all selected"
   const allSelected = debts.length > 0 && selectedIds.length === debts.length;
 
@@ -263,7 +263,7 @@ export default function DebtReport({
             <Button
               onClick={onSubmit}
               type="submit"
-              disabled={isSubmitting && loading}
+              disabled={isSubmitting || loading}
             >
               {isSubmitting ? "جاري الحفظ..." : " تأكيد الدفع"}
             </Button>

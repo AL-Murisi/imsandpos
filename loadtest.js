@@ -12,7 +12,7 @@ const routes = [
   "/dashboard",
   "/inventory/dashboardUser",
   "/users",
-  "/inventory/manageinvetory",
+  "/inventory/manageStocks",
   "/inventory/categories",
   "/inventory/suppliers",
   "/inventory/warehouses",
@@ -34,7 +34,7 @@ const routes = [
 const weightedRoutes = [
   { url: "/dashboard", weight: 0.2 },
   { url: "/sells", weight: 0.2 },
-  { url: "/inventory/manageinvetory", weight: 0.1 },
+  { url: "/inventory/manageStocks", weight: 0.1 },
   { url: "/products", weight: 0.1 },
   { url: "/debt", weight: 0.1 },
   { url: "/users", weight: 0.05 },

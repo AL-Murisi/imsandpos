@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Eye } from "lucide-react";
 import Dailogreuse from "@/components/common/dailogreuse";
-import { setActiveFiscalYear } from "@/app/actions/fiscalYear";
+import { setActiveFiscalYear } from "@/lib/actions/fiscalYear";
 export default function FiscalYearDetailsDialog({
   fiscalYear,
 }: {

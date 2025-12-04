@@ -1,11 +1,11 @@
-import { fetechUser } from "../actions/users";
+import { fetechUser } from "@/lib/actions/users";
 
-import { getActivityLogs } from "../actions/activitylogs";
+import { getActivityLogs } from "@/lib/actions/activitylogs";
 
 import { getSession } from "@/lib/session";
-import { fetchRoles, fetchRolesForSelect } from "../actions/roles";
+import { fetchRoles, fetchRolesForSelect } from "@/lib/actions/roles";
 import UserTab from "./_compoent/tabs";
-import { getCompany } from "../actions/createcompnayacc";
+import { getCompany } from "@/lib/actions/createcompnayacc";
 
 type Users = {
   searchParams: Promise<{

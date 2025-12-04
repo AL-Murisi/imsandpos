@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { CategorySchema } from "@/lib/zod";
 import { z } from "zod";
-import { deleteCategory, toggleCategoryActive } from "@/app/actions/category";
+import { deleteCategory, toggleCategoryActive } from "@/lib/actions/category";
 import EditCategoryForm from "./editForm";
 
 // 🔽 Sortable Header Component

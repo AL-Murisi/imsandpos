@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState } from "react";
 import { currencyConfig } from "@/currency/config";
-import { setCurrency } from "@/app/actions/currency"; // ✅ Server Action
+import { setCurrency } from "@/lib/actions/currency"; // ✅ Server Action
 
 type CurrencyKey = keyof typeof currencyConfig;
 

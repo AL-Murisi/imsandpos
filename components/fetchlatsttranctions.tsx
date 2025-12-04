@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useFormatter } from "@/hooks/usePrice";
-import { getLatestJournalEntries } from "@/app/actions/Journal Entry";
+import { getLatestJournalEntries } from "@/lib/actions/Journal Entry";
 
 interface Transaction {
   id: string;

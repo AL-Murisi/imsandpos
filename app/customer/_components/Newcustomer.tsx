@@ -1,6 +1,6 @@
 "use client";
 
-import { createCutomer } from "@/app/actions/customers";
+import { createCutomer } from "@/lib/actions/customers";
 import Dailogreuse from "@/components/common/dailogreuse";
 import { SelectField } from "@/components/common/selectproduct";
 import { Button } from "@/components/ui/button";

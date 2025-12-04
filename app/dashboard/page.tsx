@@ -1,11 +1,11 @@
-// import { fetchDashboardData } from "@/app/actions/dashboard";
+// import { fetchDashboardData } from "@/lib/actions/dashboard";
 // import { ScrollArea } from "@/components/ui/scroll-area";
 // import { revalidateTag } from "next/cache";
 // import SectionCards from "./_components/cardsection";
 // import DashboardContentClient from "./_components/DashboardContent";
 // import { verifySession } from "@/lib/dal";
 // import { redirect } from "next/navigation";
-// import { fetchAllFormData } from "../actions/roles";
+// import { fetchAllFormData } from "@/lib/actions/roles";
 
 // import { getSession } from "@/lib/session";
 
@@ -131,8 +131,8 @@ import {
   getSummaryCards,
   getProductStats,
   getUserCount,
-} from "../actions/dashboard";
-import { fetchAllFormData } from "../actions/roles";
+} from "@/lib/actions/dashboard";
+import { fetchAllFormData } from "@/lib/actions/roles";
 import prisma from "@/lib/prisma";
 
 interface DashboardProps {

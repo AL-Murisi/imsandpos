@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <title>تقرير المنتجات النافذة من المخزون</title>
+
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      body {
+        font-family: "Cairo", sans-serif;
+        direction: rtl;
+        text-align: right;
+        margin: 40px;
+        background: #f8f9fa;
+        color: #333;
+      }
+
+      .header {
+        border-bottom: 1px solid black;
+        border-radius: 6px;
+      }
+      .section-title {
+        background: #d35400;
+        color: white;
+        padding: 10px;
+        font-size: 20px;
+        border-radius: 5px;
+        margin-top: 20px;
+        margin-bottom: 15px;
+      }
+      .flex {
+        display: flex;
+      }
+      .justify-between {
+        justify-content: space-between;
+      }
+      .items-center {
+        align-items: center;
+      }
+      .mb-2 {
+        margin-bottom: 8px;
+      }
+      .gap-2 {
+        gap: 8px;
+      }
+      .grid {
+        display: grid;
+      }
+      .grid-cols-2 {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .text-sm {
+        font-size: 12px;
+      }
+      .text-lg {
+        font-size: 16px;
+        font-weight: bold;
+      }
+      .text-center {
+        text-align: center;
+      }
+      .text-xs {
+        font-size: 10px;
+      }
+      .green {
+        color: green;
+      }
+      .grey {
+        color: grey;
+      }
+      .text-3xl {
+        font-size: 24px;
+        font-weight: bold;
+      }
+      .text-2xl {
+        font-size: 23px;
+        font-weight: bold;
+      }
+      .justify-between {
+        justify-content: space-between;
+      }
+      .items-center {
+        align-items: center;
+      }
+      .items-center {
+        align-items: center;
+      }
+      .header {
+        border-bottom: 1px solid black;
+      }
+      .header h1 {
+        font-size: 28px;
+        color: #2c3e50;
+        margin-bottom: 5px;
+      }
+      .header h3 {
+        font-size: 18px;
+        color: #34495e;
+        margin-bottom: 3px;
+      }
+      .header p {
+        font-size: 16px;
+        color: #555;
+      }
+      .section-title {
+        font-size: 20px;
+        background: #e74c3c;
+        color: #fff;
+        padding: 8px 12px;
+        border-radius: 5px;
+        margin-top: 30px;
+        margin-bottom: 10px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 25px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+      }
+      table th,
+      table td {
+        padding: 10px;
+        border: 1px solid #ddd;
+        font-size: 14px;
+        text-align: center;
+      }
+      table th {
+        background: #e67e22;
+        color: #fff;
+      }
+
+      .zero {
+        background: #ffcccc;
+        font-weight: bold;
+        color: #c0392b;
+      }
+      .low {
+        background: #fff3cd;
+        font-weight: bold;
+        color: #d68910;
+      }
+
+      .footer {
+        margin-top: 30px;
+        text-align: center;
+        font-size: 14px;
+        color: #666;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="section">
+      <div class="header mb-2 flex items-center justify-between" dir="rtl">
+        <!-- Company -->
+        <div class="grid grid-rows-3 items-baseline gap-2 text-right">
+          <span class="green text-3xl font-bold"> {{company.name}} </span>
+          <span class="text-2xl">{{company.name}} </span>
+        </div>
+
+        <!-- Logo -->
+        <div class="flex flex-col items-center">
+          <img src="{{company.logoUrl}}" style="width: 100px; height: 90px" />
+        </div>
+
+        <!-- Branch -->
+        <div class="grid grid-rows-4">
+          <div class="text-lg">{{company.address}}</div>
+          <div class="text-lg">{{company.city}}</div>
+          <div>تلفون: {{company.phone}}</div>
+        </div>
+      </div>
+    </div>
+    <div class="section-title">تقرير المنتجات النافذة من المخزون</div>
+    <table>
+      <thead>
+        <tr>
+          <th>المنتج</th>
+          <th>الكمية</th>
+          <th>الحد الأدنى</th>
+          <th>المخزن</th>
+          <th>الحالة</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {{#each lowStockRecords}}
+        <tr class="{{#if (eq stockQuantity 0)}}zero{{else}}low{{/if}}">
+          <td>{{productname}}</td>
+          <td>{{stock_quantity}}</td>
+          <td>{{reorder_level}}</td>
+          <td>{{warehousename}}</td>
+
+          <td>
+            {{#if (eq stock_quantity 0)}} غير متوفر {{else if (lt stock_quantity
+            reorder_level)}} كمية منخفضة {{else}} - {{/if}}
+          </td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+    <div class="footer">
+      المستخدم: {{createby}} <br />
+      تم إنشاء هذا التقرير بواسطة نظام إدارة المخزون والمحاسبة.
+    </div>
+  </body>
+</html>

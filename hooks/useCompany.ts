@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { getCompany } from "@/app/actions/createcompnayacc";
+import { getCompany } from "@/lib/actions/createcompnayacc";
 import { useAuth } from "@/lib/context/AuthContext";
 
 export type Company =

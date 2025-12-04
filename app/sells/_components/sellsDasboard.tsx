@@ -14,12 +14,6 @@ const DebtSells = dynamic(() => import("./table"), {
   loading: () => <TableSkeleton />,
 });
 interface SellsDashboardClientProps {
-  user: {
-    id: string | null;
-    name: string | null;
-    email: string | null;
-    role: string | null; // "admin" | "cashier"
-  };
   debtSales: any; // Use proper types from your FetchDebtSales
   salesSummary: any; // Define a type for your sales summary
   productStats: any; // Define a type for your product stats
@@ -28,7 +22,6 @@ interface SellsDashboardClientProps {
 }
 
 export default function SellsDashboardClient({
-  user,
   debtSales,
   salesSummary,
   productStats,
@@ -36,11 +29,6 @@ export default function SellsDashboardClient({
   recentSales,
 }: SellsDashboardClientProps) {
   const router = useRouter();
-
-  // Function to refresh data, potentially after an action like payment update
-  const handleRefresh = () => {
-    router.refresh(); // Triggers a re-fetch of data for the current route
-  };
 
   return (
     <section className="space-y-6">

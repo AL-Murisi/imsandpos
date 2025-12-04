@@ -23,7 +23,7 @@ type ProductClientProps = {
   };
 };
 
-export default function ManageinvetoryClient({
+export default function ManageStocksClient({
   products,
   total,
   formData,

@@ -4,7 +4,7 @@ import {
   createFiscalYear,
   getFiscalYears,
   setActiveFiscalYear,
-} from "@/app/actions/fiscalYear";
+} from "@/lib/actions/fiscalYear";
 import { DataTable } from "@/components/common/test";
 import { fiscalYearColumns } from "./columns";
 import { useTablePrams } from "@/hooks/useTableParams";

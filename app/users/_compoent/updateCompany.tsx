@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { Building2, Upload, X } from "lucide-react";
-import { updateCompany } from "@/app/actions/createcompnayacc";
+import { updateCompany } from "@/lib/actions/createcompnayacc";
 import { useAuth } from "@/lib/context/AuthContext";
 import { createClient } from "@supabase/supabase-js";
 import { FormValues, UpdateCompanySchema } from "@/lib/zod";

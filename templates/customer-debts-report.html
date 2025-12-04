@@ -1,0 +1,146 @@
+================================================== -->
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <title>تقرير ديون العملاء</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: "Arial", sans-serif;
+        padding: 40px;
+        background: #f5f5f5;
+      }
+      .container {
+        max-width: 1000px;
+        margin: 0 auto;
+        background: white;
+        padding: 40px;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+      }
+      .header {
+        text-align: center;
+        border-bottom: 3px solid #ef4444;
+        padding-bottom: 20px;
+        margin-bottom: 30px;
+      }
+      .company-name {
+        font-size: 28px;
+        font-weight: bold;
+        color: #dc2626;
+        margin-bottom: 5px;
+      }
+      .report-title {
+        font-size: 20px;
+        color: #475569;
+        margin-top: 10px;
+      }
+      .alert-box {
+        background: #fef2f2;
+        border-right: 4px solid #ef4444;
+        padding: 20px;
+        margin-bottom: 30px;
+        border-radius: 8px;
+        text-align: center;
+      }
+      .alert-box h3 {
+        color: #dc2626;
+        margin-bottom: 10px;
+        font-size: 18px;
+      }
+      .alert-box p {
+        color: #991b1b;
+        font-size: 32px;
+        font-weight: bold;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 30px;
+      }
+      thead {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+      }
+      th {
+        padding: 15px;
+        text-align: right;
+        font-weight: 600;
+        font-size: 14px;
+      }
+      td {
+        padding: 12px 15px;
+        border-bottom: 1px solid #e2e8f0;
+        font-size: 13px;
+      }
+      tbody tr:hover {
+        background: #fef2f2;
+      }
+      .total-row {
+        background: #fee2e2 !important;
+        font-weight: bold;
+        font-size: 16px;
+      }
+      .high-debt {
+        background: #fee2e2;
+      }
+      .footer {
+        text-align: center;
+        color: #94a3b8;
+        font-size: 12px;
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #e2e8f0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <div class="company-name">{{company.name}}</div>
+        <div class="report-title">📉 تقرير ديون العملاء</div>
+      </div>
+
+      <div class="alert-box">
+        <h3>⚠️ إجمالي الديون المستحقة</h3>
+        <p>{{formatNumber totalDebt}} ر.س</p>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>اسم العميل</th>
+            <th>رقم الهاتف</th>
+            <th>الدين المستحق (ر.س)</th>
+            <th>آخر شراء</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each customers}}
+          <tr class="{{#if (gt this.debt 1000)}}high-debt{{/if}}">
+            <td><strong>{{this.name}}</strong></td>
+            <td>{{this.phone}}</td>
+            <td>
+              <strong style="color: #dc2626">{{formatNumber this.debt}}</strong>
+            </td>
+            <td>{{this.lastPurchase}}</td>
+          </tr>
+          {{/each}}
+          <tr class="total-row">
+            <td colspan="2">الإجمالي الكلي</td>
+            <td><strong>{{formatNumber totalDebt}} ر.س</strong></td>
+            <td>-</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="footer">
+        <p>تم إنشاء هذا التقرير بواسطة نظام {{company.name}} | {{createby}}</p>
+      </div>
+    </div>
+  </body>
+</html>

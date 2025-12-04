@@ -3,11 +3,11 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/context/AuthContext";
 import { useCompany } from "@/hooks/useCompany";
-import { getCustomerStatement } from "@/app/actions/test";
+import { getCustomerStatement } from "@/lib/actions/test";
 import { Calendar22 } from "@/components/common/DatePicker";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import CustomerStatementPrint from "@/app/customer/debtSell/[id]/_components/CustonerStatmentprint";
 import { Card } from "@/components/ui/card";
+import CustomerStatementPrint from "./_components/CustonerStatmentprint";
 type Company =
   | {
       id: string;

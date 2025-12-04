@@ -1,4 +1,4 @@
-import { getBalanceSheet } from "../actions/Journal Entry";
+import { getBalanceSheet } from "@/lib/actions/Journal Entry";
 import BalanceSheet from "./BalanceSheet";
 
 type sheetProps = {

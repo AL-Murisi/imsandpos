@@ -232,7 +232,7 @@ export async function createCutomer(form: createCusomer, companyId: string) {
       },
     });
     revalidatePath("/customer");
-    createCustomerJournalEnteries({
+    createcreateCutomerJournalEntriesWithRetry({
       customerId: customer.id,
       companyId,
       outstandingBalance,
@@ -247,6 +247,49 @@ export async function createCutomer(form: createCusomer, companyId: string) {
     throw error;
   }
 }
+async function createcreateCutomerJournalEntriesWithRetry(
+  params: {
+    customerId: string;
+    companyId: string;
+    outstandingBalance?: number;
+    balance?: number;
+    createdBy: string;
+  },
+  maxRetries = 4,
+  retryDelay = 1000,
+) {
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(
+        `📝 Creating createCutomer journal entries (attempt ${attempt}/${maxRetries})...`,
+      );
+      await createCustomerJournalEnteries(params);
+      console.log(
+        `✅ createCutomer journal entries created successfully on attempt ${attempt}`,
+      );
+      return;
+    } catch (error: any) {
+      lastError = error;
+      console.error(
+        `❌ Purchase journal entries attempt ${attempt}/${maxRetries} failed:`,
+        error.message,
+      );
+
+      if (attempt < maxRetries) {
+        const waitTime = retryDelay * Math.pow(2, attempt - 1);
+        console.log(`⏳ Retrying in ${waitTime}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
+      }
+    }
+  }
+
+  throw new Error(
+    `Failed to create purchase journal entries after ${maxRetries} attempts. Last error: ${lastError?.message}`,
+  );
+}
+
 export async function createCustomerJournalEnteries({
   customerId,
   companyId,

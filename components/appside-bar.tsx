@@ -121,7 +121,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       subItems: [
         {
           title: t("manageInventory"),
-          url: "/inventory/manageinvetory",
+          url: "/inventory/manageStocks",
           icon: <Package className="h-4 w-4 text-green-600" />,
           roles: ["admin", "manager_wh"],
         },
@@ -418,33 +418,24 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               </SidebarMenu>
             </SidebarGroupContent>
             <SidebarGroupContent>
-              <SidebarMenu>
+              <SidebarMenu className="flex gap-3">
                 {/* Logout */}
                 {/* Language */}
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild className="hover:bg-orange-300/20">
-                    <div className="flex items-center gap-2 hover:bg-orange-300/20">
-                      <Globe className="h-5 w-5 text-blue-400" />
-                      <LocaleSwitcher />
-                    </div>
+                    <LocaleSwitcher />
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 {/* Currency */}
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild className="hover:bg-orange-300/20">
-                    <div className="flex items-center gap-2 hover:bg-orange-300/20">
-                      <Wallet className="h-5 w-5 text-yellow-400" />
-                      <CurrencySwitcher />
-                    </div>
+                    <CurrencySwitcher />
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 {/* Theme */}
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild className="hover:bg-orange-300/20">
-                    <div className="flex items-center gap-2 hover:bg-orange-300/20">
-                      <Moon className="h-5 w-5 text-indigo-400" />
-                      <ModeToggle />
-                    </div>
+                    <ModeToggle />
                   </SidebarMenuButton>
                 </SidebarMenuItem>{" "}
                 <SidebarMenuItem>

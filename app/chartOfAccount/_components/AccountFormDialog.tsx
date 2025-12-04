@@ -19,7 +19,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import Dailogreuse from "@/components/common/dailogreuse";
 import { Plus, Edit2 } from "lucide-react";
-import { createAccount, updateAccount } from "@/app/actions/chartOfaccounts";
+import { createAccount, updateAccount } from "@/lib/actions/chartOfaccounts";
 
 // --------------------
 // Mock/Placeholder for getParentAccounts
@@ -27,7 +27,7 @@ import { createAccount, updateAccount } from "@/app/actions/chartOfaccounts";
 // For example, if it's a server action, import it from the actions file.
 // --------------------
 // Assuming this is your actual action
-import { getParentAccounts } from "@/app/actions/chartOfaccounts";
+import { getParentAccounts } from "@/lib/actions/chartOfaccounts";
 import { SelectField } from "@/components/common/selectproduct";
 
 // --------------------

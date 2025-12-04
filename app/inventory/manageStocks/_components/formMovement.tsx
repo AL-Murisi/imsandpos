@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
 import { UpdateInventorySchema } from "@/lib/zod";
-import { updateInventory } from "@/app/actions/warehouse";
+import { updateInventory } from "@/lib/actions/warehouse";
 
 type FormValues = z.infer<typeof UpdateInventorySchema>;
 

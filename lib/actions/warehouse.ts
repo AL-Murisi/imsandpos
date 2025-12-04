@@ -352,7 +352,7 @@ export async function updateInventory(
     );
 
     // Fire non-blocking operations
-    revalidatePath("/manageinvetory");
+    revalidatePath("/manageStocks");
 
     // Create journal entries with retry if purchase was made
     if (result.purchase) {
@@ -378,13 +378,296 @@ export async function updateInventory(
     };
   }
 }
+export async function processPurchaseReturn(
+  data: PurchaseReturnData,
+  userId: string,
+  companyId: string,
+) {
+  const {
+    purchaseId,
+    purchaseItemId,
+    warehouseId,
+    returnQuantity,
+    returnUnit,
+    unitCost,
+    paymentMethod,
+    refundAmount = 0,
+    reason,
+  } = data;
 
+  try {
+    let purchaseReturn;
+    const result = await prisma.$transaction(
+      async (tx) => {
+        // 1. Get original purchase and item
+        const originalPurchase = await tx.purchase.findUnique({
+          where: { id: purchaseId, companyId },
+          include: {
+            purchaseItems: {
+              where: { id: purchaseItemId },
+              include: {
+                product: {
+                  select: {
+                    id: true,
+                    unitsPerPacket: true,
+                    packetsPerCarton: true,
+                  },
+                },
+              },
+            },
+            supplier: {
+              select: {
+                id: true,
+                totalPurchased: true,
+                totalPaid: true,
+                outstandingBalance: true,
+              },
+            },
+          },
+        });
+
+        if (!originalPurchase) {
+          throw new Error("الشراء الأصلي غير موجود");
+        }
+
+        if (originalPurchase.purchaseItems.length === 0) {
+          throw new Error("عنصر الشراء غير موجود");
+        }
+
+        const purchaseItem = originalPurchase.purchaseItems[0];
+        const product = purchaseItem.product;
+        const supplier = originalPurchase.supplier;
+        const productId = product.id;
+        const supplierId = supplier.id;
+
+        // 2. Get inventory
+        const inventory = await tx.inventory.findUnique({
+          where: {
+            companyId_productId_warehouseId: {
+              companyId,
+              productId,
+              warehouseId,
+            },
+          },
+          select: {
+            stockQuantity: true,
+            availableQuantity: true,
+            reorderLevel: true,
+          },
+        });
+
+        if (!inventory) {
+          throw new Error("سجل المخزون غير موجود");
+        }
+
+        // 3. Convert return quantity to base units
+        function convertToBaseUnits(
+          qty: number,
+          unit: string,
+          unitsPerPacket: number,
+          packetsPerCarton: number,
+        ): number {
+          if (unit === "unit") return qty;
+          if (unit === "packet") return qty * (unitsPerPacket || 1);
+          if (unit === "carton")
+            return qty * (unitsPerPacket || 1) * (packetsPerCarton || 1);
+          return qty;
+        }
+
+        const returnQuantityInUnits = convertToBaseUnits(
+          returnQuantity,
+          returnUnit,
+          product.unitsPerPacket || 1,
+          product.packetsPerCarton || 1,
+        );
+
+        // Validate: Can't return more than what's in stock
+        if (returnQuantityInUnits > inventory.stockQuantity) {
+          throw new Error(
+            `لا يمكن إرجاع كمية أكبر من المخزون الحالي (${inventory.stockQuantity})`,
+          );
+        }
+
+        // Validate: Can't return more than originally purchased
+        const originalPurchasedInUnits = convertToBaseUnits(
+          purchaseItem.quantity,
+          returnUnit,
+          product.unitsPerPacket || 1,
+          product.packetsPerCarton || 1,
+        );
+
+        if (returnQuantityInUnits > originalPurchasedInUnits) {
+          throw new Error(
+            `لا يمكن إرجاع كمية أكبر من الكمية المشتراة الأصلية (${purchaseItem.quantity})`,
+          );
+        }
+
+        // 4. Calculate return cost (ALWAYS POSITIVE)
+        const returnTotalCost = returnQuantity * unitCost;
+
+        // 5. Calculate outstanding balance adjustments
+        const amountDue = Number(originalPurchase.amountDue || 0);
+        let outstandingDecrease = 0;
+        if (refundAmount > 0) {
+          outstandingDecrease = Math.min(amountDue, refundAmount);
+        } else {
+          // If no refund, reduce outstanding by return cost
+          outstandingDecrease = Math.min(amountDue, returnTotalCost);
+        }
+
+        // 6. Create purchase return record (POSITIVE VALUES)
+        purchaseReturn = await tx.purchase.update({
+          where: { id: purchaseId },
+          data: {
+            companyId,
+            supplierId,
+            purchaseType: "return",
+            totalAmount: returnTotalCost,
+            amountPaid: refundAmount,
+            amountDue:
+              Number(originalPurchase.amountDue) > 0
+                ? Math.max(0, Number(originalPurchase.amountDue) - refundAmount)
+                : 0,
+            status: "مرتجع",
+            // Link to original purchase
+          },
+        });
+
+        // 7. Create purchase item for return (POSITIVE QUANTITY)
+        await tx.purchaseItem.create({
+          data: {
+            companyId,
+            purchaseId: purchaseReturn.id,
+            productId,
+            quantity: returnQuantity,
+            unitCost,
+            totalCost: returnTotalCost,
+          },
+        });
+
+        // 8. Update inventory (DECREASE stock)
+        const newStockQty = inventory.stockQuantity - returnQuantityInUnits;
+        const newAvailableQty =
+          inventory.availableQuantity - returnQuantityInUnits;
+
+        await tx.inventory.update({
+          where: {
+            companyId_productId_warehouseId: {
+              companyId,
+              productId,
+              warehouseId,
+            },
+          },
+          data: {
+            stockQuantity: newStockQty,
+            availableQuantity: newAvailableQty,
+            status:
+              newAvailableQty <= 0
+                ? "out_of_stock"
+                : newAvailableQty <= inventory.reorderLevel
+                  ? "low"
+                  : "available",
+          },
+        });
+
+        // 9. Record stock movement
+        await tx.stockMovement.create({
+          data: {
+            companyId,
+            productId,
+            warehouseId,
+            userId,
+            movementType: "صادر",
+            quantity: returnQuantityInUnits,
+            reason: "إرجاع_للمورد",
+            quantityBefore: inventory.stockQuantity,
+            quantityAfter: newStockQty,
+            referenceType: "purchase_return",
+            referenceId: purchaseReturn.id,
+            notes:
+              reason ||
+              `إرجاع ${returnQuantity} ${returnUnit} من فاتورة ${purchaseId}`,
+          },
+        });
+
+        // 10. Handle refund payment if any
+        if (refundAmount > 0 && paymentMethod) {
+          await tx.supplierPayment.create({
+            data: {
+              companyId,
+              supplierId,
+              purchaseId: purchaseReturn.id,
+              createdBy: userId,
+              amount: refundAmount,
+              paymentMethod,
+              note: reason || `استرداد مبلغ من المورد - فاتورة ${purchaseId}`,
+            },
+          });
+        }
+
+        // 11. Update supplier balance
+        await tx.supplier.update({
+          where: { id: supplierId },
+          data: {
+            totalPurchased: {
+              set: Math.max(
+                0,
+                Number(supplier.totalPurchased) - returnTotalCost,
+              ),
+            },
+            ...(refundAmount > 0 && {
+              totalPaid: {
+                set: Math.max(0, Number(supplier.totalPaid) - refundAmount),
+              },
+            }),
+            outstandingBalance: {
+              set: Math.max(
+                0,
+                Number(supplier.outstandingBalance) - outstandingDecrease,
+              ),
+            },
+          },
+        });
+
+        return {
+          success: true,
+          message: "تم إرجاع المشتريات بنجاح",
+          purchaseReturn,
+          returnAmount: returnTotalCost,
+          refundAmount,
+          originalPurchaseId: purchaseId,
+        };
+      },
+      {
+        timeout: 20000,
+        maxWait: 5000,
+      },
+    );
+
+    revalidatePath("/manageStocks");
+    createPurchaseJournalEntriesWithRetry({
+      purchase: purchaseReturn,
+      companyId,
+      userId,
+      type: "return",
+    }).catch((err) => {
+      console.error("Failed to create purchase journal entries:", err);
+    });
+    return result;
+  } catch (error: any) {
+    console.error("خطأ في إرجاع المشتريات:", error);
+    return {
+      success: false,
+      message: error.message || "فشل في معالجة الإرجاع",
+    };
+  }
+}
 // ============================================
 // 🔄 Purchase Journal Entries with Retry
 // ============================================
 async function createPurchaseJournalEntriesWithRetry(
   params: { purchase: any; companyId: string; userId: string; type: string },
-  maxRetries = 3,
+  maxRetries = 4,
   retryDelay = 1000,
 ) {
   let lastError: Error | null = null;
@@ -856,290 +1139,7 @@ function getUnitsByProductType(type: string): ("unit" | "packet" | "carton")[] {
       return ["unit"];
   }
 }
-export async function processPurchaseReturn(
-  data: PurchaseReturnData,
-  userId: string,
-  companyId: string,
-) {
-  const {
-    purchaseId,
-    purchaseItemId,
-    warehouseId,
-    returnQuantity,
-    returnUnit,
-    unitCost,
-    paymentMethod,
-    refundAmount = 0,
-    reason,
-  } = data;
 
-  try {
-    let purchaseReturn;
-    const result = await prisma.$transaction(
-      async (tx) => {
-        // 1. Get original purchase and item
-        const originalPurchase = await tx.purchase.findUnique({
-          where: { id: purchaseId, companyId },
-          include: {
-            purchaseItems: {
-              where: { id: purchaseItemId },
-              include: {
-                product: {
-                  select: {
-                    id: true,
-                    unitsPerPacket: true,
-                    packetsPerCarton: true,
-                  },
-                },
-              },
-            },
-            supplier: {
-              select: {
-                id: true,
-                totalPurchased: true,
-                totalPaid: true,
-                outstandingBalance: true,
-              },
-            },
-          },
-        });
-
-        if (!originalPurchase) {
-          throw new Error("الشراء الأصلي غير موجود");
-        }
-
-        if (originalPurchase.purchaseItems.length === 0) {
-          throw new Error("عنصر الشراء غير موجود");
-        }
-
-        const purchaseItem = originalPurchase.purchaseItems[0];
-        const product = purchaseItem.product;
-        const supplier = originalPurchase.supplier;
-        const productId = product.id;
-        const supplierId = supplier.id;
-
-        // 2. Get inventory
-        const inventory = await tx.inventory.findUnique({
-          where: {
-            companyId_productId_warehouseId: {
-              companyId,
-              productId,
-              warehouseId,
-            },
-          },
-          select: {
-            stockQuantity: true,
-            availableQuantity: true,
-            reorderLevel: true,
-          },
-        });
-
-        if (!inventory) {
-          throw new Error("سجل المخزون غير موجود");
-        }
-
-        // 3. Convert return quantity to base units
-        function convertToBaseUnits(
-          qty: number,
-          unit: string,
-          unitsPerPacket: number,
-          packetsPerCarton: number,
-        ): number {
-          if (unit === "unit") return qty;
-          if (unit === "packet") return qty * (unitsPerPacket || 1);
-          if (unit === "carton")
-            return qty * (unitsPerPacket || 1) * (packetsPerCarton || 1);
-          return qty;
-        }
-
-        const returnQuantityInUnits = convertToBaseUnits(
-          returnQuantity,
-          returnUnit,
-          product.unitsPerPacket || 1,
-          product.packetsPerCarton || 1,
-        );
-
-        // Validate: Can't return more than what's in stock
-        if (returnQuantityInUnits > inventory.stockQuantity) {
-          throw new Error(
-            `لا يمكن إرجاع كمية أكبر من المخزون الحالي (${inventory.stockQuantity})`,
-          );
-        }
-
-        // Validate: Can't return more than originally purchased
-        const originalPurchasedInUnits = convertToBaseUnits(
-          purchaseItem.quantity,
-          returnUnit,
-          product.unitsPerPacket || 1,
-          product.packetsPerCarton || 1,
-        );
-
-        if (returnQuantityInUnits > originalPurchasedInUnits) {
-          throw new Error(
-            `لا يمكن إرجاع كمية أكبر من الكمية المشتراة الأصلية (${purchaseItem.quantity})`,
-          );
-        }
-
-        // 4. Calculate return cost (ALWAYS POSITIVE)
-        const returnTotalCost = returnQuantity * unitCost;
-
-        // 5. Calculate outstanding balance adjustments
-        const amountDue = Number(originalPurchase.amountDue || 0);
-        let outstandingDecrease = 0;
-        if (refundAmount > 0) {
-          outstandingDecrease = Math.min(amountDue, refundAmount);
-        } else {
-          // If no refund, reduce outstanding by return cost
-          outstandingDecrease = Math.min(amountDue, returnTotalCost);
-        }
-
-        // 6. Create purchase return record (POSITIVE VALUES)
-        purchaseReturn = await tx.purchase.update({
-          where: { id: purchaseId },
-          data: {
-            companyId,
-            supplierId,
-            purchaseType: "return",
-            totalAmount: returnTotalCost,
-            amountPaid: refundAmount,
-            amountDue:
-              Number(originalPurchase.amountDue) > 0
-                ? Math.max(0, Number(originalPurchase.amountDue) - refundAmount)
-                : 0,
-            status: "مرتجع",
-            // Link to original purchase
-          },
-        });
-
-        // 7. Create purchase item for return (POSITIVE QUANTITY)
-        await tx.purchaseItem.create({
-          data: {
-            companyId,
-            purchaseId: purchaseReturn.id,
-            productId,
-            quantity: returnQuantity,
-            unitCost,
-            totalCost: returnTotalCost,
-          },
-        });
-
-        // 8. Update inventory (DECREASE stock)
-        const newStockQty = inventory.stockQuantity - returnQuantityInUnits;
-        const newAvailableQty =
-          inventory.availableQuantity - returnQuantityInUnits;
-
-        await tx.inventory.update({
-          where: {
-            companyId_productId_warehouseId: {
-              companyId,
-              productId,
-              warehouseId,
-            },
-          },
-          data: {
-            stockQuantity: newStockQty,
-            availableQuantity: newAvailableQty,
-            status:
-              newAvailableQty <= 0
-                ? "out_of_stock"
-                : newAvailableQty <= inventory.reorderLevel
-                  ? "low"
-                  : "available",
-          },
-        });
-
-        // 9. Record stock movement
-        await tx.stockMovement.create({
-          data: {
-            companyId,
-            productId,
-            warehouseId,
-            userId,
-            movementType: "صادر",
-            quantity: returnQuantityInUnits,
-            reason: "إرجاع_للمورد",
-            quantityBefore: inventory.stockQuantity,
-            quantityAfter: newStockQty,
-            referenceType: "purchase_return",
-            referenceId: purchaseReturn.id,
-            notes:
-              reason ||
-              `إرجاع ${returnQuantity} ${returnUnit} من فاتورة ${purchaseId}`,
-          },
-        });
-
-        // 10. Handle refund payment if any
-        if (refundAmount > 0 && paymentMethod) {
-          await tx.supplierPayment.create({
-            data: {
-              companyId,
-              supplierId,
-              purchaseId: purchaseReturn.id,
-              createdBy: userId,
-              amount: refundAmount,
-              paymentMethod,
-              note: reason || `استرداد مبلغ من المورد - فاتورة ${purchaseId}`,
-            },
-          });
-        }
-
-        // 11. Update supplier balance
-        await tx.supplier.update({
-          where: { id: supplierId },
-          data: {
-            totalPurchased: {
-              set: Math.max(
-                0,
-                Number(supplier.totalPurchased) - returnTotalCost,
-              ),
-            },
-            ...(refundAmount > 0 && {
-              totalPaid: {
-                set: Math.max(0, Number(supplier.totalPaid) - refundAmount),
-              },
-            }),
-            outstandingBalance: {
-              set: Math.max(
-                0,
-                Number(supplier.outstandingBalance) - outstandingDecrease,
-              ),
-            },
-          },
-        });
-
-        return {
-          success: true,
-          message: "تم إرجاع المشتريات بنجاح",
-          purchaseReturn,
-          returnAmount: returnTotalCost,
-          refundAmount,
-          originalPurchaseId: purchaseId,
-        };
-      },
-      {
-        timeout: 20000,
-        maxWait: 5000,
-      },
-    );
-
-    revalidatePath("/manageinvetory");
-    createPurchaseJournalEntries({
-      purchase: purchaseReturn,
-      companyId,
-      userId,
-      type: "return",
-    }).catch((err) => {
-      console.error("Failed to create purchase journal entries:", err);
-    });
-    return result;
-  } catch (error: any) {
-    console.error("خطأ في إرجاع المشتريات:", error);
-    return {
-      success: false,
-      message: error.message || "فشل في معالجة الإرجاع",
-    };
-  }
-}
 export async function adjustStock(
   productId: string,
   warehouseId: string,
@@ -1213,7 +1213,7 @@ export async function adjustStock(
             `Stock adjustment: ${difference > 0 ? "+" : ""}${difference}`,
         },
       });
-      revalidatePath("/manageinvetory");
+      revalidatePath("/manageStocks");
       return { success: true, data: updatedInventory };
     });
   } catch (error) {

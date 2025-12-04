@@ -3,7 +3,7 @@ import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { fetchProductStats } from "./Product";
 import { success } from "zod";
-import { getActiveFiscalYears } from "./fiscalYear";
+import { getActiveFiscalYears } from "@/lib/actions/fiscalYear";
 
 export async function updateSales(
   companyId: string,
@@ -15,6 +15,7 @@ export async function updateSales(
     throw new Error("Payment amount must be greater than zero.");
   }
   if (!companyId) return;
+  let pay: any;
   const updatedSale = await prisma.$transaction(async (tx) => {
     // 1️⃣ Fetch current sale
     const sale = await tx.sale.findUnique({
@@ -63,7 +64,7 @@ export async function updateSales(
     });
 
     // 4️⃣ Log Payment
-    await tx.payment.create({
+    pay = await tx.payment.create({
       data: {
         companyId,
         saleId,
@@ -102,6 +103,17 @@ export async function updateSales(
 
   revalidatePath("/sells");
   revalidatePath("/debt");
+
+  createPurchaseJournalEntriesWithRetry({
+    companyId,
+    payment: pay, // 👈 REAL payment object with ID
+    cashierId,
+  })
+    .then(() => console.log(`Journal entry created for payment: ${pay.id}`))
+    .catch((err) =>
+      console.error(`Journal failed for payment ${pay.id}:`, err),
+    );
+
   return updatedSale;
 }
 export async function updateSalesBulk(
@@ -231,7 +243,7 @@ export async function updateSalesBulk(
 
   // 7️⃣ Background journal creation (NON-BLOCKING)
   for (const pay of createdPayments) {
-    createPaymentJournalEntries({
+    createPurchaseJournalEntriesWithRetry({
       companyId,
       payment: pay, // 👈 REAL payment object with ID
       cashierId,
@@ -248,6 +260,46 @@ export async function updateSalesBulk(
     paymentsCreated: createdPayments.length,
     customersUpdated: Object.keys(customerUpdates).length,
   };
+}
+async function createPurchaseJournalEntriesWithRetry(
+  params: {
+    companyId: string;
+    payment: any; // payment record { id, saleId, customerId, amount, paymentMethod }
+    cashierId: string;
+  },
+  maxRetries = 4,
+  retryDelay = 1000,
+) {
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(
+        `📝 Creating createPaymen journal entries (attempt ${attempt}/${maxRetries})...`,
+      );
+      await createPaymentJournalEntries(params);
+      console.log(
+        `✅ createPaymen journal entries created successfully on attempt ${attempt}`,
+      );
+      return;
+    } catch (error: any) {
+      lastError = error;
+      console.error(
+        `❌ createPaymen journal entries attempt ${attempt}/${maxRetries} failed:`,
+        error.message,
+      );
+
+      if (attempt < maxRetries) {
+        const waitTime = retryDelay * Math.pow(2, attempt - 1);
+        console.log(`⏳ Retrying in ${waitTime}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
+      }
+    }
+  }
+
+  throw new Error(
+    `Failed to create createPaymen journal entries after ${maxRetries} attempts. Last error: ${lastError?.message}`,
+  );
 }
 
 export async function createPaymentJournalEntries({

@@ -22,7 +22,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { deleteCustomer } from "@/app/actions/users";
+import { deleteCustomer } from "@/lib/actions/users";
 import { useAuth } from "@/lib/context/AuthContext";
 import { Edit, Trash2 } from "lucide-react";
 import {
@@ -41,7 +41,7 @@ import { EditSupplierForm } from "./editform";
 import { useRouter } from "next/navigation";
 const PaymentCreateForm = dynamic(
   () =>
-    import("../../inventory/manageinvetory/_components/PaymentCreateForm").then(
+    import("../../inventory/manageStocks/_components/PaymentCreateForm").then(
       (m) => m.PaymentCreateForm,
     ),
   {

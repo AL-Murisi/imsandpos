@@ -25,7 +25,7 @@ export default function Appheader() {
     },
     {
       title: t("inventory"),
-      url: "/inventory/manageinvetory",
+      url: "/inventory/manageStocks",
     },
     {
       title: t("products"),

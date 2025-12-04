@@ -1,6 +1,6 @@
 "use client";
 
-import { createExpense } from "@/app/actions/exponses";
+import { createExpense } from "@/lib/actions/exponses";
 import { SelectField } from "@/components/common/selectproduct";
 import { Button } from "@/components/ui/button";
 import Dailogreuse from "@/components/common/dailogreuse";

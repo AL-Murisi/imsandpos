@@ -7,11 +7,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Languages, Check } from "lucide-react";
+import { Languages, Check, Globe } from "lucide-react";
 import clsx from "clsx";
 import { useTransition } from "react";
 import { Locale } from "@/i18n/config";
 import { setUserLocale } from "@/lib/local";
+import { Button } from "../ui/button";
 
 type Props = {
   defaultValue: string;
@@ -34,16 +35,23 @@ export default function LocaleSwitcherSelect({
   }
 
   return (
-    <Select defaultValue={defaultValue} onValueChange={onChange}>
+    <Select defaultValue={defaultValue} onValueChange={onChange} dir="rtl">
       <SelectTrigger
-        aria-label={label}
-        className={clsx(
-          "flex items-center border-[#0b142a] bg-[#0b142a] text-sm hover:bg-gray-500",
-          isPending && "pointer-events-none opacity-60",
-        )}
+        className="h-auto w-fit p-2" // Adjust sizing to fit just the icon
+        aria-label="Select Language" // Good accessibility practice
       >
-        {/* <Languages className="text-muted-foreground h-5 w-5" color="red" /> */}
-        <SelectValue placeholder={label} className="" />
+        {/* 2. Place your custom Icon directly inside */}
+        <Globe className="h-5 w-5 text-blue-400" />
+
+        {/* 3. CRITICAL: Hide the default arrow icon */}
+        {/* The 'SelectIcon' component, usually rendered by the trigger, needs to be hidden via CSS/Tailwind utilities. */}
+        {/* The common way to hide the default arrow in shadcn/ui is via a utility class that targets the icon element. */}
+        {/* If using the standard shadcn/ui Select, the default icon is often inside a span. */}
+
+        {/* If the default SelectIcon is part of the SelectTrigger implementation, 
+             the best way is to target it with CSS. 
+             If you can't access it, you might need to add a utility class
+             to SelectTrigger that hides the default arrow. */}
       </SelectTrigger>
       <SelectContent align="end" className="bg-background rounded-md shadow-md">
         {items.map((item) => (

@@ -6,16 +6,14 @@ import { SortingState } from "@tanstack/react-table";
 import { debtSaleColumns } from "./columns";
 import dynamic from "next/dynamic";
 import TableSkeleton from "@/components/common/TableSkeleton";
-import { DataTable } from "@/components/common/test";
-import { useRouter, useSearchParams } from "next/navigation";
+const DataTable = dynamic(
+  () => import("@/components/common/test").then((m) => m.DataTable),
+  {
+    ssr: false,
+    loading: () => <TableSkeleton />,
+  },
+);
 import { SelectField } from "@/components/common/selection";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 type ProductClientProps = {
   data: any[];
@@ -47,28 +45,7 @@ export default function DebtSells({
     categoryId,
     setParam,
   } = useTablePrams();
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const saleTypeFilter = searchParams.get("sale_type") || "";
 
-  // const handleFilterChange = (value: string) => {
-  //   const params = new URLSearchParams(searchParams.toString());
-  //   if (value == "all") params.delete("sale_type", value);
-  //   if (value) params.set("sale_type", value);
-  //   else params.delete("sale_type");
-  //   router.push(`?${params.toString()}`);
-  // };
-  const handleFilterChange = (value: string) => {
-    const params = new URLSearchParams(searchParams.toString());
-
-    if (value === "all") {
-      params.delete("sale_type");
-    } else {
-      params.set("sale_type", value);
-    }
-
-    router.push(`?${params.toString()}`);
-  };
   const filteroption = [
     { id: "sale", name: "بيع" },
     {

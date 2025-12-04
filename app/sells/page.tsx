@@ -2,7 +2,7 @@ import {
   fetchAllReturnItems,
   FetchDebtSales,
   fetchSalesSummary,
-} from "@/app/actions/sells";
+} from "@/lib/actions/sells";
 import { verifySession } from "@/lib/dal";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
@@ -11,7 +11,7 @@ import { SortingState } from "@tanstack/react-table";
 import { ParsedSort } from "@/hooks/sort";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getSession } from "@/lib/session";
-import { fetchProductStats } from "../actions/Product";
+import { fetchProductStats } from "@/lib/actions/Product";
 
 type DashboardProps = {
   searchParams: Promise<{
@@ -95,17 +95,9 @@ export default async function SellsDashboard({ searchParams }: DashboardProps) {
     ),
   ]);
 
-  const currentUser = {
-    id: userId,
-    name: "", // can be fetched if needed
-    email: "",
-    role,
-  };
-
   return (
     <ScrollArea className="flex h-[95vh] flex-col space-y-8 p-6" dir="rtl">
       <SellsDashboardClient
-        user={currentUser}
         debtSales={data.serializedDebts}
         recentSales={data.serializedDebts}
         totalSales={data.total}

@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
 import { CreateSupplierSchema, CreateSupplierInput } from "@/lib/zod";
-import { createSupplier } from "@/app/actions/suppliers";
+import { createSupplier } from "@/lib/actions/suppliers";
 import { useAuth } from "@/lib/context/AuthContext";
 import { useState } from "react";
 import { Plus } from "lucide-react";

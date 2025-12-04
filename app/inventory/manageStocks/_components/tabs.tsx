@@ -4,7 +4,7 @@ import DashboardTabs from "@/components/common/Tabs";
 import TableSkeleton from "@/components/common/TableSkeleton";
 import dynamic from "next/dynamic";
 import { use } from "react";
-const ManageinvetoryClient = dynamic(() => import("./manageinvetoryClient"), {
+const ManageStocksClient = dynamic(() => import("./manageinvetoryClient"), {
   ssr: false,
   loading: () => <TableSkeleton />,
 });
@@ -53,7 +53,7 @@ export default function InventoryTabs({
           value: "inventory",
           label: "المخزون",
           content: (
-            <ManageinvetoryClient
+            <ManageStocksClient
               products={inventory.inventory}
               total={inventory.totalCount}
               formData={format}

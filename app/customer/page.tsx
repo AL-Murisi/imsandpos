@@ -1,6 +1,6 @@
 import dynamic from "next/dynamic";
-import CustomerClinet from "./debtSell/table";
-import { getCustomerById } from "../actions/customers";
+import CustomerClinet from "./_components/table";
+import { getCustomerById } from "@/lib/actions/customers";
 import { getSession } from "@/lib/session";
 type DashboardProps = {
   searchParams: Promise<{
@@ -34,7 +34,7 @@ export default async function DebtSell({ searchParams }: DashboardProps) {
     from,
     to,
 
-    customersquery = "",
+    customersquery,
     page = "1",
     limit = "13",
     salesFrom,
@@ -50,7 +50,7 @@ export default async function DebtSell({ searchParams }: DashboardProps) {
     allFrom,
     sort,
     allTo,
-  } = param;
+  } = param || {};
 
   const pageIndex = Number(page) - 1;
   const pageSize = Number(limit);

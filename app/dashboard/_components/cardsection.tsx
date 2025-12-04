@@ -149,7 +149,7 @@ export default function SectionCards({
       description: "product",
       title: productStats.totalStockQuantity,
       label: t("totalStock"),
-      link: "/inventory/manageinvetory",
+      link: "/inventory/manageStocks",
       bg: "bg-gradient-to-r from-cyan-500 to-cyan-700",
     },
     {
@@ -158,7 +158,7 @@ export default function SectionCards({
       title2: productStats.zeroProducts,
       label: t("lowStock"),
       label2: t("finishedStock"),
-      link: "/inventory/manageinvetory",
+      link: "/inventory/manageStocks",
       bg: "bg-gradient-to-r from-red-500 to-red-700",
     },
     {
@@ -227,7 +227,7 @@ export default function SectionCards({
             </Link>
           </Button>
           <Button asChild>
-            <Link href="/inventory/manageinvetory" prefetch={false}>
+            <Link href="/inventory/manageStocks" prefetch={false}>
               إدارة المخزون
             </Link>
           </Button>

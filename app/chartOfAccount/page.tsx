@@ -9,7 +9,7 @@ import { getSession } from "@/lib/session";
 import {
   getChartOfAccounts,
   getParentAccounts,
-} from "../actions/chartOfaccounts";
+} from "@/lib/actions/chartOfaccounts";
 
 type ChartOfAccountsPageProps = {
   searchParams: Promise<{

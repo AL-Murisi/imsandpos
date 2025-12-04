@@ -211,7 +211,7 @@ export async function createSupplier(
     });
     revalidatePath("/suppliers");
     revalidatePath("/products");
-    createSupplierJournalEnteries({
+    createSuppliereJournalEntriesWithRetry({
       supplierId: user.id,
       supplierName: user.name,
       companyId,
@@ -228,6 +228,50 @@ export async function createSupplier(
     console.error("Failed to create user:", error);
     throw error;
   }
+}
+async function createSuppliereJournalEntriesWithRetry(
+  params: {
+    supplierId: string;
+    supplierName: string;
+    companyId: string;
+    outstandingBalance?: number;
+    totalPaid?: number;
+    totalPurchased?: number;
+    createdBy: string;
+  },
+  maxRetries = 4,
+  retryDelay = 1000,
+) {
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(
+        `📝 Creating Supplier journal entries (attempt ${attempt}/${maxRetries})...`,
+      );
+      await createSupplierJournalEnteries(params);
+      console.log(
+        `✅ Supplier journal entries created successfully on attempt ${attempt}`,
+      );
+      return;
+    } catch (error: any) {
+      lastError = error;
+      console.error(
+        `❌ Purchase journal entries attempt ${attempt}/${maxRetries} failed:`,
+        error.message,
+      );
+
+      if (attempt < maxRetries) {
+        const waitTime = retryDelay * Math.pow(2, attempt - 1);
+        console.log(`⏳ Retrying in ${waitTime}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
+      }
+    }
+  }
+
+  throw new Error(
+    `Failed to create purchase journal entries after ${maxRetries} attempts. Last error: ${lastError?.message}`,
+  );
 }
 export async function createSupplierJournalEnteries({
   supplierId,
@@ -755,7 +799,7 @@ export async function createSupplierPaymentFromPurchases(
 
     revalidatePath("/suppliers");
     revalidatePath("/purchases");
-    createSupplierPaymentJournalEntries({
+    createPurchaseJournalEntriesWithRetry({
       payment: supplierPayment,
       companyId,
       userId,
@@ -784,6 +828,43 @@ export async function createSupplierPaymentFromPurchases(
     };
   }
 }
+async function createPurchaseJournalEntriesWithRetry(
+  params: { payment: any; companyId: string; userId: string },
+  maxRetries = 4,
+  retryDelay = 1000,
+) {
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(
+        `📝 Creating SupplierPayment journal entries (attempt ${attempt}/${maxRetries})...`,
+      );
+      await createSupplierPaymentJournalEntries(params);
+      console.log(
+        `✅ Purchase journal entries created successfully on attempt ${attempt}`,
+      );
+      return;
+    } catch (error: any) {
+      lastError = error;
+      console.error(
+        `❌ SupplierPayment journal entries attempt ${attempt}/${maxRetries} failed:`,
+        error.message,
+      );
+
+      if (attempt < maxRetries) {
+        const waitTime = retryDelay * Math.pow(2, attempt - 1);
+        console.log(`⏳ Retrying in ${waitTime}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
+      }
+    }
+  }
+
+  throw new Error(
+    `Failed to create SupplierPayment journal entries after ${maxRetries} attempts. Last error: ${lastError?.message}`,
+  );
+}
+
 export async function createSupplierPaymentJournalEntries({
   payment,
   companyId,
@@ -934,140 +1015,7 @@ export async function getPurchasePaymentHistory(
     };
   }
 }
-// export async function createSupplierPaymentFromPurchases(
-//   userId: string,
-//   companyId: string,
-//   data: {
-//     status: string;
-//     createdBy: string;
-//     supplierId: string;
-//     purchaseId: string; // IMPORTANT
-//     amount: number;
-//     paymentMethod: string;
-//     note?: string;
-//     paymentDate?: Date;
-//   },
-// ) {
-//   try {
-//     const {
-//       status,
-//       purchaseId,
-//       createdBy,
-//       supplierId,
 
-//       amount,
-//       paymentMethod,
-//       note,
-//       paymentDate,
-//     } = data;
-
-//     if (!supplierId || !amount || amount <= 0 || !purchaseId) {
-//       throw new Error(
-//         "Supplier ID, Purchase ID, and valid amount are required",
-//       );
-//     }
-
-//     const supplier = await prisma.supplier.findUnique({
-//       where: { id: supplierId },
-//     });
-//     if (!supplier) throw new Error("Supplier not found");
-
-//     // --- GET SPECIFIC PURCHASE ---
-//     const purchase = await prisma.purchase.findUnique({
-//       where: { id: purchaseId },
-//     });
-
-//     if (!purchase) throw new Error("Purchase not found");
-
-//     // --- CALCULATE PAYMENT ---
-//     const amountDue = Number(purchase.amountDue);
-//     const apply = Math.abs(amountDue - amount);
-//     const remainingAmount = amount - apply;
-
-//     const purchaseUpdates = [
-//       {
-//         id: purchase.id,
-//         amountPaid: amount,
-//         amountDue: Math.max(0, amountDue - apply),
-//         status: apply >= amountDue ? "paid" : "partial",
-//       },
-//     ];
-
-//     // --- TRANSACTION ---
-//     const result = await prisma.$transaction(
-//       async (tx) => {
-//         const updatedPurchases = await Promise.all(
-//           purchaseUpdates.map((u) =>
-//             tx.purchase.update({
-//               where: { id: u.id },
-//               data: {
-//                 amountPaid: u.amountPaid,
-//                 amountDue: u.amountDue,
-//                 status: u.status,
-//                 purchaseType: "outstandingpayment",
-//               },
-//             }),
-//           ),
-//         );
-
-//         const supplierPayment = await tx.supplierPayment.create({
-//           data: {
-//             companyId,
-//             supplierId,
-//             amount,
-//             paymentMethod,
-//             note,
-//             createdBy,
-//             paymentDate: paymentDate ?? new Date(),
-//           },
-//           include: { supplier: true },
-//         });
-
-//         await tx.supplier.update({
-//           where: { id: supplierId, companyId },
-//           data: {
-//             totalPaid: { increment: amount },
-//             outstandingBalance: { increment: -amount },
-//           },
-//         });
-
-//         return { updatedPurchases, supplierPayment };
-//       },
-//       { timeout: 30000 },
-//     );
-
-//     const { updatedPurchases, supplierPayment } = result;
-
-//     await prisma.activityLogs.create({
-//       data: {
-//         userId,
-//         companyId,
-//         action: "Created supplier payment",
-//         details: `Supplier: ${supplierPayment.supplier.name}, Payment: ${amount}, Applied to purchase ${purchaseId}.`,
-//       },
-//     });
-
-//     revalidatePath("/suppliers");
-
-//     return {
-//       success: true,
-//       payment: serializeData(supplierPayment),
-//       updatedPurchases: serializeData(updatedPurchases),
-//       remainingAmount,
-//     };
-//   } catch (error) {
-//     console.error("❌ Error creating supplier payment:", error);
-//     return {
-//       success: false,
-//       error:
-//         error instanceof Error ? error.message : "Failed to create payment",
-//     };
-//   }
-// }
-
-// ============================================
-// 4. GET SUPPLIER SUMMARY (Purchases + Payments)
-// ============================================
 export async function getSupplierSummary(
   supplierId: string,
   companyId: string,
