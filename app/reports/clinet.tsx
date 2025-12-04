@@ -328,7 +328,6 @@ export default function ReportsPage() {
           </p>
         </div>
       </div> */}
-
       {/* Category Filter */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
         {categories.map((cat) => (
@@ -354,7 +353,7 @@ export default function ReportsPage() {
       </div>
       {/* Report Configuration */}
       {selectedReport && (
-        <Card className="border-primary/50">
+        <Card className="border-primary/50 px-2 py-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <span>{selectedReport.icon}</span>
@@ -428,10 +427,10 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
       )}
-
-      <ScrollArea className="h-[80vh] p-2" dir="rtl">
-        {/* Report Selection Grid */}
-        <Card>
+      {/* Report Selection Grid */}
+      <Card>
+        {" "}
+        <ScrollArea className="h-[96vh] p-2" dir="rtl">
           <CardHeader>
             <CardTitle>اختر التقرير</CardTitle>
             <CardDescription>
@@ -475,9 +474,8 @@ export default function ReportsPage() {
               ))}
             </div>
           </CardContent>
-        </Card>
-      </ScrollArea>
-
+        </ScrollArea>
+      </Card>{" "}
       {/* Quick Stats */}
       {!selectedReport && (
         <Card>
