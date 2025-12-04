@@ -1,61 +1,56 @@
 // components/appside-bar.tsx (Updated with Role-Based Access)
 "use client";
 
+import { useCompany } from "@/hooks/useCompany"; // adjust if different path
 import {
+  BarChart3,
   Building2,
-  Calendar,
   ChevronDown,
+  CreditCard,
   FolderKanban,
+  Handshake,
   Home,
-  Package,
-  Search,
-  Settings,
-  Users,
-  ShoppingCart,
-  User,
-  Truck,
   LogOut,
-  Warehouse,
-  Clock,
+  Notebook,
+  NotebookPen,
+  Package,
+  PackageSearch,
   Receipt,
-  BarChart,
+  Settings,
+  ShoppingBag,
+  ShoppingCart,
   Store,
-  ChartBar,
-  Moon,
-  Wallet,
-  Globe,
-  ShoppingCartIcon,
+  User,
+  UserCircle,
+  Users,
 } from "lucide-react";
 import Image from "next/image";
-import { useCompany } from "@/hooks/useCompany"; // adjust if different path
 
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubItem,
-  SidebarFooter,
-  SidebarHeader,
-} from "./ui/sidebar";
+import { useSidebar } from "@/components/ui/sidebar";
 import Link from "next/link";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "./ui/collapsible";
-import { useSidebar } from "@/components/ui/sidebar";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarMenuSub,
+} from "./ui/sidebar";
 
 import { useAuth } from "@/lib/context/AuthContext";
-import { ModeToggle } from "./toggoletheme";
+import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
 import LocaleSwitcher from "./common/LocaleSwitcher";
-import { useTranslations } from "next-intl";
+import { ModeToggle } from "./toggoletheme";
 
 const IMSLogoIcon = ({ className = "", size = 24, color = "currentColor" }) => {
   return (
@@ -76,11 +71,10 @@ const IMSLogoIcon = ({ className = "", size = 24, color = "currentColor" }) => {
   );
 };
 
+import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import CurrencySwitcher from "./common/CurrencySwitcher";
 import { useCurrency } from "./CurrencyProvider";
-import { ScrollArea } from "./ui/scroll-area";
-import { cn } from "@/lib/utils";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user, hasAnyRole, logoutAndRedirect } = useAuth();
@@ -108,22 +102,25 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       icon: () => <Home className="text-indigo-600" />,
       roles: ["manager_wh"],
     },
+
     {
       title: t("users"),
       url: "/users",
-      icon: () => <Users className="text-red-600" />,
+      icon: () => <Users className="text-blue-600" />,
       roles: ["admin"],
     },
+
     {
       title: t("inventory"),
-      icon: () => <IMSLogoIcon className="text-yellow-600" />,
+      icon: () => <Package className="text-yellow-600" />, // Boxes = Inventory
       roles: ["admin", "manager_wh"],
       isDropdown: true,
+
       subItems: [
         {
           title: t("manageInventory"),
           url: "/inventory/manageStocks",
-          icon: <Package className="h-4 w-4 text-green-600" />,
+          icon: <PackageSearch className="h-4 w-4 text-green-600" />,
           roles: ["admin", "manager_wh"],
         },
         {
@@ -132,7 +129,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           icon: <FolderKanban className="h-4 w-4 text-purple-600" />,
           roles: ["admin", "manager_wh"],
         },
-
         {
           title: t("warehouses"),
           url: "/inventory/warehouses",
@@ -141,70 +137,81 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         },
       ],
     },
+
     {
       title: t("products"),
       url: "/products",
-      icon: () => <Package className="h-4 w-4 text-green-600" />,
+      icon: () => <Package className="h-4 w-4 text-emerald-600" />,
       roles: ["admin", "manager_wh"],
     },
+
     {
       title: t("suppliers"),
       url: "/suppliers",
-      icon: () => <Users className="h-4 w-4 text-orange-600" />,
+      icon: () => <Handshake className="h-4 w-4 text-orange-600" />,
       roles: ["admin", "manager_wh"],
     },
+
     {
       title: t("expenses"),
       url: "/expenses",
       icon: () => <Receipt className="h-4 w-4 text-red-600" />,
       roles: ["admin"],
     },
+
     {
       title: t("customer"),
       url: "/customer",
-      icon: () => <User className="h-4 w-4 text-white" />,
+      icon: () => <User className="h-4 w-4 text-sky-500" />,
       roles: ["admin"],
     },
+
     {
       title: t("cashierMain"),
       url: "/sells",
       icon: () => <ShoppingCart className="text-blue-500" />,
       roles: ["cashier"],
     },
+
     {
       title: t("debt"),
       url: "/debt",
-      icon: () => <Receipt className="h-4 w-4 text-green-600" />,
+      icon: () => <CreditCard className="h-4 w-4 text-green-600" />,
       roles: ["admin", "cashier"],
     },
+
     {
       title: "التقرير",
       url: "/reports",
-      icon: () => <BarChart className="h-4 w-4 text-green-600" />,
+      icon: () => <BarChart3 className="h-4 w-4 text-green-600" />,
       roles: ["admin", "cashier"],
     },
+
     {
       title: t("chartofaccount"),
       url: "/chartOfAccount",
-      icon: () => <ChartBar className="text-pink-600" />,
+      icon: () => <Notebook className="text-pink-600" />,
       roles: ["admin", "supplier"],
     },
+
     {
       title: t("journalEntry"),
       url: "/journalEntry",
-      icon: () => <ChartBar className="text-pink-600" />,
+      icon: () => <NotebookPen className="text-pink-600" />,
       roles: ["admin"],
     },
+
     {
       title: t("sales"),
-      icon: () => <ShoppingCart className="text-green-600" />,
+      icon: () => <ShoppingBag className="text-green-600" />,
       roles: ["admin", "cashier"],
       isDropdown: true,
+
       subItems: [
         {
           title: t("cashierMain"),
           url: "/sells",
-          icon: <ShoppingCartIcon className="text-white" />,
+          icon: <ShoppingCart className="text-indigo-500" />,
           roles: ["admin"],
         },
         {
@@ -225,16 +232,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     {
       title: t("profile"),
       url: "/profile",
-      icon: () => <User className="text-pink-600" />,
+      icon: () => <UserCircle className="text-pink-600" />,
       roles: ["customer", "supplier"],
     },
+
     {
       title: t("settings"),
       url: "/settings",
-      icon: () => <Settings className="w-40 text-gray-600" />,
+      icon: () => <Settings className="text-gray-600" />,
       roles: ["admin"],
     },
   ];
+
   // Filter menu items based on user roles
   const visibleMenuItems = menuItems.filter((item) => {
     return hasAnyRole(item.roles);

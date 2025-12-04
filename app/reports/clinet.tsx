@@ -316,9 +316,9 @@ export default function ReportsPage() {
   };
 
   return (
-    <div className="container mx-auto max-w-7xl space-y-6 p-6">
+    <div className="container mx-auto p-2">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      {/* <div className="flex items-center justify-between">
         <div>
           <h1 className="flex items-center gap-2 text-3xl font-bold">
             📊 التقارير
@@ -327,7 +327,7 @@ export default function ReportsPage() {
             قم بإنشاء وتحميل التقارير المالية والإدارية
           </p>
         </div>
-      </div>
+      </div> */}
 
       {/* Category Filter */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
