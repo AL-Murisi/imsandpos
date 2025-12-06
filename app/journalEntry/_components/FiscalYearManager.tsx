@@ -1,21 +1,17 @@
 "use client";
 import { useState, useEffect } from "react";
-import {
-  createFiscalYear,
-  getFiscalYears,
-  setActiveFiscalYear,
-} from "@/lib/actions/fiscalYear";
+import { createFiscalYear } from "@/lib/actions/fiscalYear";
 import { DataTable } from "@/components/common/test";
-import { fiscalYearColumns } from "./columns";
+import { fiscalYearColumns } from "./columns/journalEntryColumns";
 import { useTablePrams } from "@/hooks/useTableParams";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 
 export default function FiscalYearManager({
-  fiscalYears,
+  fiscalYear,
 }: {
-  fiscalYears: any[];
+  fiscalYear: any[];
 }) {
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
@@ -74,10 +70,10 @@ export default function FiscalYearManager({
       </div>
 
       <DataTable
-        data={fiscalYears}
+        data={fiscalYear}
         columns={fiscalYearColumns}
         initialPageSize={pagination.pageSize}
-        pageCount={Math.ceil(fiscalYears.length / pagination.pageSize)}
+        pageCount={Math.ceil(fiscalYear.length / pagination.pageSize)}
         pageActiom={setPagination}
         onSortingChange={setSorting}
         onGlobalFilterChange={setGlobalFilter}
@@ -85,7 +81,7 @@ export default function FiscalYearManager({
         sorting={sorting}
         pagination={pagination}
         highet="h-[50vh]"
-        totalCount={fiscalYears.length}
+        totalCount={fiscalYear.length}
       />
     </div>
   );

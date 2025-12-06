@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, use } from "react";
+import React, { useState, useEffect, use, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -285,7 +285,7 @@ export default function ReportsPage({
     }
   }, [searchParams]);
 
-  const handleDownload = async () => {
+  const handleDownload = useCallback(async () => {
     if (!reportType) {
       alert("الرجاء اختيار نوع التقرير");
       return;
@@ -325,7 +325,7 @@ export default function ReportsPage({
       setIsSubmitting(false);
       alert("حدث خطأ أثناء تحميل التقرير");
     }
-  };
+  }, [reportType, fromDate, toDate, selectedCustomer]);
 
   return (
     <div className="container mx-auto p-2">

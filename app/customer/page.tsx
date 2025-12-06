@@ -54,11 +54,11 @@ export default async function DebtSell({ searchParams }: DashboardProps) {
 
   const pageIndex = Number(page) - 1;
   const pageSize = Number(limit);
-  const data = getCustomerById(user.companyId, customersquery);
+  const data = await getCustomerById(user.companyId, customersquery);
   // const data = await FetchDebtSales(filter);
   return (
     <div className="rounded-xl p-3">
-      <CustomerClinet users={data} total={0} role={[]} />
+      <CustomerClinet users={data.result} total={data.total} role={[]} />
     </div>
   );
 }

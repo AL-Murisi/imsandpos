@@ -5,7 +5,7 @@ import { ProductForSale } from "@/lib/zod";
 import SearchInput from "@/components/common/searchlist";
 import { getTranslations } from "next-intl/server";
 import dynamic from "next/dynamic";
-import List from "./_components/productListing";
+import List from "./productListing";
 import { useTranslations } from "next-intl";
 
 type forsale = ProductForSale & {

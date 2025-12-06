@@ -43,18 +43,11 @@ export default async function Page({ searchParams }: JournalProps) {
   const pageSize = Number(limit);
 
   // ✅ Ensure async calls are awaited
-  const data = getJournalEntries(
-    account_id,
-    posted,
-    from,
-    to,
-    pageIndex,
-    pageSize,
-  );
-  const accounts = getExpenseCategories();
-  const fy = getFiscalYears();
+  const [data, accounts] = await Promise.all([
+    getJournalEntries(account_id, posted, from, to, pageIndex, pageSize),
+    getExpenseCategories(),
+    getFiscalYears(),
+  ]);
 
-  return (
-    <JournalEntriesTable dataj={data} acounts={accounts} fiscalYears={fy} />
-  );
+  return <JournalEntriesTable data={data} acount={accounts} />;
 }

@@ -1,7 +1,7 @@
 import { ProductForSale } from "@/lib/zod";
 import dynamic from "next/dynamic";
 
-const CartDisplay = dynamic(() => import("./_components/cartsClient"));
+const CartDisplay = dynamic(() => import("./cartsClient"));
 type forsale = ProductForSale & {
   warehousename: string;
   sellingMode: string;

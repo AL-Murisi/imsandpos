@@ -24,9 +24,15 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { deleteCustomer, updateCustomerStatus } from "@/lib/actions/customers";
 import { useAuth } from "@/lib/context/AuthContext";
-import DebtReport from "@/app/debt/_components/DebtReport";
-import CustomerEditForm from "./editcustomer";
-
+import dynamic from "next/dynamic";
+const CustomerEditForm = dynamic(() => import("./editcustomer"), {
+  ssr: false,
+  // loading: () => <TableSkeleton />,
+});
+const DebtReport = dynamic(() => import("@/app/debt/_components/DebtReport"), {
+  ssr: false,
+  // loading: () => <TableSkeleton />,
+});
 // 🔽 Sortable Header Component
 type SortableHeaderProps = {
   column: Column<any, unknown>;

@@ -143,6 +143,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
             companyId: user.companyId,
             createdAt: createDateFilter(fromDate, toDate),
           },
+
           _sum: { totalAmount: true },
           _count: { id: true },
         });

@@ -10,7 +10,7 @@ export function BottomBar() {
   return (
     <div className="fixed right-0 bottom-0 left-0 z-50 border-t bg-[#0b142a] px-4 py-2 text-white">
       <div className="mb-4 flex items-center justify-between">
-        <Link href="/" className="flex flex-col items-center text-xs">
+        <Link href="/dashboard" className="flex flex-col items-center text-xs">
           <Home size={22} />
           <span>الرئيسية</span>
         </Link>

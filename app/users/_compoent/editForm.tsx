@@ -58,7 +58,7 @@ export default function EditUserForm({ users }: any) {
       }
     };
     loadRoles();
-  }, [setValue]);
+  }, [open]);
 
   const selectedRole = watch("roleId");
   const onSubmit = async (data: UserInput) => {

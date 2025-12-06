@@ -1,7 +1,7 @@
 import { getSupplierStatement } from "@/lib/actions/test";
 import { getSession } from "@/lib/session";
-import SupplierStatement from "./SupplierStatement";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
+import ClientWarper from "./clientWarper";
 
 export default async function SupplierStatementPage({
   params,
@@ -43,5 +43,5 @@ export default async function SupplierStatementPage({
     );
   }
 
-  return <SupplierStatement suppliers={result.data} />;
+  return <ClientWarper suppliers={result.data} />;
 }

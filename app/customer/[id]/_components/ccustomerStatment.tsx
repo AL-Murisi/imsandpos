@@ -7,7 +7,7 @@ import { getCustomerStatement } from "@/lib/actions/test";
 import { Calendar22 } from "@/components/common/DatePicker";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
-import CustomerStatementPrint from "./_components/CustonerStatmentprint";
+import CustomerStatementPrint from "./CustonerStatmentprint";
 type Company =
   | {
       id: string;

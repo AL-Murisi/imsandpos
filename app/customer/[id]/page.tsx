@@ -1,6 +1,6 @@
 import { getCustomerStatement } from "@/lib/actions/test";
 import { getSession } from "@/lib/session";
-import CustomerStatement from "./ccustomerStatment";
+import ClientWarper from "./_components/clientWarper";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default async function CustomerStatementPage({
@@ -34,5 +34,5 @@ export default async function CustomerStatementPage({
     return <div>Error: {result.error}</div>;
   }
 
-  return <CustomerStatement customers={result?.data} />;
+  return <ClientWarper customers={result?.data} />;
 }
