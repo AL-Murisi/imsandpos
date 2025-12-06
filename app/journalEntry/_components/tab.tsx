@@ -1,3 +1,4 @@
+"use client";
 import TableSkeleton from "@/components/common/TableSkeleton";
 import DashboardTabs from "@/components/common/Tabs";
 import dynamic from "next/dynamic";
