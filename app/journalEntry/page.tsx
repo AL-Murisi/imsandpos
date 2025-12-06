@@ -5,6 +5,7 @@ import {
   getJournalEntries,
 } from "@/lib/actions/Journal Entry";
 import { getFiscalYears } from "@/lib/actions/fiscalYear";
+import Tab from "./_components/tab";
 
 type JournalProps = {
   searchParams: Promise<{
@@ -43,11 +44,11 @@ export default async function Page({ searchParams }: JournalProps) {
   const pageSize = Number(limit);
 
   // ✅ Ensure async calls are awaited
-  const [data, accounts] = await Promise.all([
+  const [data, accounts, fiscalYear] = await Promise.all([
     getJournalEntries(account_id, posted, from, to, pageIndex, pageSize),
     getExpenseCategories(),
     getFiscalYears(),
   ]);
 
-  return <JournalEntriesTable data={data} acount={accounts} />;
+  return <Tab data={data} acount={accounts} fiscalYear={fiscalYear} />;
 }

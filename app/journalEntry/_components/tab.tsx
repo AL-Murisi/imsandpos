@@ -12,7 +12,7 @@ const FiscalYearManager = dynamic(() => import("./FiscalYearManager"), {
 });
 type JournalEntriesClientProps = {
   data: any[];
-  fiscalYear: any[];
+  fiscalYear: any[] | undefined;
   acount: { id: string; name: string }[];
 };
 export default function Tab({
@@ -71,7 +71,7 @@ export default function Tab({
             {
               value: "fiscalYear",
               label: "سنة مالية ",
-              content: <FiscalYearManager fiscalYear={fiscalYear} />,
+              content: <FiscalYearManager fiscalYear={fiscalYear ?? []} />,
             },
           ]}
         />{" "}
