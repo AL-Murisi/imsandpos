@@ -34,7 +34,7 @@ export function useFormatter() {
       suffix = "M";
     } else if (Math.abs(value) >= 1000) {
       formattedValue = value / 1000;
-      suffix = "k";
+      suffix = "الف";
     }
 
     // Format the number with Arabic currency style
@@ -44,9 +44,9 @@ export function useFormatter() {
       numberingSystem: "latn",
       minimumFractionDigits: 2, // allow removing .00
       maximumFractionDigits: 2,
-    }).format(formattedValue);
+    }).format(value);
 
-    return `${suffix}${formattedCurrency}`;
+    return `${formattedCurrency}`;
   };
   /**
    * Format large numbers as "k" notation (1000 -> 1k)
@@ -77,14 +77,14 @@ export function useFormatter() {
 export function FormatPrice(price: number): string {
   if (price >= 1000) {
     const formattedPrice = (price / 1000).toFixed(1).replace(/\.0$/, "");
-    return `${formattedPrice}k`;
+    return `${formattedPrice}الف`;
   }
   return price.toString();
 }
 export function FormatQty(price: number): string {
   if (price >= 1000) {
     const formattedPrice = (price / 1000).toFixed(1).replace(/\.0$/, "");
-    return `${formattedPrice}k`;
+    return `${formattedPrice}الف`;
   }
   return price.toString();
 }

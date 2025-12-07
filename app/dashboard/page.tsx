@@ -217,6 +217,13 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
           value: d.total,
         })),
       },
+      revenueChart: {
+        total: summaryCards.revenue.total,
+        chart: dashboardData.salesOverview.data.map((d) => ({
+          date: d.date,
+          value: d.revenue,
+        })),
+      },
 
       debt: {
         unreceived: summaryCards.debt.unreceived,

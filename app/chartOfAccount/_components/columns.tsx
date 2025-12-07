@@ -14,6 +14,7 @@ import Dailogreuse from "@/components/common/dailogreuse";
 import dynamic from "next/dynamic";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
+import { useFormatter } from "@/hooks/usePrice";
 const AccountFormDialog = dynamic(() => import("./AccountFormDialog"), {
   ssr: false,
 });
@@ -175,6 +176,7 @@ export const accountColumns: ColumnDef<any>[] = [
     accessorKey: "balance",
     header: ({ column }) => <SortableHeader column={column} label="الرصيد" />,
     cell: ({ row }) => {
+      const { formatCurrency, formatPriceK, formatQty } = useFormatter();
       const balance = row.getValue("balance") as number;
       const color =
         balance > 0
@@ -185,13 +187,7 @@ export const accountColumns: ColumnDef<any>[] = [
 
       return (
         <div className={`font-mono text-lg font-semibold ${color}`}>
-          {new Intl.NumberFormat("ar-YE", {
-            style: "currency",
-            currency: "YER",
-            numberingSystem: "latn",
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          }).format(balance)}
+          {formatCurrency(balance)}
         </div>
       );
     },

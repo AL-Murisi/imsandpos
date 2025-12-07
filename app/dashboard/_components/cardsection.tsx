@@ -120,7 +120,7 @@ export default function SectionCards({
     },
     {
       description: "purchases",
-      title: `${salesSummary.purchases.total?.toFixed(0)} `,
+      title: `${salesSummary.purchases.total} `,
       label: t("purchases"),
       link: "",
       chartData: salesSummary.purchases.chart,

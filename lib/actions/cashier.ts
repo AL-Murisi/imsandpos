@@ -37,263 +37,7 @@ type SaleData = {
   saleNumber: string;
   receivedAmount: number;
 };
-// export async function processSale(data: any, companyId: string) {
-//   const {
-//     cart,
-//     totalBeforeDiscount,
-//     totalDiscount,
-//     totalAfterDiscount,
-//     cashierId,
-//     customerId,
-//     saleNumber,
-//     receivedAmount,
-//   } = data;
 
-//   const result = await prisma.$transaction(
-//     async (tx) => {
-//       // 1. Create the main Sale record
-//       const sale = await tx.sale.create({
-//         data: {
-//           companyId,
-//           saleNumber,
-//           customerId,
-//           cashierId,
-//           taxAmount: 0,
-//           sale_type: "sale",
-//           status: "completed",
-//           subtotal: totalBeforeDiscount,
-//           discountAmount: totalDiscount,
-//           totalAmount: totalAfterDiscount,
-//           amountPaid: receivedAmount,
-//           amountDue: Math.max(0, totalAfterDiscount - receivedAmount),
-//           paymentStatus:
-//             receivedAmount >= totalAfterDiscount ? "paid" : "partial",
-//         },
-//       });
-
-//       // ✅ Helper function to convert selling unit to base units
-//       function convertToBaseUnits(
-//         qty: number,
-//         sellingUnit: string,
-//         unitsPerPacket: number,
-//         packetsPerCarton: number,
-//       ): number {
-//         if (sellingUnit === "unit") return qty;
-//         if (sellingUnit === "packet") return qty * unitsPerPacket;
-//         if (sellingUnit === "carton")
-//           return qty * unitsPerPacket * packetsPerCarton;
-//         return qty;
-//       }
-
-//       // 🚀 OPTIMIZATION 1: Batch fetch all inventories at once
-//       const productIds = cart.map((item: any) => item.id);
-//       const warehouseIds = cart.map((item: any) => item.warehouseId);
-
-//       const inventories = await tx.inventory.findMany({
-//         where: {
-//           companyId,
-//           productId: { in: productIds },
-//           warehouseId: { in: warehouseIds },
-//         },
-//       });
-
-//       // Create a map for quick lookup
-//       const inventoryMap = new Map(
-//         inventories.map((inv) => [`${inv.productId}-${inv.warehouseId}`, inv]),
-//       );
-
-//       // 🚀 OPTIMIZATION 2: Prepare all operations in parallel arrays
-//       const saleItemsData = [];
-//       const stockMovementsData = [];
-//       const inventoryUpdates = [];
-
-//       // Process all items and prepare batch operations
-//       for (const item of cart) {
-//         const quantityInUnits = convertToBaseUnits(
-//           item.selectedQty,
-//           item.sellingUnit,
-//           item.unitsPerPacket || 1,
-//           item.packetsPerCarton || 1,
-//         );
-
-//         const inventoryKey = `${item.id}-${item.warehouseId}`;
-//         const inventory = inventoryMap.get(inventoryKey);
-
-//         if (!inventory || inventory.availableQuantity < quantityInUnits) {
-//           throw new Error(
-//             `Insufficient stock for ${item.name}. Available: ${inventory?.availableQuantity || 0}, Requested: ${quantityInUnits}.`,
-//           );
-//         }
-
-//         const newStock = inventory.stockQuantity - quantityInUnits;
-//         const newAvailable = inventory.availableQuantity - quantityInUnits;
-
-//         // Get the correct unit price
-//         let unitPrice = 0;
-//         if (item.sellingUnit === "unit") {
-//           unitPrice = item.pricePerUnit || 0;
-//         } else if (item.sellingUnit === "packet") {
-//           unitPrice = item.pricePerPacket || 0;
-//         } else if (item.sellingUnit === "carton") {
-//           unitPrice = item.pricePerCarton || 0;
-//         }
-
-//         const totalPrice = unitPrice * item.selectedQty;
-
-//         // Prepare data for batch operations
-//         saleItemsData.push({
-//           companyId,
-//           saleId: sale.id,
-//           productId: item.id,
-//           quantity: item.selectedQty,
-//           sellingUnit: item.sellingUnit,
-//           unitPrice: unitPrice,
-//           totalPrice: totalPrice,
-//         });
-
-//         stockMovementsData.push({
-//           companyId,
-//           productId: item.id,
-//           warehouseId: item.warehouseId,
-//           userId: cashierId,
-//           movementType: "صادر",
-//           quantity: quantityInUnits,
-//           reason: "بيع",
-//           quantityBefore: inventory.stockQuantity,
-//           quantityAfter: newStock,
-//           referenceType: "بيع",
-//           referenceId: sale.id,
-//         });
-
-//         inventoryUpdates.push({
-//           where: {
-//             companyId_productId_warehouseId: {
-//               companyId,
-//               productId: item.id,
-//               warehouseId: item.warehouseId,
-//             },
-//           },
-//           data: {
-//             stockQuantity: newStock,
-//             availableQuantity: newAvailable,
-//             status:
-//               newAvailable <= inventory.reorderLevel
-//                 ? "low"
-//                 : newAvailable === 0
-//                   ? "out_of_stock"
-//                   : "available",
-//           },
-//         });
-//       }
-
-//       // 🚀 OPTIMIZATION 3: Execute all operations in parallel
-//       await Promise.all([
-//         // Batch create sale items
-//         tx.saleItem.createMany({ data: saleItemsData }),
-
-//         // Batch create stock movements
-//         tx.stockMovement.createMany({ data: stockMovementsData }),
-
-//         // Batch update inventories
-//         ...inventoryUpdates.map((update) => tx.inventory.update(update)),
-//       ]);
-
-//       // 7. Update Customer Balance (if applicable)
-//       const customerUpdates = [];
-
-//       if (customerId && totalAfterDiscount > receivedAmount) {
-//         const amountDue = totalAfterDiscount - receivedAmount;
-//         customerUpdates.push(
-//           tx.customer.update({
-//             where: { id: customerId, companyId },
-//             data: {
-//               outstandingBalance: { increment: amountDue },
-//             },
-//           }),
-//         );
-//       }
-
-//       if (customerId && receivedAmount > totalAfterDiscount) {
-//         const change = receivedAmount - totalAfterDiscount;
-//         customerUpdates.push(
-//           tx.customer.update({
-//             where: { id: customerId, companyId },
-//             data: { balance: { increment: change } },
-//           }),
-//         );
-//       }
-
-//       // 8. Create Payment record (if amount received)
-//       if (receivedAmount > 0) {
-//         customerUpdates.push(
-//           tx.payment.create({
-//             data: {
-//               companyId,
-//               saleId: sale.id,
-//               cashierId,
-//               customerId,
-//               paymentMethod: "cash",
-//               payment_type: "sale_payment",
-//               amount: receivedAmount,
-//               status: "completed",
-//             },
-//           }),
-//         );
-//       }
-
-//       // Execute customer updates and payment in parallel
-//       if (customerUpdates.length > 0) {
-//         await Promise.all(customerUpdates);
-//       }
-
-//       // 9. Log Activity (don't await - fire and forget for speed)
-//       logActivity(
-//         cashierId,
-//         companyId,
-//         "أمين الصندوق", // cashier
-//         "قام ببيع منتج", // sells a product
-//         "889", // (keep as is, transaction or code)
-//         "وكيل المستخدم",
-//       ).catch(console.error); // Handle errors silently
-
-//       // 10. Prepare response
-//       const saleForClient = {
-//         ...sale,
-//         taxAmount: sale.taxAmount.toString(),
-//         subtotal: sale.subtotal.toString(),
-//         discountAmount: sale.discountAmount.toString(),
-//         totalAmount: sale.totalAmount.toString(),
-//         amountPaid: sale.amountPaid.toString(),
-//         amountDue: sale.amountDue.toString(),
-//       };
-
-//       return { message: "Sale processed successfully", sale: saleForClient };
-//     },
-//     {
-//       timeout: 20000,
-//       maxWait: 5000, // Add maxWait to prevent long queue times
-//     },
-//   );
-
-//   revalidatePath("/cashiercontrol");
-//   if (result.sale) {
-//     try {
-//       await createSaleJournalEntries({
-//         companyId,
-//         sale: result.sale,
-//         customerId: customerId,
-//         saleItems: cart,
-//         cashierId,
-//       });
-
-//       console.log(`Journal entry created for saleId=${result.sale.id}`);
-//     } catch (err) {
-//       console.error("Background journal creation failed:", err);
-//     }
-//   }
-
-//   return result;
-// }
 export async function processSale(data: any, companyId: string) {
   const {
     cart,
@@ -575,6 +319,21 @@ async function createSaleJournalEntriesWithRetry(
   maxRetries = 3,
   retryDelay = 1000,
 ) {
+  const exists = await prisma.journal_entries.findFirst({
+    where: {
+      reference_id: data.sale.id,
+      reference_type: "sale",
+    },
+    select: { id: true },
+  });
+
+  if (exists) {
+    console.log(
+      "🟨 Journal entries already exist — skipping retry + creation.",
+    );
+    return; // 👍 Prevents retrying & prevents duplicates
+  }
+
   let lastError: Error | null = null;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -918,8 +677,6 @@ export async function createSaleJournalEntries({
       ),
     );
   });
-  revalidatePath("/journalEntry");
-  console.log("✅ Journal entries created for sale", sale.id);
 }
 export async function getAllActiveProductsForSale(
   where: Prisma.ProductWhereInput,

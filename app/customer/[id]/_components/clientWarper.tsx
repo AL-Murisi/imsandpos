@@ -41,5 +41,5 @@ export default function ClientWarper({
 }: {
   customers: CustomerStatement | undefined;
 }) {
-  return <CustomerStatement customers={undefined} />;
+  return <CustomerStatement customers={customers} />;
 }

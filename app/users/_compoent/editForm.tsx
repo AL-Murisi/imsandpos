@@ -48,6 +48,7 @@ export default function EditUserForm({ users }: any) {
   if (!user) return;
   // Load roles on mount
   useEffect(() => {
+    if (!open) return;
     const loadRoles = async () => {
       const result = await fetchRolesForSelect();
       setRoles(result);

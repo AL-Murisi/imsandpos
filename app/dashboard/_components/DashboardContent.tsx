@@ -62,6 +62,11 @@ interface DashboardContentClientProps {
     sales: { total: number; chart: Array<{ date: string; value: number }> };
     purchases: { total: number; chart: Array<{ date: string; value: number }> };
     revenue: { total: number; chart: Array<{ date: string; value: number }> };
+    revenueChart: {
+      total: number;
+      chart: Array<{ date: string; value: number }>;
+    };
+
     debt: {
       unreceived: number;
       received: number;
@@ -77,7 +82,7 @@ function DashboardContentClient({
   salesSummary,
 }: DashboardContentClientProps) {
   const revMap = new Map(
-    salesSummary.revenue.chart.map((pt) => [pt.date, pt.value.toFixed(2)]),
+    salesSummary.revenueChart.chart.map((pt) => [pt.date, pt.value.toFixed(2)]),
   );
   const purMap = new Map(
     salesSummary.purchases.chart.map((pt) => [pt.date, pt.value.toFixed(2)]),

@@ -99,7 +99,7 @@ export default function ChartOfAccountsTable({
       {/* Header Section */}
       <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">دليل الحسابات</h1>
+          <h1 className="text-xl font-bold">دليل الحسابات</h1>
           <p className="mt-1 text-lg">إدارة هيكل الحسابات المحاسبية</p>
         </div>
 
@@ -120,46 +120,44 @@ export default function ChartOfAccountsTable({
       </div>
 
       {/* Summary Cards */}
-      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
         {/* إجمالي الأصول */}
         <div className="rounded-2xl border bg-gradient-to-r from-cyan-500 to-cyan-700 p-3 shadow-xl/20 shadow-gray-900">
           <p className="text-md font-medium">إجمالي الأصول</p>
-          <p className="mt-1 text-2xl font-bold">
+          <p className="mt-1 text-xl font-bold">
             {formatCurrency(totals.totalAssets)}{" "}
           </p>
         </div>
         {/* إجمالي الخصوم */}
         <div className="rounded-lg bg-gradient-to-r from-red-500 to-red-700 p-3 shadow-xl/20 shadow-gray-900">
           <p className="text-lg font-medium">إجمالي الخصوم</p>
-          <p className="mt-1 text-2xl font-bold">
+          <p className="mt-1 text-xl font-bold">
             {formatCurrency(totals.totalLiabilities)}{" "}
           </p>
         </div>
         {/* إجمالي الإيرادات */}
         <div className="rounded-2xl bg-gradient-to-r from-purple-500 to-purple-700 p-4 shadow-xl/20 shadow-gray-900">
           <p className="text-sm font-medium">إجمالي الإيرادات</p>
-          <p className="\ mt-1 text-2xl font-bold">
+          <p className="\ mt-1 text-xl font-bold">
             {formatCurrency(totals.totalRevenue)}{" "}
           </p>
         </div>
         <div className="rounded-2xl bg-gradient-to-r from-green-400 to-green-700 p-4 shadow-xl/20 shadow-gray-900">
           <p className="text-sm font-medium">صافي الربح</p>
-          <p className="\ mt-1 text-2xl font-bold">
+          <p className="\ mt-1 text-xl font-bold">
             {formatCurrency(totals.netIncome)}{" "}
           </p>
         </div>
         <div className="rounded-2xl bg-gradient-to-r from-green-700 to-purple-700 p-4 shadow-xl/20 shadow-gray-900">
           <p className="text-sm font-medium">إجمالي المصروفات </p>
-          <p className="\ mt-1 text-2xl font-bold">
+          <p className="\ mt-1 text-xl font-bold">
             {formatCurrency(totals.totalExpenses)}{" "}
           </p>
         </div>
         {/* الحسابات النشطة */}
         <div className="rounded-2xl bg-gradient-to-r from-blue-500 to-blue-700 p-4 shadow-xl/20 shadow-gray-900">
           <p className="text-sm font-medium">الحسابات النشطة</p>
-          <p className="mt-1 text-2xl font-bold">
-            {totals.activeAccountsCount}
-          </p>
+          <p className="mt-1 text-xl font-bold">{totals.activeAccountsCount}</p>
         </div>
       </div>
       <div className="bg-accent rounded-2xl p-2 shadow-xl/20 shadow-gray-900">
@@ -340,7 +338,7 @@ export default function ChartOfAccountsTable({
 //       {/* Header Section */}
 //       <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
 //         <div>
-//           <h1 className="text-2xl font-bold">دليل الحسابات</h1>
+//           <h1 className="text-xl font-bold">دليل الحسابات</h1>
 //           <p className="mt-1 text-lg">إدارة هيكل الحسابات المحاسبية</p>
 //         </div>
 
@@ -364,37 +362,37 @@ export default function ChartOfAccountsTable({
 //       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
 //         <div className="rounded-2xl border bg-gradient-to-r from-cyan-500 to-cyan-700 p-3 shadow-xl/20 shadow-gray-900">
 //           <p className="text-md font-medium text-white">إجمالي الأصول</p>
-//           <p className="mt-1 text-2xl font-bold text-white">
+//           <p className="mt-1 text-xl font-bold text-white">
 //             {formatCurrency(totals.totalAssets)}
 //           </p>
 //         </div>
 //         <div className="rounded-lg bg-gradient-to-r from-red-500 to-red-700 p-3 shadow-xl/20 shadow-gray-900">
 //           <p className="text-lg font-medium text-white">إجمالي الخصوم</p>
-//           <p className="mt-1 text-2xl font-bold text-white">
+//           <p className="mt-1 text-xl font-bold text-white">
 //             {formatCurrency(totals.totalLiabilities)}
 //           </p>
 //         </div>
 //         <div className="rounded-2xl bg-gradient-to-r from-purple-500 to-purple-700 p-4 shadow-xl/20 shadow-gray-900">
 //           <p className="text-sm font-medium text-white">إجمالي الإيرادات</p>
-//           <p className="mt-1 text-2xl font-bold text-white">
+//           <p className="mt-1 text-xl font-bold text-white">
 //             {formatCurrency(totals.totalRevenue)}
 //           </p>
 //         </div>
 //         <div className="rounded-2xl bg-gradient-to-r from-green-400 to-green-700 p-4 shadow-xl/20 shadow-gray-900">
 //           <p className="text-sm font-medium text-white">صافي الربح</p>
-//           <p className="mt-1 text-2xl font-bold text-white">
+//           <p className="mt-1 text-xl font-bold text-white">
 //             {formatCurrency(totals.netIncome)}
 //           </p>
 //         </div>
 //         <div className="rounded-2xl bg-gradient-to-r from-green-700 to-purple-700 p-4 shadow-xl/20 shadow-gray-900">
 //           <p className="text-sm font-medium text-white">إجمالي المصروفات</p>
-//           <p className="mt-1 text-2xl font-bold text-white">
+//           <p className="mt-1 text-xl font-bold text-white">
 //             {formatCurrency(totals.totalExpenses)}
 //           </p>
 //         </div>
 //         <div className="rounded-2xl bg-gradient-to-r from-blue-500 to-blue-700 p-4 shadow-xl/20 shadow-gray-900">
 //           <p className="text-sm font-medium text-white">الحسابات النشطة</p>
-//           <p className="mt-1 text-2xl font-bold text-white">
+//           <p className="mt-1 text-xl font-bold text-white">
 //             {totals.activeAccountsCount}
 //           </p>
 //         </div>
