@@ -839,10 +839,6 @@ export async function POST(req: NextRequest, context: RouteContext) {
               },
             });
 
-        if (customers.length === 0) {
-          return { success: false, error: "لا يوجد بيانات مطابقة" };
-        }
-
         // 2️⃣ تجهيز كشف حساب لكل عميل
         const customerStatements = [];
 
