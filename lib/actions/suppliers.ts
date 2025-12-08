@@ -240,7 +240,7 @@ async function createSuppliereJournalEntriesWithRetry(
     createdBy: string;
   },
   maxRetries = 4,
-  retryDelay = 1000,
+  retryDelay = 200,
 ) {
   let lastError: Error | null = null;
 
@@ -831,7 +831,7 @@ export async function createSupplierPaymentFromPurchases(
 async function createPurchaseJournalEntriesWithRetry(
   params: { payment: any; companyId: string; userId: string },
   maxRetries = 4,
-  retryDelay = 1000,
+  retryDelay = 200,
 ) {
   let lastError: Error | null = null;
 

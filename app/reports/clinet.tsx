@@ -193,6 +193,13 @@ const reports = [
     description: "الذمم المدينة",
   },
   {
+    name: "        كشف حساب العملاء",
+    id: "customer_statment",
+    type: "customers",
+    icon: "🧾",
+    description: "    كشف حساب العملاء",
+  },
+  {
     name: "تقرير المدفوعات من العملاء",
     id: "customer-payments",
     type: "customers",
@@ -385,7 +392,7 @@ export default function ReportsPage({
                 </div>
 
                 {/* Customer Filter for customer reports */}
-                {reportType.includes("customer") && (
+                {selectedReport.id === "customer_statment" && (
                   <div className="space-y-2">
                     <label className="flex items-center gap-2 text-sm font-medium">
                       👤 اختر عميل محدد (اختياري)
@@ -454,7 +461,7 @@ export default function ReportsPage({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:grid-cols-5">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
               {filteredReports.map((report) => (
                 <Card
                   key={report.id}

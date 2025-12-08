@@ -25,6 +25,14 @@ Handlebars.registerHelper("multiply", (a, b) => Number(a) * Number(b));
 Handlebars.registerHelper("divide", (a: number, b: number) =>
   b !== 0 ? a / b : 0,
 );
+function mapType(ref: string | null) {
+  if (!ref) return "عملية";
+  if (ref.includes("مدفوع")) return "دفعة";
+  if (ref.includes("غير مدفوع")) return "فاتورة غير مدفوعة";
+  if (ref.includes("تكلفة")) return "قيد مخزون";
+  if (ref.includes("مرتجع")) return "مرتجع";
+  return ref;
+}
 
 Handlebars.registerHelper("formatNumber", (num) =>
   new Intl.NumberFormat("ar-EG").format(Number(num)),
@@ -759,6 +767,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
           where: {
             companyId: user.companyId,
             updatedAt: createDateFilter(fromDate, toDate),
+            ...(customerId && { id: customerId }),
           },
         });
 
@@ -780,6 +789,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
           where: {
             companyId: user.companyId,
             outstandingBalance: { gt: 0 },
+            ...(customerId && { id: customerId }),
           },
         });
 
@@ -797,6 +807,116 @@ export async function POST(req: NextRequest, context: RouteContext) {
         };
         break;
       }
+      case "customer_statment": {
+        templateFile = "customer_statment.html";
+
+        // 1️⃣ جلب العملاء (عميل واحد أو الجميع)
+        const customers = customerId
+          ? await prisma.customer.findMany({
+              where: { id: customerId, companyId: user.companyId },
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phoneNumber: true,
+                address: true,
+                city: true,
+                balance: true,
+                outstandingBalance: true,
+              },
+            })
+          : await prisma.customer.findMany({
+              where: {
+                companyId: user.companyId,
+                outstandingBalance: { gt: 0 },
+              },
+              select: {
+                id: true,
+                name: true,
+                phoneNumber: true,
+                balance: true,
+                outstandingBalance: true,
+              },
+            });
+
+        if (customers.length === 0) {
+          return { success: false, error: "لا يوجد بيانات مطابقة" };
+        }
+
+        // 2️⃣ تجهيز كشف حساب لكل عميل
+        const customerStatements = [];
+
+        for (const c of customers) {
+          // رصيد افتتاحي
+          const openingEntries = await prisma.journal_entries.findMany({
+            where: {
+              company_id: user.companyId,
+              reference_id: c.id,
+              entry_date: { lt: fromDate },
+            },
+            select: { debit: true, credit: true },
+          });
+
+          // قيود الفترة
+          const entries = await prisma.journal_entries.findMany({
+            where: {
+              company_id: user.companyId,
+              reference_id: c.id,
+              entry_date: { gte: fromDate, lte: toDate },
+            },
+            orderBy: { entry_date: "asc" },
+            select: {
+              id: true,
+              entry_date: true,
+              debit: true,
+              credit: true,
+              description: true,
+              entry_number: true,
+              reference_type: true,
+            },
+          });
+
+          // بناء كشف الحساب
+          let runningBalance: number = 0;
+          const transactions = entries.map((entry) => {
+            runningBalance =
+              runningBalance + Number(entry.debit) - Number(entry.credit);
+
+            return {
+              date: entry.entry_date?.toLocaleDateString("ar-EG"),
+              debit: Number(entry.debit),
+              credit: Number(entry.credit),
+              balance: runningBalance.toFixed(2),
+              description: entry.description,
+              docNo: entry.entry_number,
+              typeName: mapType(entry.reference_type),
+            };
+          });
+
+          const totalDebit = transactions.reduce((s, t) => s + t.debit, 0);
+          const totalCredit = transactions.reduce((s, t) => s + t.credit, 0);
+          const closingBalance = Math.abs(totalDebit - totalCredit);
+
+          customerStatements.push({
+            customer: c,
+
+            closingBalance: closingBalance.toFixed(2),
+            totalDebit: totalDebit.toFixed(2),
+            totalCredit: totalCredit.toFixed(2),
+            transactions,
+            period: { from: fromDisplay, to: toDisplay },
+          });
+        }
+
+        // 3️⃣ إخراج التقرير
+        data = {
+          customers: customerStatements,
+          period: { from: fromDisplay, to: toDisplay },
+          ...baseData,
+        };
+
+        break;
+      }
 
       case "customer-payments": {
         templateFile = "customer-payments-report.html";
@@ -805,7 +925,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
             companyId: user.companyId,
             payment_type: "CUSTOMER_PAYMENT",
             createdAt: createDateFilter(fromDate, toDate),
-            ...(customerId && { customerId }),
+            ...(customerId && { id: customerId }),
           },
           include: { customer: true },
         });
@@ -828,7 +948,6 @@ export async function POST(req: NextRequest, context: RouteContext) {
           status: 400,
         });
     }
-    console.log(data);
     /* ==================== PDF GENERATION ==================== */
     const templatePath = path.join(process.cwd(), "templates", templateFile);
     const htmlTemplate = fs.readFileSync(templatePath, "utf8");

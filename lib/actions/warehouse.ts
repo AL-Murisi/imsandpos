@@ -668,7 +668,7 @@ export async function processPurchaseReturn(
 async function createPurchaseJournalEntriesWithRetry(
   params: { purchase: any; companyId: string; userId: string; type: string },
   maxRetries = 4,
-  retryDelay = 1000,
+  retryDelay = 200,
 ) {
   let lastError: Error | null = null;
 

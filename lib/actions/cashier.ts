@@ -317,7 +317,7 @@ async function createSaleJournalEntriesWithRetry(
     cashierId: string;
   },
   maxRetries = 3,
-  retryDelay = 1000,
+  retryDelay = 200,
 ) {
   const exists = await prisma.journal_entries.findFirst({
     where: {
@@ -1170,7 +1170,7 @@ async function createReturnJournalEntriesWithRetry(
     reason?: string;
   },
   maxRetries = 3,
-  retryDelay = 1000,
+  retryDelay = 200,
 ) {
   let lastError: Error | null = null;
 
@@ -1762,7 +1762,7 @@ async function createPaymentJournalEntriesWithRetry(
     paymentAllocations: any[];
   },
   maxRetries = 3,
-  retryDelay = 1000,
+  retryDelay = 200,
 ) {
   let lastError: Error | null = null;
 
@@ -2147,7 +2147,7 @@ async function createSupplierPaymentJournalEntriesWithRetry(
     totalAppliedToPurchases: number;
   },
   maxRetries = 3,
-  retryDelay = 1000,
+  retryDelay = 200,
 ) {
   let lastError: Error | null = null;
 

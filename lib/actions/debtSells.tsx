@@ -268,7 +268,7 @@ async function createPurchaseJournalEntriesWithRetry(
     cashierId: string;
   },
   maxRetries = 4,
-  retryDelay = 1000,
+  retryDelay = 200,
 ) {
   let lastError: Error | null = null;
 
