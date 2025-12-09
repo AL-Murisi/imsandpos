@@ -905,7 +905,7 @@ export async function createSupplierPaymentJournalEntries({
   ) => {
     await prisma.accounts.update({
       where: { id: account_id },
-      data: { balance: { increment: debit - credit } },
+      data: { balance: { increment: credit - debit } },
     });
   };
 
@@ -934,9 +934,9 @@ export async function createSupplierPaymentJournalEntries({
       company_id: companyId,
       account_id: paymentAccount,
       description,
-      debit: 0,
+      debit: payment.amount,
       fiscal_period: fy.period_name,
-      credit: payment.amount,
+      credit: 0,
       reference_type: "سداد_دين_المورد",
       reference_id: payment.id,
       entry_number: entry_number + "-C",
@@ -944,7 +944,7 @@ export async function createSupplierPaymentJournalEntries({
       is_automated: true,
     },
   });
-  await updateAccountBalance(paymentAccount, 0, payment.amount);
+  await updateAccountBalance(paymentAccount, payment.amount, 0);
 }
 
 export async function getPurchasePaymentHistory(

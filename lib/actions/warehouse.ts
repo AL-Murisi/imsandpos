@@ -847,7 +847,7 @@ export async function createPurchaseJournalEntries({
           credit: 0,
           reference_type: "آجل مشتريات",
           reference_id: purchase.supplierId,
-          entry_number: `${entryBase}-CR2`,
+          entry_number: `${entryBase}-CR5`,
         },
       );
     } else {
@@ -945,10 +945,28 @@ export async function createPurchaseJournalEntries({
     // Insert all journal entries
     await tx.journal_entries.createMany({ data: entries });
 
-    // Calculate account balance deltas
+    // 2️⃣ Fetch account types once
+    const accountIds = [...new Set(entries.map((e) => e.account_id))];
+
+    const accounts = await tx.accounts.findMany({
+      where: { id: { in: accountIds }, company_id: companyId },
+      select: { id: true, account_type: true },
+    });
+
+    const accountTypeMap = new Map(accounts.map((a) => [a.id, a.account_type]));
+
+    // 3️⃣ Calculate deltas correctly
     const accountDeltas = new Map<string, number>();
+
     for (const entry of entries) {
-      const delta = (entry.debit || 0) - (entry.credit || 0);
+      const type = accountTypeMap.get(entry.account_id);
+      if (!type) continue;
+
+      const debit = Number(entry.debit || 0);
+      const credit = Number(entry.credit || 0);
+
+      const delta = type === "ASSET" ? debit - credit : credit - debit;
+
       accountDeltas.set(
         entry.account_id,
         (accountDeltas.get(entry.account_id) || 0) + delta,
@@ -965,8 +983,6 @@ export async function createPurchaseJournalEntries({
       ),
     );
   });
-
-  console.log(`✅ Purchase journal entries created for ${purchase.id}`);
 }
 
 interface PurchaseReturnData {
