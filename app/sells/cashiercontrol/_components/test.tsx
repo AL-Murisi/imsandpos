@@ -1,7 +1,9 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { Clock } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 type Company =
   | {
       id: string;
@@ -42,6 +44,7 @@ export const PrintButton: React.FC<PrintButtonProps> = ({
   company,
 }) => {
   const router = useRouter();
+  const [isLoading2, setIsLoading2] = useState(false);
 
   const handlePrint = () => {
     const query = new URLSearchParams({
@@ -63,9 +66,14 @@ export const PrintButton: React.FC<PrintButtonProps> = ({
   return (
     <Button
       className="rounded bg-green-600 px-4 py-2 text-white"
-      onClick={handlePrint}
+      disabled={isLoading2}
+      onClick={() => {
+        setIsLoading2(true);
+        handlePrint(); // call the function
+      }}
     >
-      {t("print")}
+      {isLoading2 && <Clock className="h-4 w-4 animate-spin" />}
+      {isLoading2 ? "جاري الطباعة..." : t("print")}
     </Button>
   );
 };

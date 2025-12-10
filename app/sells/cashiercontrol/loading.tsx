@@ -90,8 +90,7 @@ export default function Loading() {
             </div>
             <div className="flex justify-between">
               <div className="h-6 w-1/4 animate-pulse rounded bg-gray-700"></div>
-              <div className="h-6 w-1/5 animate-pulse rounded bg-red-600"></div>{" "}
-              {/* Total Amount */}
+              {/* <div className="h-6 w-1/5 animate-pulse rounded bg-red-600"></div>{" "} */}
             </div>
           </div>
         </div>

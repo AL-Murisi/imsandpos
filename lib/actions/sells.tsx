@@ -113,6 +113,7 @@ export async function FetchDebtSales(
       customerId: true,
       sale_type: true,
       saleNumber: true,
+      refunded: true,
       customer: {
         select: {
           name: true,
@@ -121,7 +122,7 @@ export async function FetchDebtSales(
           customerType: true,
         },
       },
-
+      payments: { select: { notes: true } },
       saleItems: {
         select: {
           productId: true,
@@ -151,18 +152,21 @@ export async function FetchDebtSales(
       ...item,
       unitPrice: Number(item.unitPrice),
     })),
-    totalAmount: Number(sale.totalAmount), // Convert Decimal to string
-    amountPaid: Number(sale.amountPaid), // Convert Decimal to string
-    amountDue: Number(sale.amountDue), // Convert Decimal to string
+    reason: sale.payments.find((p) => p.notes)?.notes || null, // ✅ FIXED
+    totalAmount: Number(sale.totalAmount),
+    amountPaid: Number(sale.amountPaid),
+    amountDue: Number(sale.amountDue),
+    refunded: Number(sale.refunded),
     saleDate: sale.saleDate.toISOString(),
     createdAt: sale.createdAt.toISOString(),
     customer: sale.customer
       ? {
           ...sale.customer,
-          outstandingBalance: Number(sale.customer.outstandingBalance), // ✅ converts nested Decimal
+          outstandingBalance: Number(sale.customer.outstandingBalance),
         }
       : null,
   }));
+
   return { serializedDebts, total }; // Return the transformed data
 }
 

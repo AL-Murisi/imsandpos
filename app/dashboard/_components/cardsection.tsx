@@ -232,7 +232,7 @@ export default function SectionCards({
             </Link>
           </Button>
           <Button asChild>
-            <Link href="/debt" prefetch={false}>
+            <Link href="/customer" prefetch={false}>
               عرض الديون
             </Link>
           </Button>

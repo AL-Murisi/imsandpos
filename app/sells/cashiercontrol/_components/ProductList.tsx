@@ -7,6 +7,7 @@ import { getTranslations } from "next-intl/server";
 import dynamic from "next/dynamic";
 import List from "./productListing";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 
 type forsale = ProductForSale & {
   warehousename: string;
@@ -22,6 +23,10 @@ type prop = {
   searchParams: any;
   queryr: string;
 };
+interface UserOption {
+  id?: string;
+  name?: string;
+}
 
 export default function ProductsList({
   product,
@@ -30,6 +35,9 @@ export default function ProductsList({
   queryr,
 }: prop) {
   const t = useTranslations("cashier");
+  const [selectedproduct, setSelectedproduct] = useState<UserOption | null>(
+    null,
+  );
 
   return (
     <div className="rounded-2xl p-2 lg:col-span-1">
@@ -50,14 +58,14 @@ export default function ProductsList({
             name: p.name,
           }))} // 👈 map your products into { id, name }
           action={(selected) => {
-            // you can trigger logic here (e.g. set selected product, filter, etc.)
+            setSelectedproduct(selected);
           }}
         />
       </div>
       <List
         product={product}
         formData={formData}
-        queryr={queryr}
+        queryr={queryr || (selectedproduct ? selectedproduct.name || "" : "")}
         searchParams={undefined}
       />
     </div>

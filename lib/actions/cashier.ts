@@ -1105,6 +1105,7 @@ export async function processReturn(data: any, companyId: string) {
         data: {
           refunded: { increment: returnSubtotal },
           totalAmount: 0,
+          sale_type: "return",
         },
       });
       const cleanReturnSale = JSON.parse(JSON.stringify(returnSale));

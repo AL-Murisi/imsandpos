@@ -33,14 +33,22 @@ function serializeData<T>(data: T): T {
 }
 export async function getCustomerById(
   companyId: string,
+  page: number = 0, // 0-indexed page number
+  pageSize: number = 5,
   customersquery?: string,
   customerId?: string,
+  from?: string,
+  to?: string,
 ) {
+  const fromDate = from ? new Date(from).toISOString() : undefined;
+  const toDate = to ? new Date(to).toISOString() : undefined;
   try {
     const customers = await prisma.customer.findMany({
       where: {
         id: customerId,
         companyId,
+        ...(fromDate && { gte: fromDate }),
+        ...(toDate && { lte: toDate }),
         ...(customersquery && {
           OR: [
             { name: { contains: customersquery, mode: "insensitive" } },
@@ -68,6 +76,8 @@ export async function getCustomerById(
         createdAt: true,
         updatedAt: true,
       },
+      skip: page * pageSize,
+      take: pageSize,
     });
 
     // Convert Decimal fields to string for client

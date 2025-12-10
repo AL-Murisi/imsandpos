@@ -25,14 +25,18 @@ import { Label } from "@/components/ui/label";
 import { deleteCustomer, updateCustomerStatus } from "@/lib/actions/customers";
 import { useAuth } from "@/lib/context/AuthContext";
 import dynamic from "next/dynamic";
+import { useState } from "react";
 const CustomerEditForm = dynamic(() => import("./editcustomer"), {
   ssr: false,
   // loading: () => <TableSkeleton />,
 });
-const DebtReport = dynamic(() => import("@/app/debt/_components/DebtReport"), {
-  ssr: false,
-  // loading: () => <TableSkeleton />,
-});
+const DebtReport = dynamic(
+  () => import("@/app/customer/_components/DebtReport"),
+  {
+    ssr: false,
+    // loading: () => <TableSkeleton />,
+  },
+);
 // 🔽 Sortable Header Component
 type SortableHeaderProps = {
   column: Column<any, unknown>;
@@ -213,6 +217,8 @@ export const customerColumns: ColumnDef<any>[] = [
       const customer = row.original;
       const { user } = useAuth();
       const router = useRouter();
+      const [isLoading, setIsLoading] = useState(false);
+
       if (!user) return;
       return (
         <div className="flex gap-3">
@@ -257,8 +263,17 @@ export const customerColumns: ColumnDef<any>[] = [
           </DropdownMenu>
           <DebtReport customerName={customer.name} customerID={customer.id} />
           <CustomerEditForm customer={customer} />
-          <Button onClick={() => router.push(`/customer/${customer.id}`)}>
-            كشف حساب
+
+          <Button
+            disabled={isLoading}
+            onClick={() => {
+              setIsLoading(true);
+              router.push(`/customer/${customer.id}`);
+            }}
+            className="flex items-center gap-2"
+          >
+            {isLoading && <Clock className="h-3 w-3 animate-spin" />}
+            {isLoading ? "جاري الفتح..." : "كشف حساب"}
           </Button>
         </div>
       );

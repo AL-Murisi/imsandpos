@@ -15,13 +15,6 @@ export default function Loading() {
   return (
     <div className="bg-accent flex flex-col p-3" dir="rtl">
       {/* Add dir="rtl" for proper RTL layout */}
-      <div className="mb-2 flex flex-wrap gap-2">
-        <Calendar22 />
-        <SearchInput placeholder={"بحث"} paramKey={"users"} />{" "}
-        {/* Translate placeholder */}
-        <SearchInput placeholder={"الفئة"} paramKey={"users"} />{" "}
-        <CustomerForm />
-      </div>
 
       <TableSkeleton />
     </div>

@@ -3,11 +3,17 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSignIcon, ShoppingBagIcon, WalletIcon } from "lucide-react"; // Example icons
+import {
+  Clock,
+  DollarSignIcon,
+  ShoppingBagIcon,
+  WalletIcon,
+} from "lucide-react"; // Example icons
 import Link from "next/link";
 import { useRouter } from "next/navigation"; // For refreshing data or navigation
 import dynamic from "next/dynamic";
 import TableSkeleton from "@/components/common/TableSkeleton";
+import { useState } from "react";
 
 const DebtSells = dynamic(() => import("./table"), {
   ssr: false,
@@ -29,6 +35,8 @@ export default function SellsDashboardClient({
   recentSales,
 }: SellsDashboardClientProps) {
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading2, setIsLoading2] = useState(false);
 
   return (
     <section className="space-y-6">
@@ -82,20 +90,39 @@ export default function SellsDashboardClient({
         {/* Add more cashier KPIs */}
       </div>
       <div className="flex flex-wrap gap-4">
-        {/* <Button asChild size="lg"> */}
-        <Link
+        {/* <Button asChild size="lg"> */}{" "}
+        <Button
+          disabled={isLoading}
+          onClick={() => {
+            setIsLoading(true);
+            router.push("/sells/cashiercontrol");
+          }}
+        >
+          {isLoading && <Clock className="h-4 w-4 animate-spin" />}
+          {isLoading ? "جاري الفتح..." : " عملية بيع"}
+        </Button>
+        {/* <Link
           href="/sells/cashiercontrol"
           className="bg-primary rounded-sm p-2 text-white dark:text-black"
         >
           عملية بيع
-        </Link>
-
-        <Link
+        </Link> */}{" "}
+        <Button
+          disabled={isLoading2}
+          onClick={() => {
+            setIsLoading2(true);
+            router.push("/customer");
+          }}
+        >
+          {isLoading2 && <Clock className="h-4 w-4 animate-spin" />}
+          {isLoading2 ? "جاري الفتح..." : " عرض ديون العملاء"}
+        </Button>
+        {/* <Link
           href="/debt"
           className="bg-primary rounded-sm p-2 text-white dark:text-black"
         >
-          عرض ديون العملاء
-        </Link>
+       
+        </Link> */}
       </div>
       <DebtSells data={debtSales} total={totalSales} sort={[]} />
     </section>

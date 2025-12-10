@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ColumnDef } from "@tanstack/react-table";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
-import DebtReport from "./DebtReport";
+import DebtReport from "../../customer/_components/DebtReport";
 import Debtupdate from "./form";
 
 interface DebtSaleData {

@@ -82,7 +82,7 @@ export default function Recitp({ id }: Props) {
     <Dailogreuse
       open={open}
       setOpen={setOpen}
-      btnLabl={<button onClick={handleFetch}>عرض الفاتورة</button>}
+      btnLabl={<button onClick={handleFetch}> الفاتورة</button>}
       style="max-w-90 overflow-hidden md:max-w-4xl lg:max-w-6xl"
       description="  قم بإدخال المبلغ الجديد لتسديد جزء أو كل الدين."
     >

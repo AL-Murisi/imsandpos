@@ -1,8 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "../ui/button";
 import { useFormatter } from "@/hooks/usePrice";
+import { Clock } from "lucide-react";
 type Company =
   | {
       id: string;
@@ -363,15 +364,22 @@ export const Receipt: React.FC<ReceiptProps> = ({
 
     setTimeout(() => {
       document.body.removeChild(iframe);
+      setIsLoading2(false);
     }, 1000);
   };
+  const [isLoading2, setIsLoading2] = useState(false);
 
   return (
     <Button
-      onClick={handlePrint}
       className="rounded bg-green-600 px-4 py-2 text-white"
+      disabled={isLoading2}
+      onClick={() => {
+        setIsLoading2(true);
+        handlePrint(); // call the function
+      }}
     >
-      {t("print")}
+      {isLoading2 && <Clock className="h-4 w-4 animate-spin" />}
+      {isLoading2 ? "جاري الطباعة..." : t("print")}
     </Button>
   );
 };

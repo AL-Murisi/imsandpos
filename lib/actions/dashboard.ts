@@ -804,7 +804,7 @@ export async function getSummaryCards(
     where: {
       accounts: {
         company_id,
-        account_type: { in: ["EXPENSE"] },
+        account_category: "INVENTORY",
         is_active: true,
       },
       is_posted: true,

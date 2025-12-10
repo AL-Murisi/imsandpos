@@ -46,6 +46,7 @@ import { toast } from "sonner";
 import dynamic from "next/dynamic";
 import { useCompany } from "@/hooks/useCompany";
 import Link from "next/link";
+import { Clock } from "lucide-react";
 
 const PrintButton = dynamic(
   () => import("./test").then((mod) => mod.PrintButton),
@@ -99,7 +100,7 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
   const dispatch = useAppDispatch();
   const t = useTranslations("cashier");
   const tt = useTranslations("payment");
-
+  const [isLoading, setIsLoading] = useState(false);
   // Selectors with memoization
   const items = useAppSelector(selectActiveCartItems);
   const totals = useAppSelector(selectCartTotals);
@@ -240,6 +241,7 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
       setIsSubmitting(false);
     }
   };
+  const [isLoading2, setIsLoading2] = useState(false);
 
   if (!user) return null;
 
@@ -289,8 +291,21 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
               setSelectedUser(user); // now `user` is single UserOption
             }}
           />
-          <Button>
-            <Link href={"/sells"}>إرجاع المبيعات</Link>
+          <Button
+            disabled={isLoading2}
+            onClick={() => {
+              setIsLoading2(true);
+            }}
+            asChild
+          >
+            <Link
+              href={"/sells"}
+              className={`${isLoading2 ? "pointer-events-none" : ""}`}
+            >
+              {" "}
+              {isLoading2 && <Clock className="h-4 w-4 animate-spin" />}
+              {isLoading2 ? "جاري الفتح..." : " إرجاع المبيعات"}
+            </Link>
           </Button>
         </div>
       </div>

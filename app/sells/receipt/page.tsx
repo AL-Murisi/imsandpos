@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { useReactToPrint } from "react-to-print";
 import { useSearchParams } from "next/navigation";
-import { Printer } from "lucide-react";
+import { Clock, Printer } from "lucide-react";
 import { useFormatter } from "@/hooks/usePrice";
 import { useAuth } from "@/lib/context/AuthContext";
 import { getCompany } from "@/lib/actions/createcompnayacc";
@@ -51,6 +51,7 @@ type company =
 export default function Receipt() {
   const printRef = useRef<HTMLDivElement>(null);
   const params = useSearchParams();
+  const [isLoading2, setIsLoading2] = useState(false);
 
   // Parse the query
   const saleNumber = params.get("saleNumber") ?? "";
@@ -302,10 +303,16 @@ export default function Receipt() {
         </div>
       </div>
       <Button
-        onClick={handlePrint}
-        className="flex items-center gap-2 bg-green-600 text-white hover:bg-green-700"
+        className="rounded bg-green-600 px-4 py-2 text-white"
+        disabled={isLoading2}
+        onClick={() => {
+          setIsLoading2(true);
+          handlePrint(); // call the function
+        }}
       >
-        print
+        {isLoading2 && <Clock className="h-4 w-4 animate-spin" />}
+        {isLoading2 ? "جاري الطباعة..." : "طباعة"}
+
         <Printer color="red" />
       </Button>
       {/* 🔹 Print Button */}

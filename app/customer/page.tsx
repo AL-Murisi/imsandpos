@@ -54,7 +54,14 @@ export default async function DebtSell({ searchParams }: DashboardProps) {
 
   const pageIndex = Number(page) - 1;
   const pageSize = Number(limit);
-  const data = await getCustomerById(user.companyId, customersquery);
+  const data = await getCustomerById(
+    user.companyId,
+    pageIndex,
+    pageSize,
+    customersquery,
+    from,
+    to,
+  );
   // const data = await FetchDebtSales(filter);
   return (
     <div className="rounded-xl p-3">

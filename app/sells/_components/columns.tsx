@@ -111,14 +111,8 @@ export const debtSaleColumns: ColumnDef<any>[] = [
     header: ({ column }) => <SortableHeader column={column} label="الإجمالي" />,
     cell: ({ row }) => {
       const price = row.getValue("totalAmount") as number;
-      const { currency } = useCurrency();
-      return price
-        ? new Intl.NumberFormat(currency.locale, {
-            style: "currency",
-            currency: currency.currency,
-            numberingSystem: "latn",
-          }).format(price)
-        : "N/A";
+      const { formatCurrency } = useFormatter();
+      return formatCurrency(price);
     },
   },
   {
@@ -126,21 +120,15 @@ export const debtSaleColumns: ColumnDef<any>[] = [
     header: ({ column }) => <SortableHeader column={column} label="المدفوع" />,
     cell: ({ row }) => {
       const price = row.getValue("amountPaid") as number;
-      const { currency } = useCurrency();
-      return price
-        ? new Intl.NumberFormat(currency.locale, {
-            style: "currency",
-            currency: currency.currency,
-            numberingSystem: "latn",
-          }).format(price)
-        : "N/A";
+      const { formatCurrency } = useFormatter();
+      return formatCurrency(price);
     },
   },
 
   {
     accessorKey: "saleNumber",
     header: ({ column }) => (
-      <SortableHeader column={column} label="saleNumber" />
+      <SortableHeader column={column} label="رقم الفاتورة" />
     ),
     cell: ({ row }) => <div>{row.getValue("saleNumber")}</div>,
   },
@@ -175,6 +163,28 @@ export const debtSaleColumns: ColumnDef<any>[] = [
           : "bg-green-100 text-green-800";
 
       return <Badge className={color}>{label}</Badge>;
+    },
+  },
+  {
+    accessorKey: "reason",
+    header: "سبب الإرجاع",
+    cell: ({ row }) => {
+      const type = row.original.sale_type; // ← sale type
+      const reason = row.original.reason; // ← reason
+
+      // Only show reason if NOT a return sale
+      if (type !== "return") return "—";
+
+      return reason ? reason : "—";
+    },
+  },
+  {
+    accessorKey: "refunded",
+    header: "المبلغ المسترجع",
+    cell: ({ row }) => {
+      const refunded = row.getValue("refunded");
+      const { formatCurrency } = useFormatter();
+      return <div>{formatCurrency(Number(refunded))}</div>;
     },
   },
   {

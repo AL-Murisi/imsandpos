@@ -188,6 +188,7 @@ export const supplierColumns: ColumnDef<any>[] = [
       const { user } = useAuth();
       if (!user) return;
       const supplier = row.original;
+      const [isLoading, setIsLoading] = useState(false);
       const router = useRouter();
       return (
         <div className="flex gap-3">
@@ -217,8 +218,15 @@ export const supplierColumns: ColumnDef<any>[] = [
             </DropdownMenuContent>
           </DropdownMenu>
           <EditSupplierForm supplier={supplier} />
-          <Button onClick={() => router.push(`/suppliers/${supplier.id}`)}>
-            كشف حساب
+          <Button
+            disabled={isLoading}
+            onClick={() => {
+              setIsLoading(true);
+              router.push(`/suppliers/${supplier.id}`);
+            }}
+          >
+            {isLoading && <Clock className="h-4 w-4 animate-spin" />}
+            {isLoading ? "جاري الفتح..." : "كشف حساب"}
           </Button>
         </div>
       );

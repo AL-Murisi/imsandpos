@@ -132,8 +132,7 @@ export default function DebtReport({
         user.userId,
         paymentMethod,
       );
-
-      toast.success("Payment successfully applied!");
+      toast.success("تم تطبيق الدفعة بنجاح!");
       setPaymentAmount(0);
       setSelectedIds([]);
       setIsSubmitting(false);
@@ -141,7 +140,7 @@ export default function DebtReport({
     } catch (error) {
       console.error("Error updating debt sales:", error);
       setIsSubmitting(false);
-      toast.error("Failed to apply payment. Please try again.");
+      toast.error("فشل في تطبيق الدفعة. الرجاء المحاولة مرة أخرى.");
     }
   };
   const paymentMethods = [

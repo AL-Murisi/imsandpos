@@ -219,7 +219,7 @@ export function ReturnForm({ sale }: { sale: any }) {
     <Dailogreuse
       open={open}
       setOpen={setOpen}
-      btnLabl={"إرجاع مبيعات"}
+      btnLabl={"إرجاع "}
       style="sm:max-w-4xl"
       description="تفاصيل الإرجاع"
     >
