@@ -1293,8 +1293,8 @@ export async function createReturnJournalEntries({
       entry_number: entryBase(),
       account_id: revenueAccount,
       description: `إرجاع بيع ${returnNumber}`,
-      debit: returnSubtotal,
-      credit: 0,
+      debit: 0,
+      credit: returnSubtotal,
     },
     // Reverse COGS (Credit)
     {
