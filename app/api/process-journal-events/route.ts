@@ -54,8 +54,6 @@ export async function GET() {
           where: { id: event.id },
           data: {
             processed: true,
-            processed_at: new Date(),
-            error_message: null,
           },
         });
 
