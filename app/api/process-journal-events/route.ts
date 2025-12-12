@@ -396,7 +396,7 @@ async function createSaleJournalEntries({
 async function getActiveFiscalYears() {
   const fiscalYear = await prisma.fiscal_periods.findFirst({
     where: {
-      is_active: true,
+      is_closed: false,
       start_date: { lte: new Date() },
       end_date: { gte: new Date() },
     },
