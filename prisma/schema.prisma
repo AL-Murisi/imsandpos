@@ -44,6 +44,7 @@ model Company {
   suppliers                                          Supplier[]
   users                                              User[]
   warehouses                                         Warehouse[]
+  journal_events                                    journalEvent[]
 account_mappings     account_mappings[]
 fiscal_periods       fiscal_periods[]
 
@@ -427,6 +428,23 @@ model SaleItem {
   @@index([productId, createdAt], map: "idx_saleitem_product_date")
   @@map("sale_items")
 }
+model journalEvent {
+  id          String     @id @default(uuid())
+  companyId   String     @map("company_id")
+  entityId    String?    @map("entity_id")   // saleId, paymentId, returnId, etc.
+  entityType  String     @map("entity_type") // "sale" | "return" | "payment" | "refund" | "inventory"
+  eventType   String     @map("event_type")  // "completed" | "updated" | "deleted" ...
+  payload     Json       @map("payload")     // Full data snapshot
+  processed   Boolean    @map("processed") @default(false)
+  createdAt   DateTime   @map("created_at") @default(now())
+  status      String   // "PENDING", "COMPLETED", "FAILED"
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([entityId])
+  @@index([entityType])
+  @@index([companyId])
+  @@map("journal_events")
+}
 
 model Payment {
   id              String    @id @default(cuid())
@@ -543,7 +561,6 @@ model OfflineOperation {
   @@index([companyId])
   @@map("offline_operations")
 }
-
 
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.

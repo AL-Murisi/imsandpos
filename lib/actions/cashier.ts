@@ -37,7 +37,6 @@ type SaleData = {
   saleNumber: string;
   receivedAmount: number;
 };
-
 export async function processSale(data: any, companyId: string) {
   const {
     cart,
@@ -195,7 +194,6 @@ export async function processSale(data: any, companyId: string) {
 
       // ===== Optimized batch inventory update using updateMany =====
       if (inventoryUpdates.length > 0) {
-        // Execute all updates in parallel instead of raw SQL
         await Promise.all(
           inventoryUpdates.map((inv) =>
             tx.inventory.updateMany({
@@ -258,6 +256,32 @@ export async function processSale(data: any, companyId: string) {
         await Promise.all(customerUpdatePromises);
       }
 
+      // 🆕 CREATE JOURNAL EVENT (instead of direct creation)
+      await tx.journalEvent.create({
+        data: {
+          companyId: companyId,
+          eventType: "sale",
+          status: "pending",
+          entityType: "sale",
+          payload: {
+            companyId,
+            sale: {
+              id: sale.id,
+              saleNumber: sale.saleNumber,
+              sale_type: sale.sale_type,
+              status: sale.status,
+              totalAmount: sale.totalAmount.toString(),
+              amountPaid: sale.amountPaid.toString(),
+              paymentStatus: sale.paymentStatus,
+            },
+            customerId,
+            saleItems: cart,
+            cashierId,
+          },
+          processed: false,
+        },
+      });
+
       // ===== Prepare response =====
       const saleForClient = {
         ...sale,
@@ -291,19 +315,274 @@ export async function processSale(data: any, companyId: string) {
     ).catch(console.error),
   ]).catch(console.error);
 
-  // ===== Create journal entries with retry logic (non-blocking) =====
-  createSaleJournalEntriesWithRetry({
-    companyId,
-    sale: result.sale,
-    customerId,
-    saleItems: cart,
-    cashierId,
-  }).catch((err) =>
-    console.error("❌ Journal entries failed after all retries:", err),
-  );
-
   return result;
 }
+// export async function processSale(data: any, companyId: string) {
+//   const {
+//     cart,
+//     totalBeforeDiscount,
+//     totalDiscount,
+//     totalAfterDiscount,
+//     cashierId,
+//     customerId,
+//     saleNumber,
+//     receivedAmount,
+//   } = data;
+
+//   const result = await prisma.$transaction(
+//     async (tx) => {
+//       // 1️⃣ Create main Sale record
+//       const sale = await tx.sale.create({
+//         data: {
+//           companyId,
+//           saleNumber,
+//           customerId,
+//           cashierId,
+//           taxAmount: 0,
+//           sale_type: "sale",
+//           status: "completed",
+//           subtotal: totalBeforeDiscount,
+//           discountAmount: totalDiscount,
+//           totalAmount: totalAfterDiscount,
+//           amountPaid: receivedAmount,
+//           amountDue: Math.max(0, totalAfterDiscount - receivedAmount),
+//           paymentStatus:
+//             receivedAmount >= totalAfterDiscount ? "paid" : "partial",
+//         },
+//       });
+
+//       // ===== Helper functions =====
+//       const convertToBaseUnits = (
+//         qty: number,
+//         sellingUnit: string,
+//         unitsPerPacket: number = 1,
+//         packetsPerCarton: number = 1,
+//       ) => {
+//         if (sellingUnit === "unit") return qty;
+//         if (sellingUnit === "packet") return qty * unitsPerPacket;
+//         if (sellingUnit === "carton")
+//           return qty * unitsPerPacket * packetsPerCarton;
+//         return qty;
+//       };
+
+//       const getUnitPrice = (item: any) =>
+//         item.sellingUnit === "unit"
+//           ? item.pricePerUnit || 0
+//           : item.sellingUnit === "packet"
+//             ? item.pricePerPacket || 0
+//             : item.sellingUnit === "carton"
+//               ? item.pricePerCarton || 0
+//               : 0;
+
+//       const getInventoryStatus = (available: number, reorderLevel: number) => {
+//         if (available === 0) return "out_of_stock";
+//         if (available <= reorderLevel) return "low";
+//         return "available";
+//       };
+
+//       // ===== Fetch all inventories once =====
+//       const productIds = cart.map((item: any) => item.id);
+//       const warehouseIds = cart.map((item: any) => item.warehouseId);
+
+//       const inventories = await tx.inventory.findMany({
+//         where: {
+//           companyId,
+//           productId: { in: productIds },
+//           warehouseId: { in: warehouseIds },
+//         },
+//         select: {
+//           id: true,
+//           productId: true,
+//           warehouseId: true,
+//           stockQuantity: true,
+//           reservedQuantity: true,
+//           availableQuantity: true,
+//           reorderLevel: true,
+//         },
+//       });
+
+//       const inventoryMap = new Map(
+//         inventories.map((inv) => [`${inv.productId}-${inv.warehouseId}`, inv]),
+//       );
+
+//       // ===== Prepare batch operations =====
+//       const saleItemsData: any[] = [];
+//       const stockMovementsData: any[] = [];
+//       const inventoryUpdates: any[] = [];
+
+//       for (const item of cart) {
+//         const quantityInUnits = convertToBaseUnits(
+//           item.selectedQty,
+//           item.sellingUnit,
+//           item.unitsPerPacket || 1,
+//           item.packetsPerCarton || 1,
+//         );
+
+//         const inventoryKey = `${item.id}-${item.warehouseId}`;
+//         const inventory = inventoryMap.get(inventoryKey);
+
+//         if (!inventory || inventory.availableQuantity < quantityInUnits) {
+//           throw new Error(
+//             `Insufficient stock for ${item.name}. Available: ${inventory?.availableQuantity || 0}, Requested: ${quantityInUnits}.`,
+//           );
+//         }
+
+//         const newStock = inventory.stockQuantity - quantityInUnits;
+//         const newAvailable = inventory.availableQuantity - quantityInUnits;
+//         const unitPrice = getUnitPrice(item);
+//         const totalPrice = unitPrice * item.selectedQty;
+
+//         saleItemsData.push({
+//           companyId,
+//           saleId: sale.id,
+//           productId: item.id,
+//           quantity: item.selectedQty,
+//           sellingUnit: item.sellingUnit,
+//           unitPrice,
+//           totalPrice,
+//         });
+
+//         stockMovementsData.push({
+//           companyId,
+//           productId: item.id,
+//           warehouseId: item.warehouseId,
+//           userId: cashierId,
+//           movementType: "صادر",
+//           quantity: quantityInUnits,
+//           reason: "بيع",
+//           quantityBefore: inventory.stockQuantity,
+//           quantityAfter: newStock,
+//           referenceType: "بيع",
+//           referenceId: sale.id,
+//         });
+
+//         inventoryUpdates.push({
+//           companyId,
+//           productId: item.id,
+//           warehouseId: item.warehouseId,
+//           stockQuantity: newStock,
+//           availableQuantity: newAvailable,
+//           status: getInventoryStatus(newAvailable, inventory.reorderLevel),
+//         });
+//       }
+
+//       // ===== Execute sale items and stock movements in parallel =====
+//       await Promise.all([
+//         tx.saleItem.createMany({ data: saleItemsData }),
+//         tx.stockMovement.createMany({ data: stockMovementsData }),
+//       ]);
+
+//       // ===== Optimized batch inventory update using updateMany =====
+//       if (inventoryUpdates.length > 0) {
+//         // Execute all updates in parallel instead of raw SQL
+//         await Promise.all(
+//           inventoryUpdates.map((inv) =>
+//             tx.inventory.updateMany({
+//               where: {
+//                 companyId: inv.companyId,
+//                 productId: inv.productId,
+//                 warehouseId: inv.warehouseId,
+//               },
+//               data: {
+//                 stockQuantity: inv.stockQuantity,
+//                 availableQuantity: inv.availableQuantity,
+//                 status: inv.status,
+//               },
+//             }),
+//           ),
+//         );
+//       }
+
+//       // ===== Customer updates & payment =====
+//       const customerUpdatePromises: Promise<any>[] = [];
+
+//       if (customerId) {
+//         const customerData: any = {};
+//         if (totalAfterDiscount > receivedAmount)
+//           customerData.outstandingBalance = {
+//             increment: totalAfterDiscount - receivedAmount,
+//           };
+//         if (receivedAmount > totalAfterDiscount)
+//           customerData.balance = {
+//             increment: receivedAmount - totalAfterDiscount,
+//           };
+//         if (Object.keys(customerData).length)
+//           customerUpdatePromises.push(
+//             tx.customer.update({
+//               where: { id: customerId, companyId },
+//               data: customerData,
+//             }),
+//           );
+//       }
+
+//       if (receivedAmount > 0) {
+//         customerUpdatePromises.push(
+//           tx.payment.create({
+//             data: {
+//               companyId,
+//               saleId: sale.id,
+//               cashierId,
+//               customerId,
+//               paymentMethod: "cash",
+//               payment_type: "sale_payment",
+//               amount: receivedAmount,
+//               status: "completed",
+//             },
+//           }),
+//         );
+//       }
+
+//       // Execute customer updates in parallel
+//       if (customerUpdatePromises.length > 0) {
+//         await Promise.all(customerUpdatePromises);
+//       }
+
+//       // ===== Prepare response =====
+//       const saleForClient = {
+//         ...sale,
+//         taxAmount: sale.taxAmount.toString(),
+//         subtotal: sale.subtotal.toString(),
+//         discountAmount: sale.discountAmount.toString(),
+//         totalAmount: sale.totalAmount.toString(),
+//         amountPaid: sale.amountPaid.toString(),
+//         amountDue: sale.amountDue.toString(),
+//         refunded: sale.refunded.toString(),
+//       };
+
+//       return { message: "Sale processed successfully", sale: saleForClient };
+//     },
+//     {
+//       timeout: 20000,
+//       maxWait: 5000,
+//     },
+//   );
+
+//   // ===== Fire non-blocking operations =====
+//   Promise.all([
+//     revalidatePath("/cashiercontrol"),
+//     logActivity(
+//       cashierId,
+//       companyId,
+//       "أمين الصندوق",
+//       "قام ببيع منتج",
+//       "889",
+//       "وكيل المستخدم",
+//     ).catch(console.error),
+//   ]).catch(console.error);
+
+//   // ===== Create journal entries with retry logic (non-blocking) =====
+//   createSaleJournalEntriesWithRetry({
+//     companyId,
+//     sale: result.sale,
+//     customerId,
+//     saleItems: cart,
+//     cashierId,
+//   }).catch((err) =>
+//     console.error("❌ Journal entries failed after all retries:", err),
+//   );
+
+//   return result;
+// }
 
 // ============================================
 // 🔄 Journal Entries with Automatic Retry
@@ -1047,19 +1326,6 @@ export async function processReturn(data: any, companyId: string) {
               }),
             );
           }
-
-          // Remaining amount to customer balance
-          const remainingCredit = returnSubtotal - amountToDeduct;
-          if (remainingCredit > 0) {
-            customerUpdatePromises.push(
-              tx.customer.update({
-                where: { id: customerId, companyId },
-                data: {
-                  balance: { increment: remainingCredit },
-                },
-              }),
-            );
-          }
         } else {
           // Full paid sale - add to balance
           customerUpdatePromises.push(
@@ -1382,178 +1648,7 @@ export async function createReturnJournalEntries({
     entry_number: entries[0]?.entry_number,
   };
 }
-// ... createReturnJournalEntries remains the same
 
-// export async function createReturnJournalEntries(
-//   companyId: string,
-//   customerId: string,
-//   cashierId: string,
-//   returnNumber: string,
-//   returnSubtotal: number,
-//   returnTotalCOGS: number,
-//   refundFromAR: number,
-//   refundFromCashBank: number,
-//   returnSaleId: string,
-//   refundAccountMethod: "cash" | "bank" = "cash",
-//   reason?: string,
-// ) {
-//   // 1️⃣ Load Account Mappings
-//   const mappings = await prisma.account_mappings.findMany({
-//     where: { company_id: companyId },
-//   });
-
-//   const fy = await getActiveFiscalYears();
-//   if (!fy) throw new Error("No active fiscal year");
-
-//   const getAccountId = (type: string) =>
-//     mappings.find((m: any) => m.mapping_type === type)?.account_id;
-
-//   const revenueAccount = getAccountId("sales_revenue");
-//   const cogsAccount = getAccountId("cogs");
-//   const inventoryAccount = getAccountId("inventory");
-//   const cashAccount = getAccountId("cash");
-//   const bankAccount = getAccountId("bank");
-//   const arAccount = getAccountId("accounts_receivable");
-
-//   if (!revenueAccount || !cogsAccount || !inventoryAccount) {
-//     throw new Error(
-//       "Missing essential GL account mappings (Sales, COGS, Inventory).",
-//     );
-//   }
-
-//   // 2️⃣ Prepare unique entry number generator
-//   const v_year = new Date().getFullYear();
-//   let entryCounter = 0;
-//   const nextEntryNumber = () => {
-//     entryCounter++;
-//     const ts = Date.now();
-//     return `JE-${v_year}-${returnNumber}-${ts}-${entryCounter}-RET`;
-//   };
-
-//   const journalData: any[] = [];
-
-//   // 3️⃣ Build journal entries
-
-//   // Reverse Revenue
-//   journalData.push({
-//     company_id: companyId,
-//     entry_number: nextEntryNumber(),
-//     account_id: revenueAccount,
-//     description: `إرجاع بيع ${returnNumber}`,
-//     entry_date: new Date(),
-//     debit: returnSubtotal,
-//     credit: 0,
-//     is_automated: true,
-//     fiscal_period: fy.period_name,
-//     reference_type: "sale_return",
-//     reference_id: returnSaleId,
-//     created_by: cashierId,
-//   });
-
-//   // Reverse COGS
-//   journalData.push({
-//     company_id: companyId,
-//     entry_number: nextEntryNumber(),
-//     account_id: cogsAccount,
-//     description: `عكس تكلفة البضاعة المباعة (إرجاع) ${returnNumber}`,
-//     entry_date: new Date(),
-//     debit: 0,
-//     credit: returnTotalCOGS,
-//     is_automated: true,
-//     fiscal_period: fy.period_name,
-//     reference_type: "sale_return",
-//     reference_id: returnSaleId,
-//     created_by: cashierId,
-//   });
-
-//   // Increase Inventory
-//   journalData.push({
-//     company_id: companyId,
-//     entry_number: nextEntryNumber(),
-//     account_id: inventoryAccount,
-//     description: `زيادة مخزون (إرجاع) ${returnNumber}`,
-//     entry_date: new Date(),
-//     debit: returnTotalCOGS,
-//     credit: 0,
-//     is_automated: true,
-//     fiscal_period: fy.period_name,
-//     reference_type: "sale_return",
-//     reference_id: returnSaleId,
-//     created_by: cashierId,
-//   });
-
-//   // Refund from AR
-//   if (refundFromAR > 0 && arAccount) {
-//     journalData.push({
-//       company_id: companyId,
-//       entry_number: nextEntryNumber(),
-//       account_id: arAccount,
-//       description: `تخفيض مديونية العميل بسبب إرجاع ${returnNumber}`,
-//       entry_date: new Date(),
-//       debit: 0,
-//       credit: refundFromAR,
-//       is_automated: true,
-//       fiscal_period: fy.period_name,
-//       reference_type: "إرجاع",
-//       reference_id: customerId ?? returnSaleId,
-//       created_by: cashierId,
-//     });
-//   }
-
-//   // Refund from Cash/Bank
-//   if (refundFromCashBank > 0) {
-//     const refundAccountId =
-//       refundAccountMethod === "bank" ? bankAccount : cashAccount;
-//     if (!refundAccountId)
-//       throw new Error(
-//         `Missing GL account mapping for refund method: ${refundAccountMethod}`,
-//       );
-
-//     journalData.push({
-//       company_id: companyId,
-//       entry_number: nextEntryNumber(),
-//       account_id: refundAccountId,
-//       description: `صرف مبلغ مسترجع للعميل (إرجاع) ${returnNumber}`,
-//       entry_date: new Date(),
-//       debit: 0,
-//       credit: refundFromCashBank,
-//       is_automated: true,
-//       fiscal_period: fy.period_name,
-//       reference_type: "sale_return",
-//       reference_id: returnSaleId,
-//       created_by: cashierId,
-//     });
-//   }
-
-//   // 5️⃣ Insert journal entries
-//   if (journalData.length > 0) {
-//     await prisma.journal_entries.createMany({ data: journalData });
-//   }
-
-//   // 6️⃣ Update accounts balances
-//   for (const entry of journalData) {
-//     const delta = (entry.debit || 0) - (entry.credit || 0);
-//     if (delta !== 0) {
-//       await prisma.accounts.update({
-//         where: { id: entry.account_id },
-//         data: { balance: { increment: delta } },
-//       });
-//     }
-//   }
-
-//   return {
-//     success: true,
-//     message: "تم إنشاء قيود اليومية للإرجاع بنجاح",
-//     entry_number: journalData[0]?.entry_number,
-//   };
-// }
-// ============================================
-// 💰 OPTIMIZED PAYMENT PROCESSING
-// ============================================
-
-/**
- * Process customer payment with automatic retry for journal entries
- */
 export async function processCustomerPayment(data: {
   companyId: string;
   customerId: string;
