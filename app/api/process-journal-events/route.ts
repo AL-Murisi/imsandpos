@@ -7,10 +7,10 @@ export async function GET() {
     const events = await prisma.journalEvent.findMany({
       where: {
         processed: false,
-        event_type: "sale", // Filter for sale events only
+        eventType: "sale", // Filter for sale events only
       },
       take: 20, // Process in batches
-      orderBy: { created_at: "asc" }, // Process oldest first
+      orderBy: { createdAt: "asc" }, // Process oldest first
     });
 
     if (events.length === 0) {
@@ -29,7 +29,7 @@ export async function GET() {
 
     for (const event of events) {
       try {
-        const eventData = event.event_data as any;
+        const eventData = event.payload as any;
 
         // Validate required data
         if (
@@ -73,14 +73,6 @@ export async function GET() {
         );
 
         // Update event with error info (but don't mark as processed)
-        await prisma.journalEvent.update({
-          where: { id: event.id },
-          data: {
-            retry_count: { increment: 1 },
-            error_message: errorMessage,
-            last_retry_at: new Date(),
-          },
-        });
 
         results.errors.push({
           eventId: event.id,
