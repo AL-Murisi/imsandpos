@@ -7,7 +7,7 @@ export async function GET() {
     const events = await prisma.journalEvent.findMany({
       where: {
         processed: false,
-        eventType: "sale", // Filter for sale events only
+        eventType: { in: ["sale", "return"] }, // Filter for sale events only
       },
       take: 20, // Process in batches
       orderBy: { createdAt: "asc" }, // Process oldest first
