@@ -321,7 +321,7 @@ export async function updateInventory(
                 },
               })
             : Promise.resolve(null);
-        await tx.journalEvent.create({
+        const journalEvent = tx.journalEvent.create({
           data: {
             companyId: companyId,
             eventType: "purchase",
@@ -331,7 +331,7 @@ export async function updateInventory(
               companyId,
 
               supplierId,
-              purchase: result.purchase,
+              purchase: purchase,
               userId,
               type: "purchase",
             },
@@ -354,7 +354,11 @@ export async function updateInventory(
         });
 
         // Execute final operations in parallel
-        await Promise.all([stockMovementPromise, activityLogPromise]);
+        await Promise.all([
+          stockMovementPromise,
+          activityLogPromise,
+          journalEvent,
+        ]);
 
         return {
           updatedInventory,
@@ -369,21 +373,6 @@ export async function updateInventory(
 
     // Fire non-blocking operations
     revalidatePath("/manageStocks");
-
-    // // Create journal entries with retry if purchase was made
-    // if (result.purchase) {
-    //   createPurchaseJournalEntriesWithRetry({
-    //     purchase: result.purchase,
-    //     companyId,
-    //     userId,
-    //     type: "purchase",
-    //   }).catch((err) =>
-    //     console.error(
-    //       "❌ Purchase journal entries failed after all retries:",
-    //       err,
-    //     ),
-    //   );
-    // }
 
     return { success: true, data: result.updatedInventory };
   } catch (error) {
