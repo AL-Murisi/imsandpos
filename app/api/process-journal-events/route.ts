@@ -24,6 +24,8 @@ export async function GET() {
     const results = {
       processed: 0,
       failed: 0,
+      sales: 0,
+      returns: 0,
       errors: [] as any[],
     };
 
@@ -41,13 +43,43 @@ export async function GET() {
         }
 
         // Create journal entries for this sale
-        await createSaleJournalEntries({
-          companyId: eventData.companyId,
-          sale: eventData.sale,
-          customerId: eventData.customerId,
-          saleItems: eventData.saleItems,
-          cashierId: eventData.cashierId,
-        });
+        if (event.eventType === "sale") {
+          if (!eventData?.sale || !eventData?.saleItems) {
+            throw new Error("Invalid sale event data structure");
+          }
+
+          await createSaleJournalEntries({
+            companyId: eventData.companyId,
+            sale: eventData.sale,
+            customerId: eventData.customerId,
+            saleItems: eventData.saleItems,
+            cashierId: eventData.cashierId,
+          });
+
+          results.sales++;
+          console.log(
+            `✅ Processed sale journal event ${event.id} for sale ${eventData.sale.id}`,
+          );
+        } else if (event.eventType === "return") {
+          await createReturnJournalEntries({
+            companyId: eventData.companyId,
+            customerId: eventData.customerId,
+            cashierId: eventData.cashierId,
+            returnNumber: eventData.returnNumber,
+            returnSubtotal: eventData.returnSubtotal,
+            returnTotalCOGS: eventData.returnTotalCOGS,
+            refundFromAR: eventData.refundFromAR,
+            refundFromCashBank: eventData.refundFromCashBank,
+            returnSaleId: eventData.returnSaleId,
+            paymentMethod: eventData.paymentMethod || "cash",
+            reason: eventData.reason,
+          });
+
+          results.returns++;
+          console.log(
+            `✅ Processed return journal event ${event.id} for return ${eventData.returnSaleId}`,
+          );
+        }
 
         // Mark as processed
         await prisma.journalEvent.update({
@@ -95,7 +127,180 @@ export async function GET() {
     );
   }
 }
+async function createReturnJournalEntries({
+  companyId,
+  customerId,
+  cashierId,
+  returnNumber,
+  returnSubtotal,
+  returnTotalCOGS,
+  refundFromAR,
+  refundFromCashBank,
+  returnSaleId,
+  paymentMethod = "cash",
+  reason,
+}: {
+  companyId: string;
+  customerId: string;
+  cashierId: string;
+  returnNumber: string;
+  returnSubtotal: number;
+  returnTotalCOGS: number;
+  refundFromAR: number;
+  refundFromCashBank: number;
+  returnSaleId: string;
+  paymentMethod?: "cash" | "bank";
+  reason?: string;
+}) {
+  // 1️⃣ Fetch mappings and fiscal year in parallel
+  const [mappings, fy] = await Promise.all([
+    prisma.account_mappings.findMany({
+      where: { company_id: companyId, is_default: true },
+      select: { mapping_type: true, account_id: true },
+    }),
+    getActiveFiscalYears(),
+  ]);
 
+  if (!fy) throw new Error("No active fiscal year");
+
+  // 2️⃣ Create account map
+  const accountMap = new Map(
+    mappings.map((m) => [m.mapping_type, m.account_id]),
+  );
+
+  const getAccountId = (type: string) => {
+    const id = accountMap.get(type);
+    if (!id && ["sales_revenue", "cogs", "inventory"].includes(type)) {
+      throw new Error(`Missing essential GL account mapping: ${type}`);
+    }
+    return id;
+  };
+
+  const revenueAccount = getAccountId("sales_revenue")!;
+  const cogsAccount = getAccountId("cogs")!;
+  const inventoryAccount = getAccountId("inventory")!;
+  const cashAccount = getAccountId("cash");
+  const bankAccount = getAccountId("bank");
+  const arAccount = getAccountId("accounts_receivable");
+
+  // 3️⃣ Generate entry numbers
+  // const year = new Date().getFullYear();
+  // const timestamp = Date.now();
+  // const entryBase = `JE-${year}-${returnNumber}-${timestamp}-RET`;
+  const v_year = new Date().getFullYear();
+  let entryCounter = 0;
+  const entryBase = () => {
+    entryCounter++;
+    const ts = Date.now();
+    return `JE-${v_year}-${returnNumber}-${ts}-${entryCounter}-RET`;
+  };
+  // 4️⃣ Build journal entries with base template
+  const baseEntry = {
+    company_id: companyId,
+    entry_date: new Date(),
+    is_automated: true,
+    fiscal_period: fy.period_name,
+    reference_type: "sale_return",
+    reference_id: returnSaleId,
+    created_by: cashierId,
+  };
+
+  const entries: any[] = [
+    // Reverse Revenue (Debit)
+    {
+      ...baseEntry,
+      entry_number: entryBase(),
+      account_id: revenueAccount,
+      description: `إرجاع بيع ${returnNumber}`,
+      debit: 0,
+      credit: returnSubtotal,
+    },
+    // Reverse COGS (Credit)
+    {
+      ...baseEntry,
+      entry_number: entryBase(),
+      account_id: cogsAccount,
+      description: `عكس تكلفة البضاعة المباعة (إرجاع) ${returnNumber}`,
+      debit: 0,
+      credit: returnTotalCOGS,
+    },
+    // Increase Inventory (Debit)
+    {
+      ...baseEntry,
+      entry_number: entryBase(),
+      account_id: inventoryAccount,
+      description: `زيادة مخزون (إرجاع) ${returnNumber}`,
+      debit: returnTotalCOGS,
+      credit: 0,
+    },
+  ];
+
+  // 5️⃣ Add refund entries
+  if (refundFromAR > 0 && arAccount) {
+    entries.push({
+      ...baseEntry,
+      entry_number: entryBase(),
+      account_id: arAccount,
+      description: `تخفيض مديونية العميل بسبب إرجاع ${returnNumber}`,
+      debit: 0,
+      credit: refundFromAR,
+      reference_id: customerId || returnSaleId,
+      reference_type: "إرجاع",
+    });
+  }
+
+  if (refundFromCashBank > 0) {
+    const refundAccountId =
+      paymentMethod === "bank" ? bankAccount : cashAccount;
+
+    if (!refundAccountId) {
+      throw new Error(
+        `Missing GL account mapping for refund method: ${paymentMethod}`,
+      );
+    }
+
+    entries.push({
+      ...baseEntry,
+      entry_number: entryBase(),
+      account_id: refundAccountId,
+      description: `صرف مبلغ مسترجع للعميل (إرجاع) ${returnNumber}`,
+      debit: 0,
+      credit: refundFromCashBank,
+    });
+  }
+
+  // 6️⃣ Insert entries and update balances in transaction
+  await prisma.$transaction(async (tx) => {
+    // Insert all journal entries
+    await tx.journal_entries.createMany({ data: entries });
+
+    // Calculate account balance deltas
+    const accountDeltas = new Map<string, number>();
+    for (const entry of entries) {
+      const delta = (entry.debit || 0) - (entry.credit || 0);
+      accountDeltas.set(
+        entry.account_id,
+        (accountDeltas.get(entry.account_id) || 0) + delta,
+      );
+    }
+
+    // Update all account balances in parallel
+    await Promise.all(
+      Array.from(accountDeltas.entries()).map(([accountId, delta]) =>
+        tx.accounts.update({
+          where: { id: accountId },
+          data: { balance: { increment: delta } },
+        }),
+      ),
+    );
+  });
+
+  return {
+    success: true,
+    message: "تم إنشاء قيود اليومية للإرجاع بنجاح",
+    entry_number: entries[0]?.entry_number,
+  };
+}
 // Helper function to create sale journal entries
 async function createSaleJournalEntries({
   companyId,

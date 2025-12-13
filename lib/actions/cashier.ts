@@ -293,7 +293,7 @@ export async function processSale(data: any, companyId: string) {
         amountDue: sale.amountDue.toString(),
         refunded: sale.refunded.toString(),
       };
-
+      revalidatePath("/cashiercontrol");
       return { message: "Sale processed successfully", sale: saleForClient };
     },
     {
@@ -304,7 +304,6 @@ export async function processSale(data: any, companyId: string) {
 
   // ===== Fire non-blocking operations =====
   Promise.all([
-    revalidatePath("/cashiercontrol"),
     logActivity(
       cashierId,
       companyId,
@@ -587,376 +586,376 @@ export async function processSale(data: any, companyId: string) {
 // ============================================
 // 🔄 Journal Entries with Automatic Retry
 // ============================================
-async function createSaleJournalEntriesWithRetry(
-  data: {
-    companyId: string;
-    sale: any;
-    customerId: string;
-    saleItems: any[];
-    cashierId: string;
-  },
-  maxRetries = 3,
-  retryDelay = 200,
-) {
-  const exists = await prisma.journal_entries.findFirst({
-    where: {
-      reference_id: data.sale.id,
-      reference_type: "sale",
-    },
-    select: { id: true },
-  });
+// async function createSaleJournalEntriesWithRetry(
+//   data: {
+//     companyId: string;
+//     sale: any;
+//     customerId: string;
+//     saleItems: any[];
+//     cashierId: string;
+//   },
+//   maxRetries = 3,
+//   retryDelay = 200,
+// ) {
+//   const exists = await prisma.journal_entries.findFirst({
+//     where: {
+//       reference_id: data.sale.id,
+//       reference_type: "sale",
+//     },
+//     select: { id: true },
+//   });
 
-  if (exists) {
-    console.log(
-      "🟨 Journal entries already exist — skipping retry + creation.",
-    );
-    return; // 👍 Prevents retrying & prevents duplicates
-  }
+//   if (exists) {
+//     console.log(
+//       "🟨 Journal entries already exist — skipping retry + creation.",
+//     );
+//     return; // 👍 Prevents retrying & prevents duplicates
+//   }
 
-  let lastError: Error | null = null;
+//   let lastError: Error | null = null;
 
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      console.log(
-        `📝 Creating journal entries (attempt ${attempt}/${maxRetries})...`,
-      );
-      await createSaleJournalEntries(data);
-      console.log(
-        `✅ Journal entries created successfully on attempt ${attempt}`,
-      );
-      return; // Success, exit
-    } catch (error: any) {
-      lastError = error;
-      console.error(
-        `❌ Journal entries attempt ${attempt}/${maxRetries} failed:`,
-        error.message,
-      );
+//   for (let attempt = 1; attempt <= maxRetries; attempt++) {
+//     try {
+//       console.log(
+//         `📝 Creating journal entries (attempt ${attempt}/${maxRetries})...`,
+//       );
+//       await createSaleJournalEntries(data);
+//       console.log(
+//         `✅ Journal entries created successfully on attempt ${attempt}`,
+//       );
+//       return; // Success, exit
+//     } catch (error: any) {
+//       lastError = error;
+//       console.error(
+//         `❌ Journal entries attempt ${attempt}/${maxRetries} failed:`,
+//         error.message,
+//       );
 
-      if (attempt < maxRetries) {
-        // Exponential backoff: wait longer between each retry
-        const waitTime = retryDelay * Math.pow(2, attempt - 1);
-        console.log(`⏳ Retrying in ${waitTime}ms...`);
-        await new Promise((resolve) => setTimeout(resolve, waitTime));
-      }
-    }
-  }
+//       if (attempt < maxRetries) {
+//         // Exponential backoff: wait longer between each retry
+//         const waitTime = retryDelay * Math.pow(2, attempt - 1);
+//         console.log(`⏳ Retrying in ${waitTime}ms...`);
+//         await new Promise((resolve) => setTimeout(resolve, waitTime));
+//       }
+//     }
+//   }
 
-  // If we got here, all retries failed
-  throw new Error(
-    `Failed to create journal entries after ${maxRetries} attempts. Last error: ${lastError?.message}`,
-  );
-}
+//   // If we got here, all retries failed
+//   throw new Error(
+//     `Failed to create journal entries after ${maxRetries} attempts. Last error: ${lastError?.message}`,
+//   );
+// }
 
 // ============================================
 // 📊 Optimized Journal Entries Creation
 // ============================================
-export async function createSaleJournalEntries({
-  companyId,
-  sale,
-  saleItems,
-  customerId,
-  cashierId,
-}: {
-  companyId: string;
-  sale: any;
-  customerId: string;
-  saleItems: any[];
-  cashierId: string;
-}) {
-  // 1️⃣ Early exits
-  if (sale.sale_type !== "sale" || sale.status !== "completed") return;
+// export async function createSaleJournalEntries({
+//   companyId,
+//   sale,
+//   saleItems,
+//   customerId,
+//   cashierId,
+// }: {
+//   companyId: string;
+//   sale: any;
+//   customerId: string;
+//   saleItems: any[];
+//   cashierId: string;
+// }) {
+//   // 1️⃣ Early exits
+//   if (sale.sale_type !== "sale" || sale.status !== "completed") return;
 
-  // 2️⃣ Check for duplicates and fetch fiscal year in parallel
-  const [exists, fy] = await Promise.all([
-    prisma.journal_entries.findFirst({
-      where: { reference_id: sale.id, reference_type: "sale" },
-      select: { id: true },
-    }),
-    getActiveFiscalYears(),
-  ]);
+//   // 2️⃣ Check for duplicates and fetch fiscal year in parallel
+//   const [exists, fy] = await Promise.all([
+//     prisma.journal_entries.findFirst({
+//       where: { reference_id: sale.id, reference_type: "sale" },
+//       select: { id: true },
+//     }),
+//     getActiveFiscalYears(),
+//   ]);
 
-  if (exists) return;
+//   if (exists) return;
 
-  // 3️⃣ Calculate COGS - Optimized
-  const productIds = saleItems.map((item) => item.id);
-  const products = await prisma.product.findMany({
-    where: { id: { in: productIds } },
-    select: {
-      id: true,
-      costPrice: true,
-      unitsPerPacket: true,
-      packetsPerCarton: true,
-    },
-  });
+//   // 3️⃣ Calculate COGS - Optimized
+//   const productIds = saleItems.map((item) => item.id);
+//   const products = await prisma.product.findMany({
+//     where: { id: { in: productIds } },
+//     select: {
+//       id: true,
+//       costPrice: true,
+//       unitsPerPacket: true,
+//       packetsPerCarton: true,
+//     },
+//   });
 
-  const productMap = new Map(products.map((p) => [p.id, p]));
-  let totalCOGS = 0;
+//   const productMap = new Map(products.map((p) => [p.id, p]));
+//   let totalCOGS = 0;
 
-  for (const item of saleItems) {
-    const product = productMap.get(item.id);
-    if (!product) continue;
+//   for (const item of saleItems) {
+//     const product = productMap.get(item.id);
+//     if (!product) continue;
 
-    const unitsPerCarton =
-      (product.unitsPerPacket || 1) * (product.packetsPerCarton || 1);
+//     const unitsPerCarton =
+//       (product.unitsPerPacket || 1) * (product.packetsPerCarton || 1);
 
-    let costPerUnit = Number(product.costPrice);
-    if (item.sellingUnit === "packet")
-      costPerUnit = costPerUnit / (product.packetsPerCarton || 1);
-    else if (item.sellingUnit === "unit")
-      costPerUnit = costPerUnit / unitsPerCarton;
+//     let costPerUnit = Number(product.costPrice);
+//     if (item.sellingUnit === "packet")
+//       costPerUnit = costPerUnit / (product.packetsPerCarton || 1);
+//     else if (item.sellingUnit === "unit")
+//       costPerUnit = costPerUnit / unitsPerCarton;
 
-    totalCOGS += item.selectedQty * costPerUnit;
-  }
+//     totalCOGS += item.selectedQty * costPerUnit;
+//   }
 
-  // 4️⃣ Generate JE number
-  // const year = new Date().getFullYear();
-  // const nextSeqRaw: { next_number: string }[] = await prisma.$queryRawUnsafe(`
-  //   SELECT COALESCE(
-  //     MAX(CAST(SPLIT_PART(entry_number, '-', 3) AS INT)),
-  //     0
-  //   ) + 1 AS next_number
-  //   FROM journal_entries
-  //   WHERE entry_number LIKE 'JE-${year}-%'
-  //     AND entry_number ~ '^JE-${year}-[0-9]+$'
-  // `);
+//   // 4️⃣ Generate JE number
+//   // const year = new Date().getFullYear();
+//   // const nextSeqRaw: { next_number: string }[] = await prisma.$queryRawUnsafe(`
+//   //   SELECT COALESCE(
+//   //     MAX(CAST(SPLIT_PART(entry_number, '-', 3) AS INT)),
+//   //     0
+//   //   ) + 1 AS next_number
+//   //   FROM journal_entries
+//   //   WHERE entry_number LIKE 'JE-${year}-%'
+//   //     AND entry_number ~ '^JE-${year}-[0-9]+$'
+//   // `);
 
-  // const nextNumber = Number(nextSeqRaw[0]?.next_number || 1);
-  // const entryBase = `JE-${year}-${String(nextNumber).padStart(7, "0")}`;
-  // Generate JE number safely
-  const year = new Date().getFullYear().toString();
-  const nextSeqRaw: { next_number: string }[] = await prisma.$queryRawUnsafe(`
-  SELECT COALESCE(
-    MAX(CAST(SPLIT_PART(entry_number, '-', 3) AS INT)),
-    0
-  ) + 1 AS next_number
-  FROM journal_entries
-  WHERE entry_number LIKE 'JE-${year}-%'
-    AND entry_number ~ '^JE-${year}-[0-9]+$'
-`);
+//   // const nextNumber = Number(nextSeqRaw[0]?.next_number || 1);
+//   // const entryBase = `JE-${year}-${String(nextNumber).padStart(7, "0")}`;
+//   // Generate JE number safely
+//   const year = new Date().getFullYear().toString();
+//   const nextSeqRaw: { next_number: string }[] = await prisma.$queryRawUnsafe(`
+//   SELECT COALESCE(
+//     MAX(CAST(SPLIT_PART(entry_number, '-', 3) AS INT)),
+//     0
+//   ) + 1 AS next_number
+//   FROM journal_entries
+//   WHERE entry_number LIKE 'JE-${year}-%'
+//     AND entry_number ~ '^JE-${year}-[0-9]+$'
+// `);
 
-  const nextNumber = Number(nextSeqRaw[0]?.next_number || 1);
-  const seqFormatted = String(nextNumber).padStart(7, "0");
-  const randomSuffix = Math.floor(Math.random() * 1000);
-  const entryBase = `JE-${year}-${seqFormatted}-${randomSuffix}`;
-  // 5️⃣ Fetch account mappings
-  const mappings = await prisma.account_mappings.findMany({
-    where: { company_id: companyId, is_default: true },
-    select: { mapping_type: true, account_id: true },
-  });
+//   const nextNumber = Number(nextSeqRaw[0]?.next_number || 1);
+//   const seqFormatted = String(nextNumber).padStart(7, "0");
+//   const randomSuffix = Math.floor(Math.random() * 1000);
+//   const entryBase = `JE-${year}-${seqFormatted}-${randomSuffix}`;
+//   // 5️⃣ Fetch account mappings
+//   const mappings = await prisma.account_mappings.findMany({
+//     where: { company_id: companyId, is_default: true },
+//     select: { mapping_type: true, account_id: true },
+//   });
 
-  const accountMap = new Map(
-    mappings.map((m) => [m.mapping_type, m.account_id]),
-  );
+//   const accountMap = new Map(
+//     mappings.map((m) => [m.mapping_type, m.account_id]),
+//   );
 
-  const cash = accountMap.get("cash");
-  const ar = accountMap.get("accounts_receivable");
-  const revenue = accountMap.get("sales_revenue");
-  const inventory = accountMap.get("inventory");
-  const cogs = accountMap.get("cogs");
-  const payable = accountMap.get("accounts_payable");
+//   const cash = accountMap.get("cash");
+//   const ar = accountMap.get("accounts_receivable");
+//   const revenue = accountMap.get("sales_revenue");
+//   const inventory = accountMap.get("inventory");
+//   const cogs = accountMap.get("cogs");
+//   const payable = accountMap.get("accounts_payable");
 
-  const total = Number(sale.totalAmount);
-  const paid = Number(sale.amountPaid);
-  const desc = `قيد بيع رقم ${sale.saleNumber}`;
+//   const total = Number(sale.totalAmount);
+//   const paid = Number(sale.amountPaid);
+//   const desc = `قيد بيع رقم ${sale.saleNumber}`;
 
-  const entries: any[] = [];
-  const baseEntry = {
-    company_id: companyId,
-    entry_date: new Date(),
-    fiscal_period: fy?.period_name,
-    created_by: cashierId,
-    is_automated: true,
-  };
+//   const entries: any[] = [];
+//   const baseEntry = {
+//     company_id: companyId,
+//     entry_date: new Date(),
+//     fiscal_period: fy?.period_name,
+//     created_by: cashierId,
+//     is_automated: true,
+//   };
 
-  // 6️⃣ Payment Status Logic - Simplified
-  if (sale.paymentStatus === "paid") {
-    if (paid > total) {
-      // Overpayment
-      const change = paid - total;
-      entries.push(
-        {
-          ...baseEntry,
-          account_id: payable,
-          description: desc + " - فائض عميل",
-          debit: 0,
-          credit: change,
-          reference_id: customerId,
-          reference_type: "فاتورة مبيعات",
-          entry_number: `${entryBase}-C`,
-        },
-        {
-          ...baseEntry,
-          account_id: cash,
-          description: desc,
-          debit: total,
-          credit: 0,
-          reference_id: customerId,
-          reference_type: "فاتورة مبيعات",
-          entry_number: `${entryBase}-D`,
-        },
-        {
-          ...baseEntry,
-          account_id: revenue,
-          description: desc,
-          debit: 0,
-          credit: total,
-          reference_id: sale.id,
-          reference_type: "دفوعة نقداً",
-          entry_number: `${entryBase}-R`,
-        },
-      );
-    } else {
-      // Exact payment
-      entries.push(
-        {
-          ...baseEntry,
-          account_id: cash,
-          description: desc,
-          debit: paid,
-          credit: 0,
-          reference_id: customerId,
-          reference_type: "فاتورة مبيعات نقداً",
-          entry_number: `${entryBase}-D1`,
-        },
-        {
-          ...baseEntry,
-          account_id: revenue,
-          description: desc,
-          debit: 0,
-          credit: total,
-          reference_id: customerId,
-          reference_type: "دفع نقداً",
-          entry_number: `${entryBase}-C1`,
-        },
-      );
-    }
-  } else if (sale.paymentStatus === "partial") {
-    // Partial payment
-    entries.push(
-      {
-        ...baseEntry,
-        account_id: ar,
-        description: desc + " فاتورة بيع اجل",
-        debit: total,
-        credit: 0,
-        reference_id: customerId,
-        reference_type: "فاتورة مبيعات",
-        entry_number: `${entryBase}-PS-DR`,
-      },
-      {
-        ...baseEntry,
-        account_id: revenue,
-        description: desc + " - فاتورة بيع",
-        debit: 0,
-        credit: total,
-        reference_id: sale.id,
-        reference_type: "فاتورة مبيعات",
-        entry_number: `${entryBase}-PS-CR`,
-      },
-    );
+//   // 6️⃣ Payment Status Logic - Simplified
+//   if (sale.paymentStatus === "paid") {
+//     if (paid > total) {
+//       // Overpayment
+//       const change = paid - total;
+//       entries.push(
+//         {
+//           ...baseEntry,
+//           account_id: payable,
+//           description: desc + " - فائض عميل",
+//           debit: 0,
+//           credit: change,
+//           reference_id: customerId,
+//           reference_type: "فاتورة مبيعات",
+//           entry_number: `${entryBase}-C`,
+//         },
+//         {
+//           ...baseEntry,
+//           account_id: cash,
+//           description: desc,
+//           debit: total,
+//           credit: 0,
+//           reference_id: customerId,
+//           reference_type: "فاتورة مبيعات",
+//           entry_number: `${entryBase}-D`,
+//         },
+//         {
+//           ...baseEntry,
+//           account_id: revenue,
+//           description: desc,
+//           debit: 0,
+//           credit: total,
+//           reference_id: sale.id,
+//           reference_type: "دفوعة نقداً",
+//           entry_number: `${entryBase}-R`,
+//         },
+//       );
+//     } else {
+//       // Exact payment
+//       entries.push(
+//         {
+//           ...baseEntry,
+//           account_id: cash,
+//           description: desc,
+//           debit: paid,
+//           credit: 0,
+//           reference_id: customerId,
+//           reference_type: "فاتورة مبيعات نقداً",
+//           entry_number: `${entryBase}-D1`,
+//         },
+//         {
+//           ...baseEntry,
+//           account_id: revenue,
+//           description: desc,
+//           debit: 0,
+//           credit: total,
+//           reference_id: customerId,
+//           reference_type: "دفع نقداً",
+//           entry_number: `${entryBase}-C1`,
+//         },
+//       );
+//     }
+//   } else if (sale.paymentStatus === "partial") {
+//     // Partial payment
+//     entries.push(
+//       {
+//         ...baseEntry,
+//         account_id: ar,
+//         description: desc + " فاتورة بيع اجل",
+//         debit: total,
+//         credit: 0,
+//         reference_id: customerId,
+//         reference_type: "فاتورة مبيعات",
+//         entry_number: `${entryBase}-PS-DR`,
+//       },
+//       {
+//         ...baseEntry,
+//         account_id: revenue,
+//         description: desc + " - فاتورة بيع",
+//         debit: 0,
+//         credit: total,
+//         reference_id: sale.id,
+//         reference_type: "فاتورة مبيعات",
+//         entry_number: `${entryBase}-PS-CR`,
+//       },
+//     );
 
-    if (paid > 0) {
-      entries.push(
-        {
-          ...baseEntry,
-          account_id: cash,
-          description: desc + " - دفعة فورية",
-          debit: paid,
-          credit: 0,
-          reference_id: sale.id,
-          reference_type: "دفعة من عميل",
-          entry_number: `${entryBase}-PP-DR`,
-        },
-        {
-          ...baseEntry,
-          account_id: ar,
-          description: desc + " المدفوع من المبلغ",
-          debit: 0,
-          credit: paid,
-          reference_id: customerId,
-          reference_type: "دفعة من عميل",
-          entry_number: `${entryBase}-PP-CR`,
-        },
-      );
-    }
-  } else {
-    // Unpaid
-    entries.push(
-      {
-        ...baseEntry,
-        account_id: ar,
-        description: desc + " غير مدفوع",
-        debit: total,
-        credit: 0,
-        reference_id: customerId,
-        reference_type: "فاتورة مبيعات اجل",
-        entry_number: `${entryBase}-U1`,
-      },
-      {
-        ...baseEntry,
-        account_id: revenue,
-        description: desc + " غير مدفوع",
-        debit: 0,
-        credit: total,
-        reference_id: sale.id,
-        reference_type: "فاتورة مبيعات",
-        entry_number: `${entryBase}-U2`,
-      },
-    );
-  }
+//     if (paid > 0) {
+//       entries.push(
+//         {
+//           ...baseEntry,
+//           account_id: cash,
+//           description: desc + " - دفعة فورية",
+//           debit: paid,
+//           credit: 0,
+//           reference_id: sale.id,
+//           reference_type: "دفعة من عميل",
+//           entry_number: `${entryBase}-PP-DR`,
+//         },
+//         {
+//           ...baseEntry,
+//           account_id: ar,
+//           description: desc + " المدفوع من المبلغ",
+//           debit: 0,
+//           credit: paid,
+//           reference_id: customerId,
+//           reference_type: "دفعة من عميل",
+//           entry_number: `${entryBase}-PP-CR`,
+//         },
+//       );
+//     }
+//   } else {
+//     // Unpaid
+//     entries.push(
+//       {
+//         ...baseEntry,
+//         account_id: ar,
+//         description: desc + " غير مدفوع",
+//         debit: total,
+//         credit: 0,
+//         reference_id: customerId,
+//         reference_type: "فاتورة مبيعات اجل",
+//         entry_number: `${entryBase}-U1`,
+//       },
+//       {
+//         ...baseEntry,
+//         account_id: revenue,
+//         description: desc + " غير مدفوع",
+//         debit: 0,
+//         credit: total,
+//         reference_id: sale.id,
+//         reference_type: "فاتورة مبيعات",
+//         entry_number: `${entryBase}-U2`,
+//       },
+//     );
+//   }
 
-  // 7️⃣ COGS + Inventory
-  if (totalCOGS > 0 && cogs && inventory) {
-    entries.push(
-      {
-        ...baseEntry,
-        account_id: cogs,
-        description: desc,
-        debit: totalCOGS,
-        credit: 0,
-        reference_id: sale.id,
-        reference_type: "تكلفة البضاعة المباعة",
-        entry_number: `${entryBase}-CG1`,
-      },
-      {
-        ...baseEntry,
-        account_id: inventory,
-        description: desc,
-        debit: 0,
-        credit: totalCOGS,
-        reference_id: sale.id,
-        reference_type: "خرج من المخزن",
-        entry_number: `${entryBase}-CG2`,
-      },
-    );
-  }
+//   // 7️⃣ COGS + Inventory
+//   if (totalCOGS > 0 && cogs && inventory) {
+//     entries.push(
+//       {
+//         ...baseEntry,
+//         account_id: cogs,
+//         description: desc,
+//         debit: totalCOGS,
+//         credit: 0,
+//         reference_id: sale.id,
+//         reference_type: "تكلفة البضاعة المباعة",
+//         entry_number: `${entryBase}-CG1`,
+//       },
+//       {
+//         ...baseEntry,
+//         account_id: inventory,
+//         description: desc,
+//         debit: 0,
+//         credit: totalCOGS,
+//         reference_id: sale.id,
+//         reference_type: "خرج من المخزن",
+//         entry_number: `${entryBase}-CG2`,
+//       },
+//     );
+//   }
 
-  // 8️⃣ Insert entries and update balances in a transaction
-  await prisma.$transaction(async (tx) => {
-    // Insert all journal entries
-    await tx.journal_entries.createMany({ data: entries });
+//   // 8️⃣ Insert entries and update balances in a transaction
+//   await prisma.$transaction(async (tx) => {
+//     // Insert all journal entries
+//     await tx.journal_entries.createMany({ data: entries });
 
-    // Calculate account balance deltas
-    const accountDeltas = new Map<string, number>();
-    for (const e of entries) {
-      const delta = Number(e.debit) - Number(e.credit);
-      accountDeltas.set(
-        e.account_id,
-        (accountDeltas.get(e.account_id) || 0) + delta,
-      );
-    }
+//     // Calculate account balance deltas
+//     const accountDeltas = new Map<string, number>();
+//     for (const e of entries) {
+//       const delta = Number(e.debit) - Number(e.credit);
+//       accountDeltas.set(
+//         e.account_id,
+//         (accountDeltas.get(e.account_id) || 0) + delta,
+//       );
+//     }
 
-    // Update all account balances in parallel
-    await Promise.all(
-      Array.from(accountDeltas.entries()).map(([accountId, delta]) =>
-        tx.accounts.update({
-          where: { id: accountId },
-          data: { balance: { increment: delta } },
-        }),
-      ),
-    );
-  });
-}
+//     // Update all account balances in parallel
+//     await Promise.all(
+//       Array.from(accountDeltas.entries()).map(([accountId, delta]) =>
+//         tx.accounts.update({
+//           where: { id: accountId },
+//           data: { balance: { increment: delta } },
+//         }),
+//       ),
+//     );
+//   });
+// }
 export async function getAllActiveProductsForSale(
   where: Prisma.ProductWhereInput,
   companyId: string,
@@ -1065,6 +1064,9 @@ export async function getAllActiveProductsForSale(
     };
   });
 }
+// ============================================
+// Updated processReturn Function
+// ============================================
 export async function processReturn(data: any, companyId: string) {
   const {
     saleId,
@@ -1186,7 +1188,6 @@ export async function processReturn(data: any, companyId: string) {
 
       // 4. Fetch all inventories in one query
       const warehouseIds = returnItems.map((item: any) => item.warehouseId);
-
       const productIds = returnItems.map((item: any) => item.productId);
 
       const inventories = await tx.inventory.findMany({
@@ -1297,11 +1298,13 @@ export async function processReturn(data: any, companyId: string) {
           }),
         );
       }
+
       await Promise.all([
         tx.saleItem.createMany({ data: returnSaleItemsData }),
         tx.stockMovement.createMany({ data: stockMovementsData }),
         ...inventoryUpdatesPromises,
       ]);
+
       // 7. Handle customer balance updates
       const customerUpdatePromises = [];
 
@@ -1358,14 +1361,12 @@ export async function processReturn(data: any, companyId: string) {
         );
       }
 
-      // 9. Execute all operations in parallel
-
       // Execute customer updates in parallel
       if (customerUpdatePromises.length > 0) {
         await Promise.all(customerUpdatePromises);
       }
 
-      // 10. Update original sale refunded amount
+      // 9. Update original sale refunded amount
       await tx.sale.update({
         where: { id: saleId },
         data: {
@@ -1374,6 +1375,34 @@ export async function processReturn(data: any, companyId: string) {
           sale_type: "return",
         },
       });
+
+      // 🆕 CREATE JOURNAL EVENT FOR RETURN
+      const refundFromAR = Math.min(returnSubtotal, originalSaleAmountDue || 0);
+      const refundFromCashBank = returnSubtotal - refundFromAR;
+
+      await tx.journalEvent.create({
+        data: {
+          companyId: companyId,
+          eventType: "return",
+          status: "pending",
+          entityType: "sale_return",
+          payload: {
+            companyId,
+            customerId,
+            cashierId,
+            returnNumber,
+            returnSubtotal,
+            returnTotalCOGS,
+            refundFromAR,
+            refundFromCashBank,
+            returnSaleId: returnSale.id,
+            paymentMethod: paymentMethod || "cash",
+            reason,
+          },
+          processed: false,
+        },
+      });
+
       const cleanReturnSale = JSON.parse(JSON.stringify(returnSale));
       return {
         success: true,
@@ -1389,35 +1418,362 @@ export async function processReturn(data: any, companyId: string) {
       maxWait: 5000,
     },
   );
-  // unstable_noStore();
-  // // Fire non-blocking operations
-  // revalidatePath("/sells");
-
-  // Create journal entries with retry
-  const refundFromAR = Math.min(
-    result.returnSubtotal,
-    result.originalSaleAmountDue || 0,
-  );
-  const refundFromCashBank = result.returnSubtotal - refundFromAR;
-
-  createReturnJournalEntriesWithRetry({
-    companyId,
-    customerId,
-    cashierId,
-    returnNumber,
-    returnSubtotal: result.returnSubtotal,
-    returnTotalCOGS: result.returnTotalCOGS,
-    refundFromAR,
-    refundFromCashBank,
-    returnSaleId: result.cleanReturnSale.id,
-    paymentMethod: paymentMethod || "cash",
-    reason,
-  }).catch((err) =>
-    console.error("❌ Return journal entries failed after all retries:", err),
-  );
 
   return result;
 }
+// export async function processReturn(data: any, companyId: string) {
+//   const {
+//     saleId,
+//     cashierId,
+//     customerId,
+//     returnNumber,
+//     reason,
+//     items,
+//     returnToCustomer,
+//     paymentMethod,
+//   } = data;
+
+//   // Filter only items with quantity > 0
+//   const returnItems = items.filter((item: any) => item.quantity > 0);
+
+//   if (returnItems.length === 0) {
+//     return { success: false, message: "لا توجد منتجات للإرجاع" };
+//   }
+
+//   const result = await prisma.$transaction(
+//     async (tx) => {
+//       // 1. Get original sale with all needed data
+//       const originalSale = await tx.sale.findUnique({
+//         where: { id: saleId },
+//         select: {
+//           amountDue: true,
+//           customerId: true,
+//           paymentStatus: true,
+//           saleItems: {
+//             select: {
+//               productId: true,
+//               quantity: true,
+//               unitPrice: true,
+//               product: {
+//                 select: {
+//                   id: true,
+//                   name: true,
+//                   costPrice: true,
+//                   unitsPerPacket: true,
+//                   packetsPerCarton: true,
+//                 },
+//               },
+//             },
+//           },
+//         },
+//       });
+
+//       if (!originalSale) {
+//         throw new Error("عملية البيع غير موجودة");
+//       }
+
+//       const originalSaleAmountDue = originalSale.amountDue?.toNumber() || 0;
+
+//       // 2. Create maps and helper functions
+//       const saleItemsMap = new Map(
+//         originalSale.saleItems.map((item) => [item.productId, item]),
+//       );
+
+//       const convertToBaseUnits = (
+//         qty: number,
+//         sellingUnit: string,
+//         unitsPerPacket: number,
+//         packetsPerCarton: number,
+//       ): number => {
+//         if (sellingUnit === "unit") return qty;
+//         if (sellingUnit === "packet") return qty * (unitsPerPacket || 1);
+//         if (sellingUnit === "carton")
+//           return qty * (unitsPerPacket || 1) * (packetsPerCarton || 1);
+//         return qty;
+//       };
+
+//       const calculateCostPerUnit = (
+//         product: any,
+//         sellingUnit: string,
+//       ): number => {
+//         const totalUnitsPerCarton =
+//           Math.max(product.unitsPerPacket || 1, 1) *
+//           Math.max(product.packetsPerCarton || 1, 1);
+
+//         const costPrice = product.costPrice.toNumber();
+
+//         if (sellingUnit === "carton") return costPrice;
+//         if (sellingUnit === "packet")
+//           return costPrice / Math.max(product.packetsPerCarton, 1);
+//         if (sellingUnit === "unit") return costPrice / totalUnitsPerCarton;
+//         return costPrice;
+//       };
+
+//       // 3. Validate and calculate totals
+//       let returnSubtotal = 0;
+//       let returnTotalCOGS = 0;
+
+//       for (const returnItem of returnItems) {
+//         const saleItem = saleItemsMap.get(returnItem.productId);
+//         if (!saleItem) {
+//           throw new Error(
+//             `المنتج ${returnItem.name} غير موجود في البيع الأصلي`,
+//           );
+//         }
+
+//         if (returnItem.quantity > saleItem.quantity) {
+//           throw new Error(
+//             `كمية الإرجاع للمنتج ${returnItem.name} أكبر من الكمية المباعة`,
+//           );
+//         }
+
+//         // Calculate return value
+//         const itemReturnValue =
+//           saleItem.unitPrice.toNumber() * returnItem.quantity;
+//         returnSubtotal += itemReturnValue;
+
+//         // Calculate COGS
+//         const costPerUnit = calculateCostPerUnit(
+//           saleItem.product,
+//           returnItem.sellingUnit,
+//         );
+//         returnTotalCOGS += returnItem.quantity * costPerUnit;
+//       }
+
+//       // 4. Fetch all inventories in one query
+//       const warehouseIds = returnItems.map((item: any) => item.warehouseId);
+
+//       const productIds = returnItems.map((item: any) => item.productId);
+
+//       const inventories = await tx.inventory.findMany({
+//         where: {
+//           companyId,
+//           productId: { in: productIds },
+//           warehouseId: { in: warehouseIds },
+//         },
+//       });
+
+//       const inventoryMap = new Map(
+//         inventories.map((inv) => [`${inv.productId}-${inv.warehouseId}`, inv]),
+//       );
+
+//       // 5. Create return sale record
+//       const returnSale = await tx.sale.create({
+//         data: {
+//           companyId,
+//           saleNumber: returnNumber,
+//           customerId: originalSale.customerId,
+//           cashierId,
+//           sale_type: "return",
+//           status: "completed",
+//           subtotal: returnSubtotal,
+//           taxAmount: 0,
+//           discountAmount: 0,
+//           totalAmount: returnSubtotal,
+//           amountPaid: returnToCustomer,
+//           amountDue: 0,
+//           paymentStatus: "paid",
+//           originalSaleId: saleId,
+//         },
+//       });
+
+//       // 6. Prepare batch operations
+//       const returnSaleItemsData = [];
+//       const stockMovementsData = [];
+//       const inventoryUpdatesPromises = [];
+
+//       for (const returnItem of returnItems) {
+//         const saleItem = saleItemsMap.get(returnItem.productId)!;
+//         const product = saleItem.product;
+
+//         const quantityInUnits = convertToBaseUnits(
+//           returnItem.quantity,
+//           returnItem.sellingUnit,
+//           product.unitsPerPacket || 1,
+//           product.packetsPerCarton || 1,
+//         );
+
+//         const inventoryKey = `${returnItem.productId}-${returnItem.warehouseId}`;
+//         const inventory = inventoryMap.get(inventoryKey);
+
+//         if (!inventory) {
+//           throw new Error(`المخزون غير موجود للمنتج ${returnItem.name}`);
+//         }
+
+//         const newStock = inventory.stockQuantity + quantityInUnits;
+//         const newAvailable = inventory.availableQuantity + quantityInUnits;
+
+//         // Prepare return sale item
+//         returnSaleItemsData.push({
+//           companyId,
+//           saleId: returnSale.id,
+//           productId: returnItem.productId,
+//           quantity: returnItem.quantity,
+//           sellingUnit: returnItem.sellingUnit,
+//           unitPrice: saleItem.unitPrice,
+//           totalPrice: saleItem.unitPrice.toNumber() * returnItem.quantity,
+//         });
+
+//         // Prepare stock movement
+//         stockMovementsData.push({
+//           companyId,
+//           productId: returnItem.productId,
+//           warehouseId: returnItem.warehouseId,
+//           userId: cashierId,
+//           movementType: "وارد",
+//           quantity: quantityInUnits,
+//           reason: reason ?? "إرجاع بيع",
+//           quantityBefore: inventory.stockQuantity,
+//           quantityAfter: newStock,
+//           referenceType: "إرجاع",
+//           referenceId: returnSale.id,
+//           notes: reason || undefined,
+//         });
+
+//         // Prepare inventory update
+//         inventoryUpdatesPromises.push(
+//           tx.inventory.update({
+//             where: {
+//               companyId_productId_warehouseId: {
+//                 companyId,
+//                 productId: returnItem.productId,
+//                 warehouseId: returnItem.warehouseId,
+//               },
+//             },
+//             data: {
+//               stockQuantity: newStock,
+//               availableQuantity: newAvailable,
+//               status:
+//                 newAvailable === 0
+//                   ? "out_of_stock"
+//                   : newAvailable <= inventory.reorderLevel
+//                     ? "low"
+//                     : "available",
+//             },
+//           }),
+//         );
+//       }
+//       await Promise.all([
+//         tx.saleItem.createMany({ data: returnSaleItemsData }),
+//         tx.stockMovement.createMany({ data: stockMovementsData }),
+//         ...inventoryUpdatesPromises,
+//       ]);
+//       // 7. Handle customer balance updates
+//       const customerUpdatePromises = [];
+
+//       if (customerId) {
+//         if (
+//           originalSale.paymentStatus === "unpaid" ||
+//           originalSale.paymentStatus === "partial"
+//         ) {
+//           // Reduce outstanding balance
+//           const amountToDeduct = Math.min(
+//             returnSubtotal,
+//             originalSale.amountDue?.toNumber() || 0,
+//           );
+
+//           if (amountToDeduct > 0) {
+//             customerUpdatePromises.push(
+//               tx.customer.update({
+//                 where: { id: customerId, companyId },
+//                 data: {
+//                   outstandingBalance: { decrement: amountToDeduct },
+//                 },
+//               }),
+//             );
+//           }
+//         } else {
+//           // Full paid sale - add to balance
+//           customerUpdatePromises.push(
+//             tx.customer.update({
+//               where: { id: customerId, companyId },
+//               data: {
+//                 balance: { increment: returnSubtotal },
+//               },
+//             }),
+//           );
+//         }
+//       }
+
+//       // 8. Create payment record
+//       if (returnToCustomer > 0) {
+//         customerUpdatePromises.push(
+//           tx.payment.create({
+//             data: {
+//               companyId,
+//               saleId: returnSale.id,
+//               cashierId,
+//               customerId: originalSale.customerId,
+//               paymentMethod: paymentMethod || "cash",
+//               payment_type: "return_refund",
+//               amount: returnToCustomer,
+//               status: "completed",
+//               notes: reason || "إرجاع بيع",
+//             },
+//           }),
+//         );
+//       }
+
+//       // 9. Execute all operations in parallel
+
+//       // Execute customer updates in parallel
+//       if (customerUpdatePromises.length > 0) {
+//         await Promise.all(customerUpdatePromises);
+//       }
+
+//       // 10. Update original sale refunded amount
+//       await tx.sale.update({
+//         where: { id: saleId },
+//         data: {
+//           refunded: { increment: returnSubtotal },
+//           totalAmount: 0,
+//           sale_type: "return",
+//         },
+//       });
+//       const cleanReturnSale = JSON.parse(JSON.stringify(returnSale));
+//       return {
+//         success: true,
+//         message: "تم إرجاع البيع بنجاح",
+//         cleanReturnSale,
+//         returnSubtotal,
+//         returnTotalCOGS,
+//         originalSaleAmountDue,
+//       };
+//     },
+//     {
+//       timeout: 20000,
+//       maxWait: 5000,
+//     },
+//   );
+//   // unstable_noStore();
+//   // // Fire non-blocking operations
+//   // revalidatePath("/sells");
+
+//   // Create journal entries with retry
+//   const refundFromAR = Math.min(
+//     result.returnSubtotal,
+//     result.originalSaleAmountDue || 0,
+//   );
+//   const refundFromCashBank = result.returnSubtotal - refundFromAR;
+
+//   createReturnJournalEntriesWithRetry({
+//     companyId,
+//     customerId,
+//     cashierId,
+//     returnNumber,
+//     returnSubtotal: result.returnSubtotal,
+//     returnTotalCOGS: result.returnTotalCOGS,
+//     refundFromAR,
+//     refundFromCashBank,
+//     returnSaleId: result.cleanReturnSale.id,
+//     paymentMethod: paymentMethod || "cash",
+//     reason,
+//   }).catch((err) =>
+//     console.error("❌ Return journal entries failed after all retries:", err),
+//   );
+
+//   return result;
+// }
 
 // ============================================
 // 🔄 Return Journal Entries with Retry
@@ -1471,9 +1827,6 @@ async function createReturnJournalEntriesWithRetry(
   );
 }
 
-// ============================================
-// 📊 Optimized Return Journal Entries
-// ============================================
 export async function createReturnJournalEntries({
   companyId,
   customerId,
