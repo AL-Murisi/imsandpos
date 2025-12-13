@@ -34,13 +34,6 @@ export async function GET() {
         const eventData = event.payload as any;
 
         // Validate required data
-        if (
-          !eventData?.companyId ||
-          !eventData?.sale ||
-          !eventData?.saleItems
-        ) {
-          throw new Error("Invalid event data structure");
-        }
 
         // Create journal entries for this sale
         if (event.eventType === "sale") {
@@ -86,6 +79,7 @@ export async function GET() {
           where: { id: event.id },
           data: {
             processed: true,
+            status: "processed",
           },
         });
 
