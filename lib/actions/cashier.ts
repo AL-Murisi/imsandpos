@@ -1329,16 +1329,6 @@ export async function processReturn(data: any, companyId: string) {
               }),
             );
           }
-        } else {
-          // Full paid sale - add to balance
-          customerUpdatePromises.push(
-            tx.customer.update({
-              where: { id: customerId, companyId },
-              data: {
-                balance: { increment: returnSubtotal },
-              },
-            }),
-          );
         }
       }
 
@@ -2002,198 +1992,198 @@ export async function createReturnJournalEntries({
   };
 }
 
-export async function processCustomerPayment(data: {
-  companyId: string;
-  customerId: string;
-  cashierId: string;
-  amount: number;
-  paymentMethod: string;
-  paymentDate?: Date;
-  notes?: string;
-  saleIds?: string[]; // Optional: specific sales to apply payment to
-}) {
-  const {
-    companyId,
-    customerId,
-    cashierId,
-    amount,
-    paymentMethod,
-    paymentDate = new Date(),
-    notes,
-    saleIds,
-  } = data;
+// export async function processCustomerPayment(data: {
+//   companyId: string;
+//   customerId: string;
+//   cashierId: string;
+//   amount: number;
+//   paymentMethod: string;
+//   paymentDate?: Date;
+//   notes?: string;
+//   saleIds?: string[]; // Optional: specific sales to apply payment to
+// }) {
+//   const {
+//     companyId,
+//     customerId,
+//     cashierId,
+//     amount,
+//     paymentMethod,
+//     paymentDate = new Date(),
+//     notes,
+//     saleIds,
+//   } = data;
 
-  if (amount <= 0) {
-    throw new Error("Payment amount must be greater than zero");
-  }
+//   if (amount <= 0) {
+//     throw new Error("Payment amount must be greater than zero");
+//   }
 
-  const result = await prisma.$transaction(
-    async (tx) => {
-      // 1️⃣ Fetch customer and their unpaid/partial sales in parallel
-      const [customer, unpaidSales] = await Promise.all([
-        tx.customer.findUnique({
-          where: { id: customerId, companyId },
-          select: {
-            id: true,
-            name: true,
-            outstandingBalance: true,
-            balance: true,
-          },
-        }),
-        // Fetch specific sales or all unpaid sales
-        tx.sale.findMany({
-          where: {
-            companyId,
-            customerId,
-            paymentStatus: { in: ["unpaid", "partial"] },
-            ...(saleIds && saleIds.length > 0 && { id: { in: saleIds } }),
-          },
-          select: {
-            id: true,
-            saleNumber: true,
-            totalAmount: true,
-            amountPaid: true,
-            amountDue: true,
-            paymentStatus: true,
-          },
-          orderBy: { saleDate: "asc" }, // Pay oldest first
-        }),
-      ]);
+//   const result = await prisma.$transaction(
+//     async (tx) => {
+//       // 1️⃣ Fetch customer and their unpaid/partial sales in parallel
+//       const [customer, unpaidSales] = await Promise.all([
+//         tx.customer.findUnique({
+//           where: { id: customerId, companyId },
+//           select: {
+//             id: true,
+//             name: true,
+//             outstandingBalance: true,
+//             balance: true,
+//           },
+//         }),
+//         // Fetch specific sales or all unpaid sales
+//         tx.sale.findMany({
+//           where: {
+//             companyId,
+//             customerId,
+//             paymentStatus: { in: ["unpaid", "partial"] },
+//             ...(saleIds && saleIds.length > 0 && { id: { in: saleIds } }),
+//           },
+//           select: {
+//             id: true,
+//             saleNumber: true,
+//             totalAmount: true,
+//             amountPaid: true,
+//             amountDue: true,
+//             paymentStatus: true,
+//           },
+//           orderBy: { saleDate: "asc" }, // Pay oldest first
+//         }),
+//       ]);
 
-      if (!customer) {
-        throw new Error("Customer not found");
-      }
+//       if (!customer) {
+//         throw new Error("Customer not found");
+//       }
 
-      // 2️⃣ Calculate payment allocation
-      let remainingPayment = amount;
-      const paymentAllocations: Array<{
-        saleId: string;
-        saleNumber: string;
-        amountApplied: number;
-        previousDue: number;
-        newDue: number;
-        newStatus: string;
-      }> = [];
+//       // 2️⃣ Calculate payment allocation
+//       let remainingPayment = amount;
+//       const paymentAllocations: Array<{
+//         saleId: string;
+//         saleNumber: string;
+//         amountApplied: number;
+//         previousDue: number;
+//         newDue: number;
+//         newStatus: string;
+//       }> = [];
 
-      // Allocate payment to sales
-      for (const sale of unpaidSales) {
-        if (remainingPayment <= 0) break;
+//       // Allocate payment to sales
+//       for (const sale of unpaidSales) {
+//         if (remainingPayment <= 0) break;
 
-        const saleAmountDue = sale.amountDue.toNumber();
-        const amountToApply = Math.min(remainingPayment, saleAmountDue);
+//         const saleAmountDue = sale.amountDue.toNumber();
+//         const amountToApply = Math.min(remainingPayment, saleAmountDue);
 
-        if (amountToApply > 0) {
-          const newAmountDue = saleAmountDue - amountToApply;
-          const newAmountPaid = sale.amountPaid.toNumber() + amountToApply;
-          const newStatus =
-            newAmountDue <= 0
-              ? "paid"
-              : newAmountPaid > 0
-                ? "partial"
-                : "unpaid";
+//         if (amountToApply > 0) {
+//           const newAmountDue = saleAmountDue - amountToApply;
+//           const newAmountPaid = sale.amountPaid.toNumber() + amountToApply;
+//           const newStatus =
+//             newAmountDue <= 0
+//               ? "paid"
+//               : newAmountPaid > 0
+//                 ? "partial"
+//                 : "unpaid";
 
-          paymentAllocations.push({
-            saleId: sale.id,
-            saleNumber: sale.saleNumber,
-            amountApplied: amountToApply,
-            previousDue: saleAmountDue,
-            newDue: newAmountDue,
-            newStatus,
-          });
+//           paymentAllocations.push({
+//             saleId: sale.id,
+//             saleNumber: sale.saleNumber,
+//             amountApplied: amountToApply,
+//             previousDue: saleAmountDue,
+//             newDue: newAmountDue,
+//             newStatus,
+//           });
 
-          remainingPayment -= amountToApply;
-        }
-      }
+//           remainingPayment -= amountToApply;
+//         }
+//       }
 
-      // 3️⃣ Determine excess payment (goes to customer credit)
-      const totalAppliedToSales = amount - remainingPayment;
-      const excessAmount = remainingPayment;
+//       // 3️⃣ Determine excess payment (goes to customer credit)
+//       const totalAppliedToSales = amount - remainingPayment;
+//       const excessAmount = remainingPayment;
 
-      // 4️⃣ Create main payment record
-      const payment = await tx.payment.create({
-        data: {
-          companyId,
-          customerId,
-          cashierId,
-          paymentMethod,
-          payment_type: "customer_payment",
-          amount,
-          status: "completed",
-          notes:
-            notes ||
-            `دفعة من العميل - تطبيق: ${totalAppliedToSales.toFixed(2)}`,
-          createdAt: paymentDate,
-        },
-      });
+//       // 4️⃣ Create main payment record
+//       const payment = await tx.payment.create({
+//         data: {
+//           companyId,
+//           customerId,
+//           cashierId,
+//           paymentMethod,
+//           payment_type: "customer_payment",
+//           amount,
+//           status: "completed",
+//           notes:
+//             notes ||
+//             `دفعة من العميل - تطبيق: ${totalAppliedToSales.toFixed(2)}`,
+//           createdAt: paymentDate,
+//         },
+//       });
 
-      // 5️⃣ Update all affected sales in parallel
-      const saleUpdatePromises = paymentAllocations.map((allocation) =>
-        tx.sale.update({
-          where: { id: allocation.saleId },
-          data: {
-            amountPaid: { increment: allocation.amountApplied },
-            amountDue: { decrement: allocation.amountApplied },
-            paymentStatus: allocation.newStatus,
-          },
-        }),
-      );
+//       // 5️⃣ Update all affected sales in parallel
+//       const saleUpdatePromises = paymentAllocations.map((allocation) =>
+//         tx.sale.update({
+//           where: { id: allocation.saleId },
+//           data: {
+//             amountPaid: { increment: allocation.amountApplied },
+//             amountDue: { decrement: allocation.amountApplied },
+//             paymentStatus: allocation.newStatus,
+//           },
+//         }),
+//       );
 
-      // 6️⃣ Update customer balance
-      const customerUpdateData: any = {};
+//       // 6️⃣ Update customer balance
+//       const customerUpdateData: any = {};
 
-      if (totalAppliedToSales > 0) {
-        customerUpdateData.outstandingBalance = {
-          decrement: totalAppliedToSales,
-        };
-      }
+//       if (totalAppliedToSales > 0) {
+//         customerUpdateData.outstandingBalance = {
+//           decrement: totalAppliedToSales,
+//         };
+//       }
 
-      if (excessAmount > 0) {
-        customerUpdateData.balance = { increment: excessAmount };
-      }
+//       if (excessAmount > 0) {
+//         customerUpdateData.balance = { increment: excessAmount };
+//       }
 
-      const customerUpdatePromise =
-        Object.keys(customerUpdateData).length > 0
-          ? tx.customer.update({
-              where: { id: customerId, companyId },
-              data: customerUpdateData,
-            })
-          : Promise.resolve(null);
+//       const customerUpdatePromise =
+//         Object.keys(customerUpdateData).length > 0
+//           ? tx.customer.update({
+//               where: { id: customerId, companyId },
+//               data: customerUpdateData,
+//             })
+//           : Promise.resolve(null);
 
-      // Execute all updates in parallel
-      await Promise.all([...saleUpdatePromises, customerUpdatePromise]);
+//       // Execute all updates in parallel
+//       await Promise.all([...saleUpdatePromises, customerUpdatePromise]);
 
-      return {
-        success: true,
-        payment,
-        paymentAllocations,
-        totalAppliedToSales,
-        excessAmount,
-        customer,
-      };
-    },
-    {
-      timeout: 20000,
-      maxWait: 5000,
-    },
-  );
+//       return {
+//         success: true,
+//         payment,
+//         paymentAllocations,
+//         totalAppliedToSales,
+//         excessAmount,
+//         customer,
+//       };
+//     },
+//     {
+//       timeout: 20000,
+//       maxWait: 5000,
+//     },
+//   );
 
-  // 🔄 Create journal entries with retry (non-blocking)
-  createPaymentJournalEntriesWithRetry({
-    companyId,
-    customerId,
-    cashierId,
-    paymentId: result.payment.id,
-    amount,
-    paymentMethod,
-    totalAppliedToSales: result.totalAppliedToSales,
-    excessAmount: result.excessAmount,
-    paymentAllocations: result.paymentAllocations,
-  }).catch((err) =>
-    console.error("❌ Payment journal entries failed after all retries:", err),
-  );
+//   // 🔄 Create journal entries with retry (non-blocking)
+//   createPaymentJournalEntriesWithRetry({
+//     companyId,
+//     customerId,
+//     cashierId,
+//     paymentId: result.payment.id,
+//     amount,
+//     paymentMethod,
+//     totalAppliedToSales: result.totalAppliedToSales,
+//     excessAmount: result.excessAmount,
+//     paymentAllocations: result.paymentAllocations,
+//   }).catch((err) =>
+//     console.error("❌ Payment journal entries failed after all retries:", err),
+//   );
 
-  return result;
-}
+//   return result;
+// }
 
 // ============================================
 // 🔄 Payment Journal Entries with Retry

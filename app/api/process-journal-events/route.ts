@@ -194,7 +194,7 @@ async function createReturnJournalEntries({
     entry_date: new Date(),
     is_automated: true,
     fiscal_period: fy.period_name,
-    reference_type: "sale_return",
+    reference_type: "إرجاع بيع ",
     reference_id: returnSaleId,
     created_by: cashierId,
   };
@@ -223,7 +223,7 @@ async function createReturnJournalEntries({
       ...baseEntry,
       entry_number: entryBase(),
       account_id: inventoryAccount,
-      description: `زيادة مخزون (إرجاع) ${returnNumber}`,
+      description: reason ?? `زيادة مخزون (إرجاع) ${returnNumber}`,
       debit: returnTotalCOGS,
       credit: 0,
     },
@@ -571,9 +571,30 @@ async function createSaleJournalEntries({
   await prisma.$transaction(async (tx) => {
     await tx.journal_entries.createMany({ data: entries });
 
+    const accountIds = [...new Set(entries.map((e) => e.account_id))];
+    const accounts = await tx.accounts.findMany({
+      where: { id: { in: accountIds } },
+      select: { id: true, account_type: true },
+    });
+
+    const accountTypeMap = new Map(accounts.map((a) => [a.id, a.account_type]));
     const accountDeltas = new Map();
     for (const e of entries) {
-      const delta = Number(e.debit) - Number(e.credit);
+      const accountType = accountTypeMap.get(e.account_id);
+      let delta = 0;
+
+      // Determine delta based on account type and normal balance
+      // Assets, Expenses, COGS: Debit increases, Credit decreases
+      // Liabilities, Equity, Revenue: Credit increases, Debit decreases
+      if (
+        ["asset", "expense", "cogs"].includes(accountType?.toLowerCase() || "")
+      ) {
+        delta = Number(e.debit) - Number(e.credit);
+      } else {
+        // Revenue, liability, equity accounts
+        delta = Number(e.credit) - Number(e.debit);
+      }
+
       accountDeltas.set(
         e.account_id,
         (accountDeltas.get(e.account_id) || 0) + delta,
