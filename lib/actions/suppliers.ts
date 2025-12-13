@@ -211,17 +211,25 @@ export async function createSupplier(
     });
     revalidatePath("/suppliers");
     revalidatePath("/products");
-    createSuppliereJournalEntriesWithRetry({
-      supplierId: user.id,
-      supplierName: user.name,
-      companyId,
-      outstandingBalance,
-      totalPaid,
-      totalPurchased,
-      createdBy: session?.userId,
-    }).catch((err) => {
-      console.error("Failed to create supplier payment journal entries:", err);
+    await prisma.journalEvent.create({
+      data: {
+        companyId: companyId,
+        eventType: "supplierCutomer",
+        status: "pending",
+        entityType: "supplier",
+        payload: {
+          supplierId: user.id,
+          supplierName: user.name,
+          outstandingBalance: outstandingBalance,
+          totalPaid: totalPaid,
+          totalPurchased: totalPurchased,
+          createdBy: session.userId,
+        },
+
+        processed: false,
+      },
     });
+
     const users = serializeData(user);
     return users;
   } catch (error) {
@@ -229,149 +237,149 @@ export async function createSupplier(
     throw error;
   }
 }
-async function createSuppliereJournalEntriesWithRetry(
-  params: {
-    supplierId: string;
-    supplierName: string;
-    companyId: string;
-    outstandingBalance?: number;
-    totalPaid?: number;
-    totalPurchased?: number;
-    createdBy: string;
-  },
-  maxRetries = 4,
-  retryDelay = 200,
-) {
-  let lastError: Error | null = null;
+// async function createSuppliereJournalEntriesWithRetry(
+//   params: {
+//     supplierId: string;
+//     supplierName: string;
+//     companyId: string;
+//     outstandingBalance?: number;
+//     totalPaid?: number;
+//     totalPurchased?: number;
+//     createdBy: string;
+//   },
+//   maxRetries = 4,
+//   retryDelay = 200,
+// ) {
+//   let lastError: Error | null = null;
 
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      console.log(
-        `📝 Creating Supplier journal entries (attempt ${attempt}/${maxRetries})...`,
-      );
-      await createSupplierJournalEnteries(params);
-      console.log(
-        `✅ Supplier journal entries created successfully on attempt ${attempt}`,
-      );
-      return;
-    } catch (error: any) {
-      lastError = error;
-      console.error(
-        `❌ Purchase journal entries attempt ${attempt}/${maxRetries} failed:`,
-        error.message,
-      );
+//   for (let attempt = 1; attempt <= maxRetries; attempt++) {
+//     try {
+//       console.log(
+//         `📝 Creating Supplier journal entries (attempt ${attempt}/${maxRetries})...`,
+//       );
+//       await createSupplierJournalEnteries(params);
+//       console.log(
+//         `✅ Supplier journal entries created successfully on attempt ${attempt}`,
+//       );
+//       return;
+//     } catch (error: any) {
+//       lastError = error;
+//       console.error(
+//         `❌ Purchase journal entries attempt ${attempt}/${maxRetries} failed:`,
+//         error.message,
+//       );
 
-      if (attempt < maxRetries) {
-        const waitTime = retryDelay * Math.pow(2, attempt - 1);
-        console.log(`⏳ Retrying in ${waitTime}ms...`);
-        await new Promise((resolve) => setTimeout(resolve, waitTime));
-      }
-    }
-  }
+//       if (attempt < maxRetries) {
+//         const waitTime = retryDelay * Math.pow(2, attempt - 1);
+//         console.log(`⏳ Retrying in ${waitTime}ms...`);
+//         await new Promise((resolve) => setTimeout(resolve, waitTime));
+//       }
+//     }
+//   }
 
-  throw new Error(
-    `Failed to create purchase journal entries after ${maxRetries} attempts. Last error: ${lastError?.message}`,
-  );
-}
-export async function createSupplierJournalEnteries({
-  supplierId,
-  supplierName,
-  companyId,
-  outstandingBalance = 0,
-  totalPaid = 0,
-  totalPurchased = 0,
-  createdBy,
-}: {
-  supplierId: string;
-  supplierName: string;
-  companyId: string;
-  outstandingBalance?: number;
-  totalPaid?: number;
-  totalPurchased?: number;
-  createdBy: string;
-}) {
-  // 🔎 Fetch default mappings
-  const mappings = await prisma.account_mappings.findMany({
-    where: { company_id: companyId, is_default: true },
-  });
+//   throw new Error(
+//     `Failed to create purchase journal entries after ${maxRetries} attempts. Last error: ${lastError?.message}`,
+//   );
+// }
+// export async function createSupplierJournalEnteries({
+//   supplierId,
+//   supplierName,
+//   companyId,
+//   outstandingBalance = 0,
+//   totalPaid = 0,
+//   totalPurchased = 0,
+//   createdBy,
+// }: {
+//   supplierId: string;
+//   supplierName: string;
+//   companyId: string;
+//   outstandingBalance?: number;
+//   totalPaid?: number;
+//   totalPurchased?: number;
+//   createdBy: string;
+// }) {
+//   // 🔎 Fetch default mappings
+//   const mappings = await prisma.account_mappings.findMany({
+//     where: { company_id: companyId, is_default: true },
+//   });
 
-  const getAcc = (type: string) =>
-    mappings.find((m) => m.mapping_type === type)?.account_id;
+//   const getAcc = (type: string) =>
+//     mappings.find((m) => m.mapping_type === type)?.account_id;
 
-  const payable = getAcc("accounts_payable");
-  const receivable = getAcc("accounts_receivable");
+//   const payable = getAcc("accounts_payable");
+//   const receivable = getAcc("accounts_receivable");
 
-  // Generate entry number
-  const year = new Date().getFullYear();
-  const seq = Date.now().toString().slice(-6); // quick unique number
-  const entryBase = `${year}-${seq}-S`;
+//   // Generate entry number
+//   const year = new Date().getFullYear();
+//   const seq = Date.now().toString().slice(-6); // quick unique number
+//   const entryBase = `${year}-${seq}-S`;
 
-  const desc = `الرصيد الافتتاحي للمورد ${supplierName}`;
+//   const desc = `الرصيد الافتتاحي للمورد ${supplierName}`;
 
-  const entries: any[] = [];
+//   const entries: any[] = [];
 
-  // =============================
-  // 1️⃣ رصيد دائن عليك (Outstanding Balance)
-  // =============================
-  if (outstandingBalance > 0) {
-    entries.push({
-      company_id: companyId,
-      account_id: payable,
-      description: desc,
-      debit: 0,
-      credit: outstandingBalance,
-      entry_date: new Date(),
-      reference_id: supplierId,
-      reference_type: "رصيد افتتاحي مورد",
-      entry_number: `${entryBase}-1`,
-      created_by: createdBy,
-      is_automated: true,
-    });
-  }
+//   // =============================
+//   // 1️⃣ رصيد دائن عليك (Outstanding Balance)
+//   // =============================
+//   if (outstandingBalance > 0) {
+//     entries.push({
+//       company_id: companyId,
+//       account_id: payable,
+//       description: desc,
+//       debit: 0,
+//       credit: outstandingBalance,
+//       entry_date: new Date(),
+//       reference_id: supplierId,
+//       reference_type: "رصيد افتتاحي مورد",
+//       entry_number: `${entryBase}-1`,
+//       created_by: createdBy,
+//       is_automated: true,
+//     });
+//   }
 
-  // =============================
-  // 2️⃣ رصيد مدين لصالحك (supplierDebit)
-  // totalPaid > totalPurchased
-  // =============================
-  const supplierDebit = totalPaid - totalPurchased;
+//   // =============================
+//   // 2️⃣ رصيد مدين لصالحك (supplierDebit)
+//   // totalPaid > totalPurchased
+//   // =============================
+//   const supplierDebit = totalPaid - totalPurchased;
 
-  if (supplierDebit > 0) {
-    // 2.1 المورد مدين لنا
-    entries.push({
-      company_id: companyId,
-      account_id: receivable,
-      description: desc,
-      debit: supplierDebit,
-      credit: 0,
-      entry_date: new Date(),
-      reference_id: supplierId,
-      reference_type: "رصيد افتتاحي مورد",
-      entry_number: `${entryBase}-2`,
-      created_by: createdBy,
-      is_automated: true,
-    });
+//   if (supplierDebit > 0) {
+//     // 2.1 المورد مدين لنا
+//     entries.push({
+//       company_id: companyId,
+//       account_id: receivable,
+//       description: desc,
+//       debit: supplierDebit,
+//       credit: 0,
+//       entry_date: new Date(),
+//       reference_id: supplierId,
+//       reference_type: "رصيد افتتاحي مورد",
+//       entry_number: `${entryBase}-2`,
+//       created_by: createdBy,
+//       is_automated: true,
+//     });
 
-    // 2.2 تقليل الدائنين
-    entries.push({
-      company_id: companyId,
-      account_id: payable,
-      description: desc,
-      debit: supplierDebit,
-      credit: 0,
-      entry_date: new Date(),
-      reference_id: supplierId,
-      reference_type: "رصيد افتتاحي مورد",
-      entry_number: `${entryBase}-3`,
-      created_by: createdBy,
-      is_automated: true,
-    });
-  }
+//     // 2.2 تقليل الدائنين
+//     entries.push({
+//       company_id: companyId,
+//       account_id: payable,
+//       description: desc,
+//       debit: supplierDebit,
+//       credit: 0,
+//       entry_date: new Date(),
+//       reference_id: supplierId,
+//       reference_type: "رصيد افتتاحي مورد",
+//       entry_number: `${entryBase}-3`,
+//       created_by: createdBy,
+//       is_automated: true,
+//     });
+//   }
 
-  // Nothing to insert
-  if (entries.length === 0) return;
+//   // Nothing to insert
+//   if (entries.length === 0) return;
 
-  await prisma.journal_entries.createMany({ data: entries });
-}
+//   await prisma.journal_entries.createMany({ data: entries });
+// }
 
 // ============================================
 export const getPurchasesByCompany = cache(
@@ -765,7 +773,23 @@ export async function createSupplierPaymentFromPurchases(
           where: { id: supplierId, companyId },
           data: supplierUpdateData,
         });
+        await tx.journalEvent.create({
+          data: {
+            companyId: companyId,
+            eventType: "purchase-payment",
+            status: "pending",
+            entityType: "payment-purchase",
+            payload: {
+              companyId,
 
+              supplierId,
+              supplierPayment: supplierPayment,
+              userId,
+            },
+            processed: false,
+          },
+        });
+        revalidatePath("/suppliers");
         return {
           supplierPayment,
           updatedPurchase,
@@ -797,15 +821,13 @@ export async function createSupplierPaymentFromPurchases(
       },
     });
 
-    revalidatePath("/suppliers");
-    revalidatePath("/purchases");
-    createPurchaseJournalEntriesWithRetry({
-      payment: supplierPayment,
-      companyId,
-      userId,
-    }).catch((err) => {
-      console.error("Failed to create supplier payment journal entries:", err);
-    });
+    // createPurchaseJournalEntriesWithRetry({
+    //   payment: supplierPayment,
+    //   companyId,
+    //   userId,
+    // }).catch((err) => {
+    //   console.error("Failed to create supplier payment journal entries:", err);
+    // });
     return {
       success: true,
       payment: serializeData(supplierPayment),

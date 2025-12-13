@@ -77,7 +77,27 @@ export async function updateSales(
         createdAt: new Date(),
       },
     });
-
+    // 🆕 CREATE JOURNAL EVENT (instead of direct creation)
+    await tx.journalEvent.create({
+      data: {
+        companyId: companyId,
+        eventType: "payment",
+        entityType: "outstanding_payment",
+        status: "pending",
+        payload: {
+          companyId,
+          payment: {
+            id: pay.id,
+            saleId: saleId,
+            customerId: customerId,
+            amount: pay.amount,
+            paymentMethod: pay.paymentMethod,
+          },
+          cashierId,
+        },
+        processed: false,
+      },
+    });
     // 5️⃣ Update Customer balance (reduce what company owes)
     if (customerId) {
       await tx.customer.update({
@@ -102,20 +122,154 @@ export async function updateSales(
   });
 
   revalidatePath("/sells");
-  revalidatePath("/debt");
-
-  createPurchaseJournalEntriesWithRetry({
-    companyId,
-    payment: pay, // 👈 REAL payment object with ID
-    cashierId,
-  })
-    .then(() => console.log(`Journal entry created for payment: ${pay.id}`))
-    .catch((err) =>
-      console.error(`Journal failed for payment ${pay.id}:`, err),
-    );
 
   return updatedSale;
 }
+// export async function updateSalesBulk(
+//   companyId: string,
+//   saleIds: string[],
+//   paymentAmount: number,
+//   cashierId: string,
+//   paymentMethod: string,
+// ) {
+//   if (paymentAmount <= 0)
+//     throw new Error("Payment amount must be greater than zero.");
+//   if (!companyId || saleIds.length === 0)
+//     throw new Error("Missing company ID or sale IDs.");
+
+//   // 1️⃣ Get all sales
+//   const sales = await prisma.sale.findMany({
+//     where: { id: { in: saleIds }, companyId },
+//     select: {
+//       id: true,
+//       totalAmount: true,
+//       amountPaid: true,
+//       amountDue: true,
+//       saleNumber: true,
+//       customerId: true,
+//     },
+//   });
+
+//   if (sales.length === 0) throw new Error("No matching sales found.");
+
+//   // 2️⃣ Allocate payment
+//   let remaining = paymentAmount;
+//   const saleUpdates = [];
+//   const customerUpdates: Record<string, number> = {};
+//   const paymentRecords = []; // to insert payment rows
+
+//   for (const s of sales) {
+//     if (remaining <= 0) break;
+//     const due = s.amountDue.toNumber();
+
+//     if (due <= 0) continue;
+
+//     const payNow = Math.min(remaining, due);
+//     remaining -= payNow;
+
+//     const newPaid = s.amountPaid.toNumber() + payNow;
+//     const newDue = s.totalAmount.toNumber() - newPaid;
+
+//     saleUpdates.push({
+//       id: s.id,
+//       amountPaid: newPaid,
+//       amountDue: Math.max(newDue, 0),
+//       paymentStatus: newDue <= 0 ? "paid" : "partial",
+//     });
+
+//     paymentRecords.push({
+//       companyId,
+//       saleId: s.id,
+//       customerId: s.customerId, // ✅ REQUIRED!
+//       cashierId,
+//       payment_type: "outstanding_payment",
+//       paymentMethod: paymentMethod,
+//       amount: payNow,
+//       status: "completed",
+//       notes: `تسديد الدين للفاتورة رقم ${s.saleNumber}`,
+
+//       createdAt: new Date(),
+//     });
+
+//     if (s.customerId) {
+//       customerUpdates[s.customerId] =
+//         (customerUpdates[s.customerId] || 0) + payNow;
+//     }
+//   }
+
+//   // Helper for chunking
+//   const chunk = <T,>(arr: T[], size: number) =>
+//     Array.from({ length: Math.ceil(arr.length / size) }, (_, i) =>
+//       arr.slice(i * size, i * size + size),
+//     );
+
+//   const CHUNK = 50;
+
+//   // 3️⃣ Update sales in chunks
+//   for (const c of chunk(saleUpdates, CHUNK)) {
+//     await prisma.$transaction(
+//       c.map((u) =>
+//         prisma.sale.update({
+//           where: { id: u.id },
+//           data: {
+//             amountPaid: u.amountPaid,
+//             amountDue: u.amountDue,
+//             paymentStatus: u.paymentStatus,
+//             updatedAt: new Date(),
+//           },
+//         }),
+//       ),
+//     );
+//   }
+
+//   // 4️⃣ Create payments → REAL payment.id values generated
+//   let createdPayments: any[] = [];
+//   for (const c of chunk(paymentRecords, CHUNK)) {
+//     const batch = await prisma.$transaction(
+//       c.map((p) =>
+//         prisma.payment.create({
+//           data: p,
+//         }),
+//       ),
+//     );
+//     createdPayments.push(...batch);
+//   }
+
+//   // 5️⃣ Update customer balances
+//   for (const c of chunk(Object.entries(customerUpdates), CHUNK)) {
+//     await prisma.$transaction(
+//       c.map(([custId, amt]) =>
+//         prisma.customer.update({
+//           where: { id: custId },
+//           data: { outstandingBalance: { decrement: amt } },
+//         }),
+//       ),
+//     );
+//   }
+
+//   // 6️⃣ Revalidate UI
+//   revalidatePath("/debt");
+
+//   // 7️⃣ Background journal creation (NON-BLOCKING)
+//   for (const pay of createdPayments) {
+//     createPurchaseJournalEntriesWithRetry({
+//       companyId,
+//       payment: pay, // 👈 REAL payment object with ID
+//       cashierId,
+//     })
+//       .then(() => console.log(`Journal entry created for payment: ${pay.id}`))
+//       .catch((err) =>
+//         console.error(`Journal failed for payment ${pay.id}:`, err),
+//       );
+//   }
+
+//   return {
+//     success: true,
+//     updatedSales: saleUpdates.length,
+//     paymentsCreated: createdPayments.length,
+//     customersUpdated: Object.keys(customerUpdates).length,
+//   };
+// }
 export async function updateSalesBulk(
   companyId: string,
   saleIds: string[],
@@ -147,7 +301,7 @@ export async function updateSalesBulk(
   let remaining = paymentAmount;
   const saleUpdates = [];
   const customerUpdates: Record<string, number> = {};
-  const paymentRecords = []; // to insert payment rows
+  const paymentRecords = [];
 
   for (const s of sales) {
     if (remaining <= 0) break;
@@ -171,14 +325,13 @@ export async function updateSalesBulk(
     paymentRecords.push({
       companyId,
       saleId: s.id,
-      customerId: s.customerId, // ✅ REQUIRED!
+      customerId: s.customerId,
       cashierId,
       payment_type: "outstanding_payment",
       paymentMethod: paymentMethod,
       amount: payNow,
       status: "completed",
       notes: `تسديد الدين للفاتورة رقم ${s.saleNumber}`,
-
       createdAt: new Date(),
     });
 
@@ -238,21 +391,35 @@ export async function updateSalesBulk(
     );
   }
 
-  // 6️⃣ Revalidate UI
-  revalidatePath("/debt");
-
-  // 7️⃣ Background journal creation (NON-BLOCKING)
-  for (const pay of createdPayments) {
-    createPurchaseJournalEntriesWithRetry({
+  // 6️⃣ Create journal events for each payment (NON-BLOCKING)
+  const journalEventsData = createdPayments.map((payment) => ({
+    companyId: companyId,
+    eventType: "payment",
+    entityType: "outstanding_payment",
+    status: "pending",
+    payload: {
       companyId,
-      payment: pay, // 👈 REAL payment object with ID
+      payment: {
+        id: payment.id,
+        saleId: payment.saleId,
+        customerId: payment.customerId,
+        amount: payment.amount,
+        paymentMethod: payment.paymentMethod,
+      },
       cashierId,
-    })
-      .then(() => console.log(`Journal entry created for payment: ${pay.id}`))
-      .catch((err) =>
-        console.error(`Journal failed for payment ${pay.id}:`, err),
-      );
+    },
+    processed: false,
+  }));
+
+  // Bulk create journal events in chunks
+  for (const c of chunk(journalEventsData, CHUNK)) {
+    await prisma.journalEvent.createMany({
+      data: c,
+    });
   }
+
+  // 7️⃣ Revalidate UI
+  revalidatePath("/customer");
 
   return {
     success: true,
@@ -261,219 +428,219 @@ export async function updateSalesBulk(
     customersUpdated: Object.keys(customerUpdates).length,
   };
 }
-async function createPurchaseJournalEntriesWithRetry(
-  params: {
-    companyId: string;
-    payment: any; // payment record { id, saleId, customerId, amount, paymentMethod }
-    cashierId: string;
-  },
-  maxRetries = 4,
-  retryDelay = 200,
-) {
-  let lastError: Error | null = null;
+// async function createPurchaseJournalEntriesWithRetry(
+//   params: {
+//     companyId: string;
+//     payment: any; // payment record { id, saleId, customerId, amount, paymentMethod }
+//     cashierId: string;
+//   },
+//   maxRetries = 4,
+//   retryDelay = 200,
+// ) {
+//   let lastError: Error | null = null;
 
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      console.log(
-        `📝 Creating createPaymen journal entries (attempt ${attempt}/${maxRetries})...`,
-      );
-      await createPaymentJournalEntries(params);
-      console.log(
-        `✅ createPaymen journal entries created successfully on attempt ${attempt}`,
-      );
-      return;
-    } catch (error: any) {
-      lastError = error;
-      console.error(
-        `❌ createPaymen journal entries attempt ${attempt}/${maxRetries} failed:`,
-        error.message,
-      );
+//   for (let attempt = 1; attempt <= maxRetries; attempt++) {
+//     try {
+//       console.log(
+//         `📝 Creating createPaymen journal entries (attempt ${attempt}/${maxRetries})...`,
+//       );
+//       await createPaymentJournalEntries(params);
+//       console.log(
+//         `✅ createPaymen journal entries created successfully on attempt ${attempt}`,
+//       );
+//       return;
+//     } catch (error: any) {
+//       lastError = error;
+//       console.error(
+//         `❌ createPaymen journal entries attempt ${attempt}/${maxRetries} failed:`,
+//         error.message,
+//       );
 
-      if (attempt < maxRetries) {
-        const waitTime = retryDelay * Math.pow(2, attempt - 1);
-        console.log(`⏳ Retrying in ${waitTime}ms...`);
-        await new Promise((resolve) => setTimeout(resolve, waitTime));
-      }
-    }
-  }
+//       if (attempt < maxRetries) {
+//         const waitTime = retryDelay * Math.pow(2, attempt - 1);
+//         console.log(`⏳ Retrying in ${waitTime}ms...`);
+//         await new Promise((resolve) => setTimeout(resolve, waitTime));
+//       }
+//     }
+//   }
 
-  throw new Error(
-    `Failed to create createPaymen journal entries after ${maxRetries} attempts. Last error: ${lastError?.message}`,
-  );
-}
+//   throw new Error(
+//     `Failed to create createPaymen journal entries after ${maxRetries} attempts. Last error: ${lastError?.message}`,
+//   );
+// }
 
-export async function createPaymentJournalEntries({
-  companyId,
-  payment,
-  cashierId,
-}: {
-  companyId: string;
-  payment: any; // payment record { id, saleId, customerId, amount, paymentMethod }
-  cashierId: string;
-}) {
-  try {
-    const { saleId, customerId, amount } = payment;
-    const fy = await getActiveFiscalYears();
-    if (!fy) return;
-    // ============================================
-    // 1️⃣ Fetch related sale
-    // ============================================
-    const sale = await prisma.sale.findUnique({
-      where: { id: saleId, companyId: companyId },
-      select: {
-        id: true,
-        saleNumber: true,
-        totalAmount: true,
-        amountPaid: true,
-        amountDue: true,
-        customerId: true,
-        customer: { select: { name: true } },
-      },
-    });
+// export async function createPaymentJournalEntries({
+//   companyId,
+//   payment,
+//   cashierId,
+// }: {
+//   companyId: string;
+//   payment: any; // payment record { id, saleId, customerId, amount, paymentMethod }
+//   cashierId: string;
+// }) {
+//   try {
+//     const { saleId, customerId, amount } = payment;
+//     const fy = await getActiveFiscalYears();
+//     if (!fy) return;
+//     // ============================================
+//     // 1️⃣ Fetch related sale
+//     // ============================================
+//     const sale = await prisma.sale.findUnique({
+//       where: { id: saleId, companyId: companyId },
+//       select: {
+//         id: true,
+//         saleNumber: true,
+//         totalAmount: true,
+//         amountPaid: true,
+//         amountDue: true,
+//         customerId: true,
+//         customer: { select: { name: true } },
+//       },
+//     });
 
-    if (!sale) return;
+//     if (!sale) return;
 
-    // ============================================
-    // 2️⃣ Avoid duplicate journal entries
-    // ============================================
-    const exists = await prisma.journal_entries.findFirst({
-      where: {
-        reference_id: payment.id,
-        reference_type: "payment",
-        company_id: companyId,
-      },
-    });
-    if (exists) return;
+//     // ============================================
+//     // 2️⃣ Avoid duplicate journal entries
+//     // ============================================
+//     const exists = await prisma.journal_entries.findFirst({
+//       where: {
+//         reference_id: payment.id,
+//         reference_type: "payment",
+//         company_id: companyId,
+//       },
+//     });
+//     if (exists) return;
 
-    // ============================================
-    // 3️⃣ Generate safe journal entry number
-    // ============================================
-    const year = new Date().getFullYear().toString();
-    const nextSeqRaw: { next_number: string }[] = await prisma.$queryRawUnsafe(`
-      SELECT COALESCE(
-        MAX(CAST(SPLIT_PART(entry_number, '-', 3) AS INT)),
-        0
-      ) + 1 AS next_number
-      FROM journal_entries
-      WHERE entry_number LIKE 'JE-${year}-%'
-        AND entry_number ~ '^JE-${year}-[0-9]+$'
-    `);
+//     // ============================================
+//     // 3️⃣ Generate safe journal entry number
+//     // ============================================
+//     const year = new Date().getFullYear().toString();
+//     const nextSeqRaw: { next_number: string }[] = await prisma.$queryRawUnsafe(`
+//       SELECT COALESCE(
+//         MAX(CAST(SPLIT_PART(entry_number, '-', 3) AS INT)),
+//         0
+//       ) + 1 AS next_number
+//       FROM journal_entries
+//       WHERE entry_number LIKE 'JE-${year}-%'
+//         AND entry_number ~ '^JE-${year}-[0-9]+$'
+//     `);
 
-    const nextNumber = Number(nextSeqRaw[0]?.next_number || 1);
-    const seqFormatted = String(nextNumber).padStart(7, "0");
-    const randomSuffix = Math.floor(Math.random() * 1000);
-    const entryBase = `JE-${year}-${seqFormatted}-${randomSuffix}`;
+//     const nextNumber = Number(nextSeqRaw[0]?.next_number || 1);
+//     const seqFormatted = String(nextNumber).padStart(7, "0");
+//     const randomSuffix = Math.floor(Math.random() * 1000);
+//     const entryBase = `JE-${year}-${seqFormatted}-${randomSuffix}`;
 
-    // ============================================
-    // 4️⃣ Fetch account mappings
-    // ============================================
-    const mappings = await prisma.account_mappings.findMany({
-      where: { company_id: companyId, is_default: true },
-    });
+//     // ============================================
+//     // 4️⃣ Fetch account mappings
+//     // ============================================
+//     const mappings = await prisma.account_mappings.findMany({
+//       where: { company_id: companyId, is_default: true },
+//     });
 
-    const getAcc = (type: string) =>
-      mappings.find((m) => m.mapping_type === type)?.account_id;
+//     const getAcc = (type: string) =>
+//       mappings.find((m) => m.mapping_type === type)?.account_id;
 
-    const cashAcc = getAcc("cash");
-    const arAcc = getAcc("accounts_receivable");
-    const bank = getAcc("bank");
+//     const cashAcc = getAcc("cash");
+//     const arAcc = getAcc("accounts_receivable");
+//     const bank = getAcc("bank");
 
-    if (!cashAcc || !arAcc) return;
+//     if (!cashAcc || !arAcc) return;
 
-    // ============================================
-    // 5️⃣ Prepare journal entries
-    // ============================================
-    const desc = `دفعة دين لعملية بيع رقم ${sale.saleNumber}${
-      sale.customerId ? " - " + sale.customer?.name : ""
-    }`;
+//     // ============================================
+//     // 5️⃣ Prepare journal entries
+//     // ============================================
+//     const desc = `دفعة دين لعملية بيع رقم ${sale.saleNumber}${
+//       sale.customerId ? " - " + sale.customer?.name : ""
+//     }`;
 
-    let entries: any[] = [];
-    if (payment.paymentMethod === "cash") {
-      entries = [
-        {
-          company_id: companyId,
-          account_id: cashAcc,
-          description: desc,
-          debit: amount,
-          credit: 0,
-          fiscal_period: fy.period_name,
-          entry_date: new Date(),
-          reference_id: payment.id,
-          reference_type: "تسديد دين",
-          entry_number: `${entryBase}-D`,
-          created_by: cashierId,
-          is_automated: true,
-        },
-        {
-          company_id: companyId,
-          account_id: arAcc,
-          description: desc,
-          debit: 0,
-          credit: amount,
-          fiscal_period: fy.period_name,
-          entry_date: new Date(),
-          reference_id: customerId,
-          reference_type: "سند قبض",
-          entry_number: `${entryBase}-C`,
-          created_by: cashierId,
-          is_automated: true,
-        },
-      ];
-    } else if (payment.paymentMethod === "bank") {
-      entries = [
-        {
-          company_id: companyId,
-          account_id: bank,
-          description: desc,
-          debit: amount,
-          credit: 0,
-          fiscal_period: fy.period_name,
-          entry_date: new Date(),
-          reference_id: payment.id,
-          reference_type: "تسديد دين",
-          entry_number: `${entryBase}-D`,
-          created_by: cashierId,
-          is_automated: true,
-        },
-        {
-          company_id: companyId,
-          account_id: arAcc,
-          description: desc,
-          debit: 0,
-          fiscal_period: fy.period_name,
-          credit: amount,
-          entry_date: new Date(),
-          reference_id: customerId,
-          reference_type: "سند قبض",
-          entry_number: `${entryBase}-C`,
-          created_by: cashierId,
-          is_automated: true,
-        },
-      ];
-    }
+//     let entries: any[] = [];
+//     if (payment.paymentMethod === "cash") {
+//       entries = [
+//         {
+//           company_id: companyId,
+//           account_id: cashAcc,
+//           description: desc,
+//           debit: amount,
+//           credit: 0,
+//           fiscal_period: fy.period_name,
+//           entry_date: new Date(),
+//           reference_id: payment.id,
+//           reference_type: "تسديد دين",
+//           entry_number: `${entryBase}-D`,
+//           created_by: cashierId,
+//           is_automated: true,
+//         },
+//         {
+//           company_id: companyId,
+//           account_id: arAcc,
+//           description: desc,
+//           debit: 0,
+//           credit: amount,
+//           fiscal_period: fy.period_name,
+//           entry_date: new Date(),
+//           reference_id: customerId,
+//           reference_type: "سند قبض",
+//           entry_number: `${entryBase}-C`,
+//           created_by: cashierId,
+//           is_automated: true,
+//         },
+//       ];
+//     } else if (payment.paymentMethod === "bank") {
+//       entries = [
+//         {
+//           company_id: companyId,
+//           account_id: bank,
+//           description: desc,
+//           debit: amount,
+//           credit: 0,
+//           fiscal_period: fy.period_name,
+//           entry_date: new Date(),
+//           reference_id: payment.id,
+//           reference_type: "تسديد دين",
+//           entry_number: `${entryBase}-D`,
+//           created_by: cashierId,
+//           is_automated: true,
+//         },
+//         {
+//           company_id: companyId,
+//           account_id: arAcc,
+//           description: desc,
+//           debit: 0,
+//           fiscal_period: fy.period_name,
+//           credit: amount,
+//           entry_date: new Date(),
+//           reference_id: customerId,
+//           reference_type: "سند قبض",
+//           entry_number: `${entryBase}-C`,
+//           created_by: cashierId,
+//           is_automated: true,
+//         },
+//       ];
+//     }
 
-    if (entries.length === 0) {
-      throw new Error("Unsupported payment method: " + payment.paymentMethod);
-    }
+//     if (entries.length === 0) {
+//       throw new Error("Unsupported payment method: " + payment.paymentMethod);
+//     }
 
-    // ============================================
-    // 6️⃣ Insert entries in bulk
-    // ============================================
-    await prisma.journal_entries.createMany({ data: entries });
+//     // ============================================
+//     // 6️⃣ Insert entries in bulk
+//     // ============================================
+//     await prisma.journal_entries.createMany({ data: entries });
 
-    // ============================================
-    // 7️⃣ Update account balances
-    // ============================================
-    const balanceOps = entries.map((e) =>
-      prisma.accounts.update({
-        where: { id: e.account_id, company_id: companyId },
-        data: { balance: { increment: Number(e.debit) - Number(e.credit) } },
-      }),
-    );
-    await Promise.all(balanceOps);
+//     // ============================================
+//     // 7️⃣ Update account balances
+//     // ============================================
+//     const balanceOps = entries.map((e) =>
+//       prisma.accounts.update({
+//         where: { id: e.account_id, company_id: companyId },
+//         data: { balance: { increment: Number(e.debit) - Number(e.credit) } },
+//       }),
+//     );
+//     await Promise.all(balanceOps);
 
-    console.log("Payment journal entries created for payment", payment.id);
-  } catch (err) {
-    console.error("Error in createPaymentJournalEntries:", err);
-  }
-}
+//     console.log("Payment journal entries created for payment", payment.id);
+//   } catch (err) {
+//     console.error("Error in createPaymentJournalEntries:", err);
+//   }
+// }

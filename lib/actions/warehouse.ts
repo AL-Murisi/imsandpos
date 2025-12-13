@@ -321,7 +321,23 @@ export async function updateInventory(
                 },
               })
             : Promise.resolve(null);
+        await tx.journalEvent.create({
+          data: {
+            companyId: companyId,
+            eventType: "purchase",
+            status: "pending",
+            entityType: "purchase",
+            payload: {
+              companyId,
 
+              supplierId,
+              purchase: result.purchase,
+              userId,
+              type: "purchase",
+            },
+            processed: false,
+          },
+        });
         // Record activity log
         const activityLogPromise = tx.activityLogs.create({
           data: {
@@ -354,20 +370,20 @@ export async function updateInventory(
     // Fire non-blocking operations
     revalidatePath("/manageStocks");
 
-    // Create journal entries with retry if purchase was made
-    if (result.purchase) {
-      createPurchaseJournalEntriesWithRetry({
-        purchase: result.purchase,
-        companyId,
-        userId,
-        type: "purchase",
-      }).catch((err) =>
-        console.error(
-          "❌ Purchase journal entries failed after all retries:",
-          err,
-        ),
-      );
-    }
+    // // Create journal entries with retry if purchase was made
+    // if (result.purchase) {
+    //   createPurchaseJournalEntriesWithRetry({
+    //     purchase: result.purchase,
+    //     companyId,
+    //     userId,
+    //     type: "purchase",
+    //   }).catch((err) =>
+    //     console.error(
+    //       "❌ Purchase journal entries failed after all retries:",
+    //       err,
+    //     ),
+    //   );
+    // }
 
     return { success: true, data: result.updatedInventory };
   } catch (error) {
@@ -628,7 +644,23 @@ export async function processPurchaseReturn(
             },
           },
         });
+        await tx.journalEvent.create({
+          data: {
+            companyId: companyId,
+            eventType: "purchase",
+            status: "pending",
+            entityType: "return-purchase",
+            payload: {
+              companyId,
 
+              supplierId,
+              purchase: purchaseReturn,
+              userId,
+              type: "return-purchase",
+            },
+            processed: false,
+          },
+        });
         return {
           success: true,
           message: "تم إرجاع المشتريات بنجاح",
@@ -645,14 +677,7 @@ export async function processPurchaseReturn(
     );
 
     revalidatePath("/manageStocks");
-    createPurchaseJournalEntriesWithRetry({
-      purchase: purchaseReturn,
-      companyId,
-      userId,
-      type: "return",
-    }).catch((err) => {
-      console.error("Failed to create purchase journal entries:", err);
-    });
+
     return result;
   } catch (error: any) {
     console.error("خطأ في إرجاع المشتريات:", error);

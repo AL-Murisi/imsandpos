@@ -26,6 +26,11 @@ export async function GET() {
       failed: 0,
       sales: 0,
       returns: 0,
+      payments: 0,
+      purchase: 0,
+      purchase_payment: 0,
+      createCutomer: 0,
+      supplierCutomer: 0,
       errors: [] as any[],
     };
 
@@ -72,6 +77,47 @@ export async function GET() {
           console.log(
             `✅ Processed return journal event ${event.id} for return ${eventData.returnSaleId}`,
           );
+        } else if (event.eventType === "payment") {
+          await createPaymentJournalEntries({
+            companyId: eventData.companyId,
+            payment: eventData.payment,
+            cashierId: eventData.cashierId,
+          });
+        } else if (event.eventType === "purchase") {
+          createPurchaseJournalEntries({
+            purchase: eventData.purchase,
+            companyId: eventData.companyId,
+            userId: eventData.companyId,
+            type: eventData.type,
+          });
+          results.purchase++;
+        } else if (event.eventType === "purchase-payment") {
+          createSupplierPaymentJournalEntries({
+            payment: eventData.supplierPayment,
+            companyId: eventData.companyId,
+            userId: eventData.userId,
+          });
+          results.purchase_payment++;
+        } else if (event.eventType === "createCutomer") {
+          createCustomerJournalEnteries({
+            customerId: eventData.customerId,
+            companyId: eventData.companyId,
+            outstandingBalance: eventData.outstandingBalance,
+            balance: eventData.balance,
+            createdBy: eventData.createdBy,
+          });
+          results.createCutomer++;
+        } else if (event.eventType === "supplierCutomer") {
+          createSupplierJournalEnteries({
+            supplierId: eventData.supplierId,
+            supplierName: eventData.name,
+            companyId: eventData.companyId,
+            outstandingBalance: eventData.outstandingBalance,
+            totalPaid: eventData.totalPaid,
+            totalPurchased: eventData.totalPurchased,
+            createdBy: eventData.createdBy,
+          });
+          results.createCutomer++;
         }
 
         // Mark as processed
@@ -121,6 +167,106 @@ export async function GET() {
     );
   }
 }
+async function createSupplierJournalEnteries({
+  supplierId,
+  supplierName,
+  companyId,
+  outstandingBalance = 0,
+  totalPaid = 0,
+  totalPurchased = 0,
+  createdBy,
+}: {
+  supplierId: string;
+  supplierName: string;
+  companyId: string;
+  outstandingBalance?: number;
+  totalPaid?: number;
+  totalPurchased?: number;
+  createdBy: string;
+}) {
+  // 🔎 Fetch default mappings
+  const mappings = await prisma.account_mappings.findMany({
+    where: { company_id: companyId, is_default: true },
+  });
+
+  const getAcc = (type: string) =>
+    mappings.find((m) => m.mapping_type === type)?.account_id;
+
+  const payable = getAcc("accounts_payable");
+  const receivable = getAcc("accounts_receivable");
+
+  // Generate entry number
+  const year = new Date().getFullYear();
+  const seq = Date.now().toString().slice(-6); // quick unique number
+  const entryBase = `${year}-${seq}-S`;
+
+  const desc = `الرصيد الافتتاحي للمورد ${supplierName}`;
+
+  const entries: any[] = [];
+
+  // =============================
+  // 1️⃣ رصيد دائن عليك (Outstanding Balance)
+  // =============================
+  if (outstandingBalance > 0) {
+    entries.push({
+      company_id: companyId,
+      account_id: payable,
+      description: desc,
+      debit: 0,
+      credit: outstandingBalance,
+      entry_date: new Date(),
+      reference_id: supplierId,
+      reference_type: "رصيد افتتاحي مورد",
+      entry_number: `${entryBase}-1`,
+      created_by: createdBy,
+      is_automated: true,
+    });
+  }
+
+  // =============================
+  // 2️⃣ رصيد مدين لصالحك (supplierDebit)
+  // totalPaid > totalPurchased
+  // =============================
+  const supplierDebit = totalPaid - totalPurchased;
+
+  if (supplierDebit > 0) {
+    // 2.1 المورد مدين لنا
+    entries.push({
+      company_id: companyId,
+      account_id: receivable,
+      description: desc,
+      debit: supplierDebit,
+      credit: 0,
+      entry_date: new Date(),
+      reference_id: supplierId,
+      reference_type: "رصيد افتتاحي مورد",
+      entry_number: `${entryBase}-2`,
+      created_by: createdBy,
+      is_automated: true,
+    });
+
+    // 2.2 تقليل الدائنين
+    entries.push({
+      company_id: companyId,
+      account_id: payable,
+      description: desc,
+      debit: supplierDebit,
+      credit: 0,
+      entry_date: new Date(),
+      reference_id: supplierId,
+      reference_type: "رصيد افتتاحي مورد",
+      entry_number: `${entryBase}-3`,
+      created_by: createdBy,
+      is_automated: true,
+    });
+  }
+
+  // Nothing to insert
+  if (entries.length === 0) return;
+
+  await prisma.journal_entries.createMany({ data: entries });
+}
+
 async function createReturnJournalEntries({
   companyId,
   customerId,
@@ -295,6 +441,346 @@ async function createReturnJournalEntries({
     entry_number: entries[0]?.entry_number,
   };
 }
+async function createPaymentJournalEntries({
+  companyId,
+  payment,
+  cashierId,
+}: {
+  companyId: string;
+  payment: any; // payment record { id, saleId, customerId, amount, paymentMethod }
+  cashierId: string;
+}) {
+  try {
+    const { saleId, customerId, amount } = payment;
+    const fy = await getActiveFiscalYears();
+    if (!fy) return;
+    // ============================================
+    // 1️⃣ Fetch related sale
+    // ============================================
+    const sale = await prisma.sale.findUnique({
+      where: { id: saleId, companyId: companyId },
+      select: {
+        id: true,
+        saleNumber: true,
+        totalAmount: true,
+        amountPaid: true,
+        amountDue: true,
+        customerId: true,
+        customer: { select: { name: true } },
+      },
+    });
+
+    if (!sale) return;
+
+    // ============================================
+    // 2️⃣ Avoid duplicate journal entries
+    // ============================================
+    const exists = await prisma.journal_entries.findFirst({
+      where: {
+        reference_id: payment.id,
+        reference_type: "payment",
+        company_id: companyId,
+      },
+    });
+    if (exists) return;
+
+    // ============================================
+    // 3️⃣ Generate safe journal entry number
+    // ============================================
+    const year = new Date().getFullYear().toString();
+    const nextSeqRaw: { next_number: string }[] = await prisma.$queryRawUnsafe(`
+      SELECT COALESCE(
+        MAX(CAST(SPLIT_PART(entry_number, '-', 3) AS INT)),
+        0
+      ) + 1 AS next_number
+      FROM journal_entries
+      WHERE entry_number LIKE 'JE-${year}-%'
+        AND entry_number ~ '^JE-${year}-[0-9]+$'
+    `);
+
+    const nextNumber = Number(nextSeqRaw[0]?.next_number || 1);
+    const seqFormatted = String(nextNumber).padStart(7, "0");
+    const randomSuffix = Math.floor(Math.random() * 1000);
+    const entryBase = `JE-${year}-${seqFormatted}-${randomSuffix}`;
+
+    // ============================================
+    // 4️⃣ Fetch account mappings
+    // ============================================
+    const mappings = await prisma.account_mappings.findMany({
+      where: { company_id: companyId, is_default: true },
+    });
+
+    const getAcc = (type: string) =>
+      mappings.find((m) => m.mapping_type === type)?.account_id;
+
+    const cashAcc = getAcc("cash");
+    const arAcc = getAcc("accounts_receivable");
+    const bank = getAcc("bank");
+
+    if (!cashAcc || !arAcc) return;
+
+    // ============================================
+    // 5️⃣ Prepare journal entries
+    // ============================================
+    const desc = `دفعة دين لعملية بيع رقم ${sale.saleNumber}${
+      sale.customerId ? " - " + sale.customer?.name : ""
+    }`;
+
+    let entries: any[] = [];
+    if (payment.paymentMethod === "cash") {
+      entries = [
+        {
+          company_id: companyId,
+          account_id: cashAcc,
+          description: desc,
+          debit: amount,
+          credit: 0,
+          fiscal_period: fy.period_name,
+          entry_date: new Date(),
+          reference_id: payment.id,
+          reference_type: "تسديد دين",
+          entry_number: `${entryBase}-D`,
+          created_by: cashierId,
+          is_automated: true,
+        },
+        {
+          company_id: companyId,
+          account_id: arAcc,
+          description: desc,
+          debit: 0,
+          credit: amount,
+          fiscal_period: fy.period_name,
+          entry_date: new Date(),
+          reference_id: customerId,
+          reference_type: "سند قبض",
+          entry_number: `${entryBase}-C`,
+          created_by: cashierId,
+          is_automated: true,
+        },
+      ];
+    } else if (payment.paymentMethod === "bank") {
+      entries = [
+        {
+          company_id: companyId,
+          account_id: bank,
+          description: desc,
+          debit: amount,
+          credit: 0,
+          fiscal_period: fy.period_name,
+          entry_date: new Date(),
+          reference_id: payment.id,
+          reference_type: "تسديد دين",
+          entry_number: `${entryBase}-D`,
+          created_by: cashierId,
+          is_automated: true,
+        },
+        {
+          company_id: companyId,
+          account_id: arAcc,
+          description: desc,
+          debit: 0,
+          fiscal_period: fy.period_name,
+          credit: amount,
+          entry_date: new Date(),
+          reference_id: customerId,
+          reference_type: "سند قبض",
+          entry_number: `${entryBase}-C`,
+          created_by: cashierId,
+          is_automated: true,
+        },
+      ];
+    }
+
+    if (entries.length === 0) {
+      throw new Error("Unsupported payment method: " + payment.paymentMethod);
+    }
+
+    // ============================================
+    // 6️⃣ Insert entries in bulk
+    // ============================================
+    await prisma.journal_entries.createMany({ data: entries });
+
+    // ============================================
+    // 7️⃣ Update account balances
+    // ============================================
+    const balanceOps = entries.map((e) =>
+      prisma.accounts.update({
+        where: { id: e.account_id, company_id: companyId },
+        data: { balance: { increment: Number(e.debit) - Number(e.credit) } },
+      }),
+    );
+    await Promise.all(balanceOps);
+
+    console.log("Payment journal entries created for payment", payment.id);
+  } catch (err) {
+    console.error("Error in createPaymentJournalEntries:", err);
+  }
+}
+async function createCustomerJournalEnteries({
+  customerId,
+  companyId,
+  outstandingBalance = 0,
+  balance = 0, // رصيد لصالح العميل (سلف / مبالغ مدفوعة مقدماً)
+  createdBy,
+}: {
+  customerId: string;
+  companyId: string;
+  outstandingBalance?: number;
+  balance?: number;
+  createdBy: string;
+}) {
+  // 1️⃣ fetch account mappings
+  const mappings = await prisma.account_mappings.findMany({
+    where: { company_id: companyId, is_default: true },
+  });
+
+  const getAcc = (type: string) =>
+    mappings.find((m) => m.mapping_type === type)?.account_id;
+
+  const ar = getAcc("accounts_receivable"); // العملاء (مدينون)
+  const payable = getAcc("accounts_payable"); // دائنون (رصيد لصالح العميل)
+
+  if (!ar || !payable) {
+    throw new Error("Missing account mappings for customers");
+  }
+
+  // 2️⃣ entry number base
+  const year = new Date().getFullYear();
+  const seq = Date.now().toString().slice(-6);
+  const entryBase = `${year}-${seq}-CUST`;
+
+  const desc = `الرصيد الافتتاحي للعميل`;
+
+  const entries: any[] = [];
+
+  // ==============================
+  // 1️⃣ العميل عليه دين (outstandingBalance)
+  // ==============================
+  if (outstandingBalance > 0) {
+    entries.push({
+      company_id: companyId,
+      account_id: ar,
+      description: desc,
+      debit: outstandingBalance,
+      credit: 0,
+      entry_date: new Date(),
+      reference_id: customerId,
+      reference_type: "رصيد افتتاحي عميل",
+      entry_number: `${entryBase}-1`,
+      created_by: createdBy,
+      is_automated: true,
+    });
+  }
+
+  // ==============================
+  // 2️⃣ لديك رصيد لصالح العميل (balance)
+  // ==============================
+  if (balance > 0) {
+    entries.push({
+      company_id: companyId,
+      account_id: ar,
+      description: desc,
+      debit: 0,
+      credit: balance,
+      entry_date: new Date(),
+      reference_id: customerId,
+      reference_type: "رصيد افتتاحي عميل",
+      entry_number: `${entryBase}-2`,
+      created_by: createdBy,
+      is_automated: true,
+    });
+  }
+
+  if (entries.length === 0)
+    return { success: true, msg: "No opening balance detected" };
+
+  await prisma.journal_entries.createMany({ data: entries });
+
+  return { success: true };
+}
+
+async function createSupplierPaymentJournalEntries({
+  payment,
+  companyId,
+  userId,
+}: {
+  payment: any;
+  companyId: string;
+  userId: string;
+}) {
+  // Get all default account mappings for the company
+  const mappings = await prisma.account_mappings.findMany({
+    where: { company_id: companyId, is_default: true },
+  });
+  const fy = await getActiveFiscalYears();
+  if (!fy) return;
+  // Helper to get account ID by mapping type
+  const getAcc = (type: string) =>
+    mappings.find((m) => m.mapping_type === type)?.account_id;
+
+  const payableAccount = getAcc("accounts_payable");
+  const cashAccount = getAcc("cash");
+  const bankAccount = getAcc("bank");
+
+  if (!payableAccount || !cashAccount || !bankAccount) {
+    throw new Error("الحسابات الأساسية للسداد غير موجودة");
+  }
+
+  const paymentAccount =
+    payment.paymentMethod === "bank" ? bankAccount : cashAccount;
+  const entry_number = `SP-${payment.id.slice(0, 6)}`;
+  const description = `${payment.id} سداد للمورد`;
+
+  // Helper to update account balance
+  const updateAccountBalance = async (
+    account_id: string,
+    debit: number,
+    credit: number,
+  ) => {
+    await prisma.accounts.update({
+      where: { id: account_id },
+      data: { balance: { increment: credit - debit } },
+    });
+  };
+
+  // 1️⃣ Debit Accounts Payable
+  await prisma.journal_entries.create({
+    data: {
+      company_id: companyId,
+      account_id: payableAccount,
+      description,
+      debit: payment.amount,
+      credit: 0,
+      fiscal_period: fy.period_name,
+      reference_type: "سداد_دين_المورد",
+
+      reference_id: payment.supplierId,
+      entry_number: entry_number + "-D",
+      created_by: userId,
+      is_automated: true,
+    },
+  });
+  await updateAccountBalance(payableAccount, payment.amount, 0);
+
+  // 2️⃣ Credit Cash/Bank
+  await prisma.journal_entries.create({
+    data: {
+      company_id: companyId,
+      account_id: paymentAccount,
+      description,
+      debit: payment.amount,
+      fiscal_period: fy.period_name,
+      credit: 0,
+      reference_type: "سداد_دين_المورد",
+      reference_id: payment.id,
+      entry_number: entry_number + "-C",
+      created_by: userId,
+      is_automated: true,
+    },
+  });
+  await updateAccountBalance(paymentAccount, payment.amount, 0);
+}
+
 // Helper function to create sale journal entries
 async function createSaleJournalEntries({
   companyId,
@@ -611,7 +1097,285 @@ async function createSaleJournalEntries({
     );
   });
 }
+async function createPurchaseJournalEntries({
+  purchase,
+  companyId,
+  userId,
+  type,
+}: {
+  purchase: any;
+  companyId: string;
+  userId: string;
+  type: string;
+}) {
+  // 1️⃣ Fetch mappings and fiscal year in parallel
+  const [mappings, fy] = await Promise.all([
+    prisma.account_mappings.findMany({
+      where: { company_id: companyId, is_default: true },
+      select: { mapping_type: true, account_id: true },
+    }),
+    getActiveFiscalYears(),
+  ]);
 
+  if (!fy) {
+    console.warn("No active fiscal year - skipping journal entries");
+    return;
+  }
+
+  // 2️⃣ Create account map
+  const accountMap = new Map(
+    mappings.map((m) => [m.mapping_type, m.account_id]),
+  );
+
+  const payableAccount = accountMap.get("accounts_payable");
+  const cashAccount = accountMap.get("cash");
+  const bankAccount = accountMap.get("bank");
+  const inventoryAccount = accountMap.get("inventory");
+
+  if (!inventoryAccount || !payableAccount || !bankAccount || !cashAccount) {
+    throw new Error("الحسابات الأساسية غير موجودة");
+  }
+
+  // 3️⃣ Generate entry number
+
+  const entryBase = `JE-${new Date().getFullYear()}-${purchase.id.slice(0, 7)}-${Math.floor(Math.random() * 10000)}`;
+  const description =
+    type === "purchase"
+      ? `مشتريات - فاتورة رقم ${purchase.id.slice(0, 8)}`
+      : `إرجاع مشتريات - فاتورة رقم ${purchase.id.slice(0, 8)}`;
+
+  // 4️⃣ Build journal entries
+  const baseEntry = {
+    company_id: companyId,
+    entry_date: new Date(),
+    is_automated: true,
+    fiscal_period: fy.period_name,
+    created_by: userId,
+  };
+
+  const entries: any[] = [];
+  const totalAmount = Number(purchase.totalAmount);
+  const amountPaid = Number(purchase.amountPaid);
+
+  if (type === "purchase") {
+    // ===============================
+    // PURCHASE SCENARIOS
+    // ===============================
+
+    if (amountPaid === totalAmount) {
+      // 1️⃣ Fully Paid
+      const paymentAccount =
+        purchase.paymentMethod === "bank" ? bankAccount : cashAccount;
+
+      entries.push(
+        // Debit Inventory
+        {
+          ...baseEntry,
+          account_id: inventoryAccount,
+          description: description + " - إضافة للمخزون",
+          debit: totalAmount,
+          credit: 0,
+          reference_type: "إضافة مخزون",
+          reference_id: purchase.id,
+          entry_number: `${entryBase}-DR1`,
+        },
+        // Credit Cash/Bank
+        {
+          ...baseEntry,
+          account_id: paymentAccount,
+          description: description + " - مدفوع بالكامل",
+          debit: 0,
+          credit: totalAmount,
+          reference_type: "سداد مشتريات",
+          reference_id: purchase.id,
+          entry_number: `${entryBase}-CR1`,
+        },
+      );
+    } else if (amountPaid > 0 && amountPaid < totalAmount) {
+      // 2️⃣ Partial Payment
+      const due = totalAmount - amountPaid;
+      const paymentAccount =
+        purchase.paymentMethod === "bank" ? bankAccount : cashAccount;
+
+      entries.push(
+        // Debit Inventory
+        {
+          ...baseEntry,
+          account_id: inventoryAccount,
+          description: description + " - إضافة للمخزون",
+          debit: totalAmount,
+          credit: 0,
+          reference_type: "إضافة مخزون",
+          reference_id: purchase.id,
+          entry_number: `${entryBase}-DR1`,
+        },
+        // Credit Cash/Bank (paid amount)
+        {
+          ...baseEntry,
+          account_id: paymentAccount,
+          description: description + " - دفع جزئي",
+          debit: 0,
+          credit: amountPaid,
+          reference_type: "دفع مشتريات",
+          reference_id: purchase.id,
+          entry_number: `${entryBase}-CR1`,
+        },
+        // Credit Accounts Payable (remaining)
+        {
+          ...baseEntry,
+          account_id: payableAccount,
+          description: description + " - آجل للمورد",
+          debit: 0,
+          credit: totalAmount,
+          reference_type: "آجل مشتريات",
+          reference_id: purchase.supplierId,
+          entry_number: `${entryBase}-CR2`,
+        },
+        {
+          ...baseEntry,
+          account_id: payableAccount,
+          description: description + " - آجل للمورد",
+          debit: amountPaid,
+          credit: 0,
+          reference_type: "آجل مشتريات",
+          reference_id: purchase.supplierId,
+          entry_number: `${entryBase}-CR5`,
+        },
+      );
+    } else {
+      // 3️⃣ Fully On Credit
+      entries.push(
+        // Debit Inventory
+        {
+          ...baseEntry,
+          account_id: inventoryAccount,
+          description: description + " - إضافة للمخزون",
+          debit: totalAmount,
+          credit: 0,
+          reference_type: "إضافة مخزون",
+          reference_id: purchase.id,
+          entry_number: `${entryBase}-DR1`,
+        },
+        // Credit Accounts Payable
+        {
+          ...baseEntry,
+          account_id: payableAccount,
+          description: description + " - آجل كامل",
+          debit: 0,
+          credit: totalAmount,
+          reference_type: "ذمم دائنة للمورد",
+          reference_id: purchase.supplierId,
+          entry_number: `${entryBase}-CR1`,
+        },
+      );
+    }
+  } else {
+    // ===============================
+    // PURCHASE RETURN SCENARIOS
+    // ===============================
+
+    const remainingAmount = totalAmount - amountPaid;
+
+    // Always credit inventory (reduce)
+    entries.push({
+      ...baseEntry,
+      account_id: inventoryAccount,
+      description: description + " - تخفيض المخزون",
+      debit: 0,
+      credit: totalAmount,
+      reference_type: "تخفيض مخزون بسبب مرتجع مشتريات",
+      reference_id: purchase.id,
+      entry_number: `${entryBase}-CR1`,
+    });
+
+    if (amountPaid > 0) {
+      // Has payment - refund cash/bank
+      const paymentAccount =
+        purchase.paymentMethod === "bank" ? bankAccount : cashAccount;
+
+      entries.push({
+        ...baseEntry,
+        account_id: paymentAccount,
+        description: description + " - استرداد نقدي/بنكي",
+        debit: amountPaid,
+        credit: 0,
+        reference_type: "استرداد مدفوعات للمرتجع",
+        reference_id: purchase.id,
+        entry_number: `${entryBase}-DR1`,
+      });
+
+      // If there's remaining payable, reduce it
+      if (remainingAmount > 0) {
+        entries.push({
+          ...baseEntry,
+          account_id: payableAccount,
+          description: description + " - تخفيض الذمم الدائنة",
+          debit: remainingAmount,
+          credit: 0,
+          reference_type: "تخفيض مديونية المورد بسبب مرتجع",
+          reference_id: purchase.supplierId,
+          entry_number: `${entryBase}-DR2`,
+        });
+      }
+    } else {
+      // No payment - reduce payables only
+      entries.push({
+        ...baseEntry,
+        account_id: payableAccount,
+        description: description + " - تخفيض الذمم الدائنة",
+        debit: totalAmount,
+        credit: 0,
+        reference_type: "تخفيض ذمم دائنة للمرتجع",
+        reference_id: purchase.supplierId,
+        entry_number: `${entryBase}-DR1`,
+      });
+    }
+  }
+
+  // 5️⃣ Insert entries and update balances in transaction
+  await prisma.$transaction(async (tx) => {
+    // Insert all journal entries
+    await tx.journal_entries.createMany({ data: entries });
+
+    // 2️⃣ Fetch account types once
+    const accountIds = [...new Set(entries.map((e) => e.account_id))];
+
+    const accounts = await tx.accounts.findMany({
+      where: { id: { in: accountIds }, company_id: companyId },
+      select: { id: true, account_type: true },
+    });
+
+    const accountTypeMap = new Map(accounts.map((a) => [a.id, a.account_type]));
+
+    // 3️⃣ Calculate deltas correctly
+    const accountDeltas = new Map<string, number>();
+
+    for (const entry of entries) {
+      const type = accountTypeMap.get(entry.account_id);
+      if (!type) continue;
+
+      const debit = Number(entry.debit || 0);
+      const credit = Number(entry.credit || 0);
+
+      const delta = type === "ASSET" ? debit - credit : credit - debit;
+
+      accountDeltas.set(
+        entry.account_id,
+        (accountDeltas.get(entry.account_id) || 0) + delta,
+      );
+    }
+
+    // Update all account balances in parallel
+    await Promise.all(
+      Array.from(accountDeltas.entries()).map(([accountId, delta]) =>
+        tx.accounts.update({
+          where: { id: accountId, company_id: companyId },
+          data: { balance: { increment: delta } },
+        }),
+      ),
+    );
+  });
+}
 // You'll need to implement this function based on your fiscal year logic
 async function getActiveFiscalYears() {
   const fiscalYear = await prisma.fiscal_periods.findFirst({

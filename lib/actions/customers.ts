@@ -244,15 +244,24 @@ export async function createCutomer(form: createCusomer, companyId: string) {
       },
     });
     revalidatePath("/customer");
-    createcreateCutomerJournalEntriesWithRetry({
-      customerId: customer.id,
-      companyId,
-      outstandingBalance,
-      balance,
-      createdBy: session.userId,
-    }).catch((err) => {
-      console.error("Failed to create supplier payment journal entries:", err);
+    await prisma.journalEvent.create({
+      data: {
+        companyId: companyId,
+        eventType: "createCutomer",
+        status: "pending",
+        entityType: "Cutomer",
+        payload: {
+          companyId: companyId,
+          customerId: customer.id,
+          outstandingBalance: outstandingBalance,
+          balance: balance,
+          createdBy: session.userId,
+        },
+
+        processed: false,
+      },
     });
+
     return { success: true, customer };
   } catch (error) {
     console.error("Failed to create customer:", error);
