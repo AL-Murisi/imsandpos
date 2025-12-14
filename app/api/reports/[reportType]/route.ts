@@ -1068,7 +1068,6 @@ async function fetchReceiptsByCustomer(customerId: string, companyId: string) {
     ),
   );
 }
-const { formatCurrency, formatPriceK, formatQty } = useFormatter();
 
 function prepareReceipt(receipt: any) {
   return {
@@ -1089,8 +1088,8 @@ function prepareReceipt(receipt: any) {
         warehousename: item.warehousename,
         selectedQty: item.selectedQty,
         sellingUnitArabic: unitToArabic(item.sellingUnit),
-        price: formatCurrency(price),
-        total: formatCurrency(price * item.selectedQty),
+        price: price,
+        total: price * item.selectedQty,
       };
     }),
   };
