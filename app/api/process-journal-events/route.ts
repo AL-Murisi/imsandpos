@@ -94,7 +94,7 @@ export async function GET() {
             cashierId: eventData.cashierId,
           });
         } else if (event.eventType === "purchase") {
-          createPurchaseJournalEntries({
+          await createPurchaseJournalEntries({
             purchase: eventData.purchase,
             companyId: eventData.companyId,
             userId: eventData.companyId,
@@ -102,14 +102,14 @@ export async function GET() {
           });
           results.purchase++;
         } else if (event.eventType === "purchase-payment") {
-          createSupplierPaymentJournalEntries({
+          await createSupplierPaymentJournalEntries({
             payment: eventData.supplierPayment,
             companyId: eventData.companyId,
             userId: eventData.userId,
           });
           results.purchase_payment++;
         } else if (event.eventType === "createCutomer") {
-          createCustomerJournalEnteries({
+          await createCustomerJournalEnteries({
             customerId: eventData.customerId,
             companyId: eventData.companyId,
             outstandingBalance: eventData.outstandingBalance,
@@ -118,7 +118,7 @@ export async function GET() {
           });
           results.createCutomer++;
         } else if (event.eventType === "supplierCutomer") {
-          createSupplierJournalEnteries({
+          await createSupplierJournalEnteries({
             supplierId: eventData.supplierId,
             supplierName: eventData.name,
             companyId: eventData.companyId,
