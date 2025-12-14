@@ -97,7 +97,7 @@ export async function GET() {
           await createPurchaseJournalEntries({
             purchase: eventData.purchase,
             companyId: eventData.companyId,
-            userId: eventData.companyId,
+            userId: eventData.userId,
             type: eventData.type,
           });
           results.purchase++;
