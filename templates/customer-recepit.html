@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <title>Receipt</title>
+
+    <style>
+      body {
+        font-family: "Cairo", Arial, sans-serif;
+        direction: rtl;
+        background: #fff;
+        color: #000;
+        border: 1px solid #000;
+        border-radius: 6px;
+        margin: 0;
+      }
+
+      .receipt-container {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .section {
+        padding: 6px 8px;
+      }
+
+      .header {
+        border-bottom: 1px solid black;
+        border-radius: 6px;
+      }
+
+      .flex {
+        display: flex;
+      }
+      .justify-between {
+        justify-content: space-between;
+      }
+      .items-center {
+        align-items: center;
+      }
+      .mb-2 {
+        margin-bottom: 8px;
+      }
+      .gap-2 {
+        gap: 8px;
+      }
+      .grid {
+        display: grid;
+      }
+      .grid-cols-2 {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .text-sm {
+        font-size: 12px;
+      }
+      .text-lg {
+        font-size: 16px;
+        font-weight: bold;
+      }
+      .text-xs {
+        font-size: 10px;
+      }
+      .text-center {
+        text-align: center;
+      }
+      .text-3xl {
+        font-size: 24px;
+        font-weight: bold;
+      }
+      .text-2xl {
+        font-size: 23px;
+        font-weight: bold;
+      }
+
+      .green {
+        color: green;
+      }
+      .grey {
+        color: grey;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        border: 1px solid black;
+        padding: 4px;
+        text-align: center;
+        font-size: 12px;
+      }
+
+      th {
+        background-color: #f0f0f0;
+      }
+
+      .totals-label {
+        width: 80px;
+        text-align: right;
+      }
+
+      .totals-value {
+        width: 160px;
+        border: 1px solid black;
+        border-radius: 6px;
+        padding: 4px;
+        text-align: right;
+      }
+
+      .badge {
+        display: inline-block;
+        background: #f0f0f0;
+        padding: 2px 6px;
+        border-radius: 8px;
+      }
+
+      footer {
+        position: fixed;
+        bottom: 0;
+        right: 0;
+        left: 0;
+        border-top: 1px solid #000;
+        padding: 4px 12px;
+        font-size: 12px;
+        background: #fff;
+      }
+
+      .footer-content {
+        display: flex;
+        justify-content: space-between;
+        direction: rtl;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="receipt-container">
+      <!-- HEADER -->{{#each receipts}}
+
+      <div class="section">
+        <div class="header mb-2 flex items-center justify-between">
+          <!-- Company -->
+          <div class="grid gap-2 text-right">
+            <span class="green text-3xl">{{company.name}}</span>
+            <span class="text-2xl">{{company.name}}</span>
+            <div>رقم الفاتورة: {{saleNumber}}</div>
+          </div>
+
+          <!-- Logo -->
+          <div class="flex flex-col items-center">
+            <img src="{{company.logoUrl}}" style="width: 100px; height: 90px" />
+          </div>
+
+          <!-- Branch -->
+          <div class="grid">
+            <div class="text-lg">{{company.address}}</div>
+            <div class="text-lg">{{company.city}}</div>
+            <div>تلفون: {{company.phone}}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PAYMENT + CUSTOMER -->
+      <div class="section">
+        نوع الدفع: {{paymentType}}<br />
+        <div>
+          العميل:
+          <span class="badge">{{customerName}}</span>
+        </div>
+      </div>
+
+      <!-- ITEMS TABLE -->
+      <table>
+        <thead>
+          <tr>
+            <th>م</th>
+            <th>المنتج</th>
+            <th>المستودع</th>
+            <th>الكمية</th>
+            <th>النوع</th>
+            <th>السعر</th>
+            <th>الإجمالي</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each items}}
+          <tr>
+            <td>{{@index}}</td>
+            <td>{{name}}</td>
+            <td>{{warehousename}}</td>
+            <td>{{selectedQty}}</td>
+            <td>{{sellingUnitArabic}}</td>
+            <td>{{price}}</td>
+            <td>{{total}}</td>
+          </tr>
+          {{/each}}
+        </tbody>
+      </table>
+
+      <!-- TOTALS -->
+      <div class="section">
+        <div class="flex justify-between">
+          <div>
+            <div class="flex gap-4 text-sm">
+              <span class="totals-label">الخصم:</span>
+              <span class="totals-value">{{discount}}</span>
+            </div>
+
+            <div class="flex gap-4 text-sm">
+              <span class="totals-label">الإجمالي:</span>
+              <span class="totals-value">{{totalAfter}}</span>
+            </div>
+
+            <div class="flex gap-4 text-sm">
+              <span class="totals-label">المبلغ المدفوع:</span>
+              <span class="totals-value">{{receivedAmount}}</span>
+            </div>
+
+            <div class="flex gap-4 text-sm">
+              <span class="totals-label">المتبقي:</span>
+              <span class="totals-value">{{change}}</span>
+            </div>
+          </div>
+
+          {{#if customerDebt}}
+          <div class="flex gap-2 text-sm">
+            <span>ديون سابقة:</span>
+            <span class="totals-value">{{customerDebt}}</span>
+          </div>
+          {{/if}}
+        </div>
+      </div>
+
+      <!-- FOOTER -->
+      <div class="section text-center text-xs">
+        <p>شكرًا لتسوقك معنا!</p>
+      </div>
+
+      <footer>
+        <div class="footer-content">
+          <div>👨‍💼 الكاشير: {{userName}}</div>
+          <div>📅 {{date}} &nbsp;&nbsp; ⏰ {{time}}</div>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>

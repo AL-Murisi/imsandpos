@@ -8,6 +8,7 @@ import { getSession } from "@/lib/session";
 import { getCompany } from "@/lib/actions/createcompnayacc";
 import { Prisma } from "@prisma/client";
 import { reserveStock } from "@/lib/actions/warehouse";
+import { useFormatter } from "@/hooks/usePrice";
 
 export const runtime = "nodejs";
 
@@ -913,7 +914,22 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
         break;
       }
+      case "customer-receipts": {
+        templateFile = "customer-recepit.html";
+        const receiptsRaw = await fetchReceiptsByCustomer(
+          customerId,
+          user.companyId,
+        );
 
+        const receipts = receiptsRaw.map(prepareReceipt);
+        data = {
+          ...baseData,
+          customer: receipts[0]?.customer_name,
+          receipts,
+        };
+
+        break;
+      }
       case "customer-payments": {
         templateFile = "customer-payments-report.html";
         const payments = await prisma.payment.findMany({
@@ -973,3 +989,122 @@ export async function POST(req: NextRequest, context: RouteContext) {
     );
   }
 }
+async function fetchReceiptsByCustomer(customerId: string, companyId: string) {
+  const results = await prisma.$queryRawUnsafe<any[]>(
+    `
+    WITH sale_data AS (
+      SELECT 
+        s.id AS sale_id,
+        s.sale_number,
+        s.subtotal,
+        s.total_amount,
+        s.amount_paid,
+        s.discount_amount,
+        s.sale_type,
+        s.created_at,
+        c.name AS customer_name,
+        c.outstanding_balance,
+        u.name AS cashier_name
+      FROM sales s
+      LEFT JOIN customers c ON s.customer_id = c.id
+      LEFT JOIN users u ON s.cashier_id = u.id
+      WHERE s.customer_id = $1
+        AND s.company_id = $2
+      ORDER BY s.created_at ASC
+    ),
+    sale_items AS (
+      SELECT 
+        si.sale_id,
+        si.product_id,
+        si.quantity,
+        si.selling_unit,
+        p.name AS product_name,
+        p.price_per_unit,
+        p.price_per_packet,
+        p.price_per_carton,
+        w.name AS warehouse_name
+      FROM sale_items si
+      JOIN products p ON si.product_id = p.id
+      LEFT JOIN warehouses w ON p.warehouse_id = w.id
+    )
+    SELECT 
+      s.sale_id,
+      s.sale_number,
+      s.subtotal::numeric AS total_before,
+      s.total_amount::numeric AS total_after,
+      s.discount_amount::numeric AS discount_amount,
+      COALESCE(s.amount_paid, 0)::numeric AS received_amount,
+      (COALESCE(s.amount_paid, 0)::numeric - s.total_amount::numeric) AS calculated_change,
+      s.cashier_name AS user_name,
+      s.customer_name,
+      s.sale_type,
+      s.outstanding_balance::numeric AS customer_debt,
+      (COALESCE(s.amount_paid, 0)::numeric >= s.total_amount::numeric) AS is_cash,
+      s.created_at,
+      (
+        SELECT json_agg(
+          json_build_object(
+            'name', si.product_name,
+            'warehousename', si.warehouse_name,
+            'selectedQty', si.quantity,
+            'sellingUnit', si.selling_unit,
+            'pricePerUnit', si.price_per_unit,
+            'pricePerPacket', si.price_per_packet,
+            'pricePerCarton', si.price_per_carton
+          )
+        )
+        FROM sale_items si
+        WHERE si.sale_id = s.sale_id
+      ) AS items
+    FROM sale_data s;
+  `,
+    customerId,
+    companyId,
+  );
+
+  return results.map((r) =>
+    JSON.parse(
+      JSON.stringify(r, (_k, v) => (typeof v === "bigint" ? Number(v) : v)),
+    ),
+  );
+}
+const { formatCurrency, formatPriceK, formatQty } = useFormatter();
+
+function prepareReceipt(receipt: any) {
+  return {
+    ...receipt,
+    date: new Date(receipt.created_at).toLocaleDateString("ar-EG"),
+    time: new Date(receipt.created_at).toLocaleTimeString("ar-EG"),
+    items: receipt.items.map((item: any, i: number) => {
+      const price =
+        item.sellingUnit === "CARTON"
+          ? item.pricePerCarton
+          : item.sellingUnit === "PACKET"
+            ? item.pricePerPacket
+            : item.pricePerUnit;
+
+      return {
+        index: i + 1,
+        name: item.name,
+        warehousename: item.warehousename,
+        selectedQty: item.selectedQty,
+        sellingUnitArabic: unitToArabic(item.sellingUnit),
+        price: formatCurrency(price),
+        total: formatCurrency(price * item.selectedQty),
+      };
+    }),
+  };
+}
+
+const unitToArabic = (sellingUnit: "unit" | "packet" | "carton") => {
+  switch (sellingUnit) {
+    case "unit":
+      return "حبة";
+    case "packet":
+      return "كيس";
+    case "carton":
+      return "كرتون";
+    default:
+      return "";
+  }
+};

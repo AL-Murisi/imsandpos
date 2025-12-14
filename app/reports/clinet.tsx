@@ -197,6 +197,13 @@ const reports = [
     id: "customer_statment",
     type: "customers",
     icon: "🧾",
+    description: "    receipts حساب العملاء",
+  },
+  {
+    name: "        كشف حساب العملاء",
+    id: "customer-receipts",
+    type: "customers",
+    icon: "🧾",
     description: "    كشف حساب العملاء",
   },
   {
