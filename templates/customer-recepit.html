@@ -91,7 +91,7 @@
 
       <!-- INFO -->
       <div>
-        نوع العملية: {{sale_type}}
+        {{#if is_cash}}نقدي{{else}}آجل{{/if}}
         <br />
         العميل: <strong>{{customer_name}}</strong>
       </div>
