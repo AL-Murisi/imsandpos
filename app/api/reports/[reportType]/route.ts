@@ -915,21 +915,40 @@ export async function POST(req: NextRequest, context: RouteContext) {
         break;
       }
       case "customer-receipts": {
+        if (!customerId) {
+          return new Response(
+            JSON.stringify({ error: "customerId is required" }),
+            { status: 400 },
+          );
+        }
+
         templateFile = "customer-recepit.html";
+
         const receiptsRaw = await fetchReceiptsByCustomer(
           customerId,
           user.companyId,
         );
 
+        if (!receiptsRaw.length) {
+          data = {
+            ...baseData,
+            customer: "",
+            receipts: [],
+          };
+          break;
+        }
+
         const receipts = receiptsRaw.map(prepareReceipt);
+
         data = {
           ...baseData,
-          customer: receipts[0]?.customer_name,
+          customer: receipts[0]?.customer_name ?? "",
           receipts,
         };
 
         break;
       }
+
       case "customer-payments": {
         templateFile = "customer-payments-report.html";
         const payments = await prisma.payment.findMany({
@@ -1011,57 +1030,36 @@ async function fetchReceiptsByCustomer(customerId: string, companyId: string) {
       WHERE s.customer_id = $1
         AND s.company_id = $2
       ORDER BY s.created_at ASC
-    ),
-    sale_items AS (
-      SELECT 
-        si.sale_id,
-        si.product_id,
-        si.quantity,
-        si.selling_unit,
-        p.name AS product_name,
-        p.price_per_unit,
-        p.price_per_packet,
-        p.price_per_carton,
-        w.name AS warehouse_name
-      FROM sale_items si
-      JOIN products p ON si.product_id = p.id
-      LEFT JOIN warehouses w ON p.warehouse_id = w.id
     )
     SELECT 
-      s.sale_id,
-      s.sale_number,
-      s.subtotal::numeric AS total_before,
-      s.total_amount::numeric AS total_after,
-      s.discount_amount::numeric AS discount_amount,
-      COALESCE(s.amount_paid, 0)::numeric AS received_amount,
-      (COALESCE(s.amount_paid, 0)::numeric - s.total_amount::numeric) AS calculated_change,
-      s.cashier_name AS user_name,
-      s.customer_name,
-      s.sale_type,
-      s.outstanding_balance::numeric AS customer_debt,
-      (COALESCE(s.amount_paid, 0)::numeric >= s.total_amount::numeric) AS is_cash,
-      s.created_at,
-      (
-        SELECT json_agg(
-          json_build_object(
-            'name', si.product_name,
-            'warehousename', si.warehouse_name,
-            'selectedQty', si.quantity,
-            'sellingUnit', si.selling_unit,
-            'pricePerUnit', si.price_per_unit,
-            'pricePerPacket', si.price_per_packet,
-            'pricePerCarton', si.price_per_carton
+      s.*,
+      COALESCE(
+        (
+          SELECT json_agg(
+            json_build_object(
+              'name', p.name,
+              'warehousename', w.name,
+              'selectedQty', si.quantity,
+              'sellingUnit', LOWER(si.selling_unit),
+              'pricePerUnit', p.price_per_unit,
+              'pricePerPacket', p.price_per_packet,
+              'pricePerCarton', p.price_per_carton
+            )
           )
-        )
-        FROM sale_items si
-        WHERE si.sale_id = s.sale_id
+          FROM sale_items si
+          JOIN products p ON si.product_id = p.id
+          LEFT JOIN warehouses w ON p.warehouse_id = w.id
+          WHERE si.sale_id = s.sale_id
+        ),
+        '[]'::json
       ) AS items
     FROM sale_data s;
-  `,
+    `,
     customerId,
     companyId,
   );
 
+  // Convert bigint safely
   return results.map((r) =>
     JSON.parse(
       JSON.stringify(r, (_k, v) => (typeof v === "bigint" ? Number(v) : v)),
@@ -1070,28 +1068,49 @@ async function fetchReceiptsByCustomer(customerId: string, companyId: string) {
 }
 
 function prepareReceipt(receipt: any) {
-  return {
-    ...receipt,
-    date: new Date(receipt.created_at).toLocaleDateString("ar-EG"),
-    time: new Date(receipt.created_at).toLocaleTimeString("ar-EG"),
-    items: receipt.items.map((item: any, i: number) => {
-      const price =
-        item.sellingUnit === "CARTON"
-          ? item.pricePerCarton
-          : item.sellingUnit === "PACKET"
-            ? item.pricePerPacket
-            : item.pricePerUnit;
+  const createdAt = new Date(receipt.created_at);
 
-      return {
-        index: i + 1,
-        name: item.name,
-        warehousename: item.warehousename,
-        selectedQty: item.selectedQty,
-        sellingUnitArabic: unitToArabic(item.sellingUnit),
-        price: price,
-        total: price * item.selectedQty,
-      };
-    }),
+  const items = (receipt.items ?? []).map((item: any, i: number) => {
+    const unit = (item.sellingUnit ?? "unit").toLowerCase();
+
+    const price =
+      unit === "carton"
+        ? Number(item.pricePerCarton || 0)
+        : unit === "packet"
+          ? Number(item.pricePerPacket || 0)
+          : Number(item.pricePerUnit || 0);
+
+    const qty = Number(item.selectedQty || 0);
+
+    return {
+      index: i + 1,
+      name: item.name,
+      warehousename: item.warehousename ?? "",
+      selectedQty: qty,
+      sellingUnitArabic: unitToArabic(unit),
+      price: price.toFixed(2),
+      total: (price * qty).toFixed(2),
+    };
+  });
+
+  return {
+    sale_number: receipt.sale_number,
+    customer_name: receipt.customer_name,
+    cashier_name: receipt.cashier_name,
+    sale_type: receipt.sale_type,
+    subtotal: Number(receipt.subtotal || 0).toFixed(2),
+    discount: Number(receipt.discount_amount || 0).toFixed(2),
+    total: Number(receipt.total_amount || 0).toFixed(2),
+    paid: Number(receipt.amount_paid || 0).toFixed(2),
+    change: (
+      Number(receipt.amount_paid || 0) - Number(receipt.total_amount || 0)
+    ).toFixed(2),
+    customer_debt: Number(receipt.outstanding_balance || 0).toFixed(2),
+    date: createdAt.toLocaleDateString("ar-EG"),
+    time: createdAt.toLocaleTimeString("ar-EG"),
+    is_cash:
+      Number(receipt.amount_paid || 0) >= Number(receipt.total_amount || 0),
+    items,
   };
 }
 

@@ -400,42 +400,41 @@ export default function ReportsPage({
                 </div>
 
                 {/* Customer Filter for customer reports */}
-                {selectedReport.id === "customer_statment" ||
-                  (selectedReport.id === "customer-receipts" && (
-                    <div className="space-y-2">
-                      <label className="flex items-center gap-2 text-sm font-medium">
-                        👤 اختر عميل محدد (اختياري)
-                      </label>
-                      <SearchInput
-                        placeholder="ابحث عن العميل"
-                        paramKey="customer"
-                        options={users ?? []}
-                        action={(user) => setSelectedCustomer(user)}
-                      />
-                      {selectedCustomer && (
-                        <Card className="bg-muted/50">
-                          <CardContent className="space-y-1 p-3 text-sm">
-                            <p className="flex items-center gap-2">
-                              <strong>👤 العميل:</strong>{" "}
-                              {selectedCustomer.name}
-                            </p>
-                            <p className="flex items-center gap-2">
-                              <strong>🆔 رقم العميل:</strong>{" "}
-                              {selectedCustomer.value}
-                            </p>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setSelectedCustomer(null)}
-                              className="mt-2"
-                            >
-                              إلغاء التحديد
-                            </Button>
-                          </CardContent>
-                        </Card>
-                      )}
-                    </div>
-                  ))}
+                {(selectedReport.id === "customer_statment" ||
+                  selectedReport.id === "customer-receipts") && (
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm font-medium">
+                      👤 اختر عميل محدد (اختياري)
+                    </label>
+                    <SearchInput
+                      placeholder="ابحث عن العميل"
+                      paramKey="customer"
+                      options={users ?? []}
+                      action={(user) => setSelectedCustomer(user)}
+                    />
+                    {selectedCustomer && (
+                      <Card className="bg-muted/50">
+                        <CardContent className="space-y-1 p-3 text-sm">
+                          <p className="flex items-center gap-2">
+                            <strong>👤 العميل:</strong> {selectedCustomer.name}
+                          </p>
+                          <p className="flex items-center gap-2">
+                            <strong>🆔 رقم العميل:</strong>{" "}
+                            {selectedCustomer.value}
+                          </p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setSelectedCustomer(null)}
+                            className="mt-2"
+                          >
+                            إلغاء التحديد
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                )}
               </div>
               {/* Download Button */}
               <div className="flex items-center gap-3 pt-4">
