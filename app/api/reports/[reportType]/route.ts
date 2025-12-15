@@ -979,6 +979,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
           status: 400,
         });
     }
+    console.log(data);
     /* ==================== PDF GENERATION ==================== */
     const templatePath = path.join(process.cwd(), "templates", templateFile);
     const htmlTemplate = fs.readFileSync(templatePath, "utf8");

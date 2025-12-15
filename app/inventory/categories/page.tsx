@@ -1,6 +1,6 @@
 import { fetchCategory } from "@/lib/actions/category";
-import CategoryTable from "./_components/tables";
 import { getSession } from "@/lib/session";
+import Clinet from "./_components/clinet";
 
 export default async function Category() {
   const user = await getSession();
@@ -8,7 +8,7 @@ export default async function Category() {
   const data = await fetchCategory(user.companyId);
   return (
     <div className="p-4">
-      <CategoryTable
+      <Clinet
         data={data}
         total={0}
         formData={{

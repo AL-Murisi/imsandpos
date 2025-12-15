@@ -12,30 +12,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { currencyConfig } from "@/currency/config";
 import { cookies } from "next/headers";
 import { CurrencyProvider } from "@/components/CurrencyProvider";
-// const inter = Inter({
-//   subsets: ["latin"],
-//   variable: "--font-sans",
-//   display: "swap", // ✅ Already implemented
-//   weight: ["400", "700"],
 
-//   // fallback: ["system-ui", "arial"], // Add fallback
-// });
-// const myFont = localFont({
-//   src: "/fonts/Inter-Italic.woff2",
-
-//   display: "swap",
-// });
-// const roboto = Roboto({
-//   subsets: ["latin"],
-//   variable: "--font-roboto-mono",
-//   display: "swap", // ✅ Already implemented
-//   weight: ["400", "700"],
-//   // preload: true,
-
-//   // fallback: ["system-ui", "arial"], // Add fallback
-// });
-
-// Add to head
 export const metadata: Metadata = {
   title: "IMS - Inventory Management System",
   description: "Complete Inventory Management and POS Solution",
