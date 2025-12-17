@@ -72,6 +72,7 @@ export default function ExpenseForm({
 
       if (res.success) {
         toast.success(`تمت إضافة المصروف بنجاح (المبلغ: ${parsedAmount})`);
+        setOpen(false);
         reset();
       } else {
         toast.error(res.error || "حدث خطأ أثناء إنشاء المصروف");

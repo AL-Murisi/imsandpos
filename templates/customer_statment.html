@@ -3,196 +3,218 @@
   <head>
     <meta charset="UTF-8" />
     <title>كشف حساب عميل</title>
-
     <link
       href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap"
       rel="stylesheet"
     />
 
     <style>
+      @page {
+        margin: 5mm;
+        size: A4;
+      }
+
       body {
         font-family: "Cairo", sans-serif;
-        margin: 30px;
-        background: #f8f9fa;
+        margin: 0;
+        padding: 0;
+        background: #fff;
         color: #333;
+        direction: rtl;
       }
 
-      .container {
-        background: white;
-        padding: 40px;
-        box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-        margin-bottom: 40px;
-      }
-
+      /* Fixed Header Layout */
       .header {
         display: flex;
         justify-content: space-between;
         align-items: center;
         border-bottom: 2px solid #000;
-        padding-bottom: 15px;
+        padding-bottom: 10px;
         margin-bottom: 20px;
       }
 
+      .header-right {
+        width: 33%;
+        text-align: right;
+      }
+
+      .header-center {
+        width: 33%;
+        text-align: center;
+      }
+
+      .header-left {
+        width: 33%;
+        text-align: left;
+        font-size: 14px;
+      }
+
       .section-title {
-        font-size: 22px;
+        font-size: 20px;
         background: #e67e22;
         color: #fff;
-        padding: 8px 12px;
+        padding: 8px;
         border-radius: 6px;
-        margin: 25px 0;
+        margin: 15px 0;
+        text-align: center;
         font-weight: bold;
       }
 
       .info-box {
         background: #fff7ed;
         border-right: 4px solid #fb923c;
-        padding: 20px;
+        padding: 15px;
         border-radius: 8px;
-        margin-bottom: 30px;
-      }
-      .info-box p {
-        font-size: 15px;
-        margin: 4px 0;
+        margin-bottom: 20px;
       }
 
+      .info-box p {
+        margin: 2px 0;
+        font-size: 14px;
+      }
+
+      /* Table Fixes */
       table {
         width: 100%;
-
         border-collapse: collapse;
-        margin-top: 20px;
-        margin-bottom: 10px;
-      }
-      th {
-        padding: 15px;
-        text-align: right;
-        font-weight: 600;
-        font-size: 14px;
-        border: 1px solid #000;
-      }
-      td {
-        white-space: wrap;
-        padding: 8px 8px;
-        border: 1px solid #000;
-        font-size: 13px;
-      }
-      thead {
-        display: table-header-group;
+        table-layout: fixed; /* Keeps columns aligned */
       }
 
-      tbody {
-        display: table-row-group;
+      th,
+      td {
+        border: 1px solid #000;
+        padding: 8px 4px;
+        font-size: 12px;
+        text-align: center;
+        word-wrap: break-word;
+      }
+
+      th {
+        background-color: #f2f2f2;
+      }
+
+      thead {
+        display: table-header-group; /* Repeats header on new pages */
       }
 
       tr {
         page-break-inside: avoid;
       }
-      tr:hover {
-        background: #fef2f2;
-      }
-      .table-wrapper {
-        width: 100%;
-        overflow-x: auto;
-        direction: rtl;
-      }
 
       .total-row {
-        background: #fee2e2;
+        background: #fee2e2 !important;
         font-weight: bold;
+      }
+
+      /* Setting specific column widths */
+      .col-date {
+        width: 12%;
+      }
+      .col-type {
+        width: 12%;
+      }
+      .col-doc {
+        width: 18%;
+      }
+      .col-desc {
+        width: 28%;
+      }
+      .col-db {
+        width: 10%;
+      }
+      .col-cr {
+        width: 10%;
+      }
+      .col-bal {
+        width: 10%;
       }
 
       .footer {
         text-align: center;
-        font-size: 12px;
+        font-size: 11px;
         margin-top: 30px;
         color: #94a3b8;
+      }
+
+      .page-container {
+        page-break-after: always; /* Each customer gets a fresh page */
       }
     </style>
   </head>
 
   <body>
-    {{!-- ------------------------------------------------------- --}} {{!--
-    LOOP ALL CUSTOMERS --}} {{!--
-    ------------------------------------------------------- --}} {{#each
-    customers}}
-
-    <!-- Header -->
-    <div class="header">
-      <div>
-        <div style="font-size: 24px; font-weight: bold; color: green">
-          {{../company.name}}
+    {{#each customers}}
+    <div class="page-container">
+      <div class="header">
+        <div class="header-right">
+          <div style="font-size: 20px; font-weight: bold">
+            {{../company.name}}
+          </div>
+          <div dir="ltr">Tel: {{../company.phone}}</div>
         </div>
-        <div style="font-size: 15px">{{../company.address}}</div>
-        <div style="font-size: 15px">{{../company.city}}</div>
-        <div>تلفون: {{../company.phone}}</div>
+
+        <div class="header-center">
+          <img
+            src="{{../company.logoUrl}}"
+            width="90"
+            height="80"
+            style="object-fit: contain"
+          />
+        </div>
+
+        <div class="header-left">
+          <div>{{../company.address}}</div>
+          <div>{{../company.city}}</div>
+        </div>
       </div>
 
-      <img src="{{../company.logoUrl}}" width="100" height="90" />
+      <div class="section-title">كشف حساب عميل</div>
+
+      <div class="info-box">
+        <p><strong>اسم العميل:</strong> {{customer.name}}</p>
+        <p><strong>الهاتف:</strong> {{customer.phoneNumber}}</p>
+        <p><strong>الفترة:</strong> من {{period.from}} إلى {{period.to}}</p>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th class="col-date">التاريخ</th>
+            <th class="col-type">نوع السند</th>
+            <th class="col-doc">رقم المستند</th>
+            <th class="col-desc">البيان</th>
+            <th class="col-db">مدين</th>
+            <th class="col-cr">دائن</th>
+            <th class="col-bal">الرصيد</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each transactions}}
+          <tr>
+            <td>{{date}}</td>
+            <td>{{typeName}}</td>
+            <td>{{docNo}}</td>
+            <td style="text-align: right">{{description}}</td>
+            <td>{{debit}}</td>
+            <td>{{credit}}</td>
+            <td>{{balance}}</td>
+          </tr>
+          {{/each}}
+
+          <tr class="total-row">
+            <td colspan="4">الإجمالي</td>
+            <td>{{totalDebit}}</td>
+            <td>{{totalCredit}}</td>
+            <td>{{closingBalance}}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="footer">
+        تم إنشاء التقرير بواسطة نظام {{../company.name}} | {{../createby}} —
+        {{../date}}
+      </div>
     </div>
-
-    <div class="section-title">🧾 كشف حساب عميل</div>
-
-    <!-- Customer Info -->
-    <div class="info-box">
-      <p><strong>اسم العميل:</strong> {{customer.name}}</p>
-      <p><strong>الهاتف:</strong> {{customer.phoneNumber}}</p>
-      <p><strong>من تاريخ:</strong> {{period.from}}</p>
-      <p><strong>إلى تاريخ:</strong> {{period.to}}</p>
-    </div>
-
-    <!-- Table -->
-    <table>
-      <thead>
-        <tr>
-          <th>التاريخ</th>
-          <th>نوع السند</th>
-          <th>رقم المستند</th>
-          <th>البيان</th>
-          <th>مدين</th>
-          <th>دائن</th>
-          <th>الرصيد</th>
-        </tr>
-      </thead>
-
-      <tbody>
-        <!-- Opening Balance -->
-        <!-- <tr class="total-row">
-          <td></td>
-          <td>رصيد افتتاحي</td>
-          <td>—</td>
-          <td>—</td>
-          <td>{{openingBalance}}</td>
-          <td>0.00</td>
-          <td>{{openingBalance}}</td>
-        </tr> -->
-
-        <!-- Transactions -->
-        {{#each transactions}}
-        <tr>
-          <td>{{date}}</td>
-          <td>{{typeName}}</td>
-          <td>{{docNo}}</td>
-          <td>{{description}}</td>
-          <td>{{debit}}</td>
-          <td>{{credit}}</td>
-          <td>{{balance}}</td>
-        </tr>
-        {{/each}}
-
-        <!-- Totals -->
-        <tr class="total-row">
-          <td colspan="4">الإجمالي</td>
-          <td>{{totalDebit}}</td>
-          <td>{{totalCredit}}</td>
-          <td>{{closingBalance}}</td>
-        </tr>
-      </tbody>
-    </table>
-
-    <div class="footer">
-      تم إنشاء التقرير بواسطة نظام {{../company.name}} | {{../createby}} —
-      {{../date}}
-    </div>
-
     {{/each}}
   </body>
 </html>

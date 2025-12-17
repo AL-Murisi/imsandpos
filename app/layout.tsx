@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import localFont from "next/font/local";
 import "./global.css";
 import { ThemeProvider } from "../components/theme-provider";
 import { AuthProvider } from "@/lib/context/AuthContext";

@@ -135,7 +135,7 @@ export const expenseColumns: ColumnDef<any>[] = [
     cell: ({ row }) => {
       const exponses = row.original;
       const category = row.original.account_category;
-      return <ExpenseEditForm expense={exponses} />;
+      // return <ExpenseEditForm expense={exponses} />;
     },
     enableSorting: false,
   },

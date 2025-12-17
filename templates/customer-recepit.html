@@ -2,118 +2,192 @@
 <html lang="ar" dir="rtl">
   <head>
     <meta charset="utf-8" />
-
+    <title>Customer Receipts</title>
     <link
       href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap"
       rel="stylesheet"
     />
 
-    <title>Customer Receipts</title>
-
     <style>
+      @page {
+        margin: 6mm;
+        size: A4;
+      }
+
       body {
         font-family: "Cairo", Arial, sans-serif;
         direction: rtl;
         margin: 0;
+        padding: 0;
         background: #fff;
-        border: 1px solid #000;
-        border-radius: 6px;
       }
 
       .receipt-page {
         border: 1px solid #000;
         border-radius: 6px;
-        min-height: 100vh;
+        min-height: 95vh;
         box-sizing: border-box;
         page-break-after: always;
-        padding: 6px;
+        padding: 15px;
+        margin-bottom: 20px;
+        position: relative;
       }
 
       .receipt-page:last-child {
         page-break-after: auto;
       }
 
+      /* Centered Header Layout */
+      .header-flex {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+
+      .header-right {
+        width: 33%;
+        text-align: right;
+      }
+      .header-center {
+        width: 33%;
+        text-align: center;
+      }
+      .header-left {
+        width: 33%;
+        text-align: left;
+        font-size: 13px;
+      }
+
+      hr {
+        border: 0;
+        border-top: 1px solid #000;
+        margin: 10px 0;
+      }
+
+      .info-section {
+        margin-bottom: 15px;
+        line-height: 1.6;
+        font-size: 14px;
+      }
+
+      /* Stable Table Layout */
       table {
         width: 100%;
         border-collapse: collapse;
+        table-layout: fixed;
       }
 
       th,
       td {
         border: 1px solid #000;
-        padding: 4px;
-        font-size: 12px;
+        padding: 6px 2px;
+        font-size: 11px;
         text-align: center;
+        word-wrap: break-word;
       }
 
       th {
         background: #f0f0f0;
       }
 
-      footer {
-        border-top: 1px solid #000;
-        margin-top: 8px;
-        padding-top: 4px;
-        font-size: 12px;
+      /* Column Widths */
+      .col-m {
+        width: 30px;
+      }
+      .col-prod {
+        width: auto;
+      }
+      .col-wh {
+        width: 15%;
+      }
+      .col-qty {
+        width: 10%;
+      }
+      .col-unit {
+        width: 10%;
+      }
+      .col-prc {
+        width: 12%;
+      }
+      .col-tot {
+        width: 12%;
       }
 
-      .flex {
+      /* Totals Area */
+      .totals-section {
+        margin-top: 15px;
+        display: flex;
+        justify-content: flex-end;
+      }
+
+      .totals-box {
+        width: 200px;
+        line-height: 1.8;
+        font-size: 13px;
+        font-weight: bold;
+      }
+
+      footer {
+        border-top: 1px solid #000;
+        margin-top: 20px;
+        padding-top: 10px;
+        font-size: 12px;
         display: flex;
         justify-content: space-between;
-        align-items: center;
       }
     </style>
   </head>
 
   <body>
     {{#each receipts}}
-
     <div class="receipt-page">
-      <!-- HEADER -->
-      <div class="flex">
-        <div>
-          <div style="font-size: 22px; font-weight: bold">
+      <div class="header-flex">
+        <div class="header-right">
+          <div style="font-size: 20px; font-weight: bold; color: green">
             {{../company.name}}
           </div>
-          <div>رقم الفاتورة: {{sale_number}}</div>
+          <div style="font-size: 14px">رقم الفاتورة: {{sale_number}}</div>
         </div>
 
-        <img src="{{../company.logoUrl}}" style="width: 80px; height: 70px" />
+        <div class="header-center">
+          <img
+            src="{{../company.logoUrl}}"
+            style="width: 85px; height: 75px; object-fit: contain"
+          />
+        </div>
 
-        <div>
+        <div class="header-left">
           <div>{{../company.address}}</div>
           <div>{{../company.city}}</div>
-          <div>{{../company.phone}}</div>
+          <div dir="ltr">{{../company.phone}}</div>
         </div>
       </div>
 
       <hr />
 
-      <!-- INFO -->
-      <div>
-        {{#if is_cash}}نقدي{{else}}آجل{{/if}}
-        <br />
-        العميل: <strong>{{customer_name}}</strong>
+      <div class="info-section">
+        <strong>نوع الدفع:</strong> {{#if is_cash}}نقدي{{else}}آجل{{/if}} <br />
+        <strong>العميل:</strong> {{customer_name}}
       </div>
 
-      <!-- ITEMS -->
       <table>
         <thead>
           <tr>
-            <th>م</th>
-            <th>المنتج</th>
-            <th>المستودع</th>
-            <th>الكمية</th>
-            <th>النوع</th>
-            <th>السعر</th>
-            <th>الإجمالي</th>
+            <th class="col-m">م</th>
+            <th class="col-prod">المنتج</th>
+            <th class="col-wh">المستودع</th>
+            <th class="col-qty">الكمية</th>
+            <th class="col-unit">النوع</th>
+            <th class="col-prc">السعر</th>
+            <th class="col-tot">الإجمالي</th>
           </tr>
         </thead>
         <tbody>
           {{#each items}}
           <tr>
             <td>{{@index}}</td>
-            <td>{{name}}</td>
+            <td style="text-align: right; padding-right: 5px">{{name}}</td>
             <td>{{warehousename}}</td>
             <td>{{selectedQty}}</td>
             <td>{{sellingUnitArabic}}</td>
@@ -124,25 +198,44 @@
         </tbody>
       </table>
 
-      <!-- TOTALS -->
-      <div>
-        الخصم: {{discount}} <br />
-        الإجمالي: {{total}} <br />
-        المدفوع: {{paid}} <br />
-        المتبقي: {{change}} <br />
-
-        {{#if customer_debt}} ديون سابقة: {{customer_debt}} {{/if}}
+      <div class="totals-section">
+        <div class="totals-box">
+          <div class="header-flex">
+            <span>الخصم:</span> <span>{{discount}}</span>
+          </div>
+          <div class="header-flex">
+            <span>الإجمالي:</span> <span>{{total}}</span>
+          </div>
+          <div class="header-flex">
+            <span>المدفوع:</span> <span>{{paid}}</span>
+          </div>
+          <div class="header-flex">
+            <span>المتبقي:</span> <span>{{change}}</span>
+          </div>
+          {{#if customer_debt}}
+          <div class="header-flex" style="color: red">
+            <span>ديون سابقة:</span> <span>{{customer_debt}}</span>
+          </div>
+          {{/if}}
+        </div>
       </div>
 
-      <!-- FOOTER -->
-      <footer class="flex">
+      <footer>
         <div>👨‍💼 الكاشير: {{cashier_name}}</div>
         <div>📅 {{date}} ⏰ {{time}}</div>
       </footer>
 
-      <div style="text-align: center; font-size: 11px">شكرًا لتسوقك معنا</div>
+      <div
+        style="
+          text-align: center;
+          font-size: 12px;
+          margin-top: 10px;
+          font-weight: bold;
+        "
+      >
+        شكرًا لتسوقك معنا
+      </div>
     </div>
-
     {{/each}}
   </body>
 </html>

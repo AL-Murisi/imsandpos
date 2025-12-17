@@ -16,6 +16,7 @@ export async function GET() {
             "purchase-payment",
             "createCutomer",
             "supplierCutomer",
+            "expense",
           ],
         }, // Filter for sale events only
       },
@@ -41,6 +42,7 @@ export async function GET() {
       purchase_payment: 0,
       createCutomer: 0,
       supplierCutomer: 0,
+      expenses: 0,
       errors: [] as any[],
     };
 
@@ -128,6 +130,14 @@ export async function GET() {
             createdBy: eventData.createdBy,
           });
           results.createCutomer++;
+        } else if (event.eventType === "expense") {
+          await createExpenseJournalEntries({
+            companyId: eventData.companyId,
+            expense: eventData.expense,
+            userId: eventData.userId,
+          });
+
+          results.expenses = (results.expenses || 0) + 1;
         }
 
         // Mark as processed
@@ -789,6 +799,111 @@ async function createSupplierPaymentJournalEntries({
     },
   });
   await updateAccountBalance(paymentAccount, payment.amount, 0);
+}
+function requireAccount(accountId: string | undefined, name: string) {
+  if (!accountId) {
+    throw new Error(`Missing required account mapping: ${name}`);
+  }
+  return accountId;
+}
+
+async function createExpenseJournalEntries({
+  companyId,
+  expense,
+  userId,
+}: {
+  companyId: string;
+  expense: {
+    id: string;
+    accountId: string; // expense account (electricity, salary, etc.)
+    amount: number;
+    paymentMethod: string;
+    referenceNumber?: string;
+    description: string;
+    expenseDate: Date;
+  };
+  userId: string;
+}) {
+  // 🔎 Fetch default accounts
+  const mappings = await prisma.account_mappings.findMany({
+    where: { company_id: companyId, is_default: true },
+  });
+
+  const getAcc = (type: string) =>
+    mappings.find((m) => m.mapping_type === type)?.account_id;
+
+  const cash = requireAccount(getAcc("cash"), "cash");
+  const bank = requireAccount(getAcc("bank"), "bank");
+  const payable = requireAccount(
+    getAcc("accounts_payable"),
+    "accounts_payable",
+  );
+
+  // Determine credit account
+
+  let creditAccountId: string;
+
+  switch (expense.paymentMethod) {
+    case "bank":
+      creditAccountId = bank;
+      break;
+    case "credit":
+      creditAccountId = payable;
+      break;
+    default:
+      creditAccountId = cash;
+  }
+
+  const entryNumber = `EXP-${Date.now()}`;
+
+  const entries = [
+    // 1️⃣ Debit Expense Account (Electricity / Salary / Rent)
+    {
+      company_id: companyId,
+      account_id: expense.accountId,
+      description: expense.description,
+      debit: expense.amount,
+      credit: 0,
+      entry_date: expense.expenseDate,
+      reference_id: expense.id,
+      reference_type: "مصاريف",
+      entry_number: `${entryNumber}-1`,
+      created_by: userId,
+      is_automated: true,
+    },
+
+    // 2️⃣ Credit Cash / Bank / Payable
+    {
+      company_id: companyId,
+      account_id: creditAccountId,
+      description: expense.description,
+      debit: 0,
+      credit: expense.amount,
+      entry_date: expense.expenseDate,
+      reference_id: expense.id,
+      reference_type: "مصاريف",
+      entry_number: `${entryNumber}-2`,
+      created_by: userId,
+      is_automated: true,
+    },
+  ];
+
+  await prisma.$transaction(async (tx) => {
+    await tx.journal_entries.createMany({ data: entries });
+
+    for (const entry of entries) {
+      const delta = entry.debit - entry.credit;
+
+      await tx.accounts.update({
+        where: { id: entry.account_id },
+        data: {
+          balance: {
+            increment: delta,
+          },
+        },
+      });
+    }
+  });
 }
 
 // Helper function to create sale journal entries

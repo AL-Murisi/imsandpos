@@ -47,6 +47,8 @@ model Company {
   journal_events                                    journalEvent[]
 account_mappings     account_mappings[]
 fiscal_periods       fiscal_periods[]
+Employee                Employee[]
+  Bank                  Bank[]
 
   @@map("companies")
 }
@@ -72,7 +74,7 @@ model User {
   stockMovements                                     StockMovement[]
   roles                                              UserRole[]
   company                                            Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
-
+  employees Employee[] // 👈 ADD THIS
   @@index([companyId])
   @@index([name])
   @@index([phoneNumber])
@@ -619,13 +621,64 @@ model accounts {
   other_accounts   accounts[]        @relation("accountsToaccounts")
   journal_entries  journal_entries[]
   account_mappings account_mappings[]  // NEW: Link to business transactions
-
+ banks     Bank[]  // 👈 ADD THIS 
+  employeePayables  Employee[] @relation("EmployeePayableAccount")
   @@unique([company_id, account_code])
   @@index([company_id])
   @@index([parent_id])
   @@index([account_type])
   @@index([is_active])
+}model Bank {
+  id            String   @id @default(cuid())
+  companyId     String   @map("company_id")
+  name          String
+  branch        String?
+  iban          String?
+  swiftCode     String?  @map("swift_code")
+  accountNumber String? @map("account_number")
+  currencyCode  String  @default("USD")
+  isActive      Boolean @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // 🔑 Accounting link
+  accountId     String  @map("account_id")
+  account       accounts @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  company       Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, name])
+  @@index([companyId])
+  @@map("banks")
 }
+model Employee {
+  id             String   @id @default(cuid())
+  companyId      String   @map("company_id")
+  userId         String?  @map("user_id") // optional login
+  employeeCode   String   @unique
+  name           String
+  phone          String?
+  email          String?
+  position       String?
+  department     String?
+  salary         Decimal? @db.Decimal(12,2)
+  hireDate       DateTime @map("hire_date")
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // 🔑 Payroll account (optional)
+   payableAccountId String?   @map("payable_account_id")
+  payableAccount   accounts? @relation("EmployeePayableAccount", fields: [payableAccountId], references: [id])
+  company        Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user           User?   @relation(fields: [userId], references: [id])
+
+  @@index([companyId])
+  @@index([department])
+  @@index([isActive])
+  @@map("employees")
+}
+
 model account_mappings {
   id          String   @id @default(dbgenerated("gen_random_uuid()"))
   company_id  String

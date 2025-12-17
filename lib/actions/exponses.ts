@@ -289,7 +289,29 @@ export async function createExpense(
         details: `Expense: ${data.description}, Amount: ${data.amount}`,
       },
     });
-    console.log(expense);
+    await prisma.journalEvent.create({
+      data: {
+        companyId,
+        eventType: "expense",
+        status: "pending",
+        entityType: "expense",
+        payload: {
+          companyId,
+          expense: {
+            id: expense.id,
+            accountId: data.account_id, // 🔑 THIS is the key
+            amount: data.amount,
+            paymentMethod: data.paymentMethod,
+            referenceNumber: data.referenceNumber,
+            description: data.description,
+            expenseDate: data.expense_date,
+          },
+          userId,
+        },
+        processed: false,
+      },
+    });
+
     revalidatePath("/expenses");
     return { success: true, expense };
   } catch (error) {

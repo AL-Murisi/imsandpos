@@ -261,7 +261,11 @@ export const customerColumns: ColumnDef<any>[] = [
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <DebtReport customerName={customer.name} customerID={customer.id} />
+          <DebtReport
+            customerName={customer.name}
+            customerID={customer.id}
+            outstandingBalance={customer.outstandingBalance}
+          />
           <CustomerEditForm customer={customer} />
 
           <Button

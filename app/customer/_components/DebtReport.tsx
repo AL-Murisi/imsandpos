@@ -36,12 +36,14 @@ interface DebtReportProps {
   customerName: string;
   customerContact?: string;
   customerID: string;
+  outstandingBalance: number;
 }
 
 export default function DebtReport({
   customerName,
   customerContact,
   customerID,
+  outstandingBalance,
 }: DebtReportProps) {
   const [debts, setDebts] = useState<Debt[]>([]);
   const [loading, setLoading] = useState(false);
@@ -240,6 +242,7 @@ export default function DebtReport({
             {t("totalOutstanding") || "Total Outstanding"}:{" "}
             {formatCurrency(totalRemaining)}
           </p>
+          {outstandingBalance}
           <div className="grid gap-2">
             <Label>طريقة الدفع</Label>
             <SelectField
