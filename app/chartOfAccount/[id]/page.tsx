@@ -1,5 +1,6 @@
 import {
   getAccountLedger,
+  getJournalEntrie,
   getJournalEntries,
 } from "@/lib/actions/Journal Entry"; // adjust your import path
 import { getSession } from "@/lib/session";
@@ -10,11 +11,12 @@ export default async function LedgerPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params; // 👈 wait for params before using
-  // Example: replace this with your real company ID
+  const { id } = await params; // wait for params
   const user = await getSession();
-  if (!user) return;
-  const ledger = getJournalEntries(id);
+  if (!user) return null;
+
+  // 🔹 await the promise here
+  const ledger = await getJournalEntrie(id);
 
   return (
     <div className="space-y-6 p-6">

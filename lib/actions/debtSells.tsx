@@ -428,6 +428,75 @@ export async function updateSalesBulk(
     customersUpdated: Object.keys(customerUpdates).length,
   };
 }
+
+export async function payOutstandingOnly(
+  companyId: string,
+  customerId: string,
+  paymentAmount: number,
+  cashierId: string,
+  paymentMethod: string,
+) {
+  if (!companyId || !customerId)
+    throw new Error("Missing company or customer ID.");
+
+  if (paymentAmount <= 0)
+    throw new Error("Payment amount must be greater than zero.");
+
+  // 1️⃣ Create payment (NO saleId)
+  const payment = await prisma.payment.create({
+    data: {
+      companyId,
+      customerId,
+      saleId: null,
+      cashierId,
+      payment_type: "outstanding_payment",
+      paymentMethod,
+      amount: paymentAmount,
+      status: "completed",
+      notes: "تسديد رصيد مستحق غير مرتبط بفاتورة",
+      createdAt: new Date(),
+    },
+  });
+
+  // 2️⃣ Update customer outstanding balance
+  await prisma.customer.update({
+    where: { id: customerId },
+    data: {
+      outstandingBalance: {
+        decrement: paymentAmount,
+      },
+    },
+  });
+
+  // 3️⃣ Create journal event
+  await prisma.journalEvent.create({
+    data: {
+      companyId,
+      eventType: "payment-outstanding",
+      entityType: "outstanding",
+      status: "pending",
+      processed: false,
+      payload: {
+        companyId,
+        payment: {
+          id: payment.id,
+          saleId: null,
+          customerId,
+          amount: payment.amount,
+          paymentMethod: payment.paymentMethod,
+        },
+        cashierId,
+      },
+    },
+  });
+  revalidatePath("/customer");
+  return {
+    success: true,
+    paymentId: payment.id,
+    amountPaid: payment.amount,
+  };
+}
+
 // async function createPurchaseJournalEntriesWithRetry(
 //   params: {
 //     companyId: string;

@@ -20,11 +20,5 @@ type ProductClientProps = {
 };
 
 export default function Clinet({ data, total, formData }: ProductClientProps) {
-  return (
-    <CategoryTable
-      data={[]}
-      total={0}
-      formData={{ warehouses: [], categories: [], brands: [], suppliers: [] }}
-    />
-  );
+  return <CategoryTable data={data} total={total} formData={formData} />;
 }

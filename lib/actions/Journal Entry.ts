@@ -816,6 +816,7 @@ export async function getJournalEntries(
   pageSize: number = 7,
   sort?: SortingState,
 ) {
+  console.log(account_id);
   const company = await getSession();
   if (!company) return [];
   const whereClause: Prisma.journal_entriesWhereInput = {
@@ -902,7 +903,75 @@ export async function getJournalEntries(
 
   return data;
 }
+export async function getJournalEntrie(account_id?: string) {
+  console.log(account_id);
+  const company = await getSession();
+  if (!company) return [];
 
+  const total = await prisma.journal_entries.count({
+    where: { company_id: company.companyId },
+  });
+  const entries = await prisma.journal_entries.findMany({
+    where: { account_id: account_id, company_id: company.companyId },
+    select: {
+      id: true,
+
+      entry_number: true,
+      entry_date: true,
+      description: true,
+      debit: true,
+      credit: true,
+      is_posted: true,
+      created_by: true,
+      is_automated: true,
+      reference_type: true,
+      fiscal_period: true,
+      accounts: {
+        select: {
+          account_code: true,
+          account_name_en: true,
+        },
+      },
+      posted_by: true,
+      users_journal_entries_created_byTousers: {
+        select: { name: true, email: true },
+      },
+      users_journal_entries_updated_byTousers: {
+        select: { name: true, email: true },
+      },
+    },
+
+    orderBy: {
+      created_at: "desc", // ✅ Order latest first
+    },
+  });
+  const userIds = entries
+    .map((e) => e.posted_by)
+    .filter((id): id is string => id !== null); // 👈 type guard
+  const users = await prisma.user.findMany({
+    where: { id: { in: userIds } },
+    select: { id: true, name: true, email: true },
+  });
+
+  // 👇 حوّل أي قيم رقمية إلى أرقام حقيقية
+  const data = entries.map((entry) => ({
+    ...entry,
+    debit: Number(entry.debit) || 0,
+    credit: Number(entry.credit) || 0,
+    total,
+    posted_by: entry.posted_by
+      ? users.find((u) => u.id === entry.posted_by) || null
+      : null,
+    updatedBy: entry.users_journal_entries_updated_byTousers
+      ? {
+          name: entry.users_journal_entries_updated_byTousers.name,
+          email: entry.users_journal_entries_updated_byTousers.email,
+        }
+      : null,
+  }));
+
+  return data;
+}
 /**
  * 8. ACCOUNT LEDGER (Transaction History)
  */

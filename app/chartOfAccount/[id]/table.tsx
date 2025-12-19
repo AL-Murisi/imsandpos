@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useTablePrams } from "@/hooks/useTableParams";
 import { Download } from "lucide-react";
 import dynamic from "next/dynamic";
-import { use } from "react";
+import { use, useState } from "react";
 import { columns } from "./columns";
 
 const Calendar22 = dynamic(
@@ -26,12 +26,13 @@ const DataTable = dynamic(
 );
 
 type JournalEntriesClientProps = {
-  dataj: Promise<any[]>;
+  dataj: any[];
 };
 
 export default function JournalEntriesTable({
   dataj,
 }: JournalEntriesClientProps) {
+  const [loading, setLoading] = useState(true);
   const {
     pagination,
     sorting,
@@ -45,13 +46,13 @@ export default function JournalEntriesTable({
   const handleExport = () => {
     console.log("Exporting journal entries...");
   };
-  const data = use(dataj);
+
   // Calculate totals
-  const totalDebits = data.reduce(
+  const totalDebits = dataj.reduce(
     (sum, entry) => sum + Number(entry.debit || 0),
     0,
   );
-  const totalCredits = data.reduce(
+  const totalCredits = dataj.reduce(
     (sum, entry) => sum + Number(entry.credit || 0),
     0,
   );
@@ -108,10 +109,10 @@ export default function JournalEntriesTable({
             </Button>
           </div>
         }
-        data={data}
+        data={dataj}
         columns={columns}
         initialPageSize={pagination.pageSize}
-        pageCount={Math.ceil(data.length / pagination.pageSize)}
+        pageCount={Math.ceil(dataj.length / pagination.pageSize)}
         pageActiom={setPagination}
         onSortingChange={setSorting}
         onGlobalFilterChange={setGlobalFilter}
@@ -119,7 +120,7 @@ export default function JournalEntriesTable({
         sorting={[]}
         highet="h-[69vh]"
         pagination={pagination}
-        totalCount={data.length}
+        totalCount={dataj.length}
       />
     </div>
   );

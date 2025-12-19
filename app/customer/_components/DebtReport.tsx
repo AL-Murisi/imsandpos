@@ -18,7 +18,7 @@ import { useAuth } from "@/lib/context/AuthContext";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { updateSalesBulk } from "@/lib/actions/debtSells";
+import { payOutstandingOnly, updateSalesBulk } from "@/lib/actions/debtSells";
 import { Label } from "@/components/ui/label";
 import { SelectField } from "@/components/common/selectproduct";
 
@@ -104,6 +104,41 @@ export default function DebtReport({
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
+  };
+  const onSubmitOutstandingOnly = async () => {
+    setIsSubmitting(true);
+
+    if (paymentAmount <= 0) {
+      toast.error("يرجى إدخال مبلغ دفع صحيح.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!paymentMethod) {
+      toast.error("يرجى اختيار طريقة الدفع.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    try {
+      await payOutstandingOnly(
+        user.companyId,
+        customerID,
+        paymentAmount,
+        user.userId,
+        paymentMethod,
+      );
+
+      toast.success("تم سداد الرصيد المستحق بنجاح!");
+      setPaymentAmount(0);
+      setSelectedIds([]);
+      setIsSubmitting(false);
+      setOpen(false);
+    } catch (error) {
+      console.error("Outstanding payment error:", error);
+      toast.error("فشل في سداد الرصيد المستحق.");
+      setIsSubmitting(false);
+    }
   };
 
   const onSubmit = async () => {
@@ -242,7 +277,13 @@ export default function DebtReport({
             {t("totalOutstanding") || "Total Outstanding"}:{" "}
             {formatCurrency(totalRemaining)}
           </p>
-          {outstandingBalance}
+          <p className="text-muted-foreground text-sm">
+            الرصيد الإجمالي غير المرتبط بفواتير:
+            <span className="mr-2 font-semibold text-red-600">
+              {formatCurrency(outstandingBalance)}
+            </span>
+          </p>
+
           <div className="grid gap-2">
             <Label>طريقة الدفع</Label>
             <SelectField
@@ -262,13 +303,31 @@ export default function DebtReport({
               }
               className="w-32"
             />
-            <Button
+            {/* <Button
               onClick={onSubmit}
               type="submit"
               disabled={isSubmitting || loading}
             >
               {isSubmitting ? "جاري الحفظ..." : " تأكيد الدفع"}
-            </Button>
+            </Button> */}
+            <div className="flex gap-2">
+              {/* Pay selected invoices */}
+              <Button
+                onClick={onSubmit}
+                disabled={isSubmitting || loading || selectedIds.length === 0}
+              >
+                تسديد الفواتير المحددة
+              </Button>
+
+              {/* Pay outstanding without invoice */}
+              <Button
+                variant="secondary"
+                onClick={onSubmitOutstandingOnly}
+                disabled={isSubmitting || loading || outstandingBalance <= 0}
+              >
+                تسديد الرصيد فقط
+              </Button>
+            </div>
           </div>
         </div>
 

@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { fi } from "date-fns/locale";
 
 // API route: /api/process-journal-events
 export async function GET() {
@@ -17,6 +18,7 @@ export async function GET() {
             "createCutomer",
             "supplierCutomer",
             "expense",
+            "payment-outstanding",
           ],
         }, // Filter for sale events only
       },
@@ -47,6 +49,7 @@ export async function GET() {
     };
 
     for (const event of events) {
+      let success = false;
       try {
         const eventData = event.payload as any;
 
@@ -119,6 +122,12 @@ export async function GET() {
             createdBy: eventData.createdBy,
           });
           results.createCutomer++;
+        } else if (event.eventType === "payment-outstanding") {
+          await createOutstandingPaymentJournalEntries({
+            companyId: eventData.companyId,
+            payment: eventData.payment,
+            cashierId: eventData.cashierId,
+          });
         } else if (event.eventType === "supplierCutomer") {
           await createSupplierJournalEnteries({
             supplierId: eventData.supplierId,
@@ -139,20 +148,8 @@ export async function GET() {
 
           results.expenses = (results.expenses || 0) + 1;
         }
-
+        success = true;
         // Mark as processed
-        await prisma.journalEvent.update({
-          where: { id: event.id },
-          data: {
-            processed: true,
-            status: "processed",
-          },
-        });
-
-        results.processed++;
-        console.log(
-          `✅ Processed journal event ${event.id} for sale ${eventData.sale.id}`,
-        );
       } catch (err: any) {
         results.failed++;
         const errorMessage = err.message || "Unknown error";
@@ -168,6 +165,17 @@ export async function GET() {
           eventId: event.id,
           error: errorMessage,
         });
+      }
+      if (success) {
+        await prisma.journalEvent.update({
+          where: { id: event.id },
+          data: {
+            processed: true,
+            status: "processed",
+          },
+        });
+
+        results.processed++;
       }
     }
 
@@ -636,11 +644,159 @@ async function createPaymentJournalEntries({
     console.error("Error in createPaymentJournalEntries:", err);
   }
 }
+async function createOutstandingPaymentJournalEntries({
+  companyId,
+  payment,
+  cashierId,
+}: {
+  companyId: string;
+  payment: {
+    id: string;
+    customerId: string;
+    amount: number;
+    paymentMethod: "cash" | "bank";
+  };
+  cashierId: string;
+}) {
+  try {
+    const { customerId, amount, paymentMethod } = payment;
+
+    const fy = await getActiveFiscalYears();
+    if (!fy) return;
+
+    // ============================================
+    // 1️⃣ Prevent duplicate journal entries
+    // ============================================
+    const exists = await prisma.journal_entries.findFirst({
+      where: {
+        reference_id: payment.id,
+        reference_type: "outstanding_payment",
+        company_id: companyId,
+      },
+    });
+    if (exists) return;
+
+    // ============================================
+    // 2️⃣ Generate journal entry number
+    // ============================================
+    const year = new Date().getFullYear().toString();
+    const nextSeqRaw: { next_number: number }[] = await prisma.$queryRawUnsafe(`
+    SELECT COALESCE(
+      MAX(
+        CASE
+          WHEN SPLIT_PART(entry_number, '-', 3) ~ '^[0-9]+$'
+          THEN CAST(SPLIT_PART(entry_number, '-', 3) AS INT)
+          ELSE NULL
+        END
+      ),
+      0
+    ) + 1 AS next_number
+    FROM journal_entries
+    WHERE entry_number LIKE 'JE-${year}-%'
+  `);
+
+    const seq = String(nextSeqRaw[0]?.next_number || 1).padStart(7, "0");
+    const entryBase = `JE-${year}-${seq}-${Math.floor(Math.random() * 1000)}`;
+
+    // ============================================
+    // 3️⃣ Fetch customer
+    // ============================================
+    const customer = await prisma.customer.findUnique({
+      where: { id: customerId, companyId },
+      select: { name: true },
+    });
+
+    // ============================================
+    // 4️⃣ Fetch account mappings
+    // ============================================
+    const mappings = await prisma.account_mappings.findMany({
+      where: { company_id: companyId, is_default: true },
+    });
+
+    const getAcc = (type: string) =>
+      mappings.find((m) => m.mapping_type === type)?.account_id;
+
+    const cashAcc = getAcc("cash");
+    const bankAcc = getAcc("bank");
+    const arAcc = getAcc("accounts_receivable");
+
+    if (!arAcc || (!cashAcc && !bankAcc)) return;
+
+    const debitAccount = paymentMethod === "cash" ? cashAcc : bankAcc;
+
+    if (!debitAccount) return;
+
+    // ============================================
+    // 5️⃣ Build journal entries
+    // ============================================
+    const desc = `سداد مديونية عميل${
+      customer?.name ? " - " + customer.name : ""
+    }`;
+
+    const entries = [
+      // Debit: Cash / Bank
+      {
+        company_id: companyId,
+        account_id: debitAccount,
+        description: desc,
+        debit: amount,
+        credit: 0,
+        fiscal_period: fy.period_name,
+        entry_date: new Date(),
+        reference_id: payment.id,
+        reference_type: "مديونية",
+        entry_number: `${entryBase}-D`,
+        created_by: cashierId,
+        is_automated: true,
+      },
+
+      // Credit: Accounts Receivable
+      {
+        company_id: companyId,
+        account_id: arAcc,
+        description: desc,
+        debit: 0,
+        credit: amount,
+        fiscal_period: fy.period_name,
+        entry_date: new Date(),
+        reference_id: customerId,
+        reference_type: "سداد",
+        entry_number: `${entryBase}-C`,
+        created_by: cashierId,
+        is_automated: true,
+      },
+    ];
+
+    // ============================================
+    // 6️⃣ Insert journal entries
+    // ============================================
+    await prisma.journal_entries.createMany({ data: entries });
+
+    // ============================================
+    // 7️⃣ Update account balances
+    // ============================================
+    await Promise.all(
+      entries.map((e) =>
+        prisma.accounts.update({
+          where: { id: e.account_id, company_id: companyId },
+          data: {
+            balance: { increment: Number(e.debit) - Number(e.credit) },
+          },
+        }),
+      ),
+    );
+
+    console.log("Outstanding payment journal created:", payment.id);
+  } catch (err) {
+    console.error("Error in createOutstandingPaymentJournalEntries:", err);
+  }
+}
+
 async function createCustomerJournalEnteries({
   customerId,
   companyId,
   outstandingBalance = 0,
-  balance = 0, // رصيد لصالح العميل (سلف / مبالغ مدفوعة مقدماً)
+  balance = 0,
   createdBy,
 }: {
   customerId: string;
@@ -649,6 +805,8 @@ async function createCustomerJournalEnteries({
   balance?: number;
   createdBy: string;
 }) {
+  const fy = await getActiveFiscalYears();
+  if (!fy) return;
   // 1️⃣ fetch account mappings
   const mappings = await prisma.account_mappings.findMany({
     where: { company_id: companyId, is_default: true },
@@ -657,24 +815,24 @@ async function createCustomerJournalEnteries({
   const getAcc = (type: string) =>
     mappings.find((m) => m.mapping_type === type)?.account_id;
 
-  const ar = getAcc("accounts_receivable"); // العملاء (مدينون)
-  const payable = getAcc("accounts_payable"); // دائنون (رصيد لصالح العميل)
+  const ar = getAcc("accounts_receivable");
 
-  if (!ar || !payable) {
-    throw new Error("Missing account mappings for customers");
+  if (!ar) {
+    throw new Error("Missing accounts_receivable mapping");
   }
 
-  // 2️⃣ entry number base
+  // 2️⃣ entry number
   const year = new Date().getFullYear();
   const seq = Date.now().toString().slice(-6);
-  const entryBase = `${year}-${seq}-CUST`;
+  const entryBase = `JE-${year}-${seq}-CUST`;
 
-  const desc = `الرصيد الافتتاحي للعميل`;
+  const desc = "الرصيد الافتتاحي للعميل";
 
   const entries: any[] = [];
+  let arDelta = 0; // 🔥 التغيير الصافي على حساب العملاء
 
   // ==============================
-  // 1️⃣ العميل عليه دين (outstandingBalance)
+  // 1️⃣ العميل عليه دين
   // ==============================
   if (outstandingBalance > 0) {
     entries.push({
@@ -683,17 +841,20 @@ async function createCustomerJournalEnteries({
       description: desc,
       debit: outstandingBalance,
       credit: 0,
+      fiscal_period: fy.period_name,
       entry_date: new Date(),
       reference_id: customerId,
-      reference_type: "رصيد افتتاحي عميل",
-      entry_number: `${entryBase}-1`,
+      reference_type: "opening_customer_balance",
+      entry_number: `${entryBase}-D`,
       created_by: createdBy,
       is_automated: true,
     });
+
+    arDelta += outstandingBalance; // ↑ AR
   }
 
   // ==============================
-  // 2️⃣ لديك رصيد لصالح العميل (balance)
+  // 2️⃣ رصيد لصالح العميل (سلفة)
   // ==============================
   if (balance > 0) {
     entries.push({
@@ -703,18 +864,33 @@ async function createCustomerJournalEnteries({
       debit: 0,
       credit: balance,
       entry_date: new Date(),
+      fiscal_period: fy.period_name,
       reference_id: customerId,
-      reference_type: "رصيد افتتاحي عميل",
-      entry_number: `${entryBase}-2`,
+      reference_type: "opening_customer_balance",
+      entry_number: `${entryBase}-C`,
       created_by: createdBy,
       is_automated: true,
     });
+
+    arDelta -= balance; // ↓ AR
   }
 
-  if (entries.length === 0)
+  if (entries.length === 0) {
     return { success: true, msg: "No opening balance detected" };
+  }
 
-  await prisma.journal_entries.createMany({ data: entries });
+  // 3️⃣ transaction (journal + account update)
+  await prisma.$transaction([
+    prisma.journal_entries.createMany({ data: entries }),
+    prisma.accounts.update({
+      where: { id: ar, company_id: companyId },
+      data: {
+        balance: {
+          increment: arDelta,
+        },
+      },
+    }),
+  ]);
 
   return { success: true };
 }

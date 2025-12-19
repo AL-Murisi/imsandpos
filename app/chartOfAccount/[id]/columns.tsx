@@ -16,18 +16,19 @@ interface JournalEntryData {
   is_posted: boolean;
   is_automated: boolean;
   reference_type: string | null;
-  reference_id: string | null;
-  fiscal_period: string | null;
-  posted_by: string;
-  users_journal_entries_created_byTousers: {
+  reference_id?: string | null;
+  fiscal_period?: string | null;
+
+  posted_by?: { id: string; name: string; email: string } | null;
+  updatedBy?: { name: string; email?: string } | null;
+  users_journal_entries_created_byTousers?: {
     name: string;
-  };
-  users_journal_entries_updated_byTousers: {
-    name: string;
-  };
+    email?: string;
+  } | null;
+
   accounts: {
-    account_code: string | null;
-    account_name_ar: string | null;
+    account_code?: string | null;
+    account_name_ar?: string | null;
     account_name_en: string;
   };
 }
@@ -133,7 +134,7 @@ export const columns: ColumnDef<JournalEntryData>[] = [
     ),
     cell: ({ row }) => {
       const postedBy = row.original.posted_by;
-      return <span>{postedBy || "—"}</span>;
+      return <span>{postedBy?.name || "—"}</span>;
     },
   },
   {
@@ -153,12 +154,10 @@ export const columns: ColumnDef<JournalEntryData>[] = [
       <SortableHeader column={column} label="آخر تعديل بواسطة" />
     ),
     cell: ({ row }) => {
-      const updatedBy =
-        row.original.users_journal_entries_updated_byTousers?.name;
-      return <span>{updatedBy || "—"}</span>;
+      const updatedBy = row.original.updatedBy;
+      return <span>{updatedBy?.name || "—"}</span>;
     },
   },
-
   {
     accessorKey: "description",
     header: ({ column }) => <SortableHeader column={column} label="الوصف" />,
