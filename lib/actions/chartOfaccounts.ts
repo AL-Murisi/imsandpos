@@ -52,7 +52,7 @@ function serializeData<T>(data: T): T {
   return plainObj;
 }
 // Get current user's company
-async function getUserCompany() {
+export async function getUserCompany() {
   const session = await getSession();
   if (!session?.userId) throw new Error("Unauthorized");
 

@@ -8,6 +8,7 @@ export * from "./brand";
 export * from "./supplier";
 export * from "./inventory";
 export * from "./customer";
+export * from "./banks";
 // import { Warehouse } from "lucide-react";
 // import { file, z } from "zod";
 // export const productSchema = z.object({

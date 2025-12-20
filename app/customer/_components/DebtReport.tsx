@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { payOutstandingOnly, updateSalesBulk } from "@/lib/actions/debtSells";
 import { Label } from "@/components/ui/label";
 import { SelectField } from "@/components/common/selectproduct";
+import { Fetchbanks } from "@/lib/actions/banks";
 
 interface Debt {
   id: string;
@@ -54,8 +55,32 @@ export default function DebtReport({
   const t = useTranslations("debt");
   const { user } = useAuth();
   const { formatCurrency } = useFormatter();
+  const [transferNumber, setTransferNumber] = useState("");
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   if (!user) return null;
+
+  const [banks, setBanks] = useState<{ id: string; name: string }[]>([]);
+  const [selectedBankId, setSelectedBankId] = useState("");
+  useEffect(() => {
+    if (paymentMethod !== "bank" || !open) {
+      setBanks([]);
+      setSelectedBankId("");
+      return;
+    }
+
+    const loadBanks = async () => {
+      try {
+        const result = await Fetchbanks();
+        setBanks(result);
+      } catch (err) {
+        console.error(err);
+        toast.error("فشل في جلب البنوك");
+      }
+    };
+
+    loadBanks();
+  }, [open, paymentMethod]);
 
   useEffect(() => {
     if (!open) return;
@@ -127,6 +152,10 @@ export default function DebtReport({
         paymentAmount,
         user.userId,
         paymentMethod,
+        {
+          bankId: selectedBankId,
+          transferNumber,
+        },
       );
 
       toast.success("تم سداد الرصيد المستحق بنجاح!");
@@ -160,6 +189,11 @@ export default function DebtReport({
       setIsSubmitting(false);
       return;
     }
+    if (paymentMethod === "bank" && !selectedBankId) {
+      toast.error("يرجى اختيار البنك");
+      setIsSubmitting(false);
+      return;
+    }
 
     try {
       await updateSalesBulk(
@@ -168,6 +202,10 @@ export default function DebtReport({
         paymentAmount,
         user.userId,
         paymentMethod,
+        {
+          bankId: selectedBankId,
+          transferNumber,
+        },
       );
       toast.success("تم تطبيق الدفعة بنجاح!");
       setPaymentAmount(0);
@@ -270,20 +308,18 @@ export default function DebtReport({
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
         </div>
-
+        <p className="text-lg font-bold">
+          {t("totalOutstanding") || "Total Outstanding"}:{" "}
+          {formatCurrency(totalRemaining)}
+        </p>
+        <p className="text-muted-foreground text-sm">
+          الرصيد الإجمالي غير المرتبط بفواتير:
+          <span className="mr-2 font-semibold text-red-600">
+            {formatCurrency(outstandingBalance)}
+          </span>
+        </p>
         {/* Footer */}
-        <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-lg font-bold">
-            {t("totalOutstanding") || "Total Outstanding"}:{" "}
-            {formatCurrency(totalRemaining)}
-          </p>
-          <p className="text-muted-foreground text-sm">
-            الرصيد الإجمالي غير المرتبط بفواتير:
-            <span className="mr-2 font-semibold text-red-600">
-              {formatCurrency(outstandingBalance)}
-            </span>
-          </p>
-
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:items-center sm:justify-between md:grid-cols-2">
           <div className="grid gap-2">
             <Label>طريقة الدفع</Label>
             <SelectField
@@ -293,44 +329,63 @@ export default function DebtReport({
               action={(val) => setPaymentMethod(val)}
             />
           </div>
-          <div className="flex items-center gap-2">
-            <Input
-              type="number"
-              placeholder="المبلغ المدفوع"
-              value={paymentAmount}
-              onChange={(e) =>
-                setPaymentAmount(parseFloat(e.target.value) || 0)
-              }
-              className="w-32"
-            />
-            {/* <Button
+          {/* Bank fields */}
+          {paymentMethod === "bank" && (
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="grid gap-3">
+                <Label>البنك</Label>
+                <SelectField
+                  options={banks}
+                  value={selectedBankId}
+                  placeholder="اختر البنك"
+                  action={(val) => setSelectedBankId(val)}
+                />
+              </div>
+              <div className="grid gap-3">
+                <Label>رقم الحوالة / التحويل</Label>
+                <Input
+                  value={transferNumber}
+                  onChange={(e) => setTransferNumber(e.target.value)}
+                  placeholder="مثال: TRX-458796"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="grid grid-cols-1 gap-2 py-3 md:grid-cols-2">
+          <Input
+            type="number"
+            placeholder="المبلغ المدفوع"
+            value={paymentAmount}
+            onChange={(e) => setPaymentAmount(parseFloat(e.target.value) || 0)}
+            className="w-32"
+          />
+          {/* <Button
               onClick={onSubmit}
               type="submit"
               disabled={isSubmitting || loading}
             >
               {isSubmitting ? "جاري الحفظ..." : " تأكيد الدفع"}
             </Button> */}
-            <div className="flex gap-2">
-              {/* Pay selected invoices */}
-              <Button
-                onClick={onSubmit}
-                disabled={isSubmitting || loading || selectedIds.length === 0}
-              >
-                تسديد الفواتير المحددة
-              </Button>
+          <div className="grid grid-cols-2 gap-2">
+            {/* Pay selected invoices */}
+            <Button
+              onClick={onSubmit}
+              disabled={isSubmitting || loading || selectedIds.length === 0}
+            >
+              تسديد الفواتير المحددة
+            </Button>
 
-              {/* Pay outstanding without invoice */}
-              <Button
-                variant="secondary"
-                onClick={onSubmitOutstandingOnly}
-                disabled={isSubmitting || loading || outstandingBalance <= 0}
-              >
-                تسديد الرصيد فقط
-              </Button>
-            </div>
+            {/* Pay outstanding without invoice */}
+            <Button
+              variant="secondary"
+              onClick={onSubmitOutstandingOnly}
+              disabled={isSubmitting || loading || outstandingBalance <= 0}
+            >
+              تسديد الرصيد فقط
+            </Button>
           </div>
         </div>
-
         <div className="mt-6 text-right">
           <p>{user?.name}</p>
           <p>________________________</p>

@@ -479,7 +479,7 @@ async function createPaymentJournalEntries({
   cashierId: string;
 }) {
   try {
-    const { saleId, customerId, amount } = payment;
+    const { saleId, customerId, amount, paymentDetails } = payment;
     const fy = await getActiveFiscalYears();
     if (!fy) return;
     // ============================================
@@ -543,16 +543,18 @@ async function createPaymentJournalEntries({
 
     const cashAcc = getAcc("cash");
     const arAcc = getAcc("accounts_receivable");
-    const bank = getAcc("bank");
 
-    if (!cashAcc || !arAcc) return;
+    const bank = paymentDetails?.bankId || getAcc("bank");
+
+    if (!cashAcc || !arAcc || (payment.paymentMethod === "bank" && !bank)) {
+      console.error("Missing account mappings");
+      return;
+    }
 
     // ============================================
     // 5️⃣ Prepare journal entries
     // ============================================
-    const desc = `دفعة دين لعملية بيع رقم ${sale.saleNumber}${
-      sale.customerId ? " - " + sale.customer?.name : ""
-    }`;
+    const desc = `تسديد دين لعملية بيع ${sale.saleNumber}`;
 
     let entries: any[] = [];
     if (payment.paymentMethod === "cash") {
@@ -591,7 +593,11 @@ async function createPaymentJournalEntries({
         {
           company_id: companyId,
           account_id: bank,
-          description: desc,
+          description:
+            "رقم التحويل : " +
+            paymentDetails.transferNumber +
+            "من: " +
+            sale.customer?.name,
           debit: amount,
           credit: 0,
           fiscal_period: fy.period_name,
@@ -605,7 +611,7 @@ async function createPaymentJournalEntries({
         {
           company_id: companyId,
           account_id: arAcc,
-          description: desc,
+          description: desc + "رقم التحويل : " + paymentDetails.transferNumber,
           debit: 0,
           fiscal_period: fy.period_name,
           credit: amount,
@@ -996,6 +1002,7 @@ async function createExpenseJournalEntries({
     paymentMethod: string;
     referenceNumber?: string;
     description: string;
+    bankId?: string;
     expenseDate: Date;
   };
   userId: string;
@@ -1009,7 +1016,7 @@ async function createExpenseJournalEntries({
     mappings.find((m) => m.mapping_type === type)?.account_id;
 
   const cash = requireAccount(getAcc("cash"), "cash");
-  const bank = requireAccount(getAcc("bank"), "bank");
+  const bank = expense.bankId ?? requireAccount(getAcc("bank"), "bank");
   const payable = requireAccount(
     getAcc("accounts_payable"),
     "accounts_payable",

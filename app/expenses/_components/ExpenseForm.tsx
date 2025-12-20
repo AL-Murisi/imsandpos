@@ -8,9 +8,11 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/context/AuthContext";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { Fetchbanks } from "@/lib/actions/banks";
+import { Label } from "@/components/ui/label";
 
 interface ExpenseFormInput {
   account_id: string;
@@ -18,7 +20,8 @@ interface ExpenseFormInput {
   amount: string;
   expense_date: string;
   paymentMethod: string;
-  referenceNumber: string;
+  referenceNumber?: string;
+  bankId?: string;
   notes?: string;
 }
 
@@ -47,9 +50,45 @@ export default function ExpenseForm({
     setError,
   } = useForm<ExpenseFormInput>();
   const { user } = useAuth();
+  const [banks, setBanks] = useState<{ id: string; name: string }[]>([]);
+  const [selectedBankId, setSelectedBankId] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("");
+
   if (!user) return;
 
+  useEffect(() => {
+    if (paymentMethod !== "bank" || !open) {
+      setBanks([]);
+      setSelectedBankId("");
+      return;
+    }
+
+    const loadBanks = async () => {
+      try {
+        const result = await Fetchbanks();
+        setBanks(result);
+      } catch (err) {
+        console.error(err);
+        toast.error("فشل في جلب البنوك");
+      }
+    };
+
+    loadBanks();
+  }, [open, paymentMethod]);
+
   const onSubmit = (values: ExpenseFormInput) => {
+    if (!paymentMethod) {
+      toast.error("يرجى اختيار طريقة الدفع.");
+      return;
+    }
+    if (!selectedBankId && paymentMethod === "bank") {
+      toast.error("يرجى اختيار البنك.");
+      return;
+    }
+    if (!values.account_id) {
+      toast.error("يرجى اختيار فئة المصروف.");
+      return;
+    }
     const parsedAmount = Number(values.amount);
 
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
@@ -63,8 +102,9 @@ export default function ExpenseForm({
     startTransition(async () => {
       const payload = {
         ...values,
-
+        paymentMethod: paymentMethod,
         amount: parsedAmount,
+        bankId: selectedBankId,
         expense_date: new Date(),
       };
 
@@ -83,7 +123,7 @@ export default function ExpenseForm({
   // ✅ Inside onSubmit: just close dialog on success
   const paymentMethods = [
     { id: "cash", name: "نقداً" },
-    { id: "bank_transfer", name: "تحويل بنكي" },
+    { id: "bank", name: "تحويل بنكي" },
     { id: "check", name: "شيك" },
     { id: "credit", name: "ائتمان" },
   ];
@@ -127,11 +167,12 @@ export default function ExpenseForm({
             <label className="mb-2 block text-sm font-medium text-gray-200">
               فئة المصروف
             </label>
-
             <SelectField
               options={categories}
               value={account_id}
-              action={(val) => setValue("account_id", val)}
+              action={(val) => {
+                setValue("account_id", val, { shouldValidate: true }); // Trigger validation on change
+              }}
               placeholder="اختر الفئة"
             />
 
@@ -205,46 +246,49 @@ export default function ExpenseForm({
             <label className="mb-2 block text-sm font-medium text-gray-200">
               طريقة الدفع
             </label>
-            <Controller
-              name="paymentMethod"
-              control={control}
-              rules={{ required: "يرجى تحديد طريقة الدفع" }}
-              render={({ field }) => (
+
+            <SelectField
+              options={paymentMethods}
+              value={paymentMethod}
+              action={(val) => setPaymentMethod(val)}
+              placeholder="اختر طريقة الدفع"
+            />
+          </div>
+
+          {paymentMethod === "bank" && (
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="grid gap-3">
+                <Label>البنك</Label>
                 <SelectField
-                  options={paymentMethods}
-                  value={field.value}
-                  action={field.onChange}
-                  placeholder="اختر طريقة الدفع"
+                  options={banks}
+                  value={selectedBankId}
+                  action={(val) => {
+                    setSelectedBankId(val);
+                    // If you want to track bankId in the form state:
+                    setValue("bankId", val, { shouldValidate: true });
+                  }}
+                  placeholder="اختر البنك"
                 />
-              )}
-            />
-            {errors.paymentMethod && (
-              <p className="mt-1 text-xs text-red-400">
-                {errors.paymentMethod.message}
-              </p>
-            )}
-          </div>
-
-          {/* Reference Number */}
-          <div>
-            <label className="mb-2 block text-sm font-medium text-gray-200">
-              رقم المرجع (رقم الفاتورة)
-            </label>
-            <Input
-              type="text"
-              placeholder="أدخل رقم الفاتورة أو المرجع"
-              {...register("referenceNumber", {
-                required: "يرجى إدخال رقم المرجع",
-              })}
-              className="border-gray-700 bg-gray-800 text-gray-100 placeholder-gray-500"
-            />
-            {errors.referenceNumber && (
-              <p className="mt-1 text-xs text-red-400">
-                {errors.referenceNumber.message}
-              </p>
-            )}
-          </div>
-
+              </div>
+              <div className="grid gap-3">
+                <label className="mb-2 block text-sm font-medium text-gray-200">
+                  رقم المرجع (رقم الفاتورة)
+                </label>
+                <Input
+                  type="text"
+                  placeholder="أدخل رقم الفاتورة أو المرجع"
+                  {...register("referenceNumber", {
+                    // CONDITIONAL VALIDATION: Required only if paymentMethod is "bank"
+                    required:
+                      paymentMethod === "bank"
+                        ? "يرجى إدخال رقم المرجع للحوالة البنكية"
+                        : false,
+                  })}
+                  className="border-gray-700 bg-gray-800 text-gray-100 placeholder-gray-500"
+                />
+              </div>{" "}
+            </div>
+          )}
           {/* Notes */}
           <div>
             <label className="mb-2 block text-sm font-medium text-gray-200">

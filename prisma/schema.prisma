@@ -628,7 +628,8 @@ model accounts {
   @@index([parent_id])
   @@index([account_type])
   @@index([is_active])
-}model Bank {
+}
+model Bank {
   id            String   @id @default(cuid())
   companyId     String   @map("company_id")
   name          String
@@ -636,7 +637,6 @@ model accounts {
   iban          String?
   swiftCode     String?  @map("swift_code")
   accountNumber String? @map("account_number")
-  currencyCode  String  @default("USD")
   isActive      Boolean @default(true)
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")

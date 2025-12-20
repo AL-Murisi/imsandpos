@@ -244,7 +244,8 @@ export async function createExpense(
     amount: number;
     expense_date: Date;
     paymentMethod: string;
-    referenceNumber: string;
+    referenceNumber?: string;
+    bankId?: string;
     notes?: string;
   },
 ) {
@@ -305,6 +306,7 @@ export async function createExpense(
             referenceNumber: data.referenceNumber,
             description: data.description,
             expenseDate: data.expense_date,
+            bankId: data.bankId ?? "",
           },
           userId,
         },
