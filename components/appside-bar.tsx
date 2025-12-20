@@ -3,6 +3,7 @@
 
 import { useCompany } from "@/hooks/useCompany"; // adjust if different path
 import {
+  Banknote,
   BarChart3,
   Building2,
   ChevronDown,
@@ -165,11 +166,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       icon: () => <User className="h-4 w-4 text-sky-500" />,
       roles: ["admin"],
     },
-
     {
-      title: t("cashierMain"),
-      url: "/sells",
-      icon: () => <ShoppingCart className="text-blue-500" />,
+      title: t("customer"),
+      url: "/customer",
+      icon: () => <User className="h-4 w-4 text-sky-500" />,
+      roles: ["admin"],
+    },
+    {
+      title: "البنوك",
+      url: "/banks",
+      icon: () => <Banknote className="text-blue-500" />,
       roles: ["cashier"],
     },
 
