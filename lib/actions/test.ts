@@ -503,3 +503,90 @@ export async function getSupplierStatement(
     return { success: false, error: "خطأ في جلب كشف الحساب" };
   }
 }
+export async function getBankStatement(
+  id: string,
+  companyId: string,
+  dateFrom: string,
+  dateTo: string,
+) {
+  try {
+    const fromDate = new Date(dateFrom);
+    const toDate = new Date(dateTo);
+    toDate.setHours(23, 59, 59, 999);
+
+    // 1️⃣ جلب حساب المدينون
+
+    const bank = await prisma.bank.findFirst({
+      where: { accountId: id, companyId },
+      select: {
+        id: true,
+        name: true,
+        accountNumber: true,
+        account: { select: { opening_balance: true } },
+      },
+    });
+
+    if (!bank) {
+      return { success: false, error: "المورد غير موجود" };
+    }
+
+    // 2️⃣ الرصيد الافتتاحي قبل الفترة
+
+    const openingBalance = bank.account.opening_balance
+      ? Number(bank.account.opening_balance)
+      : 0;
+    // 3️⃣ قيود الفترة
+    const entries = await prisma.journal_entries.findMany({
+      where: {
+        company_id: companyId,
+        account_id: id,
+        entry_date: { gte: fromDate, lte: toDate },
+      },
+      orderBy: { entry_date: "asc" },
+      select: {
+        id: true,
+        entry_date: true,
+        debit: true,
+        credit: true,
+        description: true,
+        entry_number: true,
+        reference_type: true,
+      },
+    });
+
+    // 4️⃣ بناء كشف الحساب
+    let runningBalance = openingBalance;
+    const transactions = entries.map((entry) => {
+      runningBalance =
+        runningBalance + Number(entry.debit) - Number(entry.credit);
+
+      return {
+        date: entry.entry_date,
+        debit: Number(entry.debit),
+        credit: Number(entry.credit),
+        balance: runningBalance,
+        description: entry.description,
+        docNo: entry.entry_number,
+        typeName: mapType(entry.reference_type),
+      };
+    });
+    const totalDebit = transactions.reduce((s, t) => s + t.debit, 0);
+    const totalCredit = transactions.reduce((s, t) => s + t.credit, 0);
+
+    return {
+      success: true,
+      data: {
+        bank: serializeData(bank),
+        openingBalance,
+        closingBalance: openingBalance + totalDebit - totalCredit,
+        totalDebit,
+        totalCredit,
+        transactions,
+        period: { from: dateFrom, to: dateTo },
+      },
+    };
+  } catch (error) {
+    console.error("Error loading journal-based statement:", error);
+    return { success: false, error: "خطأ في جلب كشف الحساب" };
+  }
+}

@@ -7,7 +7,9 @@ import { getTranslations } from "next-intl/server";
 import dynamic from "next/dynamic";
 import List from "./productListing";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { setProductsLocal } from "@/lib/slices/productsSlice";
+import { useAppDispatch } from "@/lib/store";
 
 type forsale = ProductForSale & {
   warehousename: string;
@@ -38,7 +40,10 @@ export default function ProductsList({
   const [selectedproduct, setSelectedproduct] = useState<UserOption | null>(
     null,
   );
-
+  const dispatch = useAppDispatch();
+  useEffect(() => {
+    dispatch(setProductsLocal([...product]));
+  }, [product, dispatch]); // Only runs when products change
   return (
     <div className="rounded-2xl p-2 lg:col-span-1">
       <div className="mb-4 grid grid-cols-2 gap-3 bg-transparent px-3 lg:flex-row">
@@ -64,9 +69,7 @@ export default function ProductsList({
       </div>
       <List
         product={product}
-        formData={formData}
-        queryr={queryr || (selectedproduct ? selectedproduct.name || "" : "")}
-        searchParams={undefined}
+        // queryr={queryr || (selectedproduct ? selectedproduct.name || "" : "")}
       />
     </div>
   );

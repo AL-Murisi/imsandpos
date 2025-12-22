@@ -78,6 +78,8 @@ export function FormatPrice(price: number): string {
   if (price >= 1000) {
     const formattedPrice = (price / 1000).toFixed(1).replace(/\.0$/, "");
     return `${formattedPrice}الف`;
+  } else {
+    return price.toFixed(2);
   }
   return price.toString();
 }

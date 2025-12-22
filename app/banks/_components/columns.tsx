@@ -3,12 +3,12 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Power, Trash2 } from "lucide-react";
+import { Clock, Power, Trash2 } from "lucide-react";
 // import { toggleBankStatus, deleteBank } from "@/lib/actions/banks";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import BankFormDialog from "./form";
-
+import { useRouter } from "next/navigation";
 export type BankRow = {
   id: string;
   name: string;
@@ -19,6 +19,7 @@ export type BankRow = {
   currencyCode: string;
   isActive: boolean;
   account: {
+    id: string;
     account_code: string;
     account_name_ar: string | null;
     account_name_en: string;
@@ -71,12 +72,23 @@ export const bankColumns: ColumnDef<BankRow>[] = [
     id: "actions",
     header: "إجراءات",
     cell: ({ row }) => {
+      const bank = row.original;
       const [pending, startTransition] = useTransition();
-
+      const [isLoading, setIsLoading] = useState(false);
+      const router = useRouter();
       return (
         <div className="flex gap-2">
           <BankFormDialog bank={row.original} mode="edit" />
-
+          <Button
+            disabled={isLoading}
+            onClick={() => {
+              setIsLoading(true);
+              router.push(`/banks/${bank.account.id}`);
+            }}
+          >
+            {isLoading && <Clock className="h-4 w-4 animate-spin" />}
+            {isLoading ? "جاري الفتح..." : "كشف حساب"}
+          </Button>
           {/* <Button
             variant="ghost"
             size="icon"

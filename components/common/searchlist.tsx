@@ -29,6 +29,7 @@ interface UserOption {
 type SearchInputProps = {
   placeholder: string;
   paramKey: string;
+  value?: string;
   options: UserOption[];
   action: (users: UserOption) => void;
 };
@@ -36,6 +37,7 @@ type SearchInputProps = {
 export default function SearchInput({
   placeholder,
   paramKey,
+  value,
   options,
   action,
 }: SearchInputProps) {
@@ -72,7 +74,7 @@ export default function SearchInput({
               "border-primary flex w-full cursor-pointer items-center justify-between rounded-md border px-3 py-2 text-sm shadow-sm",
             )}
           >
-            <span>{placeholder}</span>
+            {value ? <span>{value}</span> : <span>{placeholder}</span>}
             <ChevronDown className="text-muted-foreground h-4 w-4" />
           </Button>
         </div>

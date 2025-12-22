@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/select";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { FormatPrice } from "@/hooks/usePrice";
+import { updateProductStockOptimistic } from "@/lib/slices/productsSlice";
+import { useAppDispatch } from "@/lib/store";
 import { ProductForSale } from "@/lib/zod";
 import { Minus, Plus, Trash2Icon } from "lucide-react";
 import { memo, useCallback } from "react";
@@ -94,6 +96,7 @@ export const CartItemRow = memo(
     onRemove: (id: string) => void;
     t: any;
   }) => {
+    const dispatch = useAppDispatch();
     const itemPrice =
       item.sellingUnit === "unit"
         ? (item.pricePerUnit ?? 0)
@@ -127,7 +130,17 @@ export const CartItemRow = memo(
         <TableCell>
           <button
             disabled={item.selectedQty <= 1}
-            onClick={() => onUpdateQty(item.id, item.sellingUnit, 1, "mins")}
+            onClick={() => {
+              dispatch(
+                updateProductStockOptimistic({
+                  productId: item.id,
+                  sellingUnit: item.sellingUnit,
+                  quantity: 1,
+                  mode: "restore", // 👈 نحدد الاتجاه
+                }),
+              );
+              onUpdateQty(item.id, item.sellingUnit, 1, "mins");
+            }}
             className="bg-primary text-background rounded p-1 disabled:bg-gray-400"
           >
             <Minus size={16} />
@@ -143,7 +156,17 @@ export const CartItemRow = memo(
           />
           <button
             disabled={item.selectedQty >= maxQty}
-            onClick={() => onUpdateQty(item.id, item.sellingUnit, 1, "plus")}
+            onClick={() => {
+              dispatch(
+                updateProductStockOptimistic({
+                  productId: item.id,
+                  sellingUnit: item.sellingUnit,
+                  quantity: 1,
+                  mode: "consume",
+                }),
+              );
+              onUpdateQty(item.id, item.sellingUnit, 1, "plus");
+            }}
             className="bg-primary text-background rounded p-1 disabled:bg-gray-400"
           >
             <Plus size={16} />
@@ -318,5 +341,7 @@ export const ProductCard = memo(
   },
   (prev, next) =>
     prev.product.id === next.product.id &&
-    prev.product.availableCartons === next.product.availableCartons,
+    prev.product.availableCartons === next.product.availableCartons &&
+    prev.product.availablePackets === next.product.availablePackets &&
+    prev.product.availableUnits === next.product.availableUnits,
 );

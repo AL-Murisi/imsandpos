@@ -53,7 +53,12 @@ const createDateFilter = (fromDate?: string, toDate?: string) => ({
 export async function POST(req: NextRequest, context: RouteContext) {
   try {
     const { reportType } = await context.params;
-    const { from: rawFrom, to: rawTo, customerId } = await req.json();
+    const {
+      from: rawFrom,
+      to: rawTo,
+      customerId,
+      accountId,
+    } = await req.json();
 
     const fromDate = rawFrom ? new Date(rawFrom).toISOString() : undefined;
     const toDate = rawTo ? new Date(rawTo).toISOString() : undefined;
@@ -973,15 +978,103 @@ export async function POST(req: NextRequest, context: RouteContext) {
         };
         break;
       }
+      case "bank-statment": {
+        templateFile = "bank_statment.html";
+
+        // 1️⃣ جلب العملاء (عميل واحد أو الجميع)
+        const accountid = accountId;
+        const bank = await prisma.bank.findFirst({
+          where: { accountId: accountId, companyId: user.companyId },
+          select: {
+            id: true,
+            name: true,
+            accountNumber: true,
+            accountId: true,
+            account: { select: { opening_balance: true } },
+          },
+        });
+
+        if (!bank) {
+          return { success: false, error: "المورد غير موجود" };
+        }
+
+        // 2️⃣ تجهيز كشف حساب لكل عميل
+        const customerStatements = [];
+        for (const c of bank ? [bank] : []) {
+          // رصيد افتتاحي
+
+          // قيود الفترة
+          const entries = await prisma.journal_entries.findMany({
+            where: {
+              company_id: user.companyId,
+              account_id: bank.accountId,
+              entry_date: { gte: fromDate, lte: toDate },
+            },
+            orderBy: { entry_date: "asc" },
+            select: {
+              id: true,
+              entry_date: true,
+              debit: true,
+              credit: true,
+              description: true,
+              entry_number: true,
+              reference_type: true,
+            },
+          });
+
+          // بناء كشف الحساب
+          let runningBalance: number = 0;
+          const transactions = entries.map((entry) => {
+            runningBalance =
+              runningBalance + Number(entry.debit) - Number(entry.credit);
+
+            return {
+              date: entry.entry_date?.toLocaleDateString("ar-EG"),
+              debit: Number(entry.debit),
+              credit: Number(entry.credit),
+              balance: runningBalance.toFixed(2),
+              description: entry.description,
+              docNo: entry.entry_number,
+              typeName: mapType(entry.reference_type),
+            };
+          });
+
+          const totalDebit = transactions.reduce((s, t) => s + t.debit, 0);
+          const totalCredit = transactions.reduce((s, t) => s + t.credit, 0);
+          const closingBalance = Math.abs(totalDebit - totalCredit);
+
+          customerStatements.push({
+            bank: c,
+
+            closingBalance: closingBalance.toFixed(2),
+            totalDebit: totalDebit.toFixed(2),
+            totalCredit: totalCredit.toFixed(2),
+            transactions,
+            period: { from: fromDisplay, to: toDisplay },
+          });
+        }
+        // 3️⃣ إخراج التقرير
+        data = {
+          bank: customerStatements,
+          period: { from: fromDisplay, to: toDisplay },
+          ...baseData,
+        };
+
+        break;
+      }
 
       default:
         return new Response(JSON.stringify({ error: "Invalid report type" }), {
           status: 400,
         });
     }
-    console.log(data);
+
     /* ==================== PDF GENERATION ==================== */
-    const templatePath = path.join(process.cwd(), "templates", templateFile);
+    const templatePath = path.join(
+      process.cwd(),
+      "public/templates",
+      templateFile,
+    );
     const htmlTemplate = fs.readFileSync(templatePath, "utf8");
     const template = Handlebars.compile(htmlTemplate);
     const html = template(data);

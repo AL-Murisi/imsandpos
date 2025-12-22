@@ -213,6 +213,13 @@ const reports = [
     icon: "💰",
     description: "مدفوعات العملاء",
   },
+  {
+    name: "  كشف حساب بنكي ",
+    id: "bank-statment",
+    type: "payments",
+    icon: "💰",
+    description: "كشف حساب بنكي",
+  },
 ];
 
 const categories = [
@@ -256,6 +263,7 @@ const categories = [
 
 export default function ReportsPage({
   users,
+  banks,
 }: {
   users:
     | {
@@ -265,6 +273,7 @@ export default function ReportsPage({
         totalDebt?: number;
       }[]
     | null;
+  banks: any;
 }) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -276,8 +285,11 @@ export default function ReportsPage({
   const [fromDate, setFromDate] = useState<string>(
     searchParams.get("from") || "",
   );
+  const [progress, setProgress] = useState(0);
+
   const [toDate, setToDate] = useState<string>(searchParams.get("to") || "");
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
+  const [selectedbank, setSelectedbanks] = useState<any>(null);
   const [reportType, setReportType] = useState<string>(
     searchParams.get("reportType") || "",
   );
@@ -299,47 +311,91 @@ export default function ReportsPage({
     }
   }, [searchParams]);
 
+  // const handleDownload = useCallback(async () => {
+  //   if (!reportType) {
+  //     alert("الرجاء اختيار نوع التقرير");
+  //     return;
+  //   }
+
+  //   setIsSubmitting(true);
+  //   const endpoint = `/api/reports/${reportType}`;
+
+  //   try {
+  //     const res = await fetch(endpoint, {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({
+  //         fromDate,
+  //         toDate,
+  //         customerId: selectedCustomer?.id,
+  //         accountId: selectedbank?.id,
+  //       }),
+  //     });
+
+  //     if (!res.ok) {
+  //       const error = await res.json();
+  //       alert(`فشل تحميل التقرير: ${error.error || "خطأ غير معروف"}`);
+  //       setIsSubmitting(false);
+  //       return;
+  //     }
+
+  //     const blob = await res.blob();
+  //     const url = window.URL.createObjectURL(blob);
+  //     const a = document.createElement("a");
+  //     a.href = url;
+  //     a.download = `${reportType}-${format(new Date(), "yyyy-MM-dd")}.pdf`;
+  //     a.click();
+  //     window.URL.revokeObjectURL(url);
+  //     setIsSubmitting(false);
+  //   } catch (err) {
+  //     console.error(err);
+  //     setIsSubmitting(false);
+  //     alert("حدث خطأ أثناء تحميل التقرير");
+  //   }
+  // }, [reportType, fromDate, toDate, selectedCustomer]);
   const handleDownload = useCallback(async () => {
-    if (!reportType) {
-      alert("الرجاء اختيار نوع التقرير");
-      return;
-    }
+    if (!reportType) return;
 
     setIsSubmitting(true);
-    const endpoint = `/api/reports/${reportType}`;
+    setProgress(10);
+
+    const fakeInterval = setInterval(() => {
+      setProgress((p) => (p < 90 ? p + 10 : p));
+    }, 400);
 
     try {
-      const res = await fetch(endpoint, {
+      const res = await fetch(`/api/reports/${reportType}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           fromDate,
           toDate,
           customerId: selectedCustomer?.id,
+          accountId: selectedbank?.id,
         }),
       });
 
-      if (!res.ok) {
-        const error = await res.json();
-        alert(`فشل تحميل التقرير: ${error.error || "خطأ غير معروف"}`);
-        setIsSubmitting(false);
-        return;
-      }
+      if (!res.ok) throw new Error("Download failed");
 
       const blob = await res.blob();
+      setProgress(100);
+
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${reportType}-${format(new Date(), "yyyy-MM-dd")}.pdf`;
+      a.download = `${reportType}.pdf`;
       a.click();
       window.URL.revokeObjectURL(url);
-      setIsSubmitting(false);
-    } catch (err) {
-      console.error(err);
-      setIsSubmitting(false);
+    } catch (e) {
       alert("حدث خطأ أثناء تحميل التقرير");
+    } finally {
+      clearInterval(fakeInterval);
+      setTimeout(() => {
+        setIsSubmitting(false);
+        setProgress(0);
+      }, 600);
     }
-  }, [reportType, fromDate, toDate, selectedCustomer]);
+  }, [reportType, fromDate, toDate, selectedCustomer, selectedbank]);
 
   return (
     <div className="container mx-auto p-2">
@@ -397,7 +453,20 @@ export default function ReportsPage({
                   </label>
                   <Calendar22 />
                 </div>
-
+                {selectedReport.id === "bank-statment" && (
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm font-medium">
+                      👤 اختر بنك محدد (اختياري)
+                    </label>
+                    <SearchInput
+                      placeholder="ابحث عن بنك"
+                      paramKey="customer"
+                      options={banks ?? []}
+                      value={selectedbank?.name || ""}
+                      action={(bank) => setSelectedbanks(bank)}
+                    />
+                  </div>
+                )}
                 {/* Customer Filter for customer reports */}
                 {(selectedReport.id === "customer_statment" ||
                   selectedReport.id === "customer-receipts") && (
@@ -446,6 +515,14 @@ export default function ReportsPage({
                   <DownloadIcon className="mr-2 h-4 w-4" />
                   {isSubmitting ? "جاري التحميل..." : "تحميل التقرير"}
                 </Button>
+                {isSubmitting && (
+                  <div className="bg-muted mt-2 h-2 w-full overflow-hidden rounded">
+                    <div
+                      className="bg-primary h-full transition-all duration-300"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                )}
 
                 {!reportType && (
                   <div className="text-muted-foreground flex items-center gap-2 text-sm">

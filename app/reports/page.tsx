@@ -231,6 +231,7 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import ReportsPage from "./clinet";
 import { Fetchcustomerbyname } from "@/lib/actions/customers";
+import { Fetchbanks, getbanks } from "@/lib/actions/banks";
 type Props = {
   searchParams: Promise<{
     productquery?: string;
@@ -246,9 +247,10 @@ type Props = {
 export default async function page({ searchParams }: Props) {
   const { usersquery = "" } = await searchParams;
   const users = await Fetchcustomerbyname(usersquery);
+  const banks = await Fetchbanks();
   return (
     <ScrollArea className="max-h-[95vh] p-2" dir="rtl">
-      <ReportsPage users={users} />
+      <ReportsPage users={users} banks={banks} />
     </ScrollArea>
   );
 }

@@ -47,6 +47,7 @@ import dynamic from "next/dynamic";
 import { useCompany } from "@/hooks/useCompany";
 import Link from "next/link";
 import { Clock } from "lucide-react";
+import { updateProductStockOptimistic } from "@/lib/slices/productsSlice";
 
 const PrintButton = dynamic(
   () => import("./test").then((mod) => mod.PrintButton),
@@ -168,15 +169,49 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
           qty: item.selectedQty,
         }),
       );
+      dispatch(
+        updateProductStockOptimistic({
+          productId: id,
+          sellingUnit: from,
+          quantity: item.selectedQty,
+          mode: "restore",
+        }),
+      );
+
+      // 2️⃣ خصم المخزون الجديد
+      dispatch(
+        updateProductStockOptimistic({
+          productId: id,
+          sellingUnit: to,
+          quantity: item.selectedQty,
+          mode: "consume",
+        }),
+      );
     },
     [dispatch],
   );
 
   const handleRemoveItem = useCallback(
     (id: string) => {
+      // 1️⃣ Find the item in the current cart items before removing it
+      const itemToRestore = items.find((item) => item.id === id);
+
+      if (itemToRestore) {
+        // 2️⃣ Restore the stock
+        dispatch(
+          updateProductStockOptimistic({
+            productId: id,
+            sellingUnit: itemToRestore.sellingUnit,
+            quantity: itemToRestore.selectedQty,
+            mode: "restore",
+          }),
+        );
+      }
+
+      // 3️⃣ Remove from cart
       dispatch(removeFromCart(id));
     },
-    [dispatch],
+    [dispatch, items], // Add items to dependency array
   );
 
   const handlePayment = async () => {
@@ -538,6 +573,16 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
 
               <Button
                 onClick={() => {
+                  items.forEach((item) => {
+                    dispatch(
+                      updateProductStockOptimistic({
+                        productId: item.id,
+                        sellingUnit: item.sellingUnit,
+                        quantity: item.selectedQty,
+                        mode: "restore",
+                      }),
+                    );
+                  });
                   dispatch(clearCart());
                   setDiscountsValue(0);
                   setDiscountType("fixed");
