@@ -994,6 +994,10 @@ export async function POST(req: NextRequest, context: RouteContext) {
           },
         });
 
+        if (!bank) {
+          return { error: "المورد غير موجود" };
+        }
+
         // 2️⃣ تجهيز كشف حساب لكل عميل
         const customerStatements = [];
         for (const c of bank ? [bank] : []) {
