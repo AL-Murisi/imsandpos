@@ -46,6 +46,7 @@ export type InventoryUpdateWithTrackingInput = z.infer<
 
 interface ExtendedInventoryUpdateData {
   id: string;
+  currency_code?: "YER" | "USD" | "SAR" | "EUR" | "KWD";
   reason?: string;
   notes?: string;
   availableQuantity?: number;
@@ -86,6 +87,7 @@ export async function updateInventory(
       paymentMethod,
       paymentAmount,
       productId,
+      currency_code,
       supplierId: providedSupplierId,
       warehouseId: targetWarehouseId,
       ...updateData
@@ -334,6 +336,7 @@ export async function updateInventory(
               purchase: purchase,
               userId,
               type: "purchase",
+              urrencyCode: currency_code,
             },
             processed: false,
           },

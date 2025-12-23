@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 type FormValues = z.infer<typeof UpdateInventorySchema> & {
+  currency_code?: "YER" | "USD" | "SAR" | "EUR" | "KWD";
   updateType?: "manual" | "supplier";
   supplierId?: string;
   quantity?: number;
@@ -94,7 +95,13 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
       setValue("availableQuantity", quantity - reservedQuantity);
     }
   }, [reservedQuantity, quantity, setValue]);
-
+  const currencyOptions = [
+    { name: "الريال اليمني (YER)", id: "YER" },
+    { name: "الدولار الأمريكي (USD)", id: "USD" },
+    { name: "الريال السعودي (SAR)", id: "SAR" },
+    { name: "اليورو (EUR)", id: "EUR" },
+    { name: "الدينار الكويتي (KWD)", id: "KWD" },
+  ];
   // ✅ Load suppliers + warehouses when dialog opens
   useEffect(() => {
     if (!open) {
@@ -245,7 +252,7 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
               {/* الدفع */}
               <div className="mt-4 border-t border-blue-200 pt-4">
                 {updateType == "supplier" && (
-                  <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-4">
+                  <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-5">
                     <div className="grid gap-2">
                       <Label>اختر المورد</Label>
                       <SelectField
@@ -271,7 +278,20 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
                         className="rounded-md border border-gray-300 px-3 py-2"
                       > */}
                     </div>
-
+                    <div className="grid gap-2">
+                      <Label htmlFor="currency_code">العملة </Label>
+                      <SelectField
+                        options={currencyOptions}
+                        value={watch("currency_code")}
+                        action={(value: string) =>
+                          setValue(
+                            "currency_code",
+                            value as "YER" | "USD" | "SAR" | "EUR" | "KWD",
+                          )
+                        }
+                        placeholder="اختر العملة"
+                      />
+                    </div>
                     <div className="grid gap-2">
                       <Label>سعر الوحدة</Label>
                       <Input

@@ -20,6 +20,7 @@ interface ExpenseFormInput {
   amount: string;
   expense_date: string;
   paymentMethod: string;
+  currency_code: string;
   referenceNumber?: string;
   bankId?: string;
   notes?: string;
@@ -126,6 +127,13 @@ export default function ExpenseForm({
     { id: "bank", name: "تحويل بنكي" },
     { id: "check", name: "شيك" },
     { id: "credit", name: "ائتمان" },
+  ];
+  const currencyOptions = [
+    { name: "الريال اليمني (YER)", id: "YER" },
+    { name: "الدولار الأمريكي (USD)", id: "USD" },
+    { name: "الريال السعودي (SAR)", id: "SAR" },
+    { name: "اليورو (EUR)", id: "EUR" },
+    { name: "الدينار الكويتي (KWD)", id: "KWD" },
   ];
   const accountCategories = [
     {
@@ -254,7 +262,20 @@ export default function ExpenseForm({
               placeholder="اختر طريقة الدفع"
             />
           </div>
-
+          <div className="grid gap-2">
+            <Label htmlFor="currency_code">العملة </Label>
+            <SelectField
+              options={currencyOptions}
+              value={watch("currency_code")}
+              action={(value: string) =>
+                setValue(
+                  "currency_code",
+                  value as "YER" | "USD" | "SAR" | "EUR" | "KWD",
+                )
+              }
+              placeholder="اختر العملة"
+            />
+          </div>
           {paymentMethod === "bank" && (
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <div className="grid gap-3">

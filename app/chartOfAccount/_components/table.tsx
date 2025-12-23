@@ -102,21 +102,6 @@ export default function ChartOfAccountsTable({
           <h1 className="text-xl font-bold">دليل الحسابات</h1>
           <p className="mt-1 text-lg">إدارة هيكل الحسابات المحاسبية</p>
         </div>
-
-        <div className="flex gap-2 rounded-2xl shadow-xl/20 shadow-gray-900">
-          <AccountFormDialog mode="create" />
-
-          {data.length === 0 && (
-            <Button
-              variant="outline"
-              onClick={handleInitializeDefaults}
-              className="gap-2"
-            >
-              <FileSpreadsheet className="h-4 w-4" />
-              إنشاء حسابات افتراضية
-            </Button>
-          )}
-        </div>
       </div>
 
       {/* Summary Cards */}
@@ -169,7 +154,20 @@ export default function ChartOfAccountsTable({
                 placeholder="بحث في الحسابات (رمز، اسم...)"
                 paramKey="search"
               />
+              <div className="flex gap-2 rounded-2xl shadow-xl/20 shadow-gray-900">
+                <AccountFormDialog mode="create" />
 
+                {data.length === 0 && (
+                  <Button
+                    variant="outline"
+                    onClick={handleInitializeDefaults}
+                    className="gap-2"
+                  >
+                    <FileSpreadsheet className="h-4 w-4" />
+                    إنشاء حسابات افتراضية
+                  </Button>
+                )}
+              </div>
               <SelectField
                 placeholder="نوع الحساب"
                 value={accountType || "all"}

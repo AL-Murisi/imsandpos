@@ -56,7 +56,9 @@ export default function DebtReport({
   const { user } = useAuth();
   const { formatCurrency } = useFormatter();
   const [transferNumber, setTransferNumber] = useState("");
-
+  const [currencyCode, setCurrencyCode] = useState<
+    "YER" | "USD" | "SAR" | "EUR" | "KWD"
+  >("YER");
   const [isSubmitting, setIsSubmitting] = useState(false);
   if (!user) return null;
 
@@ -152,6 +154,7 @@ export default function DebtReport({
         paymentAmount,
         user.userId,
         paymentMethod,
+        currencyCode,
         {
           bankId: selectedBankId,
           transferNumber,
@@ -202,6 +205,7 @@ export default function DebtReport({
         paymentAmount,
         user.userId,
         paymentMethod,
+        currencyCode,
         {
           bankId: selectedBankId,
           transferNumber,
@@ -218,6 +222,13 @@ export default function DebtReport({
       toast.error("فشل في تطبيق الدفعة. الرجاء المحاولة مرة أخرى.");
     }
   };
+  const currencyOptions = [
+    { name: "الريال اليمني (YER)", id: "YER" },
+    { name: "الدولار الأمريكي (USD)", id: "USD" },
+    { name: "الريال السعودي (SAR)", id: "SAR" },
+    { name: "اليورو (EUR)", id: "EUR" },
+    { name: "الدينار الكويتي (KWD)", id: "KWD" },
+  ];
   const paymentMethods = [
     { id: "cash", name: "نقداً" },
     { id: "bank", name: "تحويل بنكي" },
@@ -327,6 +338,17 @@ export default function DebtReport({
               value={paymentMethod || ""}
               placeholder="اختر الطريقة"
               action={(val) => setPaymentMethod(val)}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="currency_code">العملة </Label>
+            <SelectField
+              options={currencyOptions}
+              value={currencyCode}
+              action={(value: string) =>
+                setCurrencyCode(value as "YER" | "USD" | "SAR" | "EUR" | "KWD")
+              }
+              placeholder="اختر العملة"
             />
           </div>
           {/* Bank fields */}

@@ -103,6 +103,17 @@ export const accountColumns: ColumnDef<any>[] = [
     ),
   },
   {
+    accessorKey: "currency_code",
+    header: ({ column }) => (
+      <SortableHeader column={column} label="رمز العملة" />
+    ),
+    cell: ({ row }) => (
+      <span className="font-mono font-semibold">
+        {row.getValue("currency_code")}
+      </span>
+    ),
+  },
+  {
     accessorKey: "account_name_ar",
     header: ({ column }) => (
       <SortableHeader column={column} label="اسم الحساب" />

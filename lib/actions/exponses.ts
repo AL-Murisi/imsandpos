@@ -244,6 +244,7 @@ export async function createExpense(
     amount: number;
     expense_date: Date;
     paymentMethod: string;
+    currency_code: string;
     referenceNumber?: string;
     bankId?: string;
     notes?: string;
@@ -307,6 +308,7 @@ export async function createExpense(
             description: data.description,
             expenseDate: data.expense_date,
             bankId: data.bankId ?? "",
+            currency_code: data.currency_code ?? "YER",
           },
           userId,
         },

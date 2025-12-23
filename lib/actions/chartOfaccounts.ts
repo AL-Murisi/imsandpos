@@ -24,6 +24,7 @@ interface CreateAccountInput {
   parent_id?: string;
   opening_balance?: number;
   description?: string;
+  currency_code?: string;
   allow_manual_entry?: boolean;
 }
 function serializeData<T>(data: T): T {
@@ -315,6 +316,7 @@ export async function updateAccount(
         account_category: data.account_category as any,
         parent_id: data.parent_id,
         level,
+        currency_code: data.currency_code,
         description: data.description,
         allow_manual_entry: data.allow_manual_entry,
         updated_at: new Date(),

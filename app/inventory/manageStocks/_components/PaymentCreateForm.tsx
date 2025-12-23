@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/context/AuthContext";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { SelectField } from "@/components/common/selectproduct";
 export function PaymentCreateForm({
   supplier,
   supplier_name,
@@ -21,11 +22,12 @@ export function PaymentCreateForm({
   purchaseId: string;
   supplier_name: string;
 }) {
-  const { register, handleSubmit, reset, watch } = useForm({
+  const { register, handleSubmit, reset, watch, setValue } = useForm({
     defaultValues: {
       amount: "",
       paymentMethod: "cash",
       note: "",
+      currency_code: "YER",
       supplier_name: supplier.supplier?.name ?? "",
       paymentDate: new Date().toISOString().slice(0, 16),
     },
@@ -50,6 +52,7 @@ export function PaymentCreateForm({
           amount: Number(data.amount),
           paymentMethod: data.paymentMethod,
           note: data.note,
+          currency_code: data.currency_code,
           paymentDate: new Date(data.paymentDate),
         },
       );
@@ -69,7 +72,13 @@ export function PaymentCreateForm({
       toast.error("❌ Failed to create payment");
     }
   };
-
+  const currencyOptions = [
+    { name: "الريال اليمني (YER)", id: "YER" },
+    { name: "الدولار الأمريكي (USD)", id: "USD" },
+    { name: "الريال السعودي (SAR)", id: "SAR" },
+    { name: "اليورو (EUR)", id: "EUR" },
+    { name: "الدينار الكويتي (KWD)", id: "KWD" },
+  ];
   return (
     <Dailogreuse
       open={isOpen}
@@ -102,12 +111,25 @@ export function PaymentCreateForm({
             className="rounded-md border px-3 py-2"
           >
             <option value="cash">نقداً</option>
-            <option value="bank_transfer">تحويل بنكي</option>
+            <option value="bank">تحويل بنكي</option>
             <option value="check">شيك</option>
             <option value="credit">ائتمان</option>
           </select>
         </div>
-
+        <div className="grid gap-2">
+          <Label htmlFor="currency_code">العملة </Label>
+          <SelectField
+            options={currencyOptions}
+            value={watch("currency_code")}
+            action={(value: string) =>
+              setValue(
+                "currency_code",
+                value as "YER" | "USD" | "SAR" | "EUR" | "KWD",
+              )
+            }
+            placeholder="اختر العملة"
+          />
+        </div>
         <div className="grid gap-2">
           <Label>تاريخ الدفع</Label>
           <Input type="datetime-local" {...register("paymentDate")} />

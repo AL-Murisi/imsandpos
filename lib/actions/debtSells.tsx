@@ -132,6 +132,7 @@ export async function updateSalesBulk(
   paymentAmount: number,
   cashierId: string,
   paymentMethod: string,
+  currencyCode: string,
   paymentDetails?: {
     bankId?: string;
     transferNumber?: string;
@@ -266,6 +267,7 @@ export async function updateSalesBulk(
         amount: payment.amount,
         paymentMethod: payment.paymentMethod,
         paymentDetails: paymentDetails || {},
+        currencyCode: currencyCode,
       },
       cashierId,
     },
@@ -296,6 +298,7 @@ export async function payOutstandingOnly(
   paymentAmount: number,
   cashierId: string,
   paymentMethod: string,
+  currencyCode: string,
   paymentDetails?: {
     bankId?: string;
     transferNumber?: string;
@@ -350,6 +353,7 @@ export async function payOutstandingOnly(
           amount: payment.amount,
           paymentMethod: payment.paymentMethod,
           paymentDetails: paymentDetails || {},
+          currencyCode: currencyCode,
         },
         cashierId,
       },

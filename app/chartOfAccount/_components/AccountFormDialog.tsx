@@ -43,6 +43,7 @@ const accountFormSchema = z.object({
   account_category: z.string().min(1, "فئة الحساب مطلوبة"),
   parent_id: z.string().optional(),
   description: z.string().optional(),
+  currency_code: z.enum(["YER", "USD", "SAR", "EUR", "KWD"]),
 
   // Preprocess ensures this is always a number (You might want to ensure it's a valid number input)
   opening_balance: z.number().int().nonnegative(),
@@ -79,11 +80,12 @@ export default function AccountFormDialog({
   const [open, setOpen] = useState(false);
   const [parentAccounts, setParentAccounts] = useState<ParentAccount[]>([]); // ⬅️ State for parent accounts
   const [isLoadingParents, setIsLoadingParents] = useState(true); // ⬅️ Loading state
-
-  // --------------------
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  // ----------- const [isSubmitting, setIsSubmitting] = useState(false);---------
   // Data Fetching with useEffect
   // --------------------
   useEffect(() => {
+    if (!open) return;
     async function fetchParentData() {
       setIsLoadingParents(true);
       try {
@@ -224,8 +226,7 @@ export default function AccountFormDialog({
 
   const onSubmit: SubmitHandler<FormValues> = async (data) => {
     try {
-      console.log("✅ Form data:", data);
-
+      setIsSubmitting(true);
       let result;
 
       if (mode === "create") {
@@ -234,10 +235,12 @@ export default function AccountFormDialog({
         result = await updateAccount(account.id, data);
       } else {
         toast.error("معرّف الحساب مفقود");
+        setIsSubmitting(false);
         return;
       }
 
       if (!result?.success) {
+        setIsSubmitting(false);
         toast.error(result?.error || "حدث خطأ أثناء حفظ الحساب");
         return;
       }
@@ -246,10 +249,18 @@ export default function AccountFormDialog({
       setOpen(false);
       reset();
     } catch (error) {
+      setIsSubmitting(false);
       console.error("❌ Error:", error);
       toast.error("حدث خطأ أثناء حفظ الحساب");
     }
   };
+  const currencyOptions = [
+    { name: "الريال اليمني (YER)", id: "YER" },
+    { name: "الدولار الأمريكي (USD)", id: "USD" },
+    { name: "الريال السعودي (SAR)", id: "SAR" },
+    { name: "اليورو (EUR)", id: "EUR" },
+    { name: "الدينار الكويتي (KWD)", id: "KWD" },
+  ];
 
   return (
     <Dailogreuse
@@ -277,7 +288,6 @@ export default function AccountFormDialog({
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" dir="rtl">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {/* ... (Your other form fields - Account Code, Type, Names, Category - are here) ... */}
-
           {/* Account Code */}
           <div className="grid gap-2">
             <Label htmlFor="account_code">رمز الحساب *</Label>
@@ -293,7 +303,6 @@ export default function AccountFormDialog({
               </p>
             )}
           </div>
-
           {/* Account Type */}
           <div className="grid gap-2">
             <Label htmlFor="account_type">نوع الحساب *</Label>
@@ -320,7 +329,6 @@ export default function AccountFormDialog({
               </p>
             )}
           </div>
-
           {/* Account Name (English) */}
           <div className="grid gap-2">
             <Label htmlFor="account_name_en">اسم الحساب (عربي)</Label>
@@ -336,7 +344,6 @@ export default function AccountFormDialog({
               </p>
             )}
           </div>
-
           {/* Account Name (Arabic) */}
           {/* <div className="grid gap-2">
             <Label htmlFor="account_name_ar">اسم الحساب (عربي)</Label>
@@ -347,7 +354,6 @@ export default function AccountFormDialog({
               {...register("account_name_ar")}
             />
           </div> */}
-
           {/* Category */}
           <div className="grid gap-2">
             <Label htmlFor="account_category">الفئة *</Label>
@@ -364,7 +370,6 @@ export default function AccountFormDialog({
               </p>
             )}
           </div>
-
           {/* Parent Account */}
           <div className="grid gap-2">
             <Label htmlFor="parent_id">الحساب الرئيسي</Label>
@@ -398,8 +403,21 @@ export default function AccountFormDialog({
                 )}
               </SelectContent>
             </Select>
+          </div>{" "}
+          <div className="grid gap-2">
+            <Label htmlFor="currency_code">العملة </Label>
+            <SelectField
+              options={currencyOptions}
+              value={watch("currency_code")}
+              action={(value: string) =>
+                setValue(
+                  "currency_code",
+                  value as "YER" | "USD" | "SAR" | "EUR" | "KWD",
+                )
+              }
+              placeholder="اختر العملة"
+            />
           </div>
-
           {/* Opening Balance (create only) */}
           {mode === "create" && (
             <div className="grid gap-2">
@@ -419,7 +437,6 @@ export default function AccountFormDialog({
               )}
             </div>
           )}
-
           {/* Description */}
           <div className="col-span-1 grid gap-2 md:col-span-2">
             <Label htmlFor="description">الوصف</Label>
@@ -430,7 +447,6 @@ export default function AccountFormDialog({
               {...register("description")}
             />
           </div>
-
           {/* Allow Manual Entry */}
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center gap-2">
@@ -463,7 +479,7 @@ export default function AccountFormDialog({
           >
             إلغاء
           </Button>
-          <Button type="submit">
+          <Button type="submit" disabled={isSubmitting}>
             {mode === "create" ? "إنشاء الحساب" : "حفظ التغييرات"}
           </Button>
         </div>

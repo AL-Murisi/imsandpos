@@ -661,6 +661,7 @@ export async function createSupplierPaymentFromPurchases(
     amount: number;
     paymentMethod: string;
     note?: string;
+    currency_code: string;
     paymentDate?: Date;
   },
 ) {
@@ -670,6 +671,7 @@ export async function createSupplierPaymentFromPurchases(
       purchaseId,
       createdBy,
       supplierId,
+      currency_code,
       amount,
       paymentMethod,
       note,
@@ -785,6 +787,7 @@ export async function createSupplierPaymentFromPurchases(
               supplierId,
               supplierPayment: supplierPayment,
               userId,
+              currency_code: currency_code,
             },
             processed: false,
           },

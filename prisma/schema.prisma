@@ -716,7 +716,7 @@ model journal_entries {
   posted_at                               DateTime? @db.Timestamptz(6)  // NEW
   created_at                              DateTime? @default(now()) @db.Timestamptz(6)
   updated_at                              DateTime? @default(now()) @db.Timestamptz(6)
-  
+ currency_code                            String?           @default("USD") @db.VarChar(3)                               
   accounts                                accounts  @relation(fields: [account_id], references: [id], onDelete: Cascade)
   companies                               Company   @relation(fields: [company_id], references: [id], onDelete: Cascade)
   users_journal_entries_created_byTousers User      @relation("journal_entries_created_byTousers", fields: [created_by], references: [id])
