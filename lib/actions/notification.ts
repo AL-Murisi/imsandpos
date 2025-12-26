@@ -107,7 +107,7 @@ export async function sendTestNotifications(message: string) {
     const payload = JSON.stringify({
       title: "إشعار تجريبي",
       body: message,
-      url: "/dashboard",
+      url: "/sells",
       icon: "/icon.png",
       badge: "/badge.png",
       timestamp: Date.now(),
@@ -149,7 +149,9 @@ async function sendToSubscription(sub: any, payload: string) {
       },
     };
 
-    await webpush.sendNotification(pushSubscription, payload);
+    await webpush.sendNotification(pushSubscription, payload, {
+      TTL: 3600, // ✅ REQUIRED for FCM
+    });
     console.log("✅ Notification sent to:", sub.endpoint.substring(0, 50));
   } catch (err: any) {
     console.error("❌ Failed to send to subscription:", err);
