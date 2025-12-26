@@ -12,6 +12,7 @@ import { ParsedSort } from "@/hooks/sort";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getSession } from "@/lib/session";
 import { fetchProductStats } from "@/lib/actions/Product";
+import { PushNotificationManager } from "@/components/manangeNotifications";
 
 type DashboardProps = {
   searchParams: Promise<{
@@ -97,6 +98,7 @@ export default async function SellsDashboard({ searchParams }: DashboardProps) {
 
   return (
     <ScrollArea className="flex h-[95vh] flex-col space-y-8 p-6" dir="rtl">
+      <PushNotificationManager />
       <SellsDashboardClient
         debtSales={data.serializedDebts}
         recentSales={data.serializedDebts}

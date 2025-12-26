@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 import withSerwist from "@serwist/next"; // ✅ correct import
 import { execSync } from "child_process";
+import { register } from "module";
 // Use git commit hash as cache version
 const revision = execSync("git rev-parse HEAD", { encoding: "utf8" })
   .trim()
@@ -22,12 +23,30 @@ const withNextIntl = createNextIntlPlugin();
 //     { url: "/offline", revision },
 //   ],
 // });
+// const withPWA = require("@ducanh2912/next-pwa").default({
+//   dest: "public",
+//   cacheOnFrontEndNav: true,
+//   aggressiveFrontEndNavCaching: true,
+//   reloadOnOnline: true,
+//   swcMinify: true,
+//   register: true,
+//   disable: process.env.NODE_ENV === "development",
+//   fallbacks: {
+//     document: "/offline",
+//   },
+//   workboxOptions: {
+//     disableDevLogs: true,
+//   },
+//   swSrc: "public/sw-custom.js", // ✅ CORRECT
+//   // <-- your custom service worker
+// });
 const withPWA = require("@ducanh2912/next-pwa").default({
   dest: "public",
   cacheOnFrontEndNav: true,
   aggressiveFrontEndNavCaching: true,
   reloadOnOnline: true,
   swcMinify: true,
+  register: true,
   disable: process.env.NODE_ENV === "development",
   fallbacks: {
     document: "/offline",
@@ -35,6 +54,8 @@ const withPWA = require("@ducanh2912/next-pwa").default({
   workboxOptions: {
     disableDevLogs: true,
   },
+  swSrc: "public/sw-custom.js",
+  swDest: "public/sw.js",
 });
 const withBundleAnalyzer = require("@next/bundle-analyzer")({
   enabled: process.env.ANALYZE === "true",

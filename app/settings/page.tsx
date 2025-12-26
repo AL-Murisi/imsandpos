@@ -4,7 +4,6 @@ import CurrencySwitcher from "@/components/common/CurrencySwitcher";
 import ProductPriceInput from "@/components/common/exchnage";
 import { Settings } from "lucide-react";
 import { useState } from "react";
-
 export default function ExpensesPage() {
   const [expenseType, setExpenseType] = useState<string>("daily");
   const [currency, setCurrency] = useState<string>("USD");

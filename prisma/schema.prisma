@@ -28,7 +28,7 @@ model Company {
   brands                                             Brand[]
   categories                                         Category[]
   customers                                          Customer[]
-
+pushSubscription                                     pushSubscription[]
   expenses                                           expenses[]
   inventory                                          Inventory[]
   journal_entries                                    journal_entries[]
@@ -730,6 +730,18 @@ model journal_entries {
   @@index([reference_type, reference_id])  // NEW: Quick lookup for transaction journals
   @@index([is_posted])
   @@index([fiscal_period])
+}
+model pushSubscription {
+  id        String   @id @default(uuid())
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+company_id  String
+  userId    String?
+  role      String?  // "ADMIN", "CASHIER"
+  companies                               Company   @relation(fields: [company_id], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
 }
 
 // NEW: Fiscal periods for closing books
