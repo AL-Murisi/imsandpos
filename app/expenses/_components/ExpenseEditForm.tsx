@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/context/AuthContext";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { Fetchbanks } from "@/lib/actions/banks";
 
 export function ExpenseEditForm({ expense }: { expense: any }) {
   const { register, handleSubmit, setValue, watch } = useForm({
@@ -25,6 +26,9 @@ export function ExpenseEditForm({ expense }: { expense: any }) {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const paymentMethod = watch("payment_method");
+  const [banks, setBanks] = useState<{ id: string; name: string }[]>([]);
+  const [selectedBankId, setSelectedBankId] = useState("");
+
   const status = watch("status");
   const account_id = watch("account_id");
   const { user } = useAuth();
@@ -42,7 +46,25 @@ export function ExpenseEditForm({ expense }: { expense: any }) {
       setValue("account_id", expense.account_id); // تعيين القيمة الافتراضية بعد تحميل الفئات
     }
   }, [categories, expense.account_id, setValue]);
+  useEffect(() => {
+    if (paymentMethod !== "bank" || !open) {
+      setBanks([]);
+      setSelectedBankId("");
+      return;
+    }
 
+    const loadBanks = async () => {
+      try {
+        const result = await Fetchbanks();
+        setBanks(result);
+      } catch (err) {
+        console.error(err);
+        toast.error("فشل في جلب البنوك");
+      }
+    };
+
+    loadBanks();
+  }, [open, paymentMethod]);
   const onSubmit = async (data: any) => {
     try {
       if (!user) return;

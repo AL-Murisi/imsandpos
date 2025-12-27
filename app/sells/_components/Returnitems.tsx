@@ -52,7 +52,7 @@ export function ReturnForm({ sale }: { sale: any }) {
         saleId: sale.id,
         cashierId: user?.userId,
         customerId: sale.customerId || null,
-        returnNumber: `RET-${Date.now()}`,
+        returnNumber: sale.saleNumber || "",
         reason: "",
         paymentMethod: "cash",
         items: sale.saleItems.map((item: any) => ({

@@ -235,6 +235,174 @@ async function getAccountMapping(companyId: string, mappingType: string) {
   return mapping.account_id;
 }
 
+interface ExpenseData {
+  account_id: string;
+  description: string;
+  amount: number;
+  expense_date: Date;
+  paymentMethod: string;
+  currency_code: string;
+  referenceNumber?: string;
+  bankId?: string;
+  notes?: string;
+}
+
+export async function createMultipleExpenses(
+  companyId: string,
+  userId: string,
+  expensesData: ExpenseData[],
+) {
+  try {
+    // Validate required fields
+    if (!companyId || !userId) {
+      return {
+        success: false,
+        error: "معرف الشركة ومعرف المستخدم مطلوبان",
+      };
+    }
+
+    if (!expensesData || expensesData.length === 0) {
+      return {
+        success: false,
+        error: "يجب إضافة مصروف واحد على الأقل",
+      };
+    }
+
+    // Validate each expense
+    for (let i = 0; i < expensesData.length; i++) {
+      const exp = expensesData[i];
+
+      if (!exp.account_id || !exp.description || !exp.amount) {
+        return {
+          success: false,
+          error: `المصروف ${i + 1}: الحقول المطلوبة مفقودة`,
+        };
+      }
+
+      if (exp.amount <= 0) {
+        return {
+          success: false,
+          error: `المصروف ${i + 1}: المبلغ يجب أن يكون أكبر من صفر`,
+        };
+      }
+
+      if (
+        exp.paymentMethod === "bank" &&
+        (!exp.bankId || !exp.referenceNumber)
+      ) {
+        return {
+          success: false,
+          error: `المصروف ${i + 1}: يرجى تحديد البنك ورقم المرجع للدفع البنكي`,
+        };
+      }
+    }
+
+    console.log(
+      `Creating ${expensesData.length} expenses for company:`,
+      companyId,
+    );
+
+    // Create all expenses in a transaction
+    const result = await prisma.$transaction(async (tx) => {
+      const createdExpenses = [];
+      const journalEvents = [];
+
+      for (const expenseData of expensesData) {
+        // Generate unique expense number
+        const expenseNumber = `EXP-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+        // Create expense
+        const expense = await tx.expenses.create({
+          data: {
+            company_id: companyId,
+            user_id: userId,
+            account_id: expenseData.account_id,
+            description: expenseData.description,
+            expense_number: expenseNumber,
+            amount: expenseData.amount,
+            expense_date: expenseData.expense_date,
+            payment_method: expenseData.paymentMethod,
+            reference_number: expenseData.referenceNumber,
+            notes: expenseData.notes || "",
+            status: "pending",
+          },
+          include: {
+            users: true,
+          },
+        });
+
+        createdExpenses.push(expense);
+
+        // Create journal event for each expense
+        const journalEvent = await tx.journalEvent.create({
+          data: {
+            companyId,
+            eventType: "expense",
+            status: "pending",
+            entityType: "expense",
+            payload: {
+              companyId,
+              expense: {
+                id: expense.id,
+                accountId: expenseData.account_id,
+                amount: expenseData.amount,
+                paymentMethod: expenseData.paymentMethod,
+                referenceNumber: expenseData.referenceNumber,
+                description: expenseData.description,
+                expenseDate: expenseData.expense_date,
+                bankId: expenseData.bankId ?? "",
+                currency_code: expenseData.currency_code ?? "YER",
+              },
+              userId,
+            },
+            processed: false,
+          },
+        });
+
+        journalEvents.push(journalEvent);
+
+        // Small delay to ensure unique timestamps
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+
+      // Create single activity log for all expenses
+      const totalAmount = expensesData.reduce(
+        (sum, exp) => sum + exp.amount,
+        0,
+      );
+      await tx.activityLogs.create({
+        data: {
+          userId: userId,
+          companyId: companyId,
+          action: "created multiple expenses",
+          details: `Created ${expensesData.length} expenses. Total Amount: ${totalAmount}`,
+        },
+      });
+
+      return { createdExpenses, journalEvents };
+    });
+
+    console.log(
+      `✅ Successfully created ${result.createdExpenses.length} expenses`,
+    );
+
+    revalidatePath("/expenses");
+
+    return {
+      success: true,
+      count: result.createdExpenses.length,
+      expenses: result.createdExpenses,
+      message: `تمت إضافة ${result.createdExpenses.length} مصروف بنجاح`,
+    };
+  } catch (error) {
+    console.error("Error creating multiple expenses:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "فشل إنشاء المصاريف",
+    };
+  }
+}
+
 export async function createExpense(
   companyId: string,
   userId: string,

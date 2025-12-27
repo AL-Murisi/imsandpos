@@ -4,6 +4,7 @@ import prisma from "../prisma";
 import { getSession } from "../session";
 import { BankForm } from "../zod";
 import { getUserCompany } from "./chartOfaccounts";
+import { revalidatePath } from "next/cache";
 
 export async function fetchBanks() {
   try {
@@ -60,8 +61,7 @@ export async function createBank(data: BankForm, companyId: string) {
         error: "اسم البنك موجود مسبقًا داخل الشركة",
       };
     }
-
-    console.error("Create bank error:", error);
+    revalidatePath("/banks");
     return {
       success: false,
       error: "حدث خطأ أثناء إضافة البنك",
@@ -71,13 +71,24 @@ export async function createBank(data: BankForm, companyId: string) {
 
 export async function updateBank(id: string, data: any, companyId: string) {
   try {
-    await prisma.bank.create({
+    await prisma.bank.update({
+      where: { id, companyId },
       data: {
         ...data,
-        companyId,
       },
     });
-
+    revalidatePath("/banks");
+    return { success: true };
+  } catch (e: any) {
+    return { error: e.message };
+  }
+}
+export async function deletBnk(id: string, companyId: string) {
+  try {
+    await prisma.bank.delete({
+      where: { id, companyId },
+    });
+    revalidatePath("/banks");
     return { success: true };
   } catch (e: any) {
     return { error: e.message };

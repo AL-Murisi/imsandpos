@@ -9,10 +9,10 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { BankForm, BankSchema } from "@/lib/zod";
 import { z } from "zod";
-import { createBank, updateBank } from "@/lib/actions/banks";
+import { createBank, getbanks, updateBank } from "@/lib/actions/banks";
 import { useAuth } from "@/lib/context/AuthContext";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function BankFormDialog({
   banks,
@@ -43,16 +43,35 @@ export default function BankFormDialog({
       swiftCode: bank?.swiftCode ?? "",
     },
   });
-
   const [open, setOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [bankOptions, setBankOptions] = useState<
+    { id: string; name: string }[]
+  >(banks ?? []);
+  useEffect(() => {
+    if (!open) return;
+    if (!banks) {
+      getbanks().then((res) => {
+        setBankOptions(res);
+      });
+    }
+  }, [open, banks]);
+
   const onSubmit = async (data: BankForm) => {
+    setIsSubmitting(true);
     const res =
       mode === "create"
         ? await createBank(data, user!.companyId)
         : await updateBank(bank.id, data, user!.companyId);
 
-    if (res?.error) toast.error(res.error);
-    else toast.success("تم الحفظ بنجاح");
+    if (res?.error) {
+      setIsSubmitting(false);
+      toast.error(res.error);
+    } else {
+      toast.success("تم الحفظ بنجاح");
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -91,14 +110,21 @@ export default function BankFormDialog({
 
         <div className="grid gap-4">
           <Label>الحساب المحاسبي</Label>
-          <SelectField
+          {/* <SelectField
             options={banks ?? []}
+            value={watch("accountId")}
+            action={(v) => setValue("accountId", v)}
+          /> */}
+          <SelectField
+            options={bankOptions}
             value={watch("accountId")}
             action={(v) => setValue("accountId", v)}
           />
         </div>
 
-        <Button type="submit">حفظ</Button>
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "جاري الحفظ..." : "حفظ"}
+        </Button>
       </form>
     </Dialogreuse>
   );

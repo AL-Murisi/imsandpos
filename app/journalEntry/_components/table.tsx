@@ -14,6 +14,7 @@ import { BulkPostButton } from "./selection";
 import { useFormatter } from "@/hooks/usePrice";
 import DashboardTabs from "@/components/common/Tabs";
 import FiscalYearManager from "./FiscalYearManager";
+import ManualJournalEntry from "./Manualjournal";
 
 const Calendar22 = dynamic(
   () => import("@/components/common/DatePicker").then((m) => m.Calendar22),
@@ -34,11 +35,21 @@ type JournalEntriesClientProps = {
   data: any[];
 
   acount: { id: string; name: string }[];
+  customers?:
+    | {
+        id?: string;
+        name?: string;
+        phoneNumber?: string | null;
+        totalDebt?: number;
+      }[]
+    | null;
+  suppliers?: { id: string; name: string }[];
 };
 
 export default function JournalEntriesTable({
   data,
-
+  customers,
+  suppliers,
   acount,
 }: JournalEntriesClientProps) {
   const {
@@ -69,7 +80,11 @@ export default function JournalEntriesTable({
         <DataTable
           search={
             <div className="flex flex-wrap gap-2 p-1 md:flex-row lg:flex-row">
-              {" "}
+              <ManualJournalEntry
+                account={acount}
+                suppliers={suppliers}
+                customers={customers}
+              />
               <BulkPostButton
                 selectedEntries={selectedRows.map((row) => ({
                   entry_number: row.entry_number,

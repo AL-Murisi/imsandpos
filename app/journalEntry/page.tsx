@@ -6,6 +6,8 @@ import {
 } from "@/lib/actions/Journal Entry";
 import { getFiscalYears } from "@/lib/actions/fiscalYear";
 import Tab from "./_components/tab";
+import { Fetchcustomerbyname } from "@/lib/actions/customers";
+import { getSuppliers } from "@/lib/actions/manualJournalEntry";
 
 type JournalProps = {
   searchParams: Promise<{
@@ -13,7 +15,7 @@ type JournalProps = {
     to?: string;
     page?: string;
     limit?: string;
-    productquery?: string;
+    usersquery?: string;
     sort?: string;
     entryType?: string;
     account_id?: string;
@@ -27,7 +29,7 @@ export default async function Page({ searchParams }: JournalProps) {
   const {
     from,
     to,
-    productquery = "",
+    usersquery = "",
     page = "1",
     limit = "13",
     sort,
@@ -44,11 +46,21 @@ export default async function Page({ searchParams }: JournalProps) {
   const pageSize = Number(limit);
 
   // ✅ Ensure async calls are awaited
-  const [data, accounts, fiscalYear] = await Promise.all([
+  const [data, accounts, fiscalYear, customers, suppliers] = await Promise.all([
     getJournalEntries(account_id, posted, from, to, pageIndex, pageSize),
     getExpenseCategories(),
     getFiscalYears(),
+    Fetchcustomerbyname(usersquery),
+    getSuppliers(),
   ]);
 
-  return <Tab data={data} acount={accounts} fiscalYear={fiscalYear} />;
+  return (
+    <Tab
+      data={data}
+      acount={accounts}
+      fiscalYear={fiscalYear}
+      customers={customers}
+      suppliers={suppliers}
+    />
+  );
 }

@@ -1,6 +1,10 @@
 "use client";
 
-import { processSale } from "@/lib/actions/cashier";
+import {
+  generateSaleNumber,
+  getNextSaleNumber,
+  processSale,
+} from "@/lib/actions/cashier";
 import SearchInput from "@/components/common/searchlist";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -123,10 +127,27 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
   const [receivedAmount, setReceivedAmount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserOption | null>(null);
+  const [isLoadingSaleNumber, setIsLoadingSaleNumber] = useState(false);
+  const [saleNumber, setSaleNumber] = useState("");
+  useEffect(() => {
+    async function loadSaleNumber() {
+      if (!user?.companyId) return;
 
-  const [saleNumber, setSaleNumber] = useState(
-    `SALE-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-  );
+      setIsLoadingSaleNumber(true);
+      try {
+        const nextNumber = await generateSaleNumber(user.companyId);
+        setSaleNumber(nextNumber);
+      } catch (error) {
+        console.error("Error loading sale number:", error);
+        // Fallback to timestamp-based number
+        setSaleNumber(`SALE-${Date.now()}`);
+      } finally {
+        setIsLoadingSaleNumber(false);
+      }
+    }
+
+    loadSaleNumber();
+  }, [, activeCartId]); // Reload when cart changes
   const debtLimit = totals.totalAfter + (selectedUser?.outstandingBalance ?? 0);
 
   // Check only when we actually have a selected user and a credit limit
@@ -558,7 +579,7 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
                 // />
               )}
               <Button
-                disabled={!canPay || isSubmitting}
+                disabled={!canPay || isSubmitting || isLoadingSaleNumber}
                 onClick={handlePayment}
                 className={cn(
                   "flex-1 rounded-md border-amber-500 py-3 text-amber-100 shadow-md",
