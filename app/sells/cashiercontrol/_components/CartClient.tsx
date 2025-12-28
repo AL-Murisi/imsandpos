@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TableCell, TableRow } from "@/components/ui/table";
-import { FormatPrice } from "@/hooks/usePrice";
+import { FormatPrice, useFormatter } from "@/hooks/usePrice";
 import { updateProductStockOptimistic } from "@/lib/slices/productsSlice";
 import { useAppDispatch } from "@/lib/store";
 import { ProductForSale } from "@/lib/zod";
@@ -262,7 +262,7 @@ export const ProductCard = memo(
     formatCurrency: any;
   }) => {
     if (product.availableCartons <= 0) return null;
-
+    const { formatQty } = useFormatter();
     // Determine selling mode automatically
     const isCartonOnly =
       product.availablePackets === 0 && product.availableUnits === 0;
@@ -283,7 +283,7 @@ export const ProductCard = memo(
             {/* Carton */}
             <div className="flex items-center justify-between py-1">
               <span className="w-8 text-left">
-                {FormatPrice(Number(product.availableCartons))}
+                {formatQty(Number(product.availableCartons.toFixed(0)))}
               </span>
               <span className="flex-1 text-center">
                 {isCartonOnly ? " كرتون " : t("carton")}
@@ -297,7 +297,7 @@ export const ProductCard = memo(
             {showPacket && (
               <div className="flex items-center justify-between py-1">
                 <span className="w-8 text-left">
-                  {FormatPrice(product.availablePackets)}
+                  {formatQty(Number(product.availablePackets.toFixed(0)))}
                 </span>
                 <span className="flex-1 text-center">{t("packet")}</span>
                 <span className="w-16 text-right">
@@ -310,7 +310,7 @@ export const ProductCard = memo(
             {showUnit && product.pricePerUnit !== undefined && (
               <div className="flex items-center justify-between py-1">
                 <span className="w-8 text-left">
-                  {FormatPrice(product.availableUnits)}
+                  {formatQty(Number(product.availableUnits.toFixed(0)))}
                 </span>
                 <span className="flex-1 text-center">{t("unit")}</span>
                 <span className="w-16 text-right">

@@ -351,6 +351,7 @@ export async function createMultipleExpenses(
                 description: expenseData.description,
                 expenseDate: expenseData.expense_date,
                 bankId: expenseData.bankId ?? "",
+                refrenceNumber: expenseData.referenceNumber ?? "",
                 currency_code: expenseData.currency_code ?? "YER",
               },
               userId,

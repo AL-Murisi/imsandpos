@@ -66,8 +66,8 @@ export function useFormatter() {
    */
   const formatQty = (value: number) => {
     if (value >= 1000) {
-      const formatted = (value / 1000).toFixed(1).replace(/\.0$/, "");
-      return `${formatted}k`;
+      const formatted = (value / 1000).toFixed(0);
+      return `${formatted}الف`;
     }
     return value.toString();
   };

@@ -1,5 +1,9 @@
 import { fetchAllFormData } from "@/lib/actions/roles";
-import { getInventoryById, getStockMovements } from "@/lib/actions/warehouse";
+import {
+  fetchAllFormDatas,
+  getInventoryById,
+  getStockMovements,
+} from "@/lib/actions/warehouse";
 import { TabsContent } from "@/components/ui/tabs";
 import { ParsedSort } from "@/hooks/sort";
 import { Prisma } from "@prisma/client";
@@ -57,7 +61,9 @@ export default async function manageStocks({ searchParams }: DashboardProps) {
     warehouseId,
     categoryId,
   };
-  // ✅ Run all fetches in parallel
+  // ✅ Run all fetches in parallelfetchAllFormData
+  const MultipleInventory = fetchAllFormDatas(user.companyId);
+
   const formData = fetchAllFormData(user.companyId);
   // Collect common params
   const commonParams = {
@@ -115,6 +121,7 @@ export default async function manageStocks({ searchParams }: DashboardProps) {
       movementData={movementData}
       purchasesPromise={purchasesPromise}
       formData={formData}
+      multipleInventory={MultipleInventory}
       currentTab={currentTab}
     />
   );

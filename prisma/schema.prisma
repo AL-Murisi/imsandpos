@@ -229,6 +229,7 @@ model Product {
   supplierId       String?         @map("supplier_id")
   warehouseId      String          @map("warehouse_id")
   type             String?
+  sellingUnits     Json? 
   unitsPerPacket   Int             @map("units_per_packet")
   packetsPerCarton Int             @map("packets_per_carton")
   costPrice        Decimal         @map("cost_price") @db.Decimal(10, 2)

@@ -11,10 +11,50 @@ import { useTranslations } from "next-intl";
 import { inventoryColumns } from "./columnsMovment";
 import { Calendar22 } from "@/components/common/DatePicker";
 import { DataTable } from "@/components/common/test";
+import MultiInventoryUpdateForm from "./multiplr";
+import { Prisma } from "@prisma/client";
 
 type ProductClientProps = {
   products: any[];
   total: number;
+  multipleInventory: {
+    products: {
+      id: string;
+      sku: string;
+      name: string;
+      supplierId: string | null;
+      costPrice: Prisma.Decimal;
+    }[];
+    warehouses: {
+      id: string;
+      name: string;
+      location: string;
+    }[];
+    suppliers: {
+      id: string;
+      name: string;
+    }[];
+    inventories: {
+      id: string;
+      warehouseId: string;
+      status: string;
+      product: {
+        sku: string;
+        name: string;
+        supplierId: string | null;
+        costPrice: Prisma.Decimal;
+      };
+      productId: string;
+      stockQuantity: number;
+      reservedQuantity: number;
+      availableQuantity: number;
+      reorderLevel: number;
+      warehouse: {
+        name: string;
+        location: string;
+      };
+    }[];
+  };
   formData: {
     warehouses: { id: string; name: string }[];
     categories: { id: string; name: string }[];
@@ -25,6 +65,7 @@ type ProductClientProps = {
 
 export default function ManageStocksClient({
   products,
+  multipleInventory,
   total,
   formData,
 }: ProductClientProps) {
@@ -56,7 +97,7 @@ export default function ManageStocksClient({
           paramKey="warehouseId"
           placeholder={t("warehouseId")}
         />
-
+        <MultiInventoryUpdateForm multipleInventory={multipleInventory} />
         <SelectField
           options={formData.categories}
           paramKey="categoryId"

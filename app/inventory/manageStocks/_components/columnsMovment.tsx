@@ -221,12 +221,12 @@ export const inventoryColumns: ColumnDef<any>[] = [
 
       // Show the correct available quantity based on product type
       const parts: string[] = [];
-      if (item.availableUnits > 0) parts.push(`${item.availableUnits} وحدة`);
+      if (item.availableUnits > 0)
+        parts.push(`${item.availableUnits.toFixed(0)} وحدة`);
       if (item.availablePackets > 0)
-        parts.push(`${item.availablePackets} علبة`);
+        parts.push(`${item.availablePackets.toFixed(0)} علبة`);
       if (item.availableCartons > 0)
-        parts.push(`${item.availableCartons} كرتون`);
-
+        parts.push(`${item.availableCartons.toFixed(0)} كرتون`);
       return parts.join(" / ") || "0";
     },
   },

@@ -1000,9 +1000,10 @@ async function createExpenseJournalEntries({
     accountId: string; // expense account (electricity, salary, etc.)
     amount: number;
     paymentMethod: string;
-    referenceNumber?: string;
+
     description: string;
     bankId?: string;
+    referenceNumber?: string;
     expenseDate: Date;
   };
   userId: string;
@@ -1044,7 +1045,9 @@ async function createExpenseJournalEntries({
     {
       company_id: companyId,
       account_id: expense.accountId,
-      description: expense.description,
+      description:
+        expense.description +
+        (expense.referenceNumber ? ` - ${expense.referenceNumber}` : ""),
       debit: expense.amount,
       credit: 0,
       entry_date: expense.expenseDate,
@@ -1059,7 +1062,9 @@ async function createExpenseJournalEntries({
     {
       company_id: companyId,
       account_id: creditAccountId,
-      description: expense.description,
+      description:
+        expense.description +
+        (expense.referenceNumber ? ` - ${expense.referenceNumber}` : ""),
       debit: 0,
       credit: expense.amount,
       entry_date: expense.expenseDate,
@@ -1480,7 +1485,10 @@ async function createPurchaseJournalEntries({
         {
           ...baseEntry,
           account_id: inventoryAccount,
-          description: description + " - إضافة للمخزون",
+          description:
+            description +
+            " - إضافة للمخزون" +
+            (purchase.referenceNumber ? ` - ${purchase.referenceNumber}` : ""),
           debit: totalAmount,
           credit: 0,
           reference_type: "إضافة مخزون",
@@ -1491,7 +1499,10 @@ async function createPurchaseJournalEntries({
         {
           ...baseEntry,
           account_id: paymentAccount,
-          description: description + " - مدفوع بالكامل",
+          description:
+            description +
+            " - مدفوع بالكامل" +
+            (purchase.referenceNumber ? ` - ${purchase.referenceNumber}` : ""),
           debit: 0,
           credit: totalAmount,
           reference_type: "سداد مشتريات",
@@ -1510,7 +1521,10 @@ async function createPurchaseJournalEntries({
         {
           ...baseEntry,
           account_id: inventoryAccount,
-          description: description + " - إضافة للمخزون",
+          description:
+            description +
+            " - إضافة للمخزون" +
+            (purchase.referenceNumber ? ` - ${purchase.referenceNumber}` : ""),
           debit: totalAmount,
           credit: 0,
           reference_type: "إضافة مخزون",
@@ -1521,7 +1535,10 @@ async function createPurchaseJournalEntries({
         {
           ...baseEntry,
           account_id: paymentAccount,
-          description: description + " - دفع جزئي",
+          description:
+            description +
+            " - دفع جزئي" +
+            (purchase.referenceNumber ? ` - ${purchase.referenceNumber}` : ""),
           debit: 0,
           credit: amountPaid,
           reference_type: "دفع مشتريات",
@@ -1532,7 +1549,10 @@ async function createPurchaseJournalEntries({
         {
           ...baseEntry,
           account_id: payableAccount,
-          description: description + " - آجل للمورد",
+          description:
+            description +
+            " - آجل للمورد" +
+            (purchase.referenceNumber ? ` - ${purchase.referenceNumber}` : ""),
           debit: 0,
           credit: totalAmount,
           reference_type: "آجل مشتريات",

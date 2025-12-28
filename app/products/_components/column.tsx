@@ -300,6 +300,8 @@ export const createColumns = (
         };
         return (
           <div className="flex gap-2">
+            {" "}
+            {/* <SellingUnitsManager /> */}
             <Dailogreuse
               open={confirmOpen}
               setOpen={setConfirmOpen}
@@ -328,16 +330,15 @@ export const createColumns = (
                 </Button>
               </div>
             </Dailogreuse>
-
             <div className="flex gap-2">
-              <Button
+              {/* <Button
                 variant="outline"
                 size="sm"
                 onClick={() => navigator.clipboard.writeText(product.sku)}
                 title={tt("copySKU")}
               >
                 <CopyIcon className="h-4 w-4" />
-              </Button>
+              </Button> */}
 
               <ProductEditFormm
                 product={product}
@@ -353,6 +354,7 @@ export const createColumns = (
 
 export default function sortfilteringsearch() {}
 import { format } from "date-fns";
+import SellingUnitsManager from "./salesunit";
 
 type ExpiryProps = {
   expiredAt?: string | Date;
