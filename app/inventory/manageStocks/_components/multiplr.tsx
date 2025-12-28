@@ -239,11 +239,6 @@ export default function MultiInventoryUpdateForm({
               : inv,
           ),
         );
-
-        toast.success(
-          `تم تحميل المخزون الحالي: ${existingInventory.stockQuantity} وحدة`,
-          { duration: 2000 },
-        );
       } else {
         // No existing inventory - clear current stock
         setInventoryUpdates((prevUpdates) =>
@@ -662,7 +657,7 @@ export default function MultiInventoryUpdateForm({
                           </p>
                         )}
                     </div>
-                    Current Stock Display
+                    {/* Current Stock Display
                     {inventory.currentStock !== undefined && (
                       <div className="space-y-2">
                         <Label>المخزون الحالي</Label>
@@ -673,7 +668,7 @@ export default function MultiInventoryUpdateForm({
                           </span>
                         </div>
                       </div>
-                    )}
+                    )} */}
                     {/* Stock Quantity */}
                     <div className="space-y-2">
                       <Label>
@@ -700,7 +695,7 @@ export default function MultiInventoryUpdateForm({
                       />
                     </div>
                     {/* New Total (if current stock exists) */}
-                    {inventory.currentStock !== undefined &&
+                    {/* {inventory.currentStock !== undefined &&
                       inventory.stockQuantity && (
                         <div className="space-y-2">
                           <Label>المجموع الجديد</Label>
@@ -711,7 +706,7 @@ export default function MultiInventoryUpdateForm({
                           </div>
                         </div>
                       )}
-                    {/* Reserved Quantity */}
+                    Reserved Quantity */}
                     <div className="space-y-2">
                       <Label>الكمية المحجوزة</Label>
                       <Input
