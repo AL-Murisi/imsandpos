@@ -203,7 +203,7 @@ export const journalEntryColumns: ColumnDef<JournalEntryData>[] = [
       }
 
       const currencyLabel =
-        currency === "USD" ? "$" : currency === "YER" ? "YER" : "SAR";
+        currency === "USD" ? "$" : currency === "YER" ? "ر.ي" : "ر.س";
 
       return (
         <div
@@ -229,7 +229,7 @@ export const journalEntryColumns: ColumnDef<JournalEntryData>[] = [
       }
 
       const currencyLabel =
-        currency === "USD" ? "$" : currency === "YER" ? "YER" : "SAR";
+        currency === "USD" ? "$" : currency === "YER" ? "ر.ي" : "ر.س";
 
       return (
         <div

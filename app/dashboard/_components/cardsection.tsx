@@ -46,9 +46,10 @@ interface SectionCardsProps {
     netProfit: any;
   };
   productStats: {
-    totalStockQuantity: number;
+    totalexpiredCount: number;
     lowStockProducts: number;
     zeroProducts: number;
+    expiringSoonProducts: number;
   };
   users: { users: number };
 }
@@ -147,17 +148,22 @@ export default function SectionCards({
   const differentSection = [
     {
       description: "product",
-      title: productStats.totalStockQuantity,
-      label: t("totalStock"),
-      link: "/inventory/manageStocks",
-      bg: "bg-gradient-to-r from-cyan-500 to-cyan-700",
+      title: productStats.totalexpiredCount,
+      title2: productStats.expiringSoonProducts,
+      label: "منتهي",
+      label2: "قريب الانتهاء",
+      link: "/products",
+      bg:
+        productStats.totalexpiredCount > 0
+          ? "bg-gradient-to-r from-red-500 to-red-700"
+          : "bg-gradient-to-r from-cyan-500 to-cyan-700",
     },
     {
       description: "lowStock",
       title: productStats.lowStockProducts,
       title2: productStats.zeroProducts,
       label: t("lowStock"),
-      label2: t("finishedStock"),
+      label2: "منتجات مخلصه",
       link: "/inventory/manageStocks",
       bg: "bg-gradient-to-r from-red-500 to-red-700",
     },

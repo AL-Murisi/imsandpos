@@ -1448,7 +1448,10 @@ async function createPurchaseJournalEntries({
   );
 
   const payableAccount = accountMap.get("accounts_payable");
-  const cashAccount = accountMap.get("cash");
+  const cashAccount =
+    purchase.paymentMethod === "cash"
+      ? paymentDetails?.bankId
+      : accountMap.get("cash");
   const bankAccount = paymentDetails?.bankId || accountMap.get("bank");
 
   const inventoryAccount = accountMap.get("inventory");

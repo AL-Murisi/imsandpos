@@ -21,7 +21,7 @@ import { toast } from "sonner";
 import { payOutstandingOnly, updateSalesBulk } from "@/lib/actions/debtSells";
 import { Label } from "@/components/ui/label";
 import { SelectField } from "@/components/common/selectproduct";
-import { Fetchbanks } from "@/lib/actions/banks";
+import { fetchPayments } from "@/lib/actions/banks";
 
 interface Debt {
   id: string;
@@ -39,7 +39,11 @@ interface DebtReportProps {
   customerID: string;
   outstandingBalance: number;
 }
-
+interface bankcash {
+  id: string;
+  name: string;
+  currency: string | null;
+}
 export default function DebtReport({
   customerName,
   customerContact,
@@ -56,32 +60,32 @@ export default function DebtReport({
   const { user } = useAuth();
   const { formatCurrency } = useFormatter();
   const [transferNumber, setTransferNumber] = useState("");
-  const [currencyCode, setCurrencyCode] = useState<
-    "YER" | "USD" | "SAR" | "EUR" | "KWD"
-  >("YER");
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   if (!user) return null;
 
-  const [banks, setBanks] = useState<{ id: string; name: string }[]>([]);
+  const [banks, setBanks] = useState<bankcash[]>([]);
   const [selectedBankId, setSelectedBankId] = useState("");
   useEffect(() => {
-    if (paymentMethod !== "bank" || !open) {
+    if (!open || !paymentMethod) {
       setBanks([]);
       setSelectedBankId("");
       return;
     }
 
-    const loadBanks = async () => {
+    const loadAccounts = async () => {
       try {
-        const result = await Fetchbanks();
-        setBanks(result);
+        const { banks, cashAccounts } = await fetchPayments();
+        // Automatically choose accounts based on payment method
+        if (paymentMethod === "bank") setBanks(banks);
+        if (paymentMethod === "cash") setBanks(cashAccounts);
       } catch (err) {
         console.error(err);
-        toast.error("فشل في جلب البنوك");
+        toast.error("فشل في جلب الحسابات");
       }
     };
 
-    loadBanks();
+    loadAccounts();
   }, [open, paymentMethod]);
 
   useEffect(() => {
@@ -148,13 +152,15 @@ export default function DebtReport({
     }
 
     try {
+      const currencyCode = banks.find((b) => b.id === selectedBankId)?.currency;
+
       await payOutstandingOnly(
         user.companyId,
         customerID,
         paymentAmount,
         user.userId,
         paymentMethod,
-        currencyCode,
+        currencyCode ?? "",
         {
           bankId: selectedBankId,
           transferNumber,
@@ -199,13 +205,16 @@ export default function DebtReport({
     }
 
     try {
+      // Get the currency of the selected account
+      const currencyCode = banks.find((b) => b.id === selectedBankId)?.currency;
+
       await updateSalesBulk(
         user.companyId,
         selectedIds,
         paymentAmount,
         user.userId,
         paymentMethod,
-        currencyCode,
+        currencyCode ?? "",
         {
           bankId: selectedBankId,
           transferNumber,
@@ -222,13 +231,7 @@ export default function DebtReport({
       toast.error("فشل في تطبيق الدفعة. الرجاء المحاولة مرة أخرى.");
     }
   };
-  const currencyOptions = [
-    { name: "الريال اليمني (YER)", id: "YER" },
-    { name: "الدولار الأمريكي (USD)", id: "USD" },
-    { name: "الريال السعودي (SAR)", id: "SAR" },
-    { name: "اليورو (EUR)", id: "EUR" },
-    { name: "الدينار الكويتي (KWD)", id: "KWD" },
-  ];
+
   const paymentmethods = [
     { id: "cash", name: "نقداً" },
     { id: "bank", name: "تحويل بنكي" },
@@ -340,7 +343,7 @@ export default function DebtReport({
               action={(val) => setPaymentMethod(val)}
             />
           </div>
-          <div className="grid gap-2">
+          {/* <div className="grid gap-2">
             <Label htmlFor="currency_code">العملة </Label>
             <SelectField
               options={currencyOptions}
@@ -350,12 +353,25 @@ export default function DebtReport({
               }
               placeholder="اختر العملة"
             />
-          </div>
-          {/* Bank fields */}
-          {paymentMethod === "bank" && (
+          </div> */}
+          {/* Bank fields */}{" "}
+          {paymentMethod === "cash" && (
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <div className="grid gap-3">
                 <Label>البنك</Label>
+                <SelectField
+                  options={banks}
+                  value={selectedBankId}
+                  placeholder="اختر البنك"
+                  action={(val) => setSelectedBankId(val)}
+                />
+              </div>
+            </div>
+          )}
+          {paymentMethod === "bank" && (
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="grid gap-3">
+                <Label>كاش</Label>
                 <SelectField
                   options={banks}
                   value={selectedBankId}

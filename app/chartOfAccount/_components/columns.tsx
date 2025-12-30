@@ -198,7 +198,7 @@ export const accountColumns: ColumnDef<any>[] = [
             : "text-gray-600";
 
       const currencyLabel =
-        currency === "USD" ? "$" : currency === "YER" ? "YER" : "SAR";
+        currency === "USD" ? "$" : currency === "YER" ? "ر.ي" : "ر.س";
 
       return (
         <div

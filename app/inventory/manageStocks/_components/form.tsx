@@ -16,9 +16,10 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
+import { fetchPayments } from "@/lib/actions/banks";
 
 type FormValues = z.infer<typeof UpdateInventorySchema> & {
-  currency_code?: "YER" | "USD" | "SAR" | "EUR" | "KWD";
+  currency_code?: string;
   updateType?: "manual" | "supplier";
   supplierId?: string;
   quantity?: number;
@@ -38,6 +39,11 @@ interface Warehouse {
   id: string;
   name: string;
 }
+interface bankcash {
+  id: string;
+  name: string;
+  currency: string | null;
+}
 
 export default function InventoryEditForm({ inventory }: { inventory: any }) {
   const [updateType, setUpdateType] = useState<"manual" | "supplier">("manual");
@@ -47,6 +53,10 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
+  const [selectedBankId, setSelectedBankId] = useState("");
+  const [banks, setBanks] = useState<bankcash[]>([]);
+  const [cash, setCash] = useState<bankcash[]>([]);
+  const [transferNumber, setTransferNumber] = useState("");
 
   if (!user) return null;
 
@@ -95,11 +105,7 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
       setValue("availableQuantity", quantity - reservedQuantity);
     }
   }, [reservedQuantity, quantity, setValue]);
-  const currencyOptions = [
-    { name: "الريال اليمني (YER)", id: "YER" },
-    { name: "الدولار الأمريكي (USD)", id: "USD" },
-    { name: "الريال السعودي (SAR)", id: "SAR" },
-  ];
+
   // ✅ Load suppliers + warehouses when dialog opens
   useEffect(() => {
     if (!open) {
@@ -123,7 +129,26 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
 
     loadData();
   }, [open, user.companyId, reset, setValue]);
+  useEffect(() => {
+    if (!open) {
+      setSelectedBankId("");
+      setBanks([]);
+      return;
+    }
+    const loadAccounts = async () => {
+      try {
+        const { banks, cashAccounts } = await fetchPayments();
+        // Automatically choose accounts based on payment method
+        setBanks(banks);
+        setCash(cashAccounts);
+      } catch (err) {
+        console.error(err);
+        toast.error("فشل في جلب الحسابات");
+      }
+    };
 
+    loadAccounts();
+  }, [open]);
   // ✅ Total cost
   const totalCost = (quantity || 0) * (unitCost || 0);
   //  <option value="">-- اختر طريقة الدفع --</option>
@@ -131,6 +156,11 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
   //                       <option value="bank_transfer"</option>
   //                       <option value="check">شيك</option>
   //                       <option value="credit">ائتمان</option>
+  const currencyCode = banks.find((b) => b.id === selectedBankId)?.currency;
+  const currencyCodecash = cash.find(
+    (b) => b.id === inventory.bankId,
+  )?.currency;
+  const currency = currencyCode ?? currencyCodecash;
   const paymentmethod = [
     { id: "cash", name: "نقداً" },
     { id: "bank", name: "تحويل بنكي" },
@@ -174,6 +204,11 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
         paymentMethod: updateType === "supplier" ? method : undefined,
         paymentAmount: updateType === "supplier" ? amount : undefined,
         notes: data.reason,
+
+        bankId: selectedBankId,
+        transferNumber,
+
+        currency_code: updateType === "supplier" ? (currency ?? "") : undefined,
       };
 
       await updateInventory(payload, user.userId, user.companyId);
@@ -276,20 +311,42 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
                         className="rounded-md border border-gray-300 px-3 py-2"
                       > */}
                     </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="currency_code">العملة </Label>
-                      <SelectField
-                        options={currencyOptions}
-                        value={watch("currency_code")}
-                        action={(value: string) =>
-                          setValue(
-                            "currency_code",
-                            value as "YER" | "USD" | "SAR",
-                          )
-                        }
-                        placeholder="اختر العملة"
-                      />
-                    </div>
+                    {/* BANK */}
+                    {method === "bank" && (
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <div className="grid gap-2">
+                          <Label>الحساب البنكي</Label>
+                          <SelectField
+                            options={banks}
+                            value={selectedBankId}
+                            action={(val) => setSelectedBankId(val)}
+                            placeholder="اختر البنك"
+                          />
+                        </div>
+                        <div className="grid gap-3">
+                          <Label>رقم الحوالة / التحويل</Label>
+                          <Input
+                            value={transferNumber}
+                            onChange={(e) => setTransferNumber(e.target.value)}
+                            placeholder="مثال: TRX-458796"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* CASH */}
+                    {method === "cash" && (
+                      <div className="grid gap-2">
+                        <Label>الصندوق النقدي</Label>
+                        <SelectField
+                          options={cash}
+                          value={selectedBankId}
+                          action={(val) => setSelectedBankId(val)}
+                          placeholder="اختر الصندوق"
+                        />
+                      </div>
+                    )}
+
                     <div className="grid gap-2">
                       <Label>سعر الوحدة</Label>
                       <Input

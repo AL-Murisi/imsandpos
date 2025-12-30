@@ -13,7 +13,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Plus, Trash2, Save, Package, Search, Info } from "lucide-react";
 import { Prisma } from "@prisma/client";
-import { Fetchbanks } from "@/lib/actions/banks";
+import { fetchPayments } from "@/lib/actions/banks";
 
 interface InventoryUpdateItem {
   id: string;
@@ -75,6 +75,11 @@ interface MultiInventoryUpdateFormProps {
     }[];
   };
 }
+interface bankcash {
+  id: string;
+  name: string;
+  currency: string | null;
+}
 
 export default function MultiInventoryUpdateForm({
   multipleInventory,
@@ -85,8 +90,8 @@ export default function MultiInventoryUpdateForm({
     new Date().toISOString().split("T")[0],
   );
   const { user } = useAuth();
-  const [banks, setBanks] = useState<{ id: string; name: string }[]>([]);
-
+  const [banks, setBanks] = useState<bankcash[]>([]);
+  const [cash, setCash] = useState<bankcash[]>([]);
   // Initialize with one empty inventory update
   const [inventoryUpdates, setInventoryUpdates] = useState<
     InventoryUpdateItem[]
@@ -112,18 +117,19 @@ export default function MultiInventoryUpdateForm({
       setBanks([]);
       return;
     }
-
-    const loadBanks = async () => {
+    const loadAccounts = async () => {
       try {
-        const result = await Fetchbanks();
-        setBanks(result);
+        const { banks, cashAccounts } = await fetchPayments();
+        // Automatically choose accounts based on payment method
+        setBanks(banks);
+        setCash(cashAccounts);
       } catch (err) {
         console.error(err);
-        toast.error("فشل في جلب البنوك");
+        toast.error("فشل في جلب الحسابات");
       }
     };
 
-    loadBanks();
+    loadAccounts();
   }, [open]);
 
   const paymentMethods = [
@@ -131,12 +137,6 @@ export default function MultiInventoryUpdateForm({
     { id: "bank", name: "تحويل بنكي" },
 
     { id: "debt", name: "دين" },
-  ];
-
-  const currencyOptions = [
-    { name: "الريال اليمني (YER)", id: "YER" },
-    { name: "الدولار الأمريكي (USD)", id: "USD" },
-    { name: "الريال السعودي (SAR)", id: "SAR" },
   ];
 
   if (!user) return null;
@@ -538,6 +538,12 @@ export default function MultiInventoryUpdateForm({
                 (parseFloat(inventory.stockQuantity) || 0);
 
               // Determine which warehouses to show
+              const currencyCode = banks.find(
+                (b) => b.id === inventory.bankId,
+              )?.currency;
+              const currencyCodecash = cash.find(
+                (b) => b.id === inventory.bankId,
+              )?.currency;
               const warehouseOptions =
                 inventory.warehousesForProduct &&
                 inventory.warehousesForProduct.length > 0
@@ -776,22 +782,6 @@ export default function MultiInventoryUpdateForm({
                         </div>
 
                         <div className="space-y-2">
-                          <Label>العملة</Label>
-                          <SelectField
-                            options={currencyOptions}
-                            value={inventory.currency_code}
-                            action={(val) =>
-                              updateInventory(
-                                inventory.id,
-                                "currency_code",
-                                val,
-                              )
-                            }
-                            placeholder="اختر العملة"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
                           <Label>طريقة الدفع</Label>
                           <SelectField
                             options={paymentMethods}
@@ -842,7 +832,21 @@ export default function MultiInventoryUpdateForm({
                             </div>
                           </>
                         )}
-
+                        {inventory.paymentMethod === "cash" && (
+                          <div className="space-y-2">
+                            <Label>
+                              كاش <span className="text-red-500">*</span>
+                            </Label>
+                            <SelectField
+                              options={cash}
+                              value={inventory.bankId || ""}
+                              action={(val) =>
+                                updateInventory(inventory.id, "bankId", val)
+                              }
+                              placeholder="اختر البنك"
+                            />
+                          </div>
+                        )}
                         <div className="space-y-2">
                           <Label>مبلغ الدفع</Label>
                           <Input
@@ -893,7 +897,7 @@ export default function MultiInventoryUpdateForm({
                         التكلفة الإجمالية:
                       </span>
                       <span className="text-primary font-bold">
-                        {itemCost.toFixed(2)} {inventory.currency_code}
+                        {itemCost.toFixed(2)} {currencyCode ?? currencyCodecash}
                       </span>
                     </div>
                   )}

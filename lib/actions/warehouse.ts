@@ -46,7 +46,7 @@ export type InventoryUpdateWithTrackingInput = z.infer<
 
 interface ExtendedInventoryUpdateData {
   id: string;
-  currency_code?: "YER" | "USD" | "SAR" | "EUR" | "KWD";
+
   reason?: string;
   notes?: string;
   availableQuantity?: number;
@@ -63,6 +63,9 @@ interface ExtendedInventoryUpdateData {
   status?: string;
   warehouseId: string;
   lastStockTake?: string | Date; // 💡 FIX: Allow Date object or string for compatibility with form input/default values
+  bankId?: string;
+  transferNumber?: string;
+  currency_code?: string;
 }
 function generateArabicPurchaseReceiptNumber(lastNumber: number) {
   const padded = String(lastNumber).padStart(5, "0"); // 00001
@@ -87,6 +90,8 @@ export async function updateInventory(
       paymentMethod,
       paymentAmount,
       productId,
+      bankId,
+      transferNumber,
       currency_code,
       supplierId: providedSupplierId,
       warehouseId: targetWarehouseId,
@@ -337,6 +342,10 @@ export async function updateInventory(
               userId,
               type: "purchase",
               paymentMethod: paymentMethod || "",
+              paymentDetails: {
+                bankId: bankId ?? "",
+                refrenceNumber: transferNumber ?? "",
+              },
               currencyCode: currency_code,
             },
             processed: false,

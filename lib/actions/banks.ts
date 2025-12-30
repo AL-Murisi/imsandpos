@@ -5,6 +5,7 @@ import { getSession } from "../session";
 import { BankForm } from "../zod";
 import { getUserCompany } from "./chartOfaccounts";
 import { revalidatePath } from "next/cache";
+import { Currency } from "lucide-react";
 
 export async function fetchBanks() {
   try {
@@ -138,4 +139,56 @@ export async function Fetchbanks() {
     name: i.name,
   }));
   return name;
+}
+export async function fetchPayments() {
+  const company = await getSession();
+  if (!company) return { banks: [], cashAccounts: [] };
+
+  // Fetch banks
+  const banks = await prisma.bank.findMany({
+    where: {
+      companyId: company.companyId,
+      isActive: true,
+    },
+    select: {
+      accountId: true,
+      name: true,
+      account: { select: { currency_code: true } },
+    },
+    orderBy: {
+      name: "asc",
+    },
+  });
+
+  // Map banks to { id, name }
+  const mappedBanks = banks.map((i) => ({
+    id: i.accountId,
+    name: i.name,
+    currency: i.account.currency_code,
+  }));
+
+  // Fetch cash accounts
+  const cashAccounts = await prisma.accounts.findMany({
+    where: {
+      company_id: company.companyId,
+      account_category: "CASH", // adjust category if needed
+      is_active: true,
+    },
+    select: {
+      id: true,
+      account_name_en: true,
+      currency_code: true,
+    },
+    orderBy: {
+      account_name_ar: "asc",
+    },
+  });
+
+  const mappedCash = cashAccounts.map((i) => ({
+    id: i.id,
+    name: i.account_name_en,
+    currency: i.currency_code,
+  }));
+
+  return { banks: mappedBanks, cashAccounts: mappedCash };
 }

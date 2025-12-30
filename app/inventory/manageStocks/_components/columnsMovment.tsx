@@ -238,15 +238,16 @@ export const inventoryColumns: ColumnDef<any>[] = [
     accessorKey: "status",
     header: "الحالة",
     cell: ({ row }) => {
-      if (row.original.availableQuantity > row.original.reorderLevel) {
-        return <Badge className="bg-green-600">متوفر</Badge>;
-      } else if (
-        row.original.availableQuantity == row.original.reorderLevel ||
-        row.original.availableQuantity > 0
-      ) {
-        return <Badge className="bg-yellow-500">قريب من النفاد</Badge>;
-      } else if (row.original.availableQuantity == 0) {
+      const item = row.original;
+      const available = item.availableCartons ?? 0;
+      const reorder = item.reorderLevel ?? 0;
+
+      if (available === 0) {
         return <Badge className="bg-red-500">نفد</Badge>;
+      } else if (available <= reorder) {
+        return <Badge className="bg-yellow-500">قريب من النفاد</Badge>;
+      } else {
+        return <Badge className="bg-green-600">متوفر</Badge>;
       }
     },
   },
