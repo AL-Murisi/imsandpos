@@ -229,11 +229,11 @@ export default function DebtReport({
     { name: "اليورو (EUR)", id: "EUR" },
     { name: "الدينار الكويتي (KWD)", id: "KWD" },
   ];
-  const paymentMethods = [
+  const paymentmethods = [
     { id: "cash", name: "نقداً" },
     { id: "bank", name: "تحويل بنكي" },
-    { id: "check", name: "شيك" },
-    { id: "credit", name: "ائتمان" },
+
+    { id: "debt", name: "دين" },
   ];
   return (
     <Dailogreuse
@@ -334,7 +334,7 @@ export default function DebtReport({
           <div className="grid gap-2">
             <Label>طريقة الدفع</Label>
             <SelectField
-              options={paymentMethods}
+              options={paymentmethods}
               value={paymentMethod || ""}
               placeholder="اختر الطريقة"
               action={(val) => setPaymentMethod(val)}

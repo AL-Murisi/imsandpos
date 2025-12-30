@@ -212,8 +212,8 @@ export function ReturnForm({ sale }: { sale: any }) {
   const paymentMethods = [
     { id: "cash", name: "نقداً" },
     { id: "bank", name: "تحويل بنكي" },
-    { id: "check", name: "شيك" },
-    { id: "credit", name: "ائتمان" },
+
+    { id: "debt", name: "دين" },
   ];
   return (
     <Dailogreuse

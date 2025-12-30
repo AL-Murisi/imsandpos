@@ -98,9 +98,9 @@ export function ExpenseEditForm({ expense }: { expense: any }) {
   };
   const paymentMethods = [
     { id: "cash", name: "نقداً" },
-    { id: "bank_transfer", name: "تحويل بنكي" },
-    { id: "check", name: "شيك" },
-    { id: "credit", name: "ائتمان" },
+    { id: "bank", name: "تحويل بنكي" },
+
+    { id: "debt", name: "دين" },
   ];
 
   const statusOptions = [

@@ -155,7 +155,7 @@ export const accountColumns: ColumnDef<any>[] = [
     cell: ({ row }) => {
       const category = row.getValue("account_category") as string;
       const categoryMap: Record<string, string> = {
-        CASH_AND_BANK: "نقد",
+        CASH: "نقد",
         BANK: "بنك",
         ACCOUNTS_RECEIVABLE: "ذمم مدينة",
         INVENTORY: "مخزون",
@@ -187,8 +187,9 @@ export const accountColumns: ColumnDef<any>[] = [
     accessorKey: "balance",
     header: ({ column }) => <SortableHeader column={column} label="الرصيد" />,
     cell: ({ row }) => {
-      const { formatCurrency, formatPriceK, formatQty } = useFormatter();
+      const currency = row.original.currency_code;
       const balance = row.getValue("balance") as number;
+
       const color =
         balance > 0
           ? "text-green-600"
@@ -196,9 +197,16 @@ export const accountColumns: ColumnDef<any>[] = [
             ? "text-red-600"
             : "text-gray-600";
 
+      const currencyLabel =
+        currency === "USD" ? "$" : currency === "YER" ? "YER" : "SAR";
+
       return (
-        <div className={`font-mono text-lg font-semibold ${color}`}>
-          {formatCurrency(balance)}
+        <div
+          dir="ltr"
+          className={`flex items-center gap-1 font-mono text-lg font-semibold ${color}`}
+        >
+          <span className="text-sm opacity-70">{currencyLabel}</span>
+          <span>{balance.toLocaleString()}</span>
         </div>
       );
     },

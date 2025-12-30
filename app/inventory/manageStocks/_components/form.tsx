@@ -99,8 +99,6 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
     { name: "الريال اليمني (YER)", id: "YER" },
     { name: "الدولار الأمريكي (USD)", id: "USD" },
     { name: "الريال السعودي (SAR)", id: "SAR" },
-    { name: "اليورو (EUR)", id: "EUR" },
-    { name: "الدينار الكويتي (KWD)", id: "KWD" },
   ];
   // ✅ Load suppliers + warehouses when dialog opens
   useEffect(() => {
@@ -136,8 +134,8 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
   const paymentmethod = [
     { id: "cash", name: "نقداً" },
     { id: "bank", name: "تحويل بنكي" },
-    { id: "شيك", name: "شيك" },
-    { id: "ائتمان", name: "ائتمان" },
+
+    { id: "debt", name: "دين" },
   ];
   // ✅ Submit
   const onSubmit = async (data: FormValues) => {
@@ -286,7 +284,7 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
                         action={(value: string) =>
                           setValue(
                             "currency_code",
-                            value as "YER" | "USD" | "SAR" | "EUR" | "KWD",
+                            value as "YER" | "USD" | "SAR",
                           )
                         }
                         placeholder="اختر العملة"

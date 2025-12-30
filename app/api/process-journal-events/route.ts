@@ -16,7 +16,7 @@ export async function GET() {
             "purchase",
             "purchase-payment",
             "createCutomer",
-            "supplierCutomer",
+            "createsupplier",
             "expense",
             "payment-outstanding",
           ],
@@ -43,7 +43,7 @@ export async function GET() {
       purchase: 0,
       purchase_payment: 0,
       createCutomer: 0,
-      supplierCutomer: 0,
+      createsupplier: 0,
       expenses: 0,
       errors: [] as any[],
     };
@@ -104,6 +104,8 @@ export async function GET() {
             companyId: eventData.companyId,
             userId: eventData.userId,
             type: eventData.type,
+            currencyCode: eventData.currencyCode,
+            paymentDetails: eventData.paymentDetails,
           });
           results.purchase++;
         } else if (event.eventType === "purchase-payment") {
@@ -128,7 +130,7 @@ export async function GET() {
             payment: eventData.payment,
             cashierId: eventData.cashierId,
           });
-        } else if (event.eventType === "supplierCutomer") {
+        } else if (event.eventType === "createsupplier") {
           await createSupplierJournalEnteries({
             supplierId: eventData.supplierId,
             supplierName: eventData.name,
@@ -1415,11 +1417,15 @@ async function createPurchaseJournalEntries({
   companyId,
   userId,
   type,
+  currencyCode,
+  paymentDetails,
 }: {
   purchase: any;
   companyId: string;
   userId: string;
   type: string;
+  currencyCode: string;
+  paymentDetails?: { bankId: string; refrenceNumber: string };
 }) {
   // 1️⃣ Fetch mappings and fiscal year in parallel
   const [mappings, fy] = await Promise.all([
@@ -1429,6 +1435,7 @@ async function createPurchaseJournalEntries({
     }),
     getActiveFiscalYears(),
   ]);
+  const safeCurrency = currencyCode || "YERt";
 
   if (!fy) {
     console.warn("No active fiscal year - skipping journal entries");
@@ -1442,7 +1449,8 @@ async function createPurchaseJournalEntries({
 
   const payableAccount = accountMap.get("accounts_payable");
   const cashAccount = accountMap.get("cash");
-  const bankAccount = accountMap.get("bank");
+  const bankAccount = paymentDetails?.bankId || accountMap.get("bank");
+
   const inventoryAccount = accountMap.get("inventory");
 
   if (!inventoryAccount || !payableAccount || !bankAccount || !cashAccount) {
@@ -1450,6 +1458,9 @@ async function createPurchaseJournalEntries({
   }
 
   // 3️⃣ Generate entry number
+  if (!safeCurrency) {
+    throw new Error("❌ currency_code is missing");
+  }
 
   const entryBase = `JE-${new Date().getFullYear()}-${purchase.id.slice(0, 7)}-${Math.floor(Math.random() * 10000)}`;
   const description =
@@ -1462,6 +1473,7 @@ async function createPurchaseJournalEntries({
     company_id: companyId,
     entry_date: new Date(),
     is_automated: true,
+    currency_code: safeCurrency,
     fiscal_period: fy.period_name,
     created_by: userId,
   };
@@ -1484,6 +1496,7 @@ async function createPurchaseJournalEntries({
         // Debit Inventory
         {
           ...baseEntry,
+
           account_id: inventoryAccount,
           description:
             description +
@@ -1502,7 +1515,9 @@ async function createPurchaseJournalEntries({
           description:
             description +
             " - مدفوع بالكامل" +
-            (purchase.referenceNumber ? ` - ${purchase.referenceNumber}` : ""),
+            (paymentDetails?.refrenceNumber
+              ? ` - ${paymentDetails.refrenceNumber}`
+              : ""),
           debit: 0,
           credit: totalAmount,
           reference_type: "سداد مشتريات",
@@ -1510,6 +1525,7 @@ async function createPurchaseJournalEntries({
           entry_number: `${entryBase}-CR1`,
         },
       );
+      console.log("Fully paid purchase journal entries created.", currencyCode);
     } else if (amountPaid > 0 && amountPaid < totalAmount) {
       // 2️⃣ Partial Payment
       const due = totalAmount - amountPaid;
@@ -1524,7 +1540,9 @@ async function createPurchaseJournalEntries({
           description:
             description +
             " - إضافة للمخزون" +
-            (purchase.referenceNumber ? ` - ${purchase.referenceNumber}` : ""),
+            (paymentDetails?.refrenceNumber
+              ? ` - ${paymentDetails.refrenceNumber}`
+              : ""),
           debit: totalAmount,
           credit: 0,
           reference_type: "إضافة مخزون",
@@ -1538,7 +1556,9 @@ async function createPurchaseJournalEntries({
           description:
             description +
             " - دفع جزئي" +
-            (purchase.referenceNumber ? ` - ${purchase.referenceNumber}` : ""),
+            (paymentDetails?.refrenceNumber
+              ? ` - ${paymentDetails.refrenceNumber}`
+              : ""),
           debit: 0,
           credit: amountPaid,
           reference_type: "دفع مشتريات",
@@ -1552,7 +1572,9 @@ async function createPurchaseJournalEntries({
           description:
             description +
             " - آجل للمورد" +
-            (purchase.referenceNumber ? ` - ${purchase.referenceNumber}` : ""),
+            (paymentDetails?.refrenceNumber
+              ? ` - ${paymentDetails.refrenceNumber}`
+              : ""),
           debit: 0,
           credit: totalAmount,
           reference_type: "آجل مشتريات",

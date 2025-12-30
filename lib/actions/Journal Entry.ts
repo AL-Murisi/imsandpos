@@ -856,6 +856,7 @@ export async function getJournalEntries(
       is_automated: true,
       reference_type: true,
       fiscal_period: true,
+      currency_code: true,
       accounts: {
         select: {
           account_code: true,

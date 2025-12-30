@@ -22,6 +22,7 @@ interface JournalEntryData {
   reference_type: string | null;
   reference_id: string | null;
   fiscal_period: string | null;
+  currency_code: string;
   posted_by: {
     id: string;
     name: string;
@@ -194,58 +195,50 @@ export const journalEntryColumns: ColumnDef<JournalEntryData>[] = [
     accessorKey: "debit",
     header: ({ column }) => <SortableHeader column={column} label="مدين" />,
     cell: ({ row }) => {
+      const currency = row.original.currency_code;
       const debit = row.getValue("debit") as number;
-      return debit > 0 ? (
-        <span className="font-mono text-lg font-semibold text-green-600">
-          {new Intl.NumberFormat("ar-YE", {
-            style: "currency",
-            currency: "YER",
-            numberingSystem: "latn",
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          }).format(debit)}
-        </span>
-      ) : (
-        <span className="text-gray-400">-</span>
-      );
-    },
-  },
-  {
-    accessorKey: "credit",
-    header: ({ column }) => <SortableHeader column={column} label="دائن" />,
-    cell: ({ row }) => {
-      const credit = row.getValue("credit") as number;
-      return credit > 0 ? (
-        <span className="font-mono font-semibold text-red-600">
-          {new Intl.NumberFormat("ar-YE", {
-            style: "currency",
-            currency: "YER",
-            numberingSystem: "latn",
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          }).format(credit)}
-        </span>
-      ) : (
-        <span className="text-lg text-gray-400">-</span>
+
+      if (!debit || debit <= 0) {
+        return <span className="text-gray-400">-</span>;
+      }
+
+      const currencyLabel =
+        currency === "USD" ? "$" : currency === "YER" ? "YER" : "SAR";
+
+      return (
+        <div
+          dir="ltr"
+          className="flex items-center gap-1 font-mono text-lg font-semibold text-green-600"
+        >
+          <span className="text-sm opacity-70">{currencyLabel}</span>
+          <span className="tabular-nums">{debit}</span>
+        </div>
       );
     },
   },
 
   {
-    accessorKey: "is_automated",
-    header: ({ column }) => <SortableHeader column={column} label="النوع" />,
+    accessorKey: "credit",
+    header: ({ column }) => <SortableHeader column={column} label="دائن" />,
     cell: ({ row }) => {
-      const isAutomated = row.getValue("is_automated") as boolean;
+      const currency = row.original.currency_code;
+      const credit = row.getValue("credit") as number;
+
+      if (!credit || credit <= 0) {
+        return <span className="text-lg text-gray-400">-</span>;
+      }
+
+      const currencyLabel =
+        currency === "USD" ? "$" : currency === "YER" ? "YER" : "SAR";
+
       return (
-        <Badge
-          className={
-            isAutomated
-              ? "bg-blue-100 text-lg text-blue-800"
-              : "bg-purple-100 text-lg text-purple-800"
-          }
+        <div
+          dir="ltr"
+          className="flex items-center gap-1 font-mono text-lg font-semibold text-red-600"
         >
-          {isAutomated ? "تلقائي" : "يدوي"}
-        </Badge>
+          <span className="text-sm opacity-70">{currencyLabel}</span>
+          <span className="tabular-nums">{credit}</span>
+        </div>
       );
     },
   },

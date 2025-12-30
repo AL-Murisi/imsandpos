@@ -214,7 +214,7 @@ export async function createSupplier(
     await prisma.journalEvent.create({
       data: {
         companyId: companyId,
-        eventType: "supplierCutomer",
+        eventType: "createsupplier",
         status: "pending",
         entityType: "supplier",
         payload: {
