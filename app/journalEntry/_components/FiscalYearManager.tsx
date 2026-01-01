@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { createFiscalYear } from "@/lib/actions/fiscalYear";
-import { DataTable } from "@/components/common/test";
+import { DataTable } from "@/components/common/ReusbleTable";
 import { fiscalYearColumns } from "./columns/journalEntryColumns";
 import { useTablePrams } from "@/hooks/useTableParams";
 import { Button } from "@/components/ui/button";

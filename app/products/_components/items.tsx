@@ -28,7 +28,7 @@ import { useTranslations } from "next-intl";
 import TableSkeleton from "@/components/common/TableSkeleton";
 import { Calendar22 } from "@/components/common/DatePicker";
 import SearchInput from "@/components/common/searchtest";
-import { DataTable } from "@/components/common/test";
+import { DataTable } from "@/components/common/ReusbleTable";
 import ImportProductsPage from "@/components/uploadItesm";
 import { PrintProductTable } from "@/components/printItems";
 import ProductForm from "./form";

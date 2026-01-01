@@ -18,6 +18,8 @@ interface JournalEntryLine {
   created_by: string;
   is_automated: boolean;
   fiscal_period?: string | null;
+  customer_id?: string;
+  supplier_id?: string;
 }
 
 interface CreateManualJournalEntryParams {
@@ -26,14 +28,137 @@ interface CreateManualJournalEntryParams {
   companyId: string;
 }
 
+// export async function createManualJournalEntry({
+//   entries,
+//   generalDescription,
+//   companyId,
+// }: {
+//   entries: JournalEntryLine[];
+//   generalDescription: string;
+//   companyId: string;
+// }) {
+//   console.log(entries[0].customer_id);
+//   try {
+//     if (!entries || entries.length < 2) {
+//       return {
+//         success: false,
+//         error: "يجب أن يحتوي القيد على سطرين على الأقل",
+//       };
+//     }
+
+//     if (!generalDescription?.trim()) {
+//       return { success: false, error: "يجب إدخال وصف عام للقيد" };
+//     }
+
+//     // Calculate totals
+//     const totalDebit = entries.reduce(
+//       (sum, e) => sum + Number(e.debit || 0),
+//       0,
+//     );
+//     const totalCredit = entries.reduce(
+//       (sum, e) => sum + Number(e.credit || 0),
+//       0,
+//     );
+
+//     if (Math.abs(totalDebit - totalCredit) > 0.01) {
+//       return {
+//         success: false,
+//         error: `القيد غير متوازن: المدين ${totalDebit.toFixed(2)} - الدائن ${totalCredit.toFixed(2)}`,
+//       };
+//     }
+
+//     // Get fiscal period
+//     const fiscalYear = await prisma.fiscal_periods.findFirst({
+//       where: {
+//         is_closed: false,
+//         start_date: { lte: new Date() },
+//         end_date: { gte: new Date() },
+//       },
+//       select: { period_name: true },
+//     });
+
+//     // Prepare entries for insertion
+//     const entriesToInsert = entries.map((entry) => ({
+//       company_id: companyId,
+//       entry_number: entry.entry_number, // make sure you generate per line
+//       account_id: entry.account_id,
+//       description: entry.description || generalDescription,
+//       debit: Number(entry.debit || 0),
+//       credit: Number(entry.credit || 0),
+//       entry_date: new Date(entry.entry_date),
+//       fiscal_period: fiscalYear?.period_name || null,
+//       reference_type: entry.reference_type,
+//       reference_id: entry.reference_id,
+//       created_by: entry.created_by,
+//       is_automated: false,
+//     }));
+
+//     // Transaction
+//     await prisma.$transaction(async (tx) => {
+//       // Insert journal entries
+//       await tx.journal_entries.createMany({ data: entriesToInsert });
+
+//       // Update account balances
+//       for (const entry of entries) {
+//         const account = await tx.accounts.findUnique({
+//           where: { id: entry.account_id },
+//           select: { account_type: true },
+//         });
+//         if (!account) continue;
+
+//         const type = account.account_type?.toLowerCase();
+//         const debit = Number(entry.debit || 0);
+//         const credit = Number(entry.credit || 0);
+
+//         let delta = 0;
+//         if (["asset", "expense", "cogs"].includes(type || "")) {
+//           delta = debit - credit;
+//         } else {
+//           delta = credit - debit;
+//         }
+
+//         await tx.accounts.update({
+//           where: { id: entry.account_id },
+//           data: { balance: { increment: delta } },
+//         });
+
+//         // Update customer/supplier balances per line
+//         if (entry.customer_id) {
+//           await tx.customer.update({
+//             where: { id: entry.customer_id },
+//             data: { outstandingBalance: { increment: debit - credit } },
+//           });
+//         }
+//         if (entry.supplier_id) {
+//           await tx.supplier.update({
+//             where: { id: entry.supplier_id },
+//             data: { outstandingBalance: { increment: credit - debit } },
+//           });
+//         }
+//       }
+//     });
+
+//     // Revalidate paths if needed
+//     revalidatePath("/journalEntry");
+//     revalidatePath("/chartOfAccounts");
+
+//     return { success: true, message: "تم إنشاء القيد المحاسبي اليدوي بنجاح" };
+//   } catch (error) {
+//     console.error(error);
+//     return { success: false, error: "حدث خطأ أثناء إضافة القيد المحاسبي" };
+//   }
+// }
 export async function createManualJournalEntry({
   entries,
   generalDescription,
   companyId,
-}: CreateManualJournalEntryParams) {
+}: {
+  entries: JournalEntryLine[];
+  generalDescription: string;
+  companyId: string;
+}) {
   try {
-    // Validation
-    if (!entries || !Array.isArray(entries) || entries.length < 2) {
+    if (!entries || entries.length < 2) {
       return {
         success: false,
         error: "يجب أن يحتوي القيد على سطرين على الأقل",
@@ -41,31 +166,8 @@ export async function createManualJournalEntry({
     }
 
     if (!generalDescription?.trim()) {
-      return {
-        success: false,
-        error: "يجب إدخال وصف عام للقيد",
-      };
+      return { success: false, error: "يجب إدخال وصف عام للقيد" };
     }
-
-    // Calculate totals
-    const totalDebit = entries.reduce(
-      (sum, e) => sum + Number(e.debit || 0),
-      0,
-    );
-    const totalCredit = entries.reduce(
-      (sum, e) => sum + Number(e.credit || 0),
-      0,
-    );
-
-    // Check balance (allow tiny floating point differences)
-    if (Math.abs(totalDebit - totalCredit) > 0.01) {
-      return {
-        success: false,
-        error: `القيد غير متوازن: المدين ${totalDebit.toFixed(2)} - الدائن ${totalCredit.toFixed(2)}`,
-      };
-    }
-
-    // Get fiscal year
     const fiscalYear = await prisma.fiscal_periods.findFirst({
       where: {
         is_closed: false,
@@ -75,92 +177,103 @@ export async function createManualJournalEntry({
       select: { period_name: true },
     });
 
-    // Prepare entries with fiscal period
-    const entriesWithFiscal = entries.map((entry) => ({
-      ...entry,
-      fiscal_period: fiscalYear?.period_name || null,
+    // 1️⃣ Validate balance
+    const totalDebit = entries.reduce(
+      (sum, e) => sum + Number(e.debit || 0),
+      0,
+    );
+    const totalCredit = entries.reduce(
+      (sum, e) => sum + Number(e.credit || 0),
+      0,
+    );
+
+    if (Math.abs(totalDebit - totalCredit) > 0.01) {
+      return {
+        success: false,
+        error: `القيد غير متوازن: المدين ${totalDebit.toFixed(
+          2,
+        )} - الدائن ${totalCredit.toFixed(2)}`,
+      };
+    }
+    const entriesToInsert = entries.map((entry) => ({
+      company_id: companyId,
+      entry_number: entry.entry_number, // make sure you generate per line
+      account_id: entry.account_id,
+      description: entry.description || generalDescription,
       debit: Number(entry.debit || 0),
       credit: Number(entry.credit || 0),
       entry_date: new Date(entry.entry_date),
+      fiscal_period: fiscalYear?.period_name || null,
+      reference_type: entry.reference_type,
+      reference_id: entry.reference_id,
+      created_by: entry.created_by,
+      is_automated: false,
     }));
 
-    // Execute transaction
+    // 2️⃣ Save journal event + update balances in ONE transaction
     await prisma.$transaction(async (tx) => {
-      // 1. Insert all journal entries
-      await tx.journal_entries.createMany({
-        data: entriesWithFiscal,
-      });
+      // 🟢 Save journal event
+      await tx.journalEvent.create({
+        data: {
+          companyId: companyId,
+          eventType: "manual-journal",
+          entityType: "journal-entry",
+          status: "pending",
 
-      // 2. Fetch account types for all accounts
-      const accountIds = [...new Set(entries.map((e) => e.account_id))];
-      const accounts = await tx.accounts.findMany({
-        where: {
-          id: { in: accountIds },
-          company_id: companyId,
+          payload: {
+            companyId,
+            generalDescription: generalDescription,
+            entries: entriesToInsert,
+            totalDebit,
+            totalCredit,
+            createdAt: new Date(),
+          },
+          processed: false,
         },
-        select: { id: true, account_type: true },
       });
 
-      const accountTypeMap = new Map(
-        accounts.map((a) => [a.id, a.account_type]),
-      );
-
-      // 3. Calculate balance deltas for each account
-      const accountDeltas = new Map<string, number>();
-
-      for (const entry of entriesWithFiscal) {
-        const accountType = accountTypeMap.get(entry.account_id);
-        if (!accountType) continue;
-
+      // 🟢 Update customer / supplier balances per line
+      for (const entry of entries) {
         const debit = Number(entry.debit || 0);
         const credit = Number(entry.credit || 0);
 
-        // Normal balance logic:
-        // Assets, Expenses, COGS: Debit increases balance
-        // Liabilities, Equity, Revenue: Credit increases balance
-        let delta = 0;
-        const normalizedType = accountType.toLowerCase();
-
-        if (["asset", "expense", "cogs"].includes(normalizedType)) {
-          delta = debit - credit;
-        } else {
-          // Revenue, liability, equity accounts
-          delta = credit - debit;
+        if (entry.customer_id) {
+          await tx.customer.update({
+            where: { id: entry.customer_id },
+            data: {
+              outstandingBalance: {
+                increment: debit - credit,
+              },
+            },
+          });
         }
 
-        accountDeltas.set(
-          entry.account_id,
-          (accountDeltas.get(entry.account_id) || 0) + delta,
-        );
+        if (entry.supplier_id) {
+          await tx.supplier.update({
+            where: { id: entry.supplier_id },
+            data: {
+              outstandingBalance: {
+                increment: credit - debit,
+              },
+            },
+          });
+        }
       }
-
-      // 4. Update all account balances
-      await Promise.all(
-        Array.from(accountDeltas.entries()).map(([accountId, delta]) =>
-          tx.accounts.update({
-            where: { id: accountId, company_id: companyId },
-            data: { balance: { increment: delta } },
-          }),
-        ),
-      );
     });
-
-    // Revalidate relevant paths
-    revalidatePath("/journalEntry");
-    revalidatePath("/chartOfAccounts");
 
     return {
       success: true,
-      message: "تم إنشاء القيد المحاسبي اليدوي بنجاح",
+      message: "تم حفظ القيد كمعلّق وتحديث أرصدة العميل/المورد",
     };
   } catch (error) {
-    console.error("Error creating manual journal entry:", error);
+    console.error(error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "حدث خطأ غير متوقع",
+      error: "حدث خطأ أثناء حفظ القيد المحاسبي",
     };
   }
 }
+
 export async function getSuppliers() {
   const suppliers = await prisma.supplier.findMany({
     select: { id: true, name: true },

@@ -13,7 +13,24 @@ export default function SupplierStatementPrint({
   const { company } = useCompany();
 
   if (!company) return <div>Loading...</div>;
+  const formattedName = company?.name.split(" ").reduce((acc, word, i) => {
+    return acc + word + (i === 1 ? "<br/>" : " ");
+  }, "");
+  const getCurrencyLabel = (currency: string) => {
+    switch (currency?.toLowerCase()) {
+      case "usd":
+        return "دولار أمريكي";
+      case "yer":
+        return "ريال يمني";
+      case "sar":
+        return "ريال سعودي";
+      default:
+        return currency || "";
+    }
+  };
 
+  // Get the label based on the first transaction's currency
+  const currencyLabel = getCurrencyLabel(suppliers.transactions[0]?.Currency);
   const handlePrint = () => {
     if (!suppliers) return;
 
@@ -32,7 +49,7 @@ export default function SupplierStatementPrint({
             background: #fff;
             color: #000;
             margin: 0;
-            padding: 20px;
+           
           }
 
           h1, h2 {
@@ -69,13 +86,29 @@ export default function SupplierStatementPrint({
           .text-3xl { font-size: 24px; font-weight: bold; }
           .text-2xl { font-size: 23px; font-weight: bold; }
 
-          .info-box {
-            margin-top: 20px;
-            padding: 10px;
-            border: 1px solid #000;
-            border-radius: 6px;
-            background: #f9f9f9;
-          }
+         .info-box {
+  display: grid;
+  /* Creates two columns of equal width */
+  grid-template-columns: repeat(2, 1fr); 
+  gap: 10px 10px; /* 10px vertical gap, 20px horizontal gap */
+ 
+  padding: 15px;
+  border: 1px solid #ddd; /* Lighter border for cleaner look */
+  border-radius: 8px;
+  background: #f9f9f9;
+  direction: rtl; /* Ensures grid flows correctly for Arabic */
+}
+
+.info-box p {
+  margin: 0; /* Remove default paragraph margins to keep grid tight */
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* Optional: Make the Address or Balance span full width if it's too long */
+.full-width {
+  grid-column: span 2;
+}
 
           .info-box p {
             margin: 5px 0;
@@ -83,8 +116,14 @@ export default function SupplierStatementPrint({
 
           table {
             width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
+           ;width: 100%;
+    border-collapse: separate; /* Required for border-radius */
+    border-spacing: 0;
+    margin-top: 15px;
+    border: 1px solid #000;
+    border-radius: 8px; /* Rounded corners for the table */
+    overflow: hidden;
+         
           }
           
           th, td {
@@ -96,7 +135,7 @@ export default function SupplierStatementPrint({
           
           th {
             background: #39dd83;
-            color: #fff;
+        
             font-weight: bold;
           }
 
@@ -107,7 +146,24 @@ export default function SupplierStatementPrint({
             border-top: 2px solid #000;
             padding-top: 10px;
           }
+/* Container for logo and title to stack them */
+.logo-title-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
 
+/* The small box for the title */
+.title-box {
+  border: 1px solid #000;
+  padding: 4px 12px;
+  border-radius: 4px;
+  background-color: #f0f0f0;
+  font-size: 14px;
+  font-weight: bold;
+  white-space: nowrap;
+}
           footer {
             margin-top: 40px;
             text-align: center;
@@ -127,43 +183,55 @@ export default function SupplierStatementPrint({
         <div class="section">
           <div class="flex header justify-between items-center mb-2" dir="rtl">
             <!-- Company -->
-            <div class="grid grid-rows-3 gap-2">
-              <span class="text-3xl green font-bold">${company?.name}</span>
-              <span class="text-2xl">${company?.name}</span>
+            <div class="grid grid-rows-2 gap-2">
+        
+<div class="text-3xl font-bold text-green-600 leading-tight">
+  ${formattedName}
+</div>
+              <span class="text-2xl">${company?.phone ?? ""}</span>
             </div>
 
             <!-- Logo -->
-            <div class="flex flex-col items-center">
-              <img src="${company?.logoUrl ?? ""}" style="width: 100px; height: 90px;" />
-            </div>
+            <div class="logo-title-container">
+    <img src="${company?.logoUrl ?? ""}" style="width: 100px; height: 100px; object-fit: contain;" />
+    <div class="title-box">
+      📋 كشف حساب مورد
+    </div>
+  </div>
 
             <!-- Branch -->
-            <div class="grid grid-rows-4">
+            <div class="grid grid-rows-2">
               <div class="text-lg">${company?.address ?? ""}</div>
               <div class="text-lg">${company?.city ?? ""}</div>
-              <div>تلفون: ${company?.phone ?? ""}</div>
+             
             </div>
+              
           </div>
         </div>
 
-        <h2>📋 كشف حساب مورد</h2>
+        
 
-        <div class="info-box">
-          <p><strong>اسم المورد:</strong> ${suppliers.supplier?.name ?? ""}</p>
-          <p><strong>الهاتف:</strong> ${suppliers.supplier?.phoneNumber ?? ""}</p>
-          <p><strong>العنوان:</strong> ${suppliers.supplier?.address ?? ""} - ${suppliers.supplier?.city ?? ""}</p>
-          <p><strong>من تاريخ:</strong> ${suppliers.period.from}</p>
-          <p><strong>إلى تاريخ:</strong> ${suppliers.period.to}</p>
-          <p><strong>الرصيد الافتتاحي:</strong> ${suppliers.openingBalance.toFixed(2)} ر.ي</p>
-          <p style="color: red;"><strong>الرصيد الحالي:</strong> ${suppliers.closingBalance.toFixed(2)} ر.ي</p>
-        </div>
+       <div class="info-box">
+  <p><strong>اسم المورد:</strong> ${suppliers.supplier?.name ?? ""}</p>
+  <p><strong>الهاتف:</strong> ${suppliers.supplier?.phoneNumber ?? ""}</p>
+  
+  
+  <p><strong>من تاريخ:</strong> ${suppliers.period.from}</p>
+  <p><strong>إلى تاريخ:</strong> ${suppliers.period.to}</p>
+  
+  <p><strong>الرصيد الافتتاحي:</strong> ${suppliers.openingBalance.toFixed(2)}</p>
+  
+<p  >
+    <strong> العمله:</strong>  ${currencyLabel}
+  </p>
+</div>
 
         <table>
           <thead>
             <tr>
               <th>التاريخ</th>
               <th>نوع السند</th>
-              <th>رقم المستند</th>
+              
               <th>البيان</th>
               <th>مدين</th>
               <th>دائن</th>
@@ -175,7 +243,7 @@ export default function SupplierStatementPrint({
             <tr class="balance-highlight">
               <td></td>
               <td>رصيد افتتاحي</td>
-              <td>—</td>
+            
               <td>رصيد افتتاحي للمورد</td>
               <td>${suppliers.openingBalance.toFixed(2)}</td>
               <td>0.00</td>
@@ -188,7 +256,7 @@ export default function SupplierStatementPrint({
               <tr>
                 <td>${new Date(t.date).toLocaleDateString("ar-EG")}</td>
                 <td>${t.typeName ?? ""}</td>
-                <td>${t.docNo ?? ""}</td>
+             
                 <td>${t.description ?? ""}</td>
                 <td>${t.debit > 0 ? t.debit.toFixed(2) : "-"}</td>
                 <td>${t.credit > 0 ? t.credit.toFixed(2) : "-"}</td>
@@ -198,7 +266,7 @@ export default function SupplierStatementPrint({
               .join("")}
 
             <tr class="balance-highlight">
-              <td colspan="3"><strong>الإجمالي</strong></td>
+              <td colspan="2"><strong>الإجمالي</strong></td>
               <td></td>
               <td><strong>${suppliers.totalDebit.toFixed(2)}</strong></td>
               <td><strong>${suppliers.totalCredit.toFixed(2)}</strong></td>
@@ -208,9 +276,9 @@ export default function SupplierStatementPrint({
         </table>
 
         <div class="totals">
-          <p>إجمالي المشتريات (مدين): ${suppliers.totalDebit.toFixed(2)} ر.ي</p>
-          <p>إجمالي المدفوعات (دائن): ${suppliers.totalCredit.toFixed(2)} ر.ي</p>
-          <p style="color: red;">الرصيد النهائي المستحق: ${suppliers.closingBalance.toFixed(2)} ر.ي</p>
+          <p>إجمالي المشتريات (مدين): ${suppliers.totalDebit.toFixed(2)} </p>
+          <p>إجمالي المدفوعات (دائن): ${suppliers.totalCredit.toFixed(2)} </p>
+          <p style="color: red;">الرصيد النهائي المستحق: ${suppliers.closingBalance.toFixed(2)} </p>
         </div>
 
         <footer>

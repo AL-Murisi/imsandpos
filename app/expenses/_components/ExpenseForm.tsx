@@ -11,8 +11,12 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/context/AuthContext";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Fetchbanks } from "@/lib/actions/banks";
+import { fetchPayments } from "@/lib/actions/banks";
 import { Plus, Trash2, Save } from "lucide-react";
+import {
+  PaymentState,
+  ReusablePayment,
+} from "@/components/common/ReusablePayment";
 
 interface ExpenseItem {
   id: string;
@@ -25,7 +29,11 @@ interface ExpenseItem {
   bankId?: string;
   notes?: string;
 }
-
+interface bankcash {
+  id: string;
+  name: string;
+  currency: string | null;
+}
 interface MultiExpenseFormProps {
   companyId: string;
   userId: string;
@@ -43,8 +51,15 @@ export default function ExpenseForm({
     new Date().toISOString().split("T")[0],
   );
   const { user } = useAuth();
-  const [banks, setBanks] = useState<{ id: string; name: string }[]>([]);
-
+  const [banks, setBanks] = useState<bankcash[]>([]);
+  const [cash, setCash] = useState<bankcash[]>([]);
+  // const [accounts, setAccounts] = useState<bankcash[]>([]);
+  // const [payment, setPayment] = useState<PaymentState>({
+  //   paymentMethod: "cash",
+  //   accountId: "",
+  //   accountCurrency: "",
+  //   amountBase: 0,
+  // });
   // Initialize with one empty expense
   const [expenses, setExpenses] = useState<ExpenseItem[]>([
     {
@@ -52,7 +67,7 @@ export default function ExpenseForm({
       account_id: "",
       description: "",
       amount: "",
-      paymentMethod: "",
+      paymentMethod: "cash",
       currency_code: "YER",
       referenceNumber: "",
       bankId: "",
@@ -67,34 +82,29 @@ export default function ExpenseForm({
     { id: "debt", name: "دين" },
   ];
 
-  const currencyOptions = [
-    { name: "الريال اليمني (YER)", id: "YER" },
-    { name: "الدولار الأمريكي (USD)", id: "USD" },
-    { name: "الريال السعودي (SAR)", id: "SAR" },
-    { name: "اليورو (EUR)", id: "EUR" },
-    { name: "الدينار الكويتي (KWD)", id: "KWD" },
-  ];
-
   if (!user) return null;
 
   // Load banks when dialog opens
   useEffect(() => {
     if (!open) {
       setBanks([]);
+
       return;
     }
 
-    const loadBanks = async () => {
+    const loadAccounts = async () => {
       try {
-        const result = await Fetchbanks();
-        setBanks(result);
+        const { banks, cashAccounts } = await fetchPayments();
+        // Automatically choose accounts based on payment method
+        setBanks(banks);
+        setCash(cashAccounts);
       } catch (err) {
         console.error(err);
-        toast.error("فشل في جلب البنوك");
+        toast.error("فشل في جلب الحسابات");
       }
     };
 
-    loadBanks();
+    loadAccounts();
   }, [open]);
 
   // Add new expense row
@@ -114,7 +124,10 @@ export default function ExpenseForm({
       },
     ]);
   };
-
+  const currencyCode = banks.find((b) => b.id === expenses[0].bankId)?.currency;
+  const currencyCodecash = cash.find(
+    (b) => b.id === expenses[0].bankId,
+  )?.currency;
   // Remove expense row
   const removeExpense = (id: string) => {
     if (expenses.length > 1) {
@@ -336,6 +349,11 @@ export default function ExpenseForm({
                       placeholder="أدخل وصف المصروف"
                     />
                   </div>
+                  {/* <ReusablePayment
+                    value={payment}
+                    action={setPayment}
+                    accounts={accounts}
+                  /> */}
 
                   {/* Payment Method */}
                   <div className="space-y-2">
@@ -353,19 +371,6 @@ export default function ExpenseForm({
                   </div>
 
                   {/* Currency */}
-                  <div className="space-y-2">
-                    <Label>
-                      العملة <span className="text-red-500">*</span>
-                    </Label>
-                    <SelectField
-                      options={currencyOptions}
-                      value={expense.currency_code}
-                      action={(val) =>
-                        updateExpense(expense.id, "currency_code", val)
-                      }
-                      placeholder="اختر العملة"
-                    />
-                  </div>
 
                   {/* Bank & Reference (conditional) */}
                   {expense.paymentMethod === "bank" && (
@@ -403,7 +408,21 @@ export default function ExpenseForm({
                       </div>
                     </>
                   )}
-
+                  {expense.paymentMethod === "cash" && (
+                    <div className="space-y-2">
+                      <Label>
+                        كاش <span className="text-red-500">*</span>
+                      </Label>
+                      <SelectField
+                        options={cash}
+                        value={expense.bankId || ""}
+                        action={(val) =>
+                          updateExpense(expense.id, "bankId", val)
+                        }
+                        placeholder="اختر الصندوق"
+                      />
+                    </div>
+                  )}
                   {/* Notes */}
                   <div className="space-y-2 md:col-span-2">
                     <Label>ملاحظات (اختياري)</Label>
@@ -424,7 +443,7 @@ export default function ExpenseForm({
                   <span className="text-muted-foreground">المبلغ:</span>
                   <span className="text-primary font-bold">
                     {parseFloat(expense.amount || "0").toFixed(2)}{" "}
-                    {expense.currency_code}
+                    {currencyCode ?? currencyCodecash}
                   </span>
                 </div>
               </div>

@@ -60,7 +60,6 @@ export default async function DebtSell({ searchParams }: DashboardProps) {
     pageSize,
     customersquery,
     from,
-    to,
   );
   // const data = await FetchDebtSales(filter);
   return (

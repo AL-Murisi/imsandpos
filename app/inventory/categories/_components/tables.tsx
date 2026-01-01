@@ -16,7 +16,7 @@ const CategoryForm = dynamic(() => import("./form"), {
 import { Calendar22 } from "@/components/common/DatePicker";
 import TableSkeleton from "@/components/common/TableSkeleton";
 import dynamic from "next/dynamic";
-import { DataTable } from "@/components/common/test";
+import { DataTable } from "@/components/common/ReusbleTable";
 
 type ProductClientProps = {
   data: any[];

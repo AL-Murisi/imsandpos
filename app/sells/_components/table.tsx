@@ -7,7 +7,7 @@ import { debtSaleColumns } from "./columns";
 import dynamic from "next/dynamic";
 import TableSkeleton from "@/components/common/TableSkeleton";
 const DataTable = dynamic(
-  () => import("@/components/common/test").then((m) => m.DataTable),
+  () => import("@/components/common/ReusbleTable").then((m) => m.DataTable),
   {
     ssr: false,
     loading: () => <TableSkeleton />,

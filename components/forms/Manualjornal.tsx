@@ -250,6 +250,8 @@ export default function ManualJournalEntryForm({
           reference_id: referenceId,
           created_by: userId,
           is_automated: false,
+          customer_id: line.customerId,
+          supplier_id: line.supplierId,
         };
       });
 

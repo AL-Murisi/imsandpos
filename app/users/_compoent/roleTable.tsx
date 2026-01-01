@@ -15,7 +15,7 @@ import dynamic from "next/dynamic";
 
 import { role } from "../_compoent/columns";
 import TableSkeleton from "@/components/common/TableSkeleton";
-import { DataTable } from "@/components/common/test";
+import { DataTable } from "@/components/common/ReusbleTable";
 
 type ProductClientProps = {
   Role: any[];

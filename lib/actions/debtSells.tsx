@@ -135,7 +135,9 @@ export async function updateSalesBulk(
   currencyCode: string,
   paymentDetails?: {
     bankId?: string;
+    exchangeRate?: number;
     transferNumber?: string;
+    amountFC?: number;
   },
 ) {
   if (paymentAmount <= 0)
@@ -302,6 +304,10 @@ export async function payOutstandingOnly(
   paymentDetails?: {
     bankId?: string;
     transferNumber?: string;
+
+    exchangeRate?: number;
+
+    amountFC?: number;
   },
 ) {
   if (!companyId || !customerId)

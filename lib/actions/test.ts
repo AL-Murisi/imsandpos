@@ -2,6 +2,7 @@
 
 import prisma from "@/lib/prisma"; // تأكد من مسار prisma client الصحيح
 import { Prisma } from "@prisma/client";
+import { Currency } from "lucide-react";
 
 function serializeData<T>(data: T): T {
   if (data === null || data === undefined) return data;
@@ -463,6 +464,7 @@ export async function getSupplierStatement(
         credit: true,
         description: true,
         entry_number: true,
+        currency_code: true,
         reference_type: true,
       },
     });
@@ -480,6 +482,7 @@ export async function getSupplierStatement(
         balance: runningBalance,
         description: entry.description,
         docNo: entry.entry_number,
+        Currency: entry.currency_code,
         typeName: mapType(entry.reference_type),
       };
     });

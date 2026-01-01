@@ -13,7 +13,7 @@ import { SortingState } from "@tanstack/react-table";
 import { userActivity } from "./columns";
 import dynamic from "next/dynamic";
 import TableSkeleton from "@/components/common/TableSkeleton";
-import { DataTable } from "@/components/common/test";
+import { DataTable } from "@/components/common/ReusbleTable";
 type ProductClientProps = {
   logs: any[];
   total: number;

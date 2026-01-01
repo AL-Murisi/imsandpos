@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 
-import { DataTable } from "@/components/common/test";
+import { DataTable } from "@/components/common/ReusbleTable";
 import { useTablePrams } from "@/hooks/useTableParams";
 
 import SearchInput from "@/components/common/searchtest";

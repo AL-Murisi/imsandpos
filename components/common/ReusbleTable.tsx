@@ -1,17 +1,25 @@
 "use client";
 import {
-  SortingState,
-  ColumnFiltersState,
-  VisibilityState,
   PaginationState,
+  SortingState,
+  flexRender,
   getCoreRowModel,
   useReactTable,
-  flexRender,
 } from "@tanstack/react-table";
 
 import { ChevronDown } from "lucide-react";
 
+import { useTablePrams } from "@/hooks/useTableParams";
+import {
+  setColumnFilters,
+  setColumnVisibility,
+  setRowSelection,
+} from "@/lib/slices/table";
+import { useAppDispatch, useAppSelector } from "@/lib/store";
+import { useTranslations } from "next-intl";
+import { useState } from "react";
 import { Button } from "../ui/button";
+import { Card } from "../ui/card";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -20,6 +28,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
+import { Input } from "../ui/input";
+import { ScrollArea, ScrollBar } from "../ui/scroll-area";
 import {
   Table,
   TableBody,
@@ -28,18 +38,6 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table";
-import { ScrollArea, ScrollBar } from "../ui/scroll-area";
-import { useTablePrams } from "@/hooks/useTableParams";
-import { Card } from "../ui/card";
-import { store, useAppDispatch, useAppSelector } from "@/lib/store";
-import {
-  setColumnFilters,
-  setColumnVisibility,
-  setRowSelection,
-} from "@/lib/slices/table";
-import { ReactNode } from "react";
-import { useTranslations } from "next-intl";
-import { Provider } from "@radix-ui/react-tooltip";
 
 interface DataTableProps<T> {
   data: T[];
@@ -141,7 +139,20 @@ export function DataTable<T>({
       }
     },
   });
+  const [isPageLoading, setIsPageLoading] = useState(false);
 
+  const handlePageChange = async (
+    action: () => void,
+    direction: "next" | "prev",
+  ) => {
+    setIsPageLoading(true);
+    try {
+      await action();
+      // toast.success(direction === "next" ? t("nextPageLoaded") : t("prevPageLoaded"));
+    } finally {
+      setIsPageLoading(false);
+    }
+  };
   const {
     setPagination,
     setSorting,
@@ -157,7 +168,6 @@ export function DataTable<T>({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="mr-auto">
-              {/* Use mr-auto for right alignment in RTL */}
               {t("columns")}
               <ChevronDown />
             </Button>
@@ -166,16 +176,27 @@ export function DataTable<T>({
             {table
               .getAllColumns()
               .filter((column) => column.getCanHide())
-              .map((column) => (
-                <DropdownMenuCheckboxItem
-                  key={column.id}
-                  className="text-right capitalize" // Align text to the right
-                  checked={column.getIsVisible()}
-                  onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                >
-                  {column.id}
-                </DropdownMenuCheckboxItem>
-              ))}
+              .map((column) => {
+                // Extract the header from the column definition
+                const header = column.columnDef.header;
+
+                return (
+                  <DropdownMenuCheckboxItem
+                    key={column.id}
+                    className="text-right capitalize"
+                    checked={column.getIsVisible()}
+                    onCheckedChange={(value) =>
+                      column.toggleVisibility(!!value)
+                    }
+                  >
+                    {/* If header is a string, show it. 
+            If it's a function (like in your 'select' column), 
+            render it or fallback to the ID 
+          */}
+                    {typeof header === "string" ? header : column.id}
+                  </DropdownMenuCheckboxItem>
+                );
+              })}
           </DropdownMenuContent>
         </DropdownMenu>
 
@@ -211,41 +232,36 @@ export function DataTable<T>({
               </DropdownMenuItem>
             ))}
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => table.setPageSize(5)}>
-              {t("reset")}
-            </DropdownMenuItem>
+            {/* Custom Input Field */}
+            <div className="p-2">
+              <label className="text-muted-foreground mb-1 block text-xs">
+                {"عدد مخصص"}
+              </label>
+              <Input
+                type="number"
+                placeholder="..."
+                className="h-8"
+                onKeyDown={(e) => {
+                  // We only trigger when "Enter" is pressed
+                  if (e.key === "Enter") {
+                    // Stop the menu from closing immediately if needed
+                    e.preventDefault();
+
+                    const inputValue = e.currentTarget.value;
+                    const size = parseInt(inputValue, 10);
+
+                    if (!isNaN(size) && size > 0) {
+                      // Set exactly what the user typed
+                      table.setPageSize(size);
+                    }
+                  }
+                }}
+              />
+            </div>
           </DropdownMenuContent>
         </DropdownMenu>
 
         <div className="space-x-2">
-          {/* <Button
-            className="shadow-xl/20 shadow-gray-900"
-            onClick={() =>
-              pageActiom((old) => ({
-                ...old,
-                pageIndex: Math.max(0, old.pageIndex - 1),
-              }))
-            }
-            disabled={pagination.pageIndex === 0}
-          >
-            {t("prev")}
-          </Button>
-
-          <Button
-            className="shadow-xl/20 shadow-gray-900"
-            onClick={() =>
-              pageActiom((old) => ({
-                ...old,
-                pageIndex: old.pageIndex + 1,
-              }))
-            }
-            disabled={
-              (pagination.pageIndex + 1) * pagination.pageSize >= totalCount
-            }
-          >
-            {t("next")}
-          </Button> */}
-
           {/* space-x-2 works for RTL, but you might consider space-x-reverse for explicit control */}
           <Button
             className="shadow-xl/20 shadow-gray-900"

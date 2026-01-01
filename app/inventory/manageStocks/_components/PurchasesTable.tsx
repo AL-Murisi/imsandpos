@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 
-import { DataTable } from "@/components/common/test";
+import { DataTable } from "@/components/common/ReusbleTable";
 import { useTablePrams } from "@/hooks/useTableParams";
 
 import SearchInput from "@/components/common/searchtest";
@@ -43,13 +43,14 @@ export default function PurchasesTable({ data, total }: ProductClientProps) {
       className="bg-accent w-full rounded-2xl p-2 shadow-xl/20 shadow-gray-500 group-data-[[state=pending]]:animate-pulse"
       dir="rtl"
     >
-      <div className="flex flex-wrap gap-2 p-1 md:flex-row lg:flex-row">
-        <Calendar22 />
-        <SearchInput placeholder={"بحث "} paramKey={"product"} />
-      </div>
-
       <DataTable
-        search={<PrintPurchasesTable purchases={data} />}
+        search={
+          <div className="flex flex-wrap gap-2 p-1 md:flex-row lg:flex-row">
+            <Calendar22 />
+            <SearchInput placeholder={"بحث "} paramKey={"product"} />
+            <PrintPurchasesTable purchases={data} />
+          </div>
+        }
         data={data}
         columns={purchaseColumns}
         initialPageSize={pagination.pageSize}

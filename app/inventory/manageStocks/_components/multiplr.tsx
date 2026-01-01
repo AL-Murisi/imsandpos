@@ -715,7 +715,7 @@ export default function MultiInventoryUpdateForm({
                       <Label>الكمية المحجوزة</Label>
                       <Input
                         type="number"
-                        step="0.01"
+                        step="1"
                         min="0"
                         value={inventory.reservedQuantity}
                         onChange={(e) =>
@@ -843,7 +843,7 @@ export default function MultiInventoryUpdateForm({
                               action={(val) =>
                                 updateInventory(inventory.id, "bankId", val)
                               }
-                              placeholder="اختر البنك"
+                              placeholder="اختر الصندوق"
                             />
                           </div>
                         )}

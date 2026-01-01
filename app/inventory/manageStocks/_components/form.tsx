@@ -70,7 +70,7 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
   } = useForm<FormValues>({
     resolver: zodResolver(UpdateInventorySchema),
     defaultValues: {
-      reservedQuantity: undefined,
+      reservedQuantity: 0,
       reorderLevel: inventory.reorderLevel,
       status: inventory.status ?? undefined,
       stockQuantity: undefined,
@@ -98,13 +98,19 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
   const method = watch("paymentMethod");
   const reservedQuantity = watch("reservedQuantity");
   const availableQuantity = watch("availableQuantity");
+  // useEffect(() => {
+  //   if (reservedQuantity === 0) {
+  //     setValue("availableQuantity", quantity || 0);
+  //   } else if (quantity !== undefined && reservedQuantity !== undefined) {
+  //     setValue("availableQuantity", quantity - reservedQuantity);
+  //   }
+  // }, [reservedQuantity, quantity, setValue]);
   useEffect(() => {
-    if (reservedQuantity === 0) {
-      setValue("availableQuantity", quantity || 0);
-    } else if (quantity !== undefined && reservedQuantity !== undefined) {
-      setValue("availableQuantity", quantity - reservedQuantity);
-    }
-  }, [reservedQuantity, quantity, setValue]);
+    const stock = quantity ?? 0;
+    const reserved = reservedQuantity ?? 0;
+
+    setValue("availableQuantity", Math.max(stock - reserved, 0));
+  }, [quantity, reservedQuantity, setValue]);
 
   // ✅ Load suppliers + warehouses when dialog opens
   useEffect(() => {
@@ -157,10 +163,9 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
   //                       <option value="check">شيك</option>
   //                       <option value="credit">ائتمان</option>
   const currencyCode = banks.find((b) => b.id === selectedBankId)?.currency;
-  const currencyCodecash = cash.find(
-    (b) => b.id === inventory.bankId,
-  )?.currency;
-  const currency = currencyCode ?? currencyCodecash;
+  const currencyCodecash = cash.find((b) => b.id === selectedBankId)?.currency;
+  const currency = currencyCode ?? currencyCodecash ?? undefined;
+
   const paymentmethod = [
     { id: "cash", name: "نقداً" },
     { id: "bank", name: "تحويل بنكي" },
@@ -205,10 +210,10 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
         paymentAmount: updateType === "supplier" ? amount : undefined,
         notes: data.reason,
 
-        bankId: selectedBankId,
-        transferNumber,
+        bankId: updateType === "supplier" ? selectedBankId : undefined,
+        transferNumber: updateType === "supplier" ? transferNumber : undefined,
 
-        currency_code: updateType === "supplier" ? (currency ?? "") : undefined,
+        currency_code: updateType === "supplier" ? currency : undefined,
       };
 
       await updateInventory(payload, user.userId, user.companyId);
@@ -240,8 +245,14 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
       description="أدخل تفاصيل المنتج واحفظه"
     >
       <ScrollArea className="max-h-[85vh]" dir="rtl">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" dir="rtl">
-          {/* نوع التحديث */}
+        <form
+          onSubmit={handleSubmit(onSubmit, (err) => {
+            console.log("❌ ZOD ERRORS:", err);
+            toast.error("تحقق من الحقول المطلوبة");
+          })}
+          className="space-y-6"
+          dir="rtl"
+        >
           <div className="rounded-lg border border-gray-200 p-4">
             <Label className="mb-3 block text-sm font-medium">
               نوع التحديث
@@ -358,7 +369,15 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
 
                     {quantity && unitCost ? (
                       <div className="mt-2 rounded p-3 text-sm font-medium">
-                        الإجمالي: <span className="font-bold">{totalCost}</span>
+                        الإجمالي:{" "}
+                        <span className="font-bold">
+                          {currency === "USD"
+                            ? "$"
+                            : currency === "YER"
+                              ? "ر.ي"
+                              : "ر.س"}
+                          {totalCost}
+                        </span>
                       </div>
                     ) : null}
                     <div className="grid gap-2">
@@ -395,6 +414,8 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
                 <Input
                   id={field}
                   type="number"
+                  step="1"
+                  min="0"
                   placeholder="أدخل القيمة"
                   {...register(field as keyof FormValues, {
                     valueAsNumber: true,

@@ -16,7 +16,7 @@ const AccountFormDialog = dynamic(() => import("./AccountFormDialog"), {
   ssr: false,
 });
 const DataTable = dynamic(
-  () => import("@/components/common/test").then((m) => m.DataTable),
+  () => import("@/components/common/ReusbleTable").then((m) => m.DataTable),
   {
     ssr: false,
     loading: () => <TableSkeleton />,
@@ -149,7 +149,7 @@ export default function ChartOfAccountsTable({
         {/* Data Table */}
         <DataTable
           search={
-            <div className="grid grid-rows-1 gap-3 md:grid-cols-4">
+            <div className="grid grid-rows-1 gap-3 md:grid-cols-5">
               <SearchInput
                 placeholder="بحث في الحسابات (رمز، اسم...)"
                 paramKey="search"

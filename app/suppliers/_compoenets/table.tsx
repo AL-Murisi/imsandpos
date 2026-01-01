@@ -23,7 +23,7 @@ import { useTranslations } from "next-intl";
 
 import { supplierColumns } from "./columns";
 import TableSkeleton from "@/components/common/TableSkeleton";
-import { DataTable } from "@/components/common/test";
+import { DataTable } from "@/components/common/ReusbleTable";
 const SupplierForm = dynamic(() => import("@/components/forms/supplierform"), {
   ssr: false,
 });

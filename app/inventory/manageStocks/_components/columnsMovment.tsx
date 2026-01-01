@@ -197,18 +197,12 @@ export const inventoryColumns: ColumnDef<any>[] = [
     accessorKey: "product.supplier.name",
     header: "المورد",
   },
-  {
-    accessorKey: "product.type",
-    header: "المورد",
-  },
+
   {
     accessorKey: "warehouse.location",
     header: "الموقع",
   },
-  {
-    accessorKey: "receiptNo",
-    header: "الكمية في المخزون",
-  },
+
   {
     accessorKey: "reservedQuantity",
     header: "الكمية المحجوزة",

@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
 import { fi } from "date-fns/locale";
+import { Currency } from "lucide-react";
 
 // API route: /api/process-journal-events
 export async function GET() {
@@ -19,6 +20,7 @@ export async function GET() {
             "createsupplier",
             "expense",
             "payment-outstanding",
+            "manual-journal",
           ],
         }, // Filter for sale events only
       },
@@ -45,6 +47,7 @@ export async function GET() {
       createCutomer: 0,
       createsupplier: 0,
       expenses: 0,
+      manualjournal: 0,
       errors: [] as any[],
     };
 
@@ -149,6 +152,9 @@ export async function GET() {
           });
 
           results.expenses = (results.expenses || 0) + 1;
+        } else if (event.eventType === "manual-journal") {
+          await createManualJournalEntriesFromEvent(event.payload);
+          results.manualjournal = (results.manualjournal || 0) + 1;
         }
         success = true;
         // Mark as processed
@@ -197,6 +203,80 @@ export async function GET() {
     );
   }
 }
+async function createManualJournalEntriesFromEvent(payload: any) {
+  const { companyId, generalDescription, entries } = payload;
+
+  const fiscalYear = await prisma.fiscal_periods.findFirst({
+    where: {
+      is_closed: false,
+      start_date: { lte: new Date() },
+      end_date: { gte: new Date() },
+    },
+    select: { period_name: true },
+  });
+
+  await prisma.$transaction(async (tx) => {
+    // 1️⃣ insert journal entries
+    await tx.journal_entries.createMany({
+      data: entries.map((e: any) => ({
+        company_id: companyId,
+        entry_number: e.entry_number,
+        account_id: e.account_id,
+        description: e.description || generalDescription,
+        debit: Number(e.debit || 0),
+        credit: Number(e.credit || 0),
+        entry_date: new Date(e.entry_date),
+        fiscal_period: fiscalYear?.period_name || null,
+        reference_type: e.reference_type,
+        reference_id: e.reference_id,
+        created_by: e.created_by,
+        is_automated: false,
+      })),
+    });
+
+    // 2️⃣ update accounts + customer + supplier
+    for (const e of entries) {
+      const account = await tx.accounts.findUnique({
+        where: { id: e.account_id },
+        select: { account_type: true },
+      });
+      if (!account) continue;
+
+      const debit = Number(e.debit || 0);
+      const credit = Number(e.credit || 0);
+
+      const delta = ["asset", "expense", "cogs"].includes(
+        account.account_type?.toLowerCase() || "",
+      )
+        ? debit - credit
+        : credit - debit;
+
+      await tx.accounts.update({
+        where: { id: e.account_id },
+        data: { balance: { increment: delta } },
+      });
+
+      if (e.customer_id) {
+        await tx.customer.update({
+          where: { id: e.customer_id },
+          data: {
+            outstandingBalance: { increment: debit - credit },
+          },
+        });
+      }
+
+      if (e.supplier_id) {
+        await tx.supplier.update({
+          where: { id: e.supplier_id },
+          data: {
+            outstandingBalance: { increment: credit - debit },
+          },
+        });
+      }
+    }
+  });
+}
+
 async function createSupplierJournalEnteries({
   supplierId,
   supplierName,
@@ -658,16 +738,12 @@ async function createOutstandingPaymentJournalEntries({
   cashierId,
 }: {
   companyId: string;
-  payment: {
-    id: string;
-    customerId: string;
-    amount: number;
-    paymentMethod: "cash" | "bank";
-  };
+  payment: any;
   cashierId: string;
 }) {
   try {
-    const { customerId, amount, paymentMethod } = payment;
+    const { customerId, amount, paymentMethod, paymentDetails, currencyCode } =
+      payment;
 
     const fy = await getActiveFiscalYears();
     if (!fy) return;
@@ -724,8 +800,8 @@ async function createOutstandingPaymentJournalEntries({
     const getAcc = (type: string) =>
       mappings.find((m) => m.mapping_type === type)?.account_id;
 
-    const cashAcc = getAcc("cash");
-    const bankAcc = getAcc("bank");
+    const cashAcc = paymentDetails.bankId || getAcc("cash");
+    const bankAcc = paymentDetails.bankId || getAcc("bank");
     const arAcc = getAcc("accounts_receivable");
 
     if (!arAcc || (!cashAcc && !bankAcc)) return;
@@ -734,6 +810,7 @@ async function createOutstandingPaymentJournalEntries({
 
     if (!debitAccount) return;
 
+    console.log("id", debitAccount);
     // ============================================
     // 5️⃣ Build journal entries
     // ============================================
@@ -749,6 +826,7 @@ async function createOutstandingPaymentJournalEntries({
         description: desc,
         debit: amount,
         credit: 0,
+        currency_code: currencyCode,
         fiscal_period: fy.period_name,
         entry_date: new Date(),
         reference_id: payment.id,
@@ -765,6 +843,7 @@ async function createOutstandingPaymentJournalEntries({
         description: desc,
         debit: 0,
         credit: amount,
+        currency_code: "YER",
         fiscal_period: fy.period_name,
         entry_date: new Date(),
         reference_id: customerId,
@@ -1010,6 +1089,8 @@ async function createExpenseJournalEntries({
   };
   userId: string;
 }) {
+  const fy = await getActiveFiscalYears();
+  if (!fy) return;
   // 🔎 Fetch default accounts
   const mappings = await prisma.account_mappings.findMany({
     where: { company_id: companyId, is_default: true },
@@ -1047,6 +1128,7 @@ async function createExpenseJournalEntries({
     {
       company_id: companyId,
       account_id: expense.accountId,
+      fiscal_period: fy.period_name,
       description:
         expense.description +
         (expense.referenceNumber ? ` - ${expense.referenceNumber}` : ""),
@@ -1068,6 +1150,7 @@ async function createExpenseJournalEntries({
         expense.description +
         (expense.referenceNumber ? ` - ${expense.referenceNumber}` : ""),
       debit: 0,
+      fiscal_period: fy.period_name,
       credit: expense.amount,
       entry_date: expense.expenseDate,
       reference_id: expense.id,

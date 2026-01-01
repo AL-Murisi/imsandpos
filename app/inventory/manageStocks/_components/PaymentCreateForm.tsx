@@ -1,18 +1,23 @@
-// ============================================
-// PAYMENT CREATE FORM
-// ============================================
 "use client";
 
-import { createSupplierPaymentFromPurchases } from "@/lib/actions/suppliers"; // 👈 your new function
+import { createSupplierPaymentFromPurchases } from "@/lib/actions/suppliers";
 import Dailogreuse from "@/components/common/dailogreuse";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/context/AuthContext";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { SelectField } from "@/components/common/selectproduct";
+import { fetchPayments } from "@/lib/actions/banks";
+
+interface bankcash {
+  id: string;
+  name: string;
+  currency: string | null;
+}
+
 export function PaymentCreateForm({
   supplier,
   supplier_name,
@@ -28,19 +33,60 @@ export function PaymentCreateForm({
       paymentMethod: "cash",
       note: "",
       currency_code: "YER",
+      accountId: "",
       supplier_name: supplier.supplier?.name ?? "",
       paymentDate: new Date().toISOString().slice(0, 16),
     },
   });
-  const [isOpen, setIsOpen] = useState(false);
-  const { user } = useAuth();
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const suppliername = watch("supplier_name");
+  const { user } = useAuth();
+  const [isOpen, setIsOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [banks, setBanks] = useState<bankcash[]>([]);
+  const [cash, setCash] = useState<bankcash[]>([]);
+
+  const paymentMethod = watch("paymentMethod");
+  const selectedAccountId = watch("accountId");
+
+  // Load bank/cash accounts
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const loadAccounts = async () => {
+      try {
+        const { banks, cashAccounts } = await fetchPayments();
+        setBanks(banks);
+        setCash(cashAccounts);
+      } catch (err) {
+        console.error(err);
+        toast.error("فشل في جلب الحسابات");
+      }
+    };
+
+    loadAccounts();
+  }, [isOpen]);
+  // Automatically set currency_code from selected account
+
+  // Automatically set currency code when account changes
+  useEffect(() => {
+    const allAccounts = [...banks, ...cash];
+    const selected = allAccounts.find((acc) => acc.id === selectedAccountId);
+    if (selected && selected.currency) {
+      setValue("currency_code", selected.currency);
+    }
+  }, [selectedAccountId, banks, cash, setValue]);
+
+  const paymentMethods = [
+    { id: "cash", name: "نقداً" },
+    { id: "bank", name: "تحويل بنكي" },
+    { id: "debt", name: "دين" },
+  ];
+
   const onSubmit = async (data: any) => {
     try {
       if (!user) return;
       setIsSubmitting(true);
+
       const res = await createSupplierPaymentFromPurchases(
         user.userId,
         user.companyId,
@@ -53,46 +99,48 @@ export function PaymentCreateForm({
           paymentMethod: data.paymentMethod,
           note: data.note,
           currency_code: data.currency_code,
+          bankId: data.accountId,
           paymentDate: new Date(data.paymentDate),
         },
       );
 
       if (res.success) {
-        toast.success(`✅ Payment created for ${supplier}`);
+        toast.success(`✅ Payment created for ${supplier_name}`);
         reset();
         setIsOpen(false);
-        setIsSubmitting(false);
       } else {
         toast.error(`❌ ${res.error || "Failed to create payment"}`);
-        setIsSubmitting(false);
       }
+
+      setIsSubmitting(false);
     } catch (error) {
       console.error(error);
-      setIsSubmitting(false);
       toast.error("❌ Failed to create payment");
+      setIsSubmitting(false);
     }
   };
-  const currencyOptions = [
-    { name: "الريال اليمني (YER)", id: "YER" },
-    { name: "الدولار الأمريكي (USD)", id: "USD" },
-    { name: "الريال السعودي (SAR)", id: "SAR" },
-    { name: "اليورو (EUR)", id: "EUR" },
-    { name: "الدينار الكويتي (KWD)", id: "KWD" },
-  ];
+
   return (
     <Dailogreuse
       open={isOpen}
       setOpen={setIsOpen}
       style="sm"
       btnLabl="دفع"
-      titel=" تعديل"
+      titel="تعديل"
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div>
           <Label>المورد</Label>
-          <Input value={suppliername} disabled className="font-semibold" />
+          <Input
+            value={watch("supplier_name")}
+            disabled
+            className="font-semibold"
+          />
         </div>
-
+        <div className="grid gap-2">
+          <Label>المبلغ المتبقي:</Label>
+          {supplier.amountDue}
+        </div>
         <div className="grid gap-2">
           <Label>المبلغ</Label>
           <Input
@@ -106,48 +154,54 @@ export function PaymentCreateForm({
 
         <div className="grid gap-2">
           <Label>طريقة الدفع</Label>
-          <select
-            {...register("paymentMethod")}
-            className="rounded-md border px-3 py-2"
-          >
-            <option value="cash">نقداً</option>
-            <option value="bank">تحويل بنكي</option>
-            <option value="check">شيك</option>
-            <option value="credit">ائتمان</option>
-          </select>
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="currency_code">العملة </Label>
           <SelectField
-            options={currencyOptions}
-            value={watch("currency_code")}
-            action={(value: string) =>
-              setValue(
-                "currency_code",
-                value as "YER" | "USD" | "SAR" | "EUR" | "KWD",
-              )
-            }
-            placeholder="اختر العملة"
+            options={paymentMethods}
+            value={paymentMethod}
+            action={(val) => setValue("paymentMethod", val)}
+            placeholder="اختر طريقة الدفع"
           />
         </div>
+
+        {/* Bank accounts */}
+        {paymentMethod === "bank" && (
+          <div className="grid gap-2">
+            <Label>البنك</Label>
+            <SelectField
+              options={banks}
+              value={selectedAccountId}
+              action={(val) => setValue("accountId", val)}
+              placeholder="اختر البنك"
+            />
+            <Label>رقم المرجع</Label>
+            <Input
+              type="text"
+              {...register("note")}
+              placeholder="رقم الحوالة / المرجع"
+            />
+          </div>
+        )}
+
+        {/* Cash accounts */}
+        {paymentMethod === "cash" && (
+          <div className="grid gap-2">
+            <Label>الصندوق النقدي</Label>
+            <SelectField
+              options={cash}
+              value={selectedAccountId}
+              action={(val) => setValue("accountId", val)}
+              placeholder="اختر الصندوق"
+            />
+          </div>
+        )}
+
         <div className="grid gap-2">
           <Label>تاريخ الدفع</Label>
           <Input type="datetime-local" {...register("paymentDate")} />
         </div>
 
-        <div className="grid gap-2">
-          <Label>ملاحظة</Label>
-          <textarea
-            {...register("note")}
-            className="rounded-md border px-3 py-2"
-            rows={3}
-            placeholder="ملاحظة اختيارية"
-          />
-        </div>
-
         <div className="flex justify-end gap-2 pt-2">
           <Button disabled={isSubmitting} type="submit">
-            {isSubmitting ? "جاري الحفظ..." : "تأكيد الدفع "}
+            {isSubmitting ? "جاري الحفظ..." : "تأكيد الدفع"}
           </Button>
         </div>
       </form>

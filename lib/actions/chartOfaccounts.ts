@@ -314,7 +314,7 @@ export async function updateAccount(
         account_name_ar: data.account_name_ar,
         account_type: data.account_type as any,
         account_category: data.account_category as any,
-        parent_id: data.parent_id,
+        parent_id: data.parent_id || null,
         level,
         currency_code: data.currency_code,
         description: data.description,

@@ -26,7 +26,7 @@ import { columns } from "../_compoent/columns";
 import SearchInput from "@/components/common/searchtest";
 import UserForm from "../_compoent/form";
 import TableSkeleton from "@/components/common/TableSkeleton";
-import { DataTable } from "@/components/common/test";
+import { DataTable } from "@/components/common/ReusbleTable";
 
 type ProductClientProps = {
   users: any[];

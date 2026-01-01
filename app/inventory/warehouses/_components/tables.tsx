@@ -11,7 +11,7 @@ import WarehouseForm from "@/components/forms/form";
 
 import { useTranslations } from "next-intl";
 import { Calendar22 } from "@/components/common/DatePicker";
-import { DataTable } from "@/components/common/test";
+import { DataTable } from "@/components/common/ReusbleTable";
 import ImportWarehouse from "@/components/uploadwarehouse";
 
 type ProductClientProps = {

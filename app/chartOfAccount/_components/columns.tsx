@@ -167,7 +167,7 @@ export const accountColumns: ColumnDef<any>[] = [
         SALES_REVENUE: "إيرادات مبيعات",
         COST_OF_GOODS_SOLD: "تكلفة البضاعة المباعة",
         OPERATING_EXPENSES: "مصاريف تشغيلية",
-
+        PAYROLL_EXPENSES: "رواتب",
         // 🆕 Added:
         OTHER_CURRENT_ASSETS: "أصول متداولة أخرى",
         SERVICE_REVENUE: "إيرادات خدمات",

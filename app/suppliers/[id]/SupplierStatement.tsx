@@ -41,7 +41,18 @@ export default function SupplierStatement({
   if (!company) {
     return <div>Loading...</div>;
   }
-
+  const getCurrencySymbol = (currency: string) => {
+    switch (currency?.toLowerCase()) {
+      case "usd":
+        return "$";
+      case "yer":
+        return "ر.ي"; // Yemeni Rial in Arabic
+      case "sar":
+        return "ر.س"; // Saudi Riyal in Arabic
+      default:
+        return currency || ""; // Fallback to the original string
+    }
+  };
   return (
     <Card className="@container/card border-transparent bg-transparent px-2">
       {/* Header */}
@@ -56,11 +67,29 @@ export default function SupplierStatement({
               <SupplierStatementPrint suppliers={suppliers} />
             </div>
 
-            <div className="inline-block rounded px-6 py-3">
-              <strong className="text-lg">الرصيد الحالي: </strong>
-              <span className="text-2xl font-bold text-red-600">
-                {suppliers.closingBalance.toFixed(2)} ر.ي
-              </span>
+            <div
+              className="bg-accent/50 flex items-center gap-4 rounded px-6 py-3"
+              dir="rtl"
+            >
+              <strong className="text-lg whitespace-nowrap">
+                الرصيد الحالي:
+              </strong>
+
+              <div
+                dir="ltr"
+                className={`flex items-center gap-1 font-mono font-bold ${
+                  suppliers.closingBalance >= 0
+                    ? "text-green-600"
+                    : "text-red-600"
+                }`}
+              >
+                <span className="text-sm opacity-70">
+                  {getCurrencySymbol(suppliers.transactions[0].Currency)}
+                </span>
+                <span className="text-2xl tabular-nums">
+                  {suppliers.closingBalance.toFixed(2)}
+                </span>
+              </div>
             </div>
           </div>
           {/* Supplier Information */}
@@ -89,7 +118,7 @@ export default function SupplierStatement({
                 <tr>
                   <th className="border p-2">التاريخ</th>
                   <th className="border p-2">نوع السند</th>
-                  <th className="border p-2">رقم المستند</th>
+                  {/* <th className="border p-2">رقم المستند</th> */}
                   <th className="border p-2">البيان</th>
                   <th className="border p-2">مدين</th>
                   <th className="border p-2">دائن</th>
@@ -121,13 +150,46 @@ export default function SupplierStatement({
                       {new Date(trans.date).toLocaleDateString("ar-EG")}
                     </td>
                     <td className="border p-2">{trans.typeName ?? ""}</td>
-                    <td className="border p-2">{trans.docNo ?? ""}</td>
+                    {/* <td className="border p-2">{trans.docNo ?? ""}</td> */}
                     <td className="border p-2">{trans.description}</td>
                     <td className="border p-2 text-center">
-                      {trans.debit > 0 ? trans.debit.toFixed(2) : "-"}
+                      {trans.debit > 0 ? (
+                        <div
+                          dir="ltr"
+                          className="flex items-center justify-center gap-1 font-mono text-lg font-semibold text-green-600"
+                        >
+                          <span className="text-sm opacity-70">
+                            {getCurrencySymbol(trans.Currency)}
+                          </span>
+                          <span className="tabular-nums">
+                            {trans.debit.toFixed(2)}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="block text-center font-mono tabular-nums opacity-50">
+                          0.00
+                        </span>
+                      )}
                     </td>
+
                     <td className="border p-2 text-center">
-                      {trans.credit > 0 ? trans.credit.toFixed(2) : "-"}
+                      {trans.credit > 0 ? (
+                        <div
+                          dir="ltr"
+                          className="flex items-center justify-center gap-1 font-mono text-lg font-semibold text-green-600"
+                        >
+                          <span className="text-sm opacity-70">
+                            {getCurrencySymbol(trans.Currency)}
+                          </span>
+                          <span className="tabular-nums">
+                            {trans.credit.toFixed(2)}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="block text-center font-mono tabular-nums opacity-50">
+                          0.00
+                        </span>
+                      )}
                     </td>
                     <td className="border p-2 text-center font-semibold">
                       {trans.balance.toFixed(2)}

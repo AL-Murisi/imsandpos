@@ -10,7 +10,7 @@ import TableSkeleton from "@/components/common/TableSkeleton";
 import { useTranslations } from "next-intl";
 import { inventoryColumns } from "./columnsMovment";
 import { Calendar22 } from "@/components/common/DatePicker";
-import { DataTable } from "@/components/common/test";
+import { DataTable } from "@/components/common/ReusbleTable";
 import MultiInventoryUpdateForm from "./multiplr";
 import { Prisma } from "@prisma/client";
 
@@ -89,29 +89,31 @@ export default function ManageStocksClient({
         value={globalFilter}
         onSearchChange={(value) => setParam("search", value)}
       /> */}
-      <div className="flex flex-wrap gap-2 p-3" dir="rtl">
-        <Calendar22 />
-        <SearchInput placeholder={"بحث .."} paramKey={"inventorey"} />
-        <SelectField
-          options={formData.warehouses}
-          paramKey="warehouseId"
-          placeholder={t("warehouseId")}
-        />
-        <MultiInventoryUpdateForm multipleInventory={multipleInventory} />
-        <SelectField
-          options={formData.categories}
-          paramKey="categoryId"
-          placeholder={t("categoryId")}
-        />
-
-        <SelectField
-          options={formData.suppliers}
-          paramKey={"supplierId"}
-          placeholder={t("supplierId")}
-        />
-      </div>
 
       <DataTable
+        search={
+          <div className="flex flex-wrap gap-2 p-3" dir="rtl">
+            <Calendar22 />
+            <SearchInput placeholder={"بحث .."} paramKey={"inventorey"} />
+            <SelectField
+              options={formData.warehouses}
+              paramKey="warehouseId"
+              placeholder={t("warehouseId")}
+            />
+            <MultiInventoryUpdateForm multipleInventory={multipleInventory} />
+            <SelectField
+              options={formData.categories}
+              paramKey="categoryId"
+              placeholder={t("categoryId")}
+            />
+
+            <SelectField
+              options={formData.suppliers}
+              paramKey={"supplierId"}
+              placeholder={t("supplierId")}
+            />
+          </div>
+        }
         data={products}
         columns={inventoryColumns}
         initialPageSize={pagination.pageSize}

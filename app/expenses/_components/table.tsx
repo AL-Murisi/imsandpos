@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 
 const DataTable = dynamic(
-  () => import("@/components/common/test").then((m) => m.DataTable),
+  () => import("@/components/common/ReusbleTable").then((m) => m.DataTable),
   {
     ssr: false,
     loading: () => <TableSkeleton />,
