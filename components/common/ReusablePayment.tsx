@@ -56,6 +56,7 @@ export function ReusablePayment({
   //   }, [value.paymentMethod]);
 
   /* ───────── Currency sync ───────── */
+
   useEffect(() => {
     if (!isForeign || !value.exchangeRate) return;
     action({
@@ -73,7 +74,21 @@ export function ReusablePayment({
       amountFC: value.amountBase / value.exchangeRate,
     });
   }, [value.amountBase]);
+  const getCurrencyNameAr = (currency: string) => {
+    switch (currency?.toLowerCase()) {
+      case "usd":
+        return "دولار أمريكي";
+      case "yer":
+        return "ريال يمني";
+      case "sar":
+        return "ريال سعودي";
+      default:
+        return currency || "";
+    }
+  };
 
+  const baseCurrencyAr = getCurrencyNameAr(baseCurrency);
+  const accountCurrencyAr = getCurrencyNameAr(accountCurrency);
   /* ───────── UI ───────── */
   return (
     <div className="mt-6 grid grid-cols-1 gap-4 sm:items-center sm:justify-between md:grid-cols-2">
@@ -133,7 +148,7 @@ export function ReusablePayment({
 
       {/* Base amount */}
       <div className="grid gap-4">
-        <Label>المبلغ ({baseCurrency})</Label>
+        <Label>المبلغ المستلم بـ ({baseCurrencyAr})</Label>
         <Input
           type="number"
           value={value.amountBase}
@@ -143,12 +158,12 @@ export function ReusablePayment({
         />
       </div>
 
-      {/* FX */}
+      {/* FX Section */}
       {isForeign && value.accountId !== "" && (
         <>
           <div className="grid gap-4">
             <Label>
-              سعر الصرف ({accountCurrency} → {baseCurrency})
+              سعر الصرف ({accountCurrencyAr} ← {baseCurrencyAr})
             </Label>
             <Input
               type="number"
@@ -160,7 +175,7 @@ export function ReusablePayment({
           </div>
 
           <div className="grid gap-4">
-            <Label>المبلغ بـ {accountCurrency}</Label>
+            <Label>المبلغ المستلم بـ ({accountCurrencyAr})</Label>
             <Input
               type="number"
               value={value.amountFC || ""}
