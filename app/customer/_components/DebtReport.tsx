@@ -534,6 +534,7 @@ export default function DebtReport({
   const { user } = useAuth();
   if (!user) return;
   const companyid = user.companyId;
+
   /* ───────── Fetch debts ───────── */
   useEffect(() => {
     if (!open || !user) return;
@@ -603,7 +604,7 @@ export default function DebtReport({
         {
           bankId: payment.accountId,
           transferNumber: payment.transferNumber,
-          exchangeRate: payment.exchangeRate,
+          exchange_rate: payment.exchangeRate,
           amountFC: payment.amountFC,
         },
       );
@@ -678,7 +679,7 @@ export default function DebtReport({
         <h2 className="text-center text-xl font-bold">{t("debtReport")}</h2>
         {payment.accountCurrency}
         {/* Table */}
-        <div className="w-80 sm:w-[480px] md:w-3xl lg:w-full">
+        <div className="w-80 p-3 sm:w-[480px] md:w-3xl lg:w-full">
           <ScrollArea className="h-[30vh] w-full rounded-2xl border border-amber-300 p-2">
             <Table className="w-full">
               <TableHeader>
@@ -730,12 +731,13 @@ export default function DebtReport({
         </p>
 
         {/* ✅ Reusable payment */}
-        <ReusablePayment
-          value={payment}
-          action={setPayment}
-          accounts={accounts}
-        />
-
+        <div className="p-3">
+          <ReusablePayment
+            value={payment}
+            action={setPayment}
+            accounts={accounts}
+          />
+        </div>
         {/* Actions */}
         <div className="grid grid-cols-2 gap-2 py-3">
           <Button onClick={onSubmit} disabled={isSubmitting || loading}>

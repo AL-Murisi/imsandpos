@@ -11,6 +11,7 @@ const CreateSupplierSchema = z.object({
     .email("البريد الإلكتروني غير صالح")
     .optional()
     .or(z.literal("")),
+  preferred_currency: z.string().optional(),
   phoneNumber: z.string().optional(),
   address: z.string().optional(),
   city: z.string().optional(),
@@ -63,6 +64,7 @@ export function EditSupplierForm({
       postalCode: supplier.postalCode || "",
       taxId: supplier.taxId || "",
       paymentTerms: supplier.paymentTerms || "",
+      preferred_currency: supplier.preferred_currency || "",
     },
   });
   const [open, setOpen] = useState(false);
@@ -132,12 +134,19 @@ export function EditSupplierForm({
               <Input {...register("city")} />
             </div>
           </div>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
             <div className="grid gap-2">
               <Label>الدولة</Label>
               <Input {...register("country")} />
             </div>
-
+            <div className="grid gap-3">
+              <Label htmlFor="preferred_currency"> العمله الرئيسية</Label>
+              <Input
+                id="preferred_currency"
+                {...register("preferred_currency")}
+                className="text-right"
+              />
+            </div>
             <div className="grid gap-2">
               <Label>الرقم الضريبي</Label>
               <Input {...register("taxId")} />

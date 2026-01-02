@@ -156,6 +156,13 @@ export const supplierColumns: ColumnDef<any>[] = [
     ),
   },
   {
+    accessorKey: "preferred_currency",
+    header: ({ column }) => <SortableHeader column={column} label="العمله" />,
+    cell: ({ row }) => (
+      <div>{row.getValue("preferred_currency") || "غير محدد"}</div>
+    ),
+  },
+  {
     accessorKey: "totalPurchased",
     header: "إجمالي المشتريات",
     cell: ({ row }) => (

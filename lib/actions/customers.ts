@@ -68,7 +68,7 @@ export async function getCustomerById(
         country: true,
         customerType: true,
         taxId: true,
-
+        preferred_currency: true,
         creditLimit: true,
         outstandingBalance: true,
         balance: true,
@@ -409,6 +409,7 @@ export async function updatedCustomer(
     email,
     phoneNumber,
     address,
+    preferred_currency,
     city,
     state,
     country,

@@ -6,7 +6,32 @@ import { BankForm } from "../zod";
 import { getUserCompany } from "./chartOfaccounts";
 import { revalidatePath } from "next/cache";
 import { Currency } from "lucide-react";
+import { date } from "zod";
+function serializeData<T>(data: T): T {
+  if (data === null || data === undefined) return data;
+  if (typeof data !== "object") return data;
 
+  if (Array.isArray(data)) {
+    return data.map((item) => serializeData(item)) as T;
+  }
+
+  const plainObj: any = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (value instanceof Prisma.Decimal) {
+      plainObj[key] = value.toNumber(); // or value.toString() if you prefer
+    } else if (value instanceof Date) {
+      plainObj[key] = value.toISOString();
+    } else if (typeof value === "bigint") {
+      plainObj[key] = value.toString();
+    } else if (typeof value === "object" && value !== null) {
+      plainObj[key] = serializeData(value);
+    } else {
+      plainObj[key] = value;
+    }
+  }
+
+  return plainObj;
+}
 export async function fetchBanks() {
   try {
     const { companyId } = await getUserCompany();
@@ -191,4 +216,68 @@ export async function fetchPayments() {
   }));
 
   return { banks: mappedBanks, cashAccounts: mappedCash };
+}
+
+export async function createExchangeRate({
+  companyId,
+  fromCurrency,
+  toCurrency,
+  rate,
+}: {
+  companyId: string;
+  fromCurrency: string;
+  toCurrency: string;
+  rate: number;
+}) {
+  return prisma.exchange_rates.create({
+    data: {
+      company_id: companyId,
+      from_currency: fromCurrency,
+      to_currency: toCurrency,
+      rate,
+    },
+  });
+}
+export async function getLatestExchangeRate({
+  companyId,
+  fromCurrency,
+  toCurrency,
+}: {
+  companyId: string;
+  fromCurrency: string;
+  toCurrency: string;
+}) {
+  const exchange_rates = await prisma.exchange_rates.findFirst({
+    where: {
+      company_id: companyId,
+      from_currency: fromCurrency,
+      to_currency: toCurrency,
+    },
+    orderBy: {
+      date: "desc",
+    },
+  });
+  const rate = serializeData(exchange_rates);
+  return rate;
+}
+export async function getExchangeRate() {
+  const session = await getSession();
+  if (!session) return;
+  const exchange_rates = await prisma.exchange_rates.findMany({
+    where: {
+      company_id: session.companyId,
+    },
+    select: {
+      id: true,
+      from_currency: true,
+      to_currency: true,
+      rate: true,
+      date: true,
+    },
+    orderBy: {
+      date: "desc",
+    },
+  });
+  const rate = serializeData(exchange_rates);
+  return rate;
 }

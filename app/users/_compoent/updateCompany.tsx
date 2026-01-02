@@ -25,6 +25,7 @@ export default function UpdateCompanyForm({
         phone: string | null;
         address: string | null;
         city: string | null;
+        base_currency: string | null;
         country: string | null;
         logoUrl: string | null;
       }
@@ -61,6 +62,7 @@ export default function UpdateCompanyForm({
       address: company?.address || "",
       city: company?.city || "",
       country: company?.country || "",
+      base_currency: company?.base_currency || "",
     },
   });
 
@@ -254,10 +256,18 @@ export default function UpdateCompanyForm({
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-3">
           <div className="grid gap-3">
             <Label htmlFor="city">المدينة</Label>
             <Input id="city" {...register("city")} className="text-right" />
+          </div>
+          <div className="grid gap-3">
+            <Label htmlFor="base_currency"> العمله الرئيسية</Label>
+            <Input
+              id="base_currency"
+              {...register("base_currency")}
+              className="text-right"
+            />
           </div>
 
           <div className="grid gap-3">

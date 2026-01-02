@@ -7,7 +7,7 @@ export const CreateCustomerSchema = z.object({
     .email("البريد الإلكتروني غير صالح")
     .optional()
     .or(z.literal("")),
-
+  preferred_currency: z.string().optional(),
   phoneNumber: z.string().optional(),
   address: z.string().optional(),
   city: z.string().optional(),

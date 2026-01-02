@@ -135,7 +135,7 @@ export async function updateSalesBulk(
   currencyCode: string,
   paymentDetails?: {
     bankId?: string;
-    exchangeRate?: number;
+    exchange_rate?: number;
     transferNumber?: string;
     amountFC?: number;
   },
@@ -270,6 +270,7 @@ export async function updateSalesBulk(
         paymentMethod: payment.paymentMethod,
         paymentDetails: paymentDetails || {},
         currencyCode: currencyCode,
+        bas_amount: paymentAmount,
       },
       cashierId,
     },

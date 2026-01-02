@@ -60,6 +60,7 @@ export async function updateSupplier(
         state: string;
         country: string;
         postalCode: string;
+        preferred_currency: string;
         taxId?: string;
         paymentTerms?: string;
         isActive?: boolean;
@@ -106,6 +107,7 @@ export async function updateSupplier(
         address: data.address ?? existingSupplier.address,
         city: data.city ?? existingSupplier.city,
         state: data.state ?? existingSupplier.state,
+        preferred_currency: data.preferred_currency,
         country: data.country ?? existingSupplier.country,
         postalCode: data.postalCode ?? existingSupplier.postalCode,
         taxId: data.taxId ?? existingSupplier.taxId,
@@ -154,6 +156,7 @@ export const fetchSuppliers = cache(async (companyId: string) => {
       isActive: true,
       createdAt: true,
       updatedAt: true,
+      preferred_currency: true,
       totalPaid: true,
       totalPurchased: true,
       outstandingBalance: true,

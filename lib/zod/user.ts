@@ -32,6 +32,7 @@ export const UpdateCompanySchema = z.object({
   name: z.string().min(2, "اسم الشركة يجب أن يكون على الأقل حرفين"),
   email: z.string().email("البريد الإلكتروني غير صحيح"),
   phone: z.string().optional(),
+  base_currency: z.string().optional(),
   address: z.string().optional(),
   city: z.string().optional(),
   country: z.string().optional(),

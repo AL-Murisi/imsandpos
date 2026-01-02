@@ -12,8 +12,10 @@ export type Company =
       phone: string | null;
       address: string | null;
       city: string | null;
+
       country: string | null;
       logoUrl: string | null;
+      base_currency: string | null;
     }
   | undefined;
 
@@ -33,9 +35,9 @@ export function useCompany() {
     const fetchCompany = async () => {
       setLoading(true);
       try {
-        const res = await getCompany(user.companyId);
-        cachedCompany = res.data; // cache globally
-        setCompany(res.data);
+        const res = await getCompany();
+        cachedCompany = res?.data; // cache globally
+        setCompany(res?.data);
       } catch (err) {
         console.error("Failed to fetch company", err);
       } finally {

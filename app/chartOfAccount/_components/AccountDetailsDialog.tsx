@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useState, useEffect } from "react";
 import { Eye } from "lucide-react";
-import { useFormatter } from "@/hooks/usePrice";
+import { useFormatter } from "@/hooks/usePrice"; // Ensure this hook exports formatCurrency correctly
 import Dailogreuse from "@/components/common/dailogreuse";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useRouter } from "next/navigation";

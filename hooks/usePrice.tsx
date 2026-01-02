@@ -1,79 +1,61 @@
 "use client";
 
 import { useCurrency } from "@/components/CurrencyProvider";
+import { useExchangeRate } from "@/components/common/wee";
+import { useCompany } from "./useCompany";
 
 export function useFormatter() {
   const { currency } = useCurrency();
+  const { company } = useCompany();
 
-  /**
-   * Format a number as currency
-   * @param value number to format
-   * @returns formatted string with selected currency
-   */
-  // const formatCurrency = (value: number) => {
-  //   if (value == null) return "N/A";
+  const baseCurrency = company?.base_currency ?? currency.currency;
 
-  //   return new Intl.NumberFormat(currency.locale, {
-  //     style: "currency",
-  //     currency: currency.currency,
-  //     numberingSystem: "latn",
-  //     minimumFractionDigits: 2, // always show at least 2 decimals
-  //     maximumFractionDigits: 2, // optional, rounds to 2 decimals
-  //   }).format(value);
-  // };
+  // ✅ Hook في الأعلى فقط
+  const { rate = 1 } = useExchangeRate({
+    from: baseCurrency,
+    to: currency.currency,
+  });
+
   const formatCurrency = (value: number) => {
-    let formattedValue = value;
-    let suffix = "";
+    if (value == null) return "—";
 
-    // Determine K/M/B suffix
-    if (Math.abs(value) >= 1_000_000_000) {
-      formattedValue = value / 1_000_000_000;
-      suffix = "B";
-    } else if (Math.abs(value) >= 1_000_000) {
-      formattedValue = value / 1_000_000;
-      suffix = "M";
-    } else if (Math.abs(value) >= 1000) {
-      formattedValue = value / 1000;
-      suffix = "الف";
-    }
+    // ✅ التحويل مرة واحدة
+    const converted = currency.currency === baseCurrency ? value : value * rate;
 
-    // Format the number with Arabic currency style
-    let formattedCurrency = new Intl.NumberFormat(currency.locale, {
+    return new Intl.NumberFormat(currency.locale, {
       style: "currency",
       currency: currency.currency,
+      currencyDisplay: "symbol",
       numberingSystem: "latn",
-      minimumFractionDigits: 2, // allow removing .00
+      minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }).format(value);
-
-    return `${formattedCurrency}`;
+    }).format(converted);
   };
-  /**
-   * Format large numbers as "k" notation (1000 -> 1k)
-   * @param value number to format
-   * @returns formatted string
-   */
+
   const formatPriceK = (value: number) => {
     if (value >= 1000) {
-      const formatted = (value / 1000).toFixed(2).replace(/\.0$/, "");
-      return `${formatted}k`;
+      return `${(value / 1000).toFixed(1).replace(/\.0$/, "")}k`;
     }
     return value.toString();
   };
 
-  /**
-   * Format quantity (same as priceK)
-   */
   const formatQty = (value: number) => {
     if (value >= 1000) {
-      const formatted = (value / 1000).toFixed(0);
-      return `${formatted}الف`;
+      return `${(value / 1000).toFixed(0)} ألف`;
     }
     return value.toString();
   };
 
-  return { currency, formatCurrency, formatPriceK, formatQty };
+  return {
+    currency,
+    baseCurrency,
+    rate,
+    formatCurrency,
+    formatPriceK,
+    formatQty,
+  };
 }
+
 export function FormatPrice(price: number): string {
   if (price >= 1000) {
     const formattedPrice = (price / 1000).toFixed(1).replace(/\.0$/, "");

@@ -55,7 +55,7 @@ export default async function User({ searchParams }: Users) {
     // const data = await fetechUser();
     fetchRolesForSelect(),
     fetchRoles(pageIndex, pageSize),
-    getCompany(user.companyId),
+    getCompany(),
   ]);
   const { logs: log, total: totals } = logs;
   return (

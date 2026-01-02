@@ -171,6 +171,9 @@ export async function processSale(data: any, companyId: string) {
           amountDue: Math.max(0, totalAfterDiscount - receivedAmount),
           paymentStatus:
             receivedAmount >= totalAfterDiscount ? "paid" : "partial",
+          // inventories: {
+
+          // }
         },
       });
 

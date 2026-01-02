@@ -1,6 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { getSession } from "../session";
 
 interface CreateCompanyInput {
   name: string;
@@ -112,6 +113,7 @@ export async function updateCompany(
     phone?: string;
     address?: string;
     city?: string;
+    base_currency?: string;
     country?: string;
     logoUrl?: string;
   },
@@ -131,10 +133,12 @@ export async function updateCompany(
     return { success: false, message: error.message };
   }
 }
-export async function getCompany(companyId: string) {
+export async function getCompany() {
+  const user = await getSession();
+  if (!user) return;
   try {
     const company = await prisma.company.findUnique({
-      where: { id: companyId },
+      where: { id: user.companyId },
       select: {
         id: true,
         name: true,
@@ -142,6 +146,7 @@ export async function getCompany(companyId: string) {
         phone: true,
         address: true,
         city: true,
+        base_currency: true,
         country: true,
         logoUrl: true,
       },

@@ -4,8 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SelectField } from "@/components/common/selectproduct";
-import { fetchPayments } from "@/lib/actions/banks";
+import { fetchPayments, getLatestExchangeRate } from "@/lib/actions/banks";
 import { toast } from "sonner";
+import { useCompany } from "@/hooks/useCompany";
 
 type Account = {
   id: string;
@@ -24,18 +25,20 @@ export type PaymentState = {
 };
 
 export function ReusablePayment({
-  baseCurrency = "YER",
   value,
   action,
   accounts,
 }: {
-  baseCurrency?: string;
   value: PaymentState;
   accounts: Account[];
   action: (v: PaymentState) => void;
 }) {
   //   const [accounts, setAccounts] = useState<Account[]>([]);
-
+  const { company } = useCompany();
+  if (!company) {
+    return;
+  }
+  const baseCurrency = company.base_currency ?? "YER";
   const selectedAccount = accounts.find((a) => a.id === value.accountId);
   const accountCurrency = selectedAccount?.currency ?? "";
   const isForeign = accountCurrency !== baseCurrency;
@@ -56,6 +59,38 @@ export function ReusablePayment({
   //   }, [value.paymentMethod]);
 
   /* ───────── Currency sync ───────── */
+  const companyId = company.id;
+  useEffect(() => {
+    if (!companyId) return;
+    if (!value.accountId) return;
+    if (!accountCurrency) return;
+    if (accountCurrency === baseCurrency) return;
+
+    async function loadRate() {
+      try {
+        const rateRow = await getLatestExchangeRate({
+          companyId,
+          fromCurrency: accountCurrency,
+          toCurrency: baseCurrency,
+        });
+
+        if (!rateRow) {
+          toast.error("لا يوجد سعر صرف لهذه العملة");
+          return;
+        }
+
+        action({
+          ...value,
+          exchangeRate: Number(rateRow.rate),
+          accountCurrency,
+        });
+      } catch {
+        toast.error("فشل تحميل سعر الصرف");
+      }
+    }
+
+    loadRate();
+  }, [value.accountId, accountCurrency]);
 
   useEffect(() => {
     if (!isForeign || !value.exchangeRate) return;
@@ -172,6 +207,9 @@ export function ReusablePayment({
                 action({ ...value, exchangeRate: +e.target.value || 0 })
               }
             />
+            <p className="text-muted-foreground text-xs">
+              تم جلب السعر تلقائيًا، يمكنك تعديله يدويًا
+            </p>
           </div>
 
           <div className="grid gap-4">
