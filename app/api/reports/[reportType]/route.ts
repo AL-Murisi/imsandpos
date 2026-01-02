@@ -67,13 +67,13 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
     // Auth
     const user = await getSession();
-    if (!user) {
+    const company = await getCompany();
+    if (!user || !company) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
       });
     }
 
-    const company = await getCompany(user.companyId);
     let data: any = {};
     let templateFile = "";
 
