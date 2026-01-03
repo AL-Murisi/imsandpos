@@ -269,7 +269,7 @@ export async function fetchAllReturnItems(companyId: string) {
     select: {
       sale_type: true,
       saleDate: true,
-      originalSaleId: true,
+      // originalSaleId: true,
       saleItems: {
         select: {
           productId: true,
@@ -290,7 +290,7 @@ export async function fetchAllReturnItems(companyId: string) {
   // Flatten all items into a single array
   const returnItems = returnSales.flatMap((sale) =>
     sale.saleItems.map((item) => ({
-      returnSaleId: sale.originalSaleId,
+      // returnSaleId: sale.originalSaleId,
       sale_type: sale.sale_type,
       customerId: sale.customer?.id,
       customerName: sale.customer?.name || "غير معروف",

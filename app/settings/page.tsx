@@ -5,7 +5,7 @@ export default async function ExpensesPage() {
   const exchangeRate = await getExchangeRate();
   return (
     <div className="p-4">
-      <Exchange exchangeRate={exchangeRate} total={0} role={[]} />
+      <Exchange exchangeRate={exchangeRate} />
     </div>
   );
 }

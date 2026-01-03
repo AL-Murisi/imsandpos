@@ -25,9 +25,10 @@ export default function UpdateCompanyForm({
         phone: string | null;
         address: string | null;
         city: string | null;
-        base_currency: string | null;
+
         country: string | null;
         logoUrl: string | null;
+        base_currency: string | null; // ✅ مهم
       }
     | undefined;
 }) {

@@ -65,7 +65,7 @@ export default async function User({ searchParams }: Users) {
       logs={log}
       totalLogs={totals}
       roles={roles}
-      company={company.data}
+      company={company?.data as any}
     />
   );
 }

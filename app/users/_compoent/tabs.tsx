@@ -39,8 +39,10 @@ export default function UserTab({
         phone: string | null;
         address: string | null;
         city: string | null;
+
         country: string | null;
         logoUrl: string | null;
+        base_currency: string | null; // ✅ مهم
       }
     | undefined;
 }) {

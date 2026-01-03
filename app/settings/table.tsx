@@ -25,12 +25,10 @@ import TableSkeleton from "@/components/common/TableSkeleton";
 import { Calendar22 } from "@/components/common/DatePicker";
 
 type Props = {
-  exchangeRate: any[];
-  total: number;
-  role: { id: string; name: string }[];
+  exchangeRate: any;
 };
 
-export default function Exchange({ exchangeRate, total, role }: Props) {
+export default function Exchange({ exchangeRate }: Props) {
   const {
     pagination,
     sorting,
@@ -55,21 +53,21 @@ export default function Exchange({ exchangeRate, total, role }: Props) {
             <Calendar22 />
             <SearchInput placeholder={"بحث"} paramKey={"customers"} />{" "}
             {/* Translate placeholder */}
-            <SelectField options={role} paramKey="role" placeholder="الفئة" />
+            {/* <SelectField options={role} paramKey="role" placeholder="الفئة" /> */}
             <ExchangeRatesPage />
           </div>
         }
         data={exchangeRate}
         columns={exchangeRateColumns}
         initialPageSize={pagination.pageSize}
-        pageCount={Math.ceil(total / pagination.pageSize)}
+        pageCount={Math.ceil(2 / pagination.pageSize)}
         pageActiom={setPagination}
         onSortingChange={setSorting}
         onGlobalFilterChange={setGlobalFilter}
         globalFilter={globalFilter}
         sorting={sorting}
         pagination={pagination}
-        totalCount={total}
+        totalCount={2}
         highet="h-[68vh]"
       />
       {/* <CustomerStatementPage customers={user.result} /> */}
