@@ -319,7 +319,7 @@ export default function ExpenseForm({
                   </div>
 
                   {/* Amount */}
-                  <div className="space-y-2">
+                  {/* <div className="space-y-2">
                     <Label>
                       المبلغ <span className="text-red-500">*</span>
                     </Label>
@@ -342,7 +342,7 @@ export default function ExpenseForm({
                       placeholder="0.00"
                       className="text-right"
                     />
-                  </div>
+                  </div> */}
 
                   {/* Description */}
                   <div className="space-y-2 md:col-span-2">
