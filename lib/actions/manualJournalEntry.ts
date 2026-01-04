@@ -21,141 +21,26 @@ interface JournalEntryLine {
   customer_id?: string;
   supplier_id?: string;
 }
-
-interface CreateManualJournalEntryParams {
-  entries: JournalEntryLine[];
-  generalDescription: string;
-  companyId: string;
+interface SupplierPaymentDetails {
+  paymentMethod: string;
+  accountId: string;
+  accountCurrency: string;
+  amountBase: number;
+  transferNumber?: number;
+  exchangeRate?: number;
+  amountFC?: number;
 }
 
-// export async function createManualJournalEntry({
-//   entries,
-//   generalDescription,
-//   companyId,
-// }: {
-//   entries: JournalEntryLine[];
-//   generalDescription: string;
-//   companyId: string;
-// }) {
-//   console.log(entries[0].customer_id);
-//   try {
-//     if (!entries || entries.length < 2) {
-//       return {
-//         success: false,
-//         error: "يجب أن يحتوي القيد على سطرين على الأقل",
-//       };
-//     }
-
-//     if (!generalDescription?.trim()) {
-//       return { success: false, error: "يجب إدخال وصف عام للقيد" };
-//     }
-
-//     // Calculate totals
-//     const totalDebit = entries.reduce(
-//       (sum, e) => sum + Number(e.debit || 0),
-//       0,
-//     );
-//     const totalCredit = entries.reduce(
-//       (sum, e) => sum + Number(e.credit || 0),
-//       0,
-//     );
-
-//     if (Math.abs(totalDebit - totalCredit) > 0.01) {
-//       return {
-//         success: false,
-//         error: `القيد غير متوازن: المدين ${totalDebit.toFixed(2)} - الدائن ${totalCredit.toFixed(2)}`,
-//       };
-//     }
-
-//     // Get fiscal period
-//     const fiscalYear = await prisma.fiscal_periods.findFirst({
-//       where: {
-//         is_closed: false,
-//         start_date: { lte: new Date() },
-//         end_date: { gte: new Date() },
-//       },
-//       select: { period_name: true },
-//     });
-
-//     // Prepare entries for insertion
-//     const entriesToInsert = entries.map((entry) => ({
-//       company_id: companyId,
-//       entry_number: entry.entry_number, // make sure you generate per line
-//       account_id: entry.account_id,
-//       description: entry.description || generalDescription,
-//       debit: Number(entry.debit || 0),
-//       credit: Number(entry.credit || 0),
-//       entry_date: new Date(entry.entry_date),
-//       fiscal_period: fiscalYear?.period_name || null,
-//       reference_type: entry.reference_type,
-//       reference_id: entry.reference_id,
-//       created_by: entry.created_by,
-//       is_automated: false,
-//     }));
-
-//     // Transaction
-//     await prisma.$transaction(async (tx) => {
-//       // Insert journal entries
-//       await tx.journal_entries.createMany({ data: entriesToInsert });
-
-//       // Update account balances
-//       for (const entry of entries) {
-//         const account = await tx.accounts.findUnique({
-//           where: { id: entry.account_id },
-//           select: { account_type: true },
-//         });
-//         if (!account) continue;
-
-//         const type = account.account_type?.toLowerCase();
-//         const debit = Number(entry.debit || 0);
-//         const credit = Number(entry.credit || 0);
-
-//         let delta = 0;
-//         if (["asset", "expense", "cogs"].includes(type || "")) {
-//           delta = debit - credit;
-//         } else {
-//           delta = credit - debit;
-//         }
-
-//         await tx.accounts.update({
-//           where: { id: entry.account_id },
-//           data: { balance: { increment: delta } },
-//         });
-
-//         // Update customer/supplier balances per line
-//         if (entry.customer_id) {
-//           await tx.customer.update({
-//             where: { id: entry.customer_id },
-//             data: { outstandingBalance: { increment: debit - credit } },
-//           });
-//         }
-//         if (entry.supplier_id) {
-//           await tx.supplier.update({
-//             where: { id: entry.supplier_id },
-//             data: { outstandingBalance: { increment: credit - debit } },
-//           });
-//         }
-//       }
-//     });
-
-//     // Revalidate paths if needed
-//     revalidatePath("/journalEntry");
-//     revalidatePath("/chartOfAccounts");
-
-//     return { success: true, message: "تم إنشاء القيد المحاسبي اليدوي بنجاح" };
-//   } catch (error) {
-//     console.error(error);
-//     return { success: false, error: "حدث خطأ أثناء إضافة القيد المحاسبي" };
-//   }
-// }
 export async function createManualJournalEntry({
   entries,
   generalDescription,
   companyId,
+  paymentDetails,
 }: {
   entries: JournalEntryLine[];
   generalDescription: string;
   companyId: string;
+  paymentDetails?: SupplierPaymentDetails;
 }) {
   try {
     if (!entries || entries.length < 2) {

@@ -6,7 +6,12 @@ import { useAuth } from "@/lib/context/AuthContext";
 import { useState } from "react";
 
 interface JournalEntryDetailsDialogProps {
-  account: { id: string; name: string; account_type?: string }[];
+  account: {
+    id: string;
+    name: string;
+    currency?: string | null;
+    account_type?: string;
+  }[];
   customers?:
     | {
         id?: string;

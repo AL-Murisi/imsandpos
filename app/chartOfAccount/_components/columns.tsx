@@ -189,6 +189,7 @@ export const accountColumns: ColumnDef<any>[] = [
     cell: ({ row }) => {
       const currency = row.original.currency_code;
       const balance = row.getValue("balance") as number;
+      const { formatCurrency } = useFormatter();
 
       const color =
         balance > 0
@@ -205,8 +206,7 @@ export const accountColumns: ColumnDef<any>[] = [
           dir="ltr"
           className={`flex items-center gap-1 font-mono text-lg font-semibold ${color}`}
         >
-          <span className="text-sm opacity-70">{currencyLabel}</span>
-          <span>{balance.toLocaleString()}</span>
+          <span>{formatCurrency(balance)}</span>
         </div>
       );
     },

@@ -17,6 +17,10 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { fetchPayments } from "@/lib/actions/banks";
+import {
+  PaymentState,
+  ReusablePayment,
+} from "@/components/common/ReusablePayment";
 
 type FormValues = z.infer<typeof UpdateInventorySchema> & {
   currency_code?: string;
@@ -39,7 +43,8 @@ interface Warehouse {
   id: string;
   name: string;
 }
-interface bankcash {
+
+interface Account {
   id: string;
   name: string;
   currency: string | null;
@@ -47,16 +52,22 @@ interface bankcash {
 
 export default function InventoryEditForm({ inventory }: { inventory: any }) {
   const [updateType, setUpdateType] = useState<"manual" | "supplier">("manual");
-  const [showPayment, setShowPayment] = useState(false);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
-  const [selectedBankId, setSelectedBankId] = useState("");
-  const [banks, setBanks] = useState<bankcash[]>([]);
-  const [cash, setCash] = useState<bankcash[]>([]);
-  const [transferNumber, setTransferNumber] = useState("");
+
+  // ✅ Payment state using ReusablePayment
+  const [payment, setPayment] = useState<PaymentState>({
+    paymentMethod: "",
+    accountId: "",
+    accountCurrency: "",
+    amountBase: 0,
+  });
+
+  // ✅ Accounts for payment component
+  const [accounts, setAccounts] = useState<Account[]>([]);
 
   if (!user) return null;
 
@@ -94,21 +105,12 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
   const unitCost = watch("unitCost");
   const supplierId = watch("supplierId");
   const warehouseId = watch("warehouseId");
-  const amount = watch("paymentAmount");
-  const method = watch("paymentMethod");
   const reservedQuantity = watch("reservedQuantity");
-  const availableQuantity = watch("availableQuantity");
-  // useEffect(() => {
-  //   if (reservedQuantity === 0) {
-  //     setValue("availableQuantity", quantity || 0);
-  //   } else if (quantity !== undefined && reservedQuantity !== undefined) {
-  //     setValue("availableQuantity", quantity - reservedQuantity);
-  //   }
-  // }, [reservedQuantity, quantity, setValue]);
+
+  // ✅ Calculate available quantity
   useEffect(() => {
     const stock = quantity ?? 0;
     const reserved = reservedQuantity ?? 0;
-
     setValue("availableQuantity", Math.max(stock - reserved, 0));
   }, [quantity, reservedQuantity, setValue]);
 
@@ -117,7 +119,12 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
     if (!open) {
       reset();
       setUpdateType("manual");
-      setShowPayment(false);
+      setPayment({
+        paymentMethod: "",
+        accountId: "",
+        accountCurrency: "",
+        amountBase: 0,
+      });
       return;
     }
 
@@ -135,18 +142,18 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
 
     loadData();
   }, [open, user.companyId, reset, setValue]);
+
+  // ✅ Load accounts based on payment method
   useEffect(() => {
-    if (!open) {
-      setSelectedBankId("");
-      setBanks([]);
+    if (!open || !payment.paymentMethod) {
+      setAccounts([]);
       return;
     }
+
     const loadAccounts = async () => {
       try {
         const { banks, cashAccounts } = await fetchPayments();
-        // Automatically choose accounts based on payment method
-        setBanks(banks);
-        setCash(cashAccounts);
+        setAccounts(payment.paymentMethod === "bank" ? banks : cashAccounts);
       } catch (err) {
         console.error(err);
         toast.error("فشل في جلب الحسابات");
@@ -154,46 +161,41 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
     };
 
     loadAccounts();
-  }, [open]);
+  }, [open, payment.paymentMethod]);
+
   // ✅ Total cost
   const totalCost = (quantity || 0) * (unitCost || 0);
-  //  <option value="">-- اختر طريقة الدفع --</option>
-  //                       <option value="cash"></option>
-  //                       <option value="bank_transfer"</option>
-  //                       <option value="check">شيك</option>
-  //                       <option value="credit">ائتمان</option>
-  const currencyCode = banks.find((b) => b.id === selectedBankId)?.currency;
-  const currencyCodecash = cash.find((b) => b.id === selectedBankId)?.currency;
-  const currency = currencyCode ?? currencyCodecash ?? undefined;
 
-  const paymentmethod = [
-    { id: "cash", name: "نقداً" },
-    { id: "bank", name: "تحويل بنكي" },
-
-    { id: "debt", name: "دين" },
-  ];
   // ✅ Submit
   const onSubmit = async (data: FormValues) => {
     try {
       setIsSubmitting(true);
 
-      if (!warehouseId) return toast.error("الرجاء اختيار المستودع");
-      if ((amount ?? 0) > totalCost) {
+      if (!warehouseId) {
         setIsSubmitting(false);
-        return toast.error("❌ مبلغ الدفع أكبر من إجمالي التكلفة");
+        return toast.error("الرجاء اختيار المستودع");
       }
 
       if (updateType === "supplier") {
         if (!supplierId) {
+          setIsSubmitting(false);
           return toast.error("الرجاء اختيار المورد");
         }
         if (!quantity || quantity <= 0) {
           setIsSubmitting(false);
           return toast.error("الرجاء إدخال كمية صحيحة");
         }
-        if (!method) {
+        if (!payment.paymentMethod) {
           setIsSubmitting(false);
-          return toast.error("   اختر طريقة الدفع ");
+          return toast.error("اختر طريقة الدفع");
+        }
+        if (!payment.accountId) {
+          setIsSubmitting(false);
+          return toast.error("اختر الحساب");
+        }
+        if (payment.amountBase > totalCost) {
+          setIsSubmitting(false);
+          return toast.error("❌ مبلغ الدفع أكبر من إجمالي التكلفة");
         }
       }
 
@@ -206,14 +208,19 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
         warehouseId,
         quantity: updateType === "supplier" ? quantity : undefined,
         unitCost: updateType === "supplier" ? unitCost : undefined,
-        paymentMethod: updateType === "supplier" ? method : undefined,
-        paymentAmount: updateType === "supplier" ? amount : undefined,
+        paymentMethod:
+          updateType === "supplier" ? payment.paymentMethod : undefined,
+        paymentAmount:
+          updateType === "supplier" ? payment.amountBase : undefined,
         notes: data.reason,
-
-        bankId: updateType === "supplier" ? selectedBankId : undefined,
-        transferNumber: updateType === "supplier" ? transferNumber : undefined,
-
-        currency_code: updateType === "supplier" ? currency : undefined,
+        bankId: updateType === "supplier" ? payment.accountId : undefined,
+        transferNumber:
+          updateType === "supplier" ? payment.transferNumber : undefined,
+        currency_code:
+          updateType === "supplier" ? payment.accountCurrency : undefined,
+        exchangeRate:
+          updateType === "supplier" ? payment.exchangeRate : undefined,
+        amountFC: updateType === "supplier" ? payment.amountFC : undefined,
       };
 
       await updateInventory(payload, user.userId, user.companyId);
@@ -227,7 +234,12 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
       reset();
       setOpen(false);
       setUpdateType("manual");
-      setShowPayment(false);
+      setPayment({
+        paymentMethod: "",
+        accountId: "",
+        accountCurrency: "",
+        amountBase: 0,
+      });
     } catch (error) {
       toast.error("حدث خطأ في التحديث");
       console.error("Error updating inventory:", error);
@@ -239,10 +251,10 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
     <Dailogreuse
       open={open}
       setOpen={setOpen}
-      btnLabl="إضافة   "
+      btnLabl="إضافة"
       style="sm:max-w-6xl"
-      titel="إضافة فئة جديدة للمصروف"
-      description="أدخل تفاصيل المنتج واحفظه"
+      titel="تحديث المخزون"
+      description="أدخل تفاصيل التحديث واحفظه"
     >
       <ScrollArea className="max-h-[85vh]" dir="rtl">
         <form
@@ -253,6 +265,7 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
           className="space-y-6"
           dir="rtl"
         >
+          {/* Update Type Selection */}
           <div className="rounded-lg border border-gray-200 p-4">
             <Label className="mb-3 block text-sm font-medium">
               نوع التحديث
@@ -279,119 +292,73 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
               ))}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            {updateType === "manual" && (
-              <div className="grid gap-3">
-                <Label>سبب التحديث اليدوي</Label>
-                <Textarea placeholder="أدخل السبب" {...register("reason")} />
-              </div>
-            )}
-          </div>
-          {updateType === "supplier" && (
-            <div className="rounded-lg border border-blue-200 p-4">
-              {/* المورد */}
 
-              {/* الكمية والسعر */}
-
-              {/* الدفع */}
-              <div className="mt-4 border-t border-blue-200 pt-4">
-                {updateType == "supplier" && (
-                  <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-5">
-                    <div className="grid gap-2">
-                      <Label>اختر المورد</Label>
-                      <SelectField
-                        options={suppliers}
-                        value={supplierId || ""}
-                        action={(val) => setValue("supplierId", val)}
-                        placeholder="اختر المورد"
-                      />
-                      {!supplierId && (
-                        <p className="text-xs text-red-500">المورد مطلوب</p>
-                      )}
-                    </div>
-                    <div className="grid gap-2">
-                      <Label>طريقة الدفع</Label>
-                      <SelectField
-                        options={paymentmethod}
-                        placeholder="اختر طريقة الدفع "
-                        action={(val) => setValue("paymentMethod", val)}
-                        value={method}
-                      />
-                      {/* <select
-                        {...register("paymentMethod")}
-                        className="rounded-md border border-gray-300 px-3 py-2"
-                      > */}
-                    </div>
-                    {/* BANK */}
-                    {method === "bank" && (
-                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                        <div className="grid gap-2">
-                          <Label>الحساب البنكي</Label>
-                          <SelectField
-                            options={banks}
-                            value={selectedBankId}
-                            action={(val) => setSelectedBankId(val)}
-                            placeholder="اختر البنك"
-                          />
-                        </div>
-                        <div className="grid gap-3">
-                          <Label>رقم الحوالة / التحويل</Label>
-                          <Input
-                            value={transferNumber}
-                            onChange={(e) => setTransferNumber(e.target.value)}
-                            placeholder="مثال: TRX-458796"
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {/* CASH */}
-                    {method === "cash" && (
-                      <div className="grid gap-2">
-                        <Label>الصندوق النقدي</Label>
-                        <SelectField
-                          options={cash}
-                          value={selectedBankId}
-                          action={(val) => setSelectedBankId(val)}
-                          placeholder="اختر الصندوق"
-                        />
-                      </div>
-                    )}
-
-                    <div className="grid gap-2">
-                      <Label>سعر الوحدة</Label>
-                      <Input
-                        type="number"
-                        value={unitCost}
-                        {...register("unitCost", { valueAsNumber: true })}
-                      />
-                    </div>
-
-                    {quantity && unitCost ? (
-                      <div className="mt-2 rounded p-3 text-sm font-medium">
-                        الإجمالي:{" "}
-                        <span className="font-bold">
-                          {currency === "USD"
-                            ? "$"
-                            : currency === "YER"
-                              ? "ر.ي"
-                              : "ر.س"}
-                          {totalCost}
-                        </span>
-                      </div>
-                    ) : null}
-                    <div className="grid gap-2">
-                      <Label>مبلغ الدفع</Label>
-                      <Input
-                        {...register("paymentAmount", { valueAsNumber: true })}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
+          {/* Manual Update Reason */}
+          {updateType === "manual" && (
+            <div className="grid gap-3">
+              <Label>سبب التحديث اليدوي</Label>
+              <Textarea placeholder="أدخل السبب" {...register("reason")} />
             </div>
           )}
-          {/* تحديث يدوي */}
+
+          {/* Supplier Section */}
+          {updateType === "supplier" && (
+            <div className="grid grid-cols-1 gap-2 space-y-4 rounded-lg border border-blue-200 p-4 md:grid-cols-2">
+              {/* Supplier Selection */}
+              <div className="grid gap-2">
+                <Label>
+                  اختر المورد <span className="text-red-500">*</span>
+                </Label>
+                <SelectField
+                  options={suppliers}
+                  value={supplierId || ""}
+                  action={(val) => setValue("supplierId", val)}
+                  placeholder="اختر المورد"
+                />
+                {!supplierId && (
+                  <p className="text-xs text-red-500">المورد مطلوب</p>
+                )}
+              </div>
+
+              {/* Unit Cost */}
+              <div className="grid gap-2">
+                <Label>
+                  سعر الوحدة <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={unitCost}
+                  {...register("unitCost", { valueAsNumber: true })}
+                  placeholder="0.00"
+                />
+              </div>
+
+              {/* Total Cost Display */}
+              {quantity && unitCost ? (
+                <div className="rounded bg-blue-50 p-3">
+                  <p className="text-sm font-medium">
+                    الإجمالي:{" "}
+                    <span className="text-lg font-bold text-blue-700">
+                      {totalCost.toFixed(2)} {payment.accountCurrency || ""}
+                    </span>
+                  </p>
+                </div>
+              ) : null}
+
+              {/* ✅ Reusable Payment Component */}
+            </div>
+          )}
+          {updateType === "supplier" && (
+            <div className="rounded-lg border border-t border-blue-200 p-4 pt-4">
+              <ReusablePayment
+                value={payment}
+                action={setPayment}
+                accounts={accounts}
+              />
+            </div>
+          )}
+          {/* Stock Quantities */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
             {[
               "stockQuantity",
@@ -399,11 +366,11 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
               "availableQuantity",
               "reorderLevel",
             ].map((field) => (
-              <div key={field} className="grid grid-rows-2 gap-2">
+              <div key={field} className="grid gap-2">
                 <Label htmlFor={field}>
                   {
                     {
-                      stockQuantity: "الكمية  المستقبلة",
+                      stockQuantity: "الكمية المستقبلة",
                       reservedQuantity: "الكمية المحجوزة",
                       availableQuantity: "الكمية المتاحة",
                       reorderLevel: "نقطة إعادة الطلب",
@@ -417,6 +384,7 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
                   step="1"
                   min="0"
                   placeholder="أدخل القيمة"
+                  disabled={field === "availableQuantity"}
                   {...register(field as keyof FormValues, {
                     valueAsNumber: true,
                   })}
@@ -430,6 +398,8 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
               </div>
             ))}
           </div>
+
+          {/* Additional Fields */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div className="grid gap-2">
               <Label>الحد الأقصى للمخزون</Label>
@@ -438,6 +408,7 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
                 {...register("maxStockLevel", { valueAsNumber: true })}
               />
             </div>
+
             <div className="grid gap-2">
               <Label>آخر جرد</Label>
               <Input
@@ -446,8 +417,11 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
                 {...register("lastStockTake")}
               />
             </div>
-            <div className="grid gap-3">
-              <Label>اختر المستودع</Label>
+
+            <div className="grid gap-2">
+              <Label>
+                اختر المستودع <span className="text-red-500">*</span>
+              </Label>
               <SelectField
                 options={warehouses}
                 value={warehouseId || ""}
@@ -459,6 +433,8 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
               )}
             </div>
           </div>
+
+          {/* Action Buttons */}
           <div className="flex justify-end gap-2">
             <Button
               type="button"
@@ -466,7 +442,12 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
               onClick={() => {
                 reset();
                 setUpdateType("manual");
-                setShowPayment(false);
+                setPayment({
+                  paymentMethod: "",
+                  accountId: "",
+                  accountCurrency: "",
+                  amountBase: 0,
+                });
               }}
             >
               إلغاء

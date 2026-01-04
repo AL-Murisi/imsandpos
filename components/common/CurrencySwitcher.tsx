@@ -31,7 +31,7 @@ export default function CurrencySwitcher() {
   return (
     <Select value={currency} onValueChange={handleCurrencyChange}>
       <SelectTrigger className="border-[#0b142a] bg-[#0b142a]" dir="rtl">
-        <DollarSign color="white" />
+        <SelectValue>{currency}</SelectValue>
       </SelectTrigger>
       <SelectContent>
         <SelectItem value="YER">ريال يمني</SelectItem>

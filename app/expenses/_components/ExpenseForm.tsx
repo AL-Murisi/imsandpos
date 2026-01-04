@@ -23,17 +23,16 @@ interface ExpenseItem {
   account_id: string;
   description: string;
   amount: string;
-  paymentMethod: string;
-  currency_code: string;
-  referenceNumber?: string;
-  bankId?: string;
   notes?: string;
+  payment?: PaymentState;
 }
-interface bankcash {
+
+interface Account {
   id: string;
   name: string;
   currency: string | null;
 }
+
 interface MultiExpenseFormProps {
   companyId: string;
   userId: string;
@@ -51,15 +50,12 @@ export default function ExpenseForm({
     new Date().toISOString().split("T")[0],
   );
   const { user } = useAuth();
-  const [banks, setBanks] = useState<bankcash[]>([]);
-  const [cash, setCash] = useState<bankcash[]>([]);
-  // const [accounts, setAccounts] = useState<bankcash[]>([]);
-  // const [payment, setPayment] = useState<PaymentState>({
-  //   paymentMethod: "cash",
-  //   accountId: "",
-  //   accountCurrency: "",
-  //   amountBase: 0,
-  // });
+
+  // ✅ Accounts per expense item
+  const [accountsByExpense, setAccountsByExpense] = useState<
+    Record<string, Account[]>
+  >({});
+
   // Initialize with one empty expense
   const [expenses, setExpenses] = useState<ExpenseItem[]>([
     {
@@ -67,45 +63,50 @@ export default function ExpenseForm({
       account_id: "",
       description: "",
       amount: "",
-      paymentMethod: "cash",
-      currency_code: "YER",
-      referenceNumber: "",
-      bankId: "",
       notes: "",
+      payment: {
+        paymentMethod: "",
+        accountId: "",
+        accountCurrency: "",
+        amountBase: 0,
+      },
     },
   ]);
 
-  const paymentMethods = [
-    { id: "cash", name: "نقداً" },
-    { id: "bank", name: "تحويل بنكي" },
-
-    { id: "debt", name: "دين" },
-  ];
-
   if (!user) return null;
 
-  // Load banks when dialog opens
+  // ✅ Load accounts when payment method changes for any expense
   useEffect(() => {
-    if (!open) {
-      setBanks([]);
+    if (!open) return;
 
-      return;
-    }
-
-    const loadAccounts = async () => {
+    async function loadAccountsForAll() {
       try {
         const { banks, cashAccounts } = await fetchPayments();
-        // Automatically choose accounts based on payment method
-        setBanks(banks);
-        setCash(cashAccounts);
+
+        const newAccountsByExpense: Record<string, Account[]> = {};
+
+        expenses.forEach((exp) => {
+          if (exp.payment?.paymentMethod === "bank") {
+            newAccountsByExpense[exp.id] = banks;
+          } else if (exp.payment?.paymentMethod === "cash") {
+            newAccountsByExpense[exp.id] = cashAccounts;
+          } else {
+            newAccountsByExpense[exp.id] = [];
+          }
+        });
+
+        setAccountsByExpense(newAccountsByExpense);
       } catch (err) {
         console.error(err);
         toast.error("فشل في جلب الحسابات");
       }
-    };
+    }
 
-    loadAccounts();
-  }, [open]);
+    loadAccountsForAll();
+  }, [
+    open,
+    expenses.map((exp) => `${exp.id}-${exp.payment?.paymentMethod}`).join(","),
+  ]);
 
   // Add new expense row
   const addExpense = () => {
@@ -116,18 +117,17 @@ export default function ExpenseForm({
         account_id: "",
         description: "",
         amount: "",
-        paymentMethod: "",
-        currency_code: "YER",
-        referenceNumber: "",
-        bankId: "",
         notes: "",
+        payment: {
+          paymentMethod: "",
+          accountId: "",
+          accountCurrency: "",
+          amountBase: 0,
+        },
       },
     ]);
   };
-  const currencyCode = banks.find((b) => b.id === expenses[0].bankId)?.currency;
-  const currencyCodecash = cash.find(
-    (b) => b.id === expenses[0].bankId,
-  )?.currency;
+
   // Remove expense row
   const removeExpense = (id: string) => {
     if (expenses.length > 1) {
@@ -159,8 +159,8 @@ export default function ExpenseForm({
         !exp.description ||
         !exp.amount ||
         parseFloat(exp.amount) <= 0 ||
-        !exp.paymentMethod ||
-        !exp.currency_code,
+        !exp.payment?.paymentMethod ||
+        !exp.payment?.accountId,
     );
 
     if (invalidExpenses.length > 0) {
@@ -168,14 +168,11 @@ export default function ExpenseForm({
       return;
     }
 
-    // Check bank selection for bank payments
+    // Check amount matches
     for (const exp of expenses) {
-      if (exp.paymentMethod === "bank" && !exp.bankId) {
-        toast.error("يرجى اختيار البنك للمصاريف البنكية");
-        return;
-      }
-      if (exp.paymentMethod === "bank" && !exp.referenceNumber) {
-        toast.error("يرجى إدخال رقم المرجع للمصاريف البنكية");
+      const expAmount = parseFloat(exp.amount);
+      if (exp.payment && exp.payment.amountBase !== expAmount) {
+        toast.error("مبلغ الدفع يجب أن يطابق مبلغ المصروف");
         return;
       }
     }
@@ -189,10 +186,12 @@ export default function ExpenseForm({
         description: exp.description,
         amount: parseFloat(exp.amount),
         expense_date: new Date(expenseDate),
-        paymentMethod: exp.paymentMethod,
-        currency_code: exp.currency_code,
-        referenceNumber: exp.referenceNumber || undefined,
-        bankId: exp.bankId || undefined,
+        paymentMethod: exp.payment?.paymentMethod || "",
+        currency_code: exp.payment?.accountCurrency || "YER",
+        referenceNumber: exp.payment?.transferNumber || undefined,
+        bankId: exp.payment?.accountId || undefined,
+        exchangeRate: exp.payment?.exchangeRate || undefined,
+        amountFC: exp.payment?.amountFC || undefined,
         notes: exp.notes || undefined,
       }));
 
@@ -214,11 +213,13 @@ export default function ExpenseForm({
             account_id: "",
             description: "",
             amount: "",
-            paymentMethod: "",
-            currency_code: "YER",
-            referenceNumber: "",
-            bankId: "",
             notes: "",
+            payment: {
+              paymentMethod: "",
+              accountId: "",
+              accountCurrency: "",
+              amountBase: 0,
+            },
           },
         ]);
         setExpenseDate(new Date().toISOString().split("T")[0]);
@@ -238,9 +239,9 @@ export default function ExpenseForm({
     <Dailogreuse
       open={open}
       setOpen={setOpen}
-      btnLabl="إضافة مصاريف "
+      btnLabl="إضافة مصاريف"
       style="sm:max-w-4xl"
-      titel="إضافة مصاريف "
+      titel="إضافة مصاريف"
     >
       <ScrollArea className="h-[70vh] w-full pr-4">
         <div className="space-y-4" dir="rtl">
@@ -327,9 +328,17 @@ export default function ExpenseForm({
                       step="0.01"
                       min="0"
                       value={expense.amount}
-                      onChange={(e) =>
-                        updateExpense(expense.id, "amount", e.target.value)
-                      }
+                      onChange={(e) => {
+                        const amount = parseFloat(e.target.value) || 0;
+                        updateExpense(expense.id, "amount", e.target.value);
+                        // Sync with payment amount
+                        if (expense.payment) {
+                          updateExpense(expense.id, "payment", {
+                            ...expense.payment,
+                            amountBase: amount,
+                          });
+                        }
+                      }}
                       placeholder="0.00"
                       className="text-right"
                     />
@@ -349,80 +358,7 @@ export default function ExpenseForm({
                       placeholder="أدخل وصف المصروف"
                     />
                   </div>
-                  {/* <ReusablePayment
-                    value={payment}
-                    action={setPayment}
-                    accounts={accounts}
-                  /> */}
 
-                  {/* Payment Method */}
-                  <div className="space-y-2">
-                    <Label>
-                      طريقة الدفع <span className="text-red-500">*</span>
-                    </Label>
-                    <SelectField
-                      options={paymentMethods}
-                      value={expense.paymentMethod}
-                      action={(val) =>
-                        updateExpense(expense.id, "paymentMethod", val)
-                      }
-                      placeholder="اختر طريقة الدفع"
-                    />
-                  </div>
-
-                  {/* Currency */}
-
-                  {/* Bank & Reference (conditional) */}
-                  {expense.paymentMethod === "bank" && (
-                    <>
-                      <div className="space-y-2">
-                        <Label>
-                          البنك <span className="text-red-500">*</span>
-                        </Label>
-                        <SelectField
-                          options={banks}
-                          value={expense.bankId || ""}
-                          action={(val) =>
-                            updateExpense(expense.id, "bankId", val)
-                          }
-                          placeholder="اختر البنك"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>
-                          رقم المرجع <span className="text-red-500">*</span>
-                        </Label>
-                        <Input
-                          type="text"
-                          value={expense.referenceNumber || ""}
-                          onChange={(e) =>
-                            updateExpense(
-                              expense.id,
-                              "referenceNumber",
-                              e.target.value,
-                            )
-                          }
-                          placeholder="أدخل رقم المرجع"
-                        />
-                      </div>
-                    </>
-                  )}
-                  {expense.paymentMethod === "cash" && (
-                    <div className="space-y-2">
-                      <Label>
-                        كاش <span className="text-red-500">*</span>
-                      </Label>
-                      <SelectField
-                        options={cash}
-                        value={expense.bankId || ""}
-                        action={(val) =>
-                          updateExpense(expense.id, "bankId", val)
-                        }
-                        placeholder="اختر الصندوق"
-                      />
-                    </div>
-                  )}
                   {/* Notes */}
                   <div className="space-y-2 md:col-span-2">
                     <Label>ملاحظات (اختياري)</Label>
@@ -438,12 +374,28 @@ export default function ExpenseForm({
                   </div>
                 </div>
 
+                {/* ✅ Reusable Payment Component */}
+                <div className="border-t pt-3">
+                  <ReusablePayment
+                    value={
+                      expense.payment || {
+                        paymentMethod: "",
+                        accountId: "",
+                        accountCurrency: "",
+                        amountBase: parseFloat(expense.amount) || 0,
+                      }
+                    }
+                    accounts={accountsByExpense[expense.id] || []}
+                    action={(val) => updateExpense(expense.id, "payment", val)}
+                  />
+                </div>
+
                 {/* Expense Summary */}
                 <div className="flex justify-between border-t pt-2 text-sm">
                   <span className="text-muted-foreground">المبلغ:</span>
                   <span className="text-primary font-bold">
                     {parseFloat(expense.amount || "0").toFixed(2)}{" "}
-                    {currencyCode ?? currencyCodecash}
+                    {expense.payment?.accountCurrency || ""}
                   </span>
                 </div>
               </div>

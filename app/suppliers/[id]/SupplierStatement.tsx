@@ -126,23 +126,23 @@ export default function SupplierStatement({
                 </tr>
               </thead>
               <tbody>
-                {/* Opening Balance */}
-                <tr>
-                  <td className="border p-2"></td>
-                  <td className="border p-2 text-center">رصيد افتتاحي</td>
-                  <td className="border p-2 text-center">—</td>
-                  <td className="border p-2 text-center">
-                    رصيد افتتاحي للمورد
-                  </td>
-                  <td className="border p-2 text-center">
-                    {suppliers.openingBalance.toFixed(2)}
-                  </td>
-                  <td className="border p-2 text-center">0.00</td>
-                  <td className="border p-2 text-center">
-                    <strong>{suppliers.openingBalance.toFixed(2)}</strong>
-                  </td>
-                </tr>
-
+                {suppliers.openingBalance !== 0 && (
+                  <tr>
+                    <td className="border p-2"></td>
+                    <td className="border p-2 text-center">رصيد افتتاحي</td>
+                    <td className="border p-2 text-center">—</td>
+                    <td className="border p-2 text-center">
+                      رصيد افتتاحي للمورد
+                    </td>
+                    <td className="border p-2 text-center">
+                      {suppliers.openingBalance.toFixed(2)}
+                    </td>
+                    <td className="border p-2 text-center">0.00</td>
+                    <td className="border p-2 text-center">
+                      <strong>{suppliers.openingBalance.toFixed(2)}</strong>
+                    </td>
+                  </tr>
+                )}
                 {/* Transactions */}
                 {suppliers.transactions.map((trans, idx) => (
                   <tr key={idx}>

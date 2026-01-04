@@ -11,6 +11,10 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { SelectField } from "@/components/common/selectproduct";
 import { fetchPayments } from "@/lib/actions/banks";
+import {
+  ReusablePayment,
+  PaymentState,
+} from "@/components/common/ReusablePayment";
 
 interface bankcash {
   id: string;
@@ -42,39 +46,61 @@ export function PaymentCreateForm({
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [banks, setBanks] = useState<bankcash[]>([]);
-  const [cash, setCash] = useState<bankcash[]>([]);
+  // const [banks, setBanks] = useState<bankcash[]>([]);
+  // const [cash, setCash] = useState<bankcash[]>([]);
+  const [payment, setPayment] = useState<PaymentState>({
+    paymentMethod: "",
+    accountId: "",
+    accountCurrency: "",
+    amountBase: 0,
+  });
+  const [accounts, setAccounts] = useState<bankcash[]>([]);
+
+  useEffect(() => {
+    if (!isOpen || !payment.paymentMethod) return;
+
+    async function load() {
+      try {
+        const { banks, cashAccounts } = await fetchPayments();
+        setAccounts(payment.paymentMethod === "bank" ? banks : cashAccounts);
+      } catch {
+        toast.error("فشل تحميل الحسابات");
+      }
+    }
+
+    load();
+  }, [isOpen, payment.paymentMethod]);
 
   const paymentMethod = watch("paymentMethod");
   const selectedAccountId = watch("accountId");
 
   // Load bank/cash accounts
-  useEffect(() => {
-    if (!isOpen) return;
+  // useEffect(() => {
+  //   if (!isOpen) return;
 
-    const loadAccounts = async () => {
-      try {
-        const { banks, cashAccounts } = await fetchPayments();
-        setBanks(banks);
-        setCash(cashAccounts);
-      } catch (err) {
-        console.error(err);
-        toast.error("فشل في جلب الحسابات");
-      }
-    };
+  //   const loadAccounts = async () => {
+  //     try {
+  //       const { banks, cashAccounts } = await fetchPayments();
+  //       setBanks(banks);
+  //       setCash(cashAccounts);
+  //     } catch (err) {
+  //       console.error(err);
+  //       toast.error("فشل في جلب الحسابات");
+  //     }
+  //   };
 
-    loadAccounts();
-  }, [isOpen]);
+  //   loadAccounts();
+  // }, [isOpen]);
   // Automatically set currency_code from selected account
 
   // Automatically set currency code when account changes
   useEffect(() => {
-    const allAccounts = [...banks, ...cash];
+    const allAccounts = [...accounts];
     const selected = allAccounts.find((acc) => acc.id === selectedAccountId);
     if (selected && selected.currency) {
       setValue("currency_code", selected.currency);
     }
-  }, [selectedAccountId, banks, cash, setValue]);
+  }, [selectedAccountId, accounts, setValue]);
 
   const paymentMethods = [
     { id: "cash", name: "نقداً" },
@@ -86,7 +112,6 @@ export function PaymentCreateForm({
     try {
       if (!user) return;
       setIsSubmitting(true);
-
       const res = await createSupplierPaymentFromPurchases(
         user.userId,
         user.companyId,
@@ -95,11 +120,17 @@ export function PaymentCreateForm({
           purchaseId,
           createdBy: user.userId,
           supplierId: supplier.supplier.id,
-          amount: Number(data.amount),
-          paymentMethod: data.paymentMethod,
-          note: data.note,
-          currency_code: data.currency_code,
-          bankId: data.accountId,
+
+          paymentMethod: payment.paymentMethod,
+          bankId: payment.accountId,
+
+          amount: payment.amountBase, // دائماً بالعملة الأساسية
+          exchangeRate: payment.exchangeRate ?? 0,
+          referenceNumber: payment.transferNumber ?? "",
+          currency_code: payment.accountCurrency || "YER",
+          note: payment.transferNumber,
+          amountFC: payment.amountFC ?? 0, // إن وُجد
+
           paymentDate: new Date(data.paymentDate),
         },
       );
@@ -141,58 +172,11 @@ export function PaymentCreateForm({
           <Label>المبلغ المتبقي:</Label>
           {supplier.amountDue}
         </div>
-        <div className="grid gap-2">
-          <Label>المبلغ</Label>
-          <Input
-            type="number"
-            step="0.01"
-            required
-            {...register("amount")}
-            placeholder="أدخل مبلغ الدفع"
-          />
-        </div>
-
-        <div className="grid gap-2">
-          <Label>طريقة الدفع</Label>
-          <SelectField
-            options={paymentMethods}
-            value={paymentMethod}
-            action={(val) => setValue("paymentMethod", val)}
-            placeholder="اختر طريقة الدفع"
-          />
-        </div>
-
-        {/* Bank accounts */}
-        {paymentMethod === "bank" && (
-          <div className="grid gap-2">
-            <Label>البنك</Label>
-            <SelectField
-              options={banks}
-              value={selectedAccountId}
-              action={(val) => setValue("accountId", val)}
-              placeholder="اختر البنك"
-            />
-            <Label>رقم المرجع</Label>
-            <Input
-              type="text"
-              {...register("note")}
-              placeholder="رقم الحوالة / المرجع"
-            />
-          </div>
-        )}
-
-        {/* Cash accounts */}
-        {paymentMethod === "cash" && (
-          <div className="grid gap-2">
-            <Label>الصندوق النقدي</Label>
-            <SelectField
-              options={cash}
-              value={selectedAccountId}
-              action={(val) => setValue("accountId", val)}
-              placeholder="اختر الصندوق"
-            />
-          </div>
-        )}
+        <ReusablePayment
+          value={payment}
+          accounts={accounts}
+          action={setPayment}
+        />
 
         <div className="grid gap-2">
           <Label>تاريخ الدفع</Label>

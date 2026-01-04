@@ -717,6 +717,7 @@ export async function getExpenseCategories() {
     select: {
       id: true,
       account_name_en: true,
+      currency_code: true,
     },
     orderBy: {
       account_code: "asc",
@@ -725,6 +726,7 @@ export async function getExpenseCategories() {
   const name = expenseAccounts.map((i) => ({
     id: i.id,
     name: i.account_name_en,
+    currency_code: i.currency_code,
   }));
   return name;
 }

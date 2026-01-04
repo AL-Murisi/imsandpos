@@ -666,6 +666,9 @@ export async function createSupplierPaymentFromPurchases(
     note?: string;
     bankId?: string;
     currency_code: string;
+    amountFC?: number;
+    exchangeRate?: number;
+    referenceNumber?: string;
     paymentDate?: Date;
   },
 ) {
@@ -674,10 +677,13 @@ export async function createSupplierPaymentFromPurchases(
       status,
       purchaseId,
       createdBy,
+      amountFC,
+      exchangeRate,
       supplierId,
       currency_code,
       amount,
       paymentMethod,
+      referenceNumber,
       note,
       bankId,
       paymentDate,
@@ -792,9 +798,14 @@ export async function createSupplierPaymentFromPurchases(
               supplierId,
               supplierPayment: supplierPayment,
               userId,
-              bankId: bankId,
-              paymentMethod: paymentMethod,
-              currency_code: currency_code,
+              paymentDetails: {
+                exchangeRate: exchangeRate,
+                amountFC: amountFC,
+                bankId: bankId,
+                referenceNumber: referenceNumber,
+                paymentMethod: paymentMethod,
+                currency_code: currency_code,
+              },
             },
             processed: false,
           },

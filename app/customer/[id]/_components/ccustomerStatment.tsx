@@ -59,6 +59,18 @@ export default function CustomerStatement({
   // const [customers, setStatement] = useState<CustomerStatement | undefined>(
   //   undefined,
   // );
+  const getCurrencySymbol = (currency: string) => {
+    switch (currency?.toLowerCase()) {
+      case "usd":
+        return "$";
+      case "yer":
+        return "ر.ي"; // Yemeni Rial in Arabic
+      case "sar":
+        return "ر.س"; // Saudi Riyal in Arabic
+      default:
+        return currency || ""; // Fallback to the original string
+    }
+  };
   const [loading, setLoading] = useState(false);
   // const [selectedCustomerId, setSelectedCustomerId] = useState("");
   // const [dateFrom, setDateFrom] = useState(
@@ -106,9 +118,8 @@ export default function CustomerStatement({
       {/* عرض الكشف */}
       {customers && (
         <div className="bg-accent flex w-full flex-col rounded-lg p-6 shadow">
-          <h1 className="text-3xl font-bold">كشف حساب عميل</h1>{" "}
+          <h1 className="text-3xl font-bold">كشف حساب عميل</h1>
           <div className="grid grid-cols-1 justify-center gap-3 md:grid-cols-2 print:hidden">
-            {" "}
             <div className="grid grid-cols-1 gap-3 md:grid-cols-1 lg:grid-cols-2">
               <Calendar22 />
               <CustomerStatementPrint customers={customers} />
@@ -119,7 +130,7 @@ export default function CustomerStatement({
                 {customers.closingBalance.toFixed(2)} ر.ي
               </span>
             </div>
-          </div>{" "}
+          </div>
           {/* رأس التقرير */}
           {/* <div className="mb-6 border-b pb-4 text-center">
             <h2 className="text-2xl font-bold">{company.name}</h2>
@@ -144,7 +155,7 @@ export default function CustomerStatement({
                 {customers.period.to}
               </div>
             </div>
-          </div>{" "}
+          </div>
           <ScrollArea className="h-[65vh] p-2" dir="rtl">
             {/* جدول الحركات */}
             <table className="w-full border">
@@ -160,18 +171,20 @@ export default function CustomerStatement({
                 </tr>
               </thead>
               <tbody>
-                {/* الرصيد الافتتاحي */}
-                <tr className="">
-                  <td className="border p-2"></td>
-                  <td className="border p-2 text-center">
-                    {customers.openingBalance.toFixed(2)}
-                  </td>
-                  <td className="border p-2 text-center">0.00</td>
-                  <td className="border p-2 text-center">
-                    <strong>{customers.openingBalance.toFixed(2)}</strong>
-                  </td>
-                </tr>
-
+                {customers.openingBalance !== 0 && (
+                  <tr className="">
+                    <td className="border p-2">-</td>
+                    <td className="border p-2">-</td>
+                    <td className="border p-2">-</td>
+                    <td className="border p-2 text-center">
+                      {customers.openingBalance.toFixed(2)}
+                    </td>
+                    <td className="border p-2 text-center">0.00</td>
+                    <td className="border p-2 text-center">
+                      <strong>{customers.openingBalance.toFixed(2)}</strong>
+                    </td>
+                  </tr>
+                )}
                 {/* الحركات */}
                 {customers.transactions.map((trans, idx) => (
                   <tr key={idx}>
@@ -203,7 +216,7 @@ export default function CustomerStatement({
                 <tr className="font-bold">
                   <td className="border p-2" colSpan={3}>
                     <strong>الإجمالي</strong>
-                  </td>{" "}
+                  </td>
                   <td className="border p-2"></td>
                   <td className="border p-2 text-center">
                     {customers.totalDebit.toFixed(2)}
@@ -216,7 +229,7 @@ export default function CustomerStatement({
                   </td>
                 </tr>
               </tbody>
-            </table>{" "}
+            </table>
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
           {/* الرصيد النهائي */}

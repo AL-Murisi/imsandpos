@@ -14,6 +14,10 @@ import { toast } from "sonner";
 import { Plus, Trash2, Save, Package, Search, Info } from "lucide-react";
 import { Prisma } from "@prisma/client";
 import { fetchPayments } from "@/lib/actions/banks";
+import {
+  PaymentState,
+  ReusablePayment,
+} from "@/components/common/ReusablePayment";
 
 interface InventoryUpdateItem {
   id: string;
@@ -25,14 +29,11 @@ interface InventoryUpdateItem {
   reservedQuantity: string;
   currentStock?: number;
   unitCost: string;
-  paymentMethod: string;
-  paymentAmount: string;
   currency_code: string;
   notes?: string;
-  bankId?: string; // ✅ جديد
-  referenceNumber?: string; // ✅ جديد
   updateType: "manual" | "supplier";
-  warehousesForProduct?: { id: string; name: string }[]; // Available warehouses for selected product
+  warehousesForProduct?: { id: string; name: string }[];
+  payment?: PaymentState;
 }
 
 interface MultiInventoryUpdateFormProps {
@@ -74,8 +75,10 @@ interface MultiInventoryUpdateFormProps {
       };
     }[];
   };
+  payments: any;
 }
-interface bankcash {
+
+interface Account {
   id: string;
   name: string;
   currency: string | null;
@@ -83,6 +86,7 @@ interface bankcash {
 
 export default function MultiInventoryUpdateForm({
   multipleInventory,
+  payments,
 }: MultiInventoryUpdateFormProps) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -90,9 +94,12 @@ export default function MultiInventoryUpdateForm({
     new Date().toISOString().split("T")[0],
   );
   const { user } = useAuth();
-  const [banks, setBanks] = useState<bankcash[]>([]);
-  const [cash, setCash] = useState<bankcash[]>([]);
-  // Initialize with one empty inventory update
+
+  // ✅ FIX: Add accounts state for each inventory item
+  const [accountsByInventory, setAccountsByInventory] = useState<
+    Record<string, Account[]>
+  >({});
+
   const [inventoryUpdates, setInventoryUpdates] = useState<
     InventoryUpdateItem[]
   >([
@@ -104,70 +111,69 @@ export default function MultiInventoryUpdateForm({
       stockQuantity: "",
       reservedQuantity: "0",
       unitCost: "",
-      paymentMethod: "cash",
-      paymentAmount: "0",
       currency_code: "YER",
       notes: "",
       updateType: "manual",
       warehousesForProduct: [],
     },
   ]);
+
+  if (!user) return null;
+
+  // ✅ FIX: Load accounts when payment method changes for each inventory item
   useEffect(() => {
-    if (!open) {
-      setBanks([]);
-      return;
-    }
-    const loadAccounts = async () => {
+    if (!open) return;
+
+    async function loadAccountsForAll() {
       try {
-        const { banks, cashAccounts } = await fetchPayments();
-        // Automatically choose accounts based on payment method
-        setBanks(banks);
-        setCash(cashAccounts);
+        const { banks, cashAccounts } = payments;
+
+        const newAccountsByInventory: Record<string, Account[]> = {};
+
+        inventoryUpdates.forEach((inv) => {
+          if (inv.payment?.paymentMethod === "bank") {
+            newAccountsByInventory[inv.id] = banks;
+          } else if (inv.payment?.paymentMethod === "cash") {
+            newAccountsByInventory[inv.id] = cashAccounts;
+          } else {
+            newAccountsByInventory[inv.id] = [];
+          }
+        });
+
+        setAccountsByInventory(newAccountsByInventory);
       } catch (err) {
         console.error(err);
         toast.error("فشل في جلب الحسابات");
       }
-    };
+    }
 
-    loadAccounts();
-  }, [open]);
+    loadAccountsForAll();
+  }, [
+    open,
+    inventoryUpdates
+      .map((inv) => `${inv.id}-${inv.payment?.paymentMethod}`)
+      .join(","),
+  ]);
 
-  const paymentMethods = [
-    { id: "cash", name: "نقداً" },
-    { id: "bank", name: "تحويل بنكي" },
-
-    { id: "debt", name: "دين" },
-  ];
-
-  if (!user) return null;
-
-  // Load data from props when component mounts or when multipleInventory changes
-
-  // Load product-specific data when product is selected
   const loadProductData = (updateId: string, productId: string) => {
     if (!productId) return;
 
     try {
-      // Find product details
       const product = multipleInventory.products.find(
         (p) => p.id === productId,
       );
 
-      // Find all inventories for this product
       const productInventories = multipleInventory.inventories.filter(
         (inv) => inv.productId === productId,
       );
 
-      // Extract unique warehouses for this product
       const warehousesForProduct = productInventories.map((inv) => ({
         id: inv.warehouseId,
         name: inv.warehouse.name,
       }));
 
-      // Get supplier from product
       const supplierId = product?.supplierId || undefined;
 
-      // Update the form
       setInventoryUpdates((prevUpdates) =>
         prevUpdates.map((inv) =>
           inv.id === updateId
@@ -183,7 +189,6 @@ export default function MultiInventoryUpdateForm({
         ),
       );
 
-      // Auto-select warehouse if only one exists for this product
       if (warehousesForProduct.length === 1) {
         const singleWarehouse = warehousesForProduct[0];
         setTimeout(() => {
@@ -203,7 +208,6 @@ export default function MultiInventoryUpdateForm({
     }
   };
 
-  // Load existing inventory when product and warehouse are selected
   const loadExistingInventory = (
     updateId: string,
     productId: string,
@@ -212,13 +216,11 @@ export default function MultiInventoryUpdateForm({
     if (!productId || !warehouseId) return;
 
     try {
-      // Find existing inventory from loaded data
       const existingInventory = multipleInventory.inventories.find(
         (inv) => inv.productId === productId && inv.warehouseId === warehouseId,
       );
 
       if (existingInventory) {
-        // Update the form with existing data
         setInventoryUpdates((prevUpdates) =>
           prevUpdates.map((inv) =>
             inv.id === updateId
@@ -238,7 +240,6 @@ export default function MultiInventoryUpdateForm({
           ),
         );
       } else {
-        // No existing inventory - clear current stock
         setInventoryUpdates((prevUpdates) =>
           prevUpdates.map((inv) =>
             inv.id === updateId
@@ -260,7 +261,6 @@ export default function MultiInventoryUpdateForm({
     }
   };
 
-  // Add new inventory update row
   const addInventoryUpdate = () => {
     setInventoryUpdates([
       ...inventoryUpdates,
@@ -272,11 +272,7 @@ export default function MultiInventoryUpdateForm({
         stockQuantity: "",
         reservedQuantity: "0",
         unitCost: "",
-        paymentMethod: "cash",
-        paymentAmount: "0",
         currency_code: "YER",
-        bankId: "", // ✅
-        referenceNumber: "", // ✅
         notes: "",
         updateType: "manual",
         warehousesForProduct: [],
@@ -284,7 +280,6 @@ export default function MultiInventoryUpdateForm({
     ]);
   };
 
-  // Remove inventory update row
   const removeInventoryUpdate = (id: string) => {
     if (inventoryUpdates.length > 1) {
       setInventoryUpdates(inventoryUpdates.filter((inv) => inv.id !== id));
@@ -293,7 +288,6 @@ export default function MultiInventoryUpdateForm({
     }
   };
 
-  // Update inventory field
   const updateInventory = (
     id: string,
     field: keyof InventoryUpdateItem,
@@ -304,20 +298,16 @@ export default function MultiInventoryUpdateForm({
         if (inv.id === id) {
           const updated = { ...inv, [field]: value };
 
-          // When product changes, load product-specific data
           if (field === "productId") {
-            // Reset warehouse selection
             updated.warehouseId = "";
             updated.currentStock = undefined;
             updated.inventoryId = undefined;
 
-            // Load product data (warehouses, supplier, cost)
             setTimeout(() => {
               loadProductData(id, value);
             }, 100);
           }
 
-          // When warehouse changes (and product is set), load inventory
           if (field === "warehouseId" && inv.productId) {
             setTimeout(() => {
               loadExistingInventory(id, inv.productId, value);
@@ -331,7 +321,6 @@ export default function MultiInventoryUpdateForm({
     );
   };
 
-  // Calculate totals
   const totalItems = inventoryUpdates.reduce(
     (sum, inv) => sum + (parseFloat(inv.stockQuantity) || 0),
     0,
@@ -343,9 +332,7 @@ export default function MultiInventoryUpdateForm({
     return sum + qty * cost;
   }, 0);
 
-  // Validate and submit
   const handleSubmit = async () => {
-    // Validation
     const invalidUpdates = inventoryUpdates.filter(
       (inv) =>
         !inv.productId ||
@@ -353,25 +340,12 @@ export default function MultiInventoryUpdateForm({
         !inv.stockQuantity ||
         parseFloat(inv.stockQuantity) <= 0,
     );
-    for (const inv of inventoryUpdates) {
-      if (inv.updateType === "supplier" && inv.paymentMethod === "bank") {
-        if (!inv.bankId) {
-          toast.error("يرجى اختيار البنك للدفع البنكي");
-          return;
-        }
-        if (!inv.referenceNumber) {
-          toast.error("يرجى إدخال رقم المرجع");
-          return;
-        }
-      }
-    }
 
     if (invalidUpdates.length > 0) {
       toast.error("يرجى ملء الحقول المطلوبة لجميع التحديثات");
       return;
     }
 
-    // Check supplier updates
     for (const inv of inventoryUpdates) {
       if (inv.updateType === "supplier") {
         if (!inv.supplierId) {
@@ -385,7 +359,10 @@ export default function MultiInventoryUpdateForm({
 
         const totalItemCost =
           parseFloat(inv.stockQuantity) * parseFloat(inv.unitCost);
-        if (parseFloat(inv.paymentAmount) > totalItemCost) {
+        if (
+          inv.payment &&
+          parseFloat(String(inv.payment.amountBase)) > totalItemCost
+        ) {
           toast.error("مبلغ الدفع أكبر من إجمالي التكلفة");
           return;
         }
@@ -395,11 +372,9 @@ export default function MultiInventoryUpdateForm({
     setIsSubmitting(true);
 
     try {
-      // Prepare inventory updates data
       const updatesData = inventoryUpdates.map((inv) => {
         const stockQty = parseFloat(inv.stockQuantity);
         const reservedQty = parseFloat(inv.reservedQuantity) || 0;
-
         return {
           id: inv.inventoryId,
           productId: inv.productId,
@@ -415,16 +390,12 @@ export default function MultiInventoryUpdateForm({
             inv.updateType === "supplier"
               ? parseFloat(inv.unitCost)
               : undefined,
-          paymentMethod:
-            inv.updateType === "supplier" ? inv.paymentMethod : undefined,
-          paymentAmount:
-            inv.updateType === "supplier"
-              ? parseFloat(inv.paymentAmount) || 0
-              : undefined,
           currency_code: inv.currency_code,
           notes: inv.notes,
           reason: inv.updateType === "manual" ? inv.notes : undefined,
           lastStockTake: new Date(updateDate),
+          payment: inv.payment,
+          paymentAmount: inv.payment?.amountBase,
         };
       });
 
@@ -439,7 +410,6 @@ export default function MultiInventoryUpdateForm({
           `تم تحديث ${result.count} سجل مخزون بنجاح! إجمالي الوحدات: ${totalItems}`,
         );
 
-        // Reset form
         setInventoryUpdates([
           {
             id: crypto.randomUUID(),
@@ -449,8 +419,6 @@ export default function MultiInventoryUpdateForm({
             stockQuantity: "",
             reservedQuantity: "0",
             unitCost: "",
-            paymentMethod: "cash",
-            paymentAmount: "0",
             currency_code: "YER",
             notes: "",
             updateType: "manual",
@@ -533,22 +501,6 @@ export default function MultiInventoryUpdateForm({
               const availableQty =
                 (parseFloat(inventory.stockQuantity) || 0) -
                 (parseFloat(inventory.reservedQuantity) || 0);
-              const newTotal =
-                (inventory.currentStock || 0) +
-                (parseFloat(inventory.stockQuantity) || 0);
-
-              // Determine which warehouses to show
-              const currencyCode = banks.find(
-                (b) => b.id === inventory.bankId,
-              )?.currency;
-              const currencyCodecash = cash.find(
-                (b) => b.id === inventory.bankId,
-              )?.currency;
-              const warehouseOptions =
-                inventory.warehousesForProduct &&
-                inventory.warehousesForProduct.length > 0
-                  ? inventory.warehousesForProduct
-                  : multipleInventory.warehouses;
 
               return (
                 <div
@@ -557,14 +509,7 @@ export default function MultiInventoryUpdateForm({
                 >
                   {/* Header */}
                   <div className="flex items-center justify-between border-b pb-2">
-                    {/* <div className="flex items-center gap-2">
-                      <h3 className="font-semibold">التحديث {index + 1}</h3>
-                      {inventory.currentStock !== undefined && (
-                        <span className="text-muted-foreground text-xs">
-                          (المخزون الحالي: {inventory.currentStock})
-                        </span>
-                      )}
-                    </div> */}
+                    <h3 className="font-semibold">التحديث {index + 1}</h3>
                     {inventoryUpdates.length > 1 && (
                       <Button
                         onClick={() => removeInventoryUpdate(inventory.id)}
@@ -630,63 +575,33 @@ export default function MultiInventoryUpdateForm({
                         placeholder="اختر المنتج"
                       />
                     </div>
+
                     {/* Warehouse */}
                     <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Label>
-                          المستودع <span className="text-red-500">*</span>
-                        </Label>
-                        {inventory.warehousesForProduct &&
-                          inventory.warehousesForProduct.length > 0 && (
-                            <Info className="h-3 w-3 text-blue-500" />
-                          )}
-                      </div>
+                      <Label>
+                        المستودع <span className="text-red-500">*</span>
+                      </Label>
                       <SelectField
                         options={multipleInventory.warehouses}
                         value={inventory.warehouseId}
                         action={(val) =>
                           updateInventory(inventory.id, "warehouseId", val)
                         }
-                        placeholder={
-                          inventory.productId
-                            ? "اختر المستودع"
-                            : "اختر المنتج أولاً"
-                        }
+                        placeholder="اختر المستودع"
                         disabled={!inventory.productId}
                       />
-                      {inventory.warehousesForProduct &&
-                        inventory.warehousesForProduct.length > 0 && (
-                          <p className="text-xs text-blue-600">
-                            المستودعات المتاحة لهذا المنتج فقط
-                          </p>
-                        )}
                     </div>
-                    {/* Current Stock Display
-                    {inventory.currentStock !== undefined && (
-                      <div className="space-y-2">
-                        <Label>المخزون الحالي</Label>
-                        <div className="flex h-10 items-center rounded-md border bg-blue-50 px-3">
-                          <Search className="ml-2 h-4 w-4 text-blue-600" />
-                          <span className="font-medium text-blue-600">
-                            {inventory.currentStock}
-                          </span>
-                        </div>
-                      </div>
-                    )} */}
+
                     {/* Stock Quantity */}
                     <div className="space-y-2">
                       <Label>
-                        الكمية{" "}
-                        {inventory.updateType === "supplier"
-                          ? "المستلمة"
-                          : "للإضافة"}{" "}
-                        <span className="text-red-500">*</span>
+                        الكمية <span className="text-red-500">*</span>
                       </Label>
                       <Input
                         type="number"
                         step="0.01"
                         min="0"
-                        // value={inventory.stockQuantity}
+                        value={inventory.stockQuantity}
                         onChange={(e) =>
                           updateInventory(
                             inventory.id,
@@ -695,28 +610,14 @@ export default function MultiInventoryUpdateForm({
                           )
                         }
                         placeholder="0.00"
-                        className="text-right"
                       />
                     </div>
-                    {/* New Total (if current stock exists) */}
-                    {/* {inventory.currentStock !== undefined &&
-                      inventory.stockQuantity && (
-                        <div className="space-y-2">
-                          <Label>المجموع الجديد</Label>
-                          <div className="flex h-10 items-center rounded-md border bg-green-50 px-3">
-                            <span className="font-bold text-green-600">
-                              {newTotal.toFixed(2)}
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                    Reserved Quantity */}
+
+                    {/* Reserved Quantity */}
                     <div className="space-y-2">
                       <Label>الكمية المحجوزة</Label>
                       <Input
                         type="number"
-                        step="1"
-                        min="0"
                         value={inventory.reservedQuantity}
                         onChange={(e) =>
                           updateInventory(
@@ -726,10 +627,10 @@ export default function MultiInventoryUpdateForm({
                           )
                         }
                         placeholder="0.00"
-                        className="text-right"
                       />
                     </div>
-                    {/* Available Quantity (calculated) */}
+
+                    {/* Available Quantity */}
                     <div className="space-y-2">
                       <Label>الكمية المتاحة</Label>
                       <div className="bg-muted flex h-10 items-center rounded-md border px-3">
@@ -738,7 +639,8 @@ export default function MultiInventoryUpdateForm({
                         </span>
                       </div>
                     </div>
-                    {/* Supplier (if supplier update) */}
+
+                    {/* Supplier fields */}
                     {inventory.updateType === "supplier" && (
                       <>
                         <div className="space-y-2">
@@ -753,11 +655,6 @@ export default function MultiInventoryUpdateForm({
                             }
                             placeholder="اختر المورد"
                           />
-                          {inventory.supplierId && (
-                            <p className="text-xs text-green-600">
-                              ✓ تم تحديد المورد من بيانات المنتج
-                            </p>
-                          )}
                         </div>
 
                         <div className="space-y-2">
@@ -767,7 +664,6 @@ export default function MultiInventoryUpdateForm({
                           <Input
                             type="number"
                             step="0.01"
-                            min="0"
                             value={inventory.unitCost}
                             onChange={(e) =>
                               updateInventory(
@@ -777,115 +673,39 @@ export default function MultiInventoryUpdateForm({
                               )
                             }
                             placeholder="0.00"
-                            className="text-right"
                           />
                         </div>
 
-                        <div className="space-y-2">
-                          <Label>طريقة الدفع</Label>
-                          <SelectField
-                            options={paymentMethods}
-                            value={inventory.paymentMethod}
-                            action={(val) =>
-                              updateInventory(
-                                inventory.id,
-                                "paymentMethod",
-                                val,
-                              )
-                            }
-                            placeholder="اختر طريقة الدفع"
-                          />
-                        </div>
-                        {inventory.paymentMethod === "bank" && (
-                          <>
-                            <div className="space-y-2">
-                              <Label>
-                                البنك <span className="text-red-500">*</span>
-                              </Label>
-                              <SelectField
-                                options={banks}
-                                value={inventory.bankId || ""}
-                                action={(val) =>
-                                  updateInventory(inventory.id, "bankId", val)
-                                }
-                                placeholder="اختر البنك"
-                              />
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label>
-                                رقم المرجع{" "}
-                                <span className="text-red-500">*</span>
-                              </Label>
-                              <Input
-                                type="text"
-                                value={inventory.referenceNumber || ""}
-                                onChange={(e) =>
-                                  updateInventory(
-                                    inventory.id,
-                                    "referenceNumber",
-                                    e.target.value,
-                                  )
-                                }
-                                placeholder="رقم الحوالة / المرجع"
-                              />
-                            </div>
-                          </>
-                        )}
-                        {inventory.paymentMethod === "cash" && (
-                          <div className="space-y-2">
-                            <Label>
-                              كاش <span className="text-red-500">*</span>
-                            </Label>
-                            <SelectField
-                              options={cash}
-                              value={inventory.bankId || ""}
-                              action={(val) =>
-                                updateInventory(inventory.id, "bankId", val)
+                        {/* ✅ FIX: Pass correct accounts for this inventory item */}
+                        <div className="md:col-span-3">
+                          <ReusablePayment
+                            value={
+                              inventory.payment || {
+                                paymentMethod: "",
+                                accountId: "",
+                                accountCurrency: "",
+                                amountBase: 0,
                               }
-                              placeholder="اختر الصندوق"
-                            />
-                          </div>
-                        )}
-                        <div className="space-y-2">
-                          <Label>مبلغ الدفع</Label>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={inventory.paymentAmount}
-                            onChange={(e) =>
-                              updateInventory(
-                                inventory.id,
-                                "paymentAmount",
-                                e.target.value,
-                              )
                             }
-                            placeholder="0.00"
-                            className="text-right"
+                            accounts={accountsByInventory[inventory.id] || []}
+                            action={(val) =>
+                              updateInventory(inventory.id, "payment", val)
+                            }
                           />
                         </div>
                       </>
                     )}
+
                     {/* Notes */}
                     <div className="space-y-2 md:col-span-3">
-                      <Label>
-                        {inventory.updateType === "manual"
-                          ? "سبب التحديث"
-                          : "ملاحظات"}
-                      </Label>
+                      <Label>ملاحظات</Label>
                       <Textarea
                         rows={2}
                         value={inventory.notes || ""}
                         onChange={(e) =>
                           updateInventory(inventory.id, "notes", e.target.value)
                         }
-                        placeholder={
-                          inventory.updateType === "manual"
-                            ? "أدخل سبب التحديث اليدوي"
-                            : "أدخل أي ملاحظات"
-                        }
-                        className="resize-none"
+                        placeholder="أدخل ملاحظات"
                       />
                     </div>
                   </div>
@@ -897,7 +717,7 @@ export default function MultiInventoryUpdateForm({
                         التكلفة الإجمالية:
                       </span>
                       <span className="text-primary font-bold">
-                        {itemCost.toFixed(2)} {currencyCode ?? currencyCodecash}
+                        {itemCost.toFixed(2)}
                       </span>
                     </div>
                   )}
@@ -917,7 +737,7 @@ export default function MultiInventoryUpdateForm({
               <Save className="ml-2 h-5 w-5" />
               {isSubmitting
                 ? "جاري الحفظ..."
-                : `حفظ ${inventoryUpdates.length} تحديث - المجموع: ${totalItems.toFixed(0)} وحدة`}
+                : `حفظ ${inventoryUpdates.length} تحديث`}
             </Button>
           </div>
         </div>

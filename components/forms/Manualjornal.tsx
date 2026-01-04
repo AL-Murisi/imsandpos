@@ -6,17 +6,28 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { createManualJournalEntry } from "@/lib/actions/manualJournalEntry";
-import { Plus, Save, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { Plus, Save, Trash2, Info } from "lucide-react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { SelectField } from "../common/selectproduct";
+import {
+  PaymentState,
+  ReusablePayment,
+} from "@/components/common/ReusablePayment";
+import { fetchPayments } from "@/lib/actions/banks";
 
 interface Account {
   id: string;
   name: string;
   account_type?: string;
+  currency?: string | null;
 }
 
+interface bankcash {
+  id: string;
+  name: string;
+  currency: string | null;
+}
 interface Customer {
   id?: string;
   name?: string;
@@ -83,6 +94,38 @@ export default function ManualJournalEntryForm({
   ]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // ✅ Payment tracking (optional - for cash/bank entries)
+  const [includePayment, setIncludePayment] = useState(false);
+  const [payment, setPayment] = useState<PaymentState>({
+    paymentMethod: "",
+    accountId: "",
+    accountCurrency: "",
+    amountBase: 0,
+  });
+  const [accountsForPayment, setAccountsForPayment] = useState<bankcash[]>([]);
+
+  // ✅ Load accounts for payment component
+  useEffect(() => {
+    if (!includePayment || !payment.paymentMethod) {
+      setAccountsForPayment([]);
+      return;
+    }
+
+    async function loadAccounts() {
+      try {
+        const { banks, cashAccounts } = await fetchPayments();
+        setAccountsForPayment(
+          payment.paymentMethod === "bank" ? banks : cashAccounts,
+        );
+      } catch (err) {
+        console.error(err);
+        toast.error("فشل في جلب الحسابات");
+      }
+    }
+
+    loadAccounts();
+  }, [includePayment, payment.paymentMethod]);
+
   // Calculate totals
   const totalDebit = lines.reduce((sum, line) => sum + (line.debit || 0), 0);
   const totalCredit = lines.reduce((sum, line) => sum + (line.credit || 0), 0);
@@ -105,6 +148,19 @@ export default function ManualJournalEntryForm({
       account?.name?.toLowerCase().includes("دائنون") ||
       account?.name?.toLowerCase().includes("ذمم دائنة")
     );
+  };
+
+  // Check if any line uses cash/bank account
+  const hasCashOrBankAccount = () => {
+    return lines.some((line) => {
+      const account = accounts.find((a) => a.id === line.accountId);
+      return (
+        account?.account_type?.toLowerCase().includes("cash") ||
+        account?.account_type?.toLowerCase().includes("bank") ||
+        account?.name?.toLowerCase().includes("نقدية") ||
+        account?.name?.toLowerCase().includes("بنك")
+      );
+    });
   };
 
   // Add new line
@@ -205,6 +261,18 @@ export default function ManualJournalEntryForm({
       }
     }
 
+    // Validate payment if included
+    if (includePayment) {
+      if (!payment.paymentMethod || !payment.accountId) {
+        toast.error("الرجاء إكمال معلومات الدفع");
+        return;
+      }
+      if (payment.amountBase <= 0) {
+        toast.error("الرجاء إدخال مبلغ الدفع");
+        return;
+      }
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -217,22 +285,16 @@ export default function ManualJournalEntryForm({
         let referenceType = "قيد يدوي";
 
         if (isAccountsReceivable(line.accountId) && line.customerId) {
-          // AR Account with customer
           if (line.debit > 0) {
-            // Debit AR = Customer owes us money
             referenceType = "مديونية على عميل";
           } else if (line.credit > 0) {
-            // Credit AR = Customer paid us / reducing their debt
             referenceType = "تحصيل من عميل";
           }
           referenceId = line.customerId;
         } else if (isAccountsPayable(line.accountId) && line.supplierId) {
-          // AP Account with supplier
           if (line.credit > 0) {
-            // Credit AP = We owe supplier money
             referenceType = "مديونية لمورد";
           } else if (line.debit > 0) {
-            // Debit AP = We paid supplier / reducing our debt
             referenceType = "دفع لمورد";
           }
           referenceId = line.supplierId;
@@ -260,6 +322,21 @@ export default function ManualJournalEntryForm({
         entries,
         generalDescription,
         companyId,
+        // ✅ Include payment details if provided
+        paymentDetails: includePayment
+          ? {
+              paymentMethod: payment.paymentMethod ?? "",
+              accountId: payment.accountId ?? "",
+              accountCurrency: payment.accountCurrency ?? "",
+              amountBase: payment.amountBase ?? 0,
+              transferNumber:
+                typeof payment.transferNumber === "string"
+                  ? parseFloat(payment.transferNumber) || 0
+                  : (payment.transferNumber ?? 0),
+              exchangeRate: payment.exchangeRate ?? 1, // Default to 1 if undefined
+              amountFC: payment.amountFC ?? 0,
+            }
+          : undefined,
       });
 
       if (result.success) {
@@ -267,6 +344,13 @@ export default function ManualJournalEntryForm({
 
         // Reset form
         setGeneralDescription("");
+        setIncludePayment(false);
+        setPayment({
+          paymentMethod: "",
+          accountId: "",
+          accountCurrency: "",
+          amountBase: 0,
+        });
         setLines([
           {
             id: crypto.randomUUID(),
@@ -344,7 +428,40 @@ export default function ManualJournalEntryForm({
               className="resize-none"
             />
           </div>
+
+          {/* ✅ Payment Section Toggle */}
+          {hasCashOrBankAccount() && (
+            <div className="border-t pt-3">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="include-payment"
+                  checked={includePayment}
+                  onChange={(e) => setIncludePayment(e.target.checked)}
+                  className="h-4 w-4"
+                />
+                <Label htmlFor="include-payment" className="cursor-pointer">
+                  إضافة تفاصيل الدفع (للقيود النقدية/البنكية)
+                </Label>
+                <Info className="h-4 w-4 text-blue-500" />
+              </div>
+            </div>
+          )}
         </div>
+
+        {/* ✅ Payment Details (conditional) */}
+        {includePayment && (
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+            <h3 className="mb-3 text-sm font-semibold text-blue-900">
+              تفاصيل الدفع
+            </h3>
+            <ReusablePayment
+              value={payment}
+              action={setPayment}
+              accounts={accountsForPayment}
+            />
+          </div>
+        )}
 
         {/* Entry Lines */}
         <div className="space-y-4">
@@ -384,7 +501,7 @@ export default function ManualJournalEntryForm({
 
                   <div className="grid gap-3 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label>الحساب</Label>{" "}
+                      <Label>الحساب</Label>
                       <SelectField
                         options={accounts}
                         value={line.accountId}
@@ -393,12 +510,11 @@ export default function ManualJournalEntryForm({
                       />
                     </div>
 
-                    {/* Customer Selection (only for AR accounts) */}
                     {showCustomerSelect && (
                       <div className="space-y-2">
                         <Label>
                           العميل <span className="text-red-500">*</span>
-                        </Label>{" "}
+                        </Label>
                         <SelectField
                           options={customers as { id: string; name: string }[]}
                           value={line.customerId}
@@ -414,12 +530,11 @@ export default function ManualJournalEntryForm({
                       </div>
                     )}
 
-                    {/* Supplier Selection (only for AP accounts) */}
                     {showSupplierSelect && (
                       <div className="space-y-2">
                         <Label>
                           المورد <span className="text-red-500">*</span>
-                        </Label>{" "}
+                        </Label>
                         <SelectField
                           options={suppliers}
                           value={line.supplierId}
@@ -435,7 +550,6 @@ export default function ManualJournalEntryForm({
                       </div>
                     )}
 
-                    {/* Description field when not AR/AP */}
                     {!showCustomerSelect && !showSupplierSelect && (
                       <div className="space-y-2">
                         <Label>الوصف (اختياري)</Label>

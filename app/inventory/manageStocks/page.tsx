@@ -11,6 +11,7 @@ import { SortingState } from "@tanstack/react-table";
 import { getSession } from "@/lib/session";
 import InventoryTabs from "./_components/tabs";
 import { getPurchasesByCompany } from "@/lib/actions/suppliers";
+import { fetchPayments } from "@/lib/actions/banks";
 
 type DashboardProps = {
   searchParams: Promise<{
@@ -63,7 +64,7 @@ export default async function manageStocks({ searchParams }: DashboardProps) {
   };
   // ✅ Run all fetches in parallelfetchAllFormData
   const MultipleInventory = fetchAllFormDatas(user.companyId);
-
+  const b = await fetchPayments();
   const formData = fetchAllFormData(user.companyId);
   // Collect common params
   const commonParams = {
@@ -121,6 +122,7 @@ export default async function manageStocks({ searchParams }: DashboardProps) {
       movementData={movementData}
       purchasesPromise={purchasesPromise}
       formData={formData}
+      payments={b}
       multipleInventory={MultipleInventory}
       currentTab={currentTab}
     />

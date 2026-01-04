@@ -22,6 +22,7 @@ export default function InventoryTabs({
   multipleInventory,
   movementData,
   purchasesPromise,
+  payments,
   formData,
   currentTab, // ✅ new prop
 }: {
@@ -66,7 +67,7 @@ export default function InventoryTabs({
     }[];
   }>;
   purchasesPromise: Promise<{ data: any[]; total: number }>;
-
+  payments: any;
   movementData: Promise<{ movements: any[]; totalCount: number }>;
   // fetchedTotalCounts: number;
   formData: Promise<{
@@ -75,6 +76,7 @@ export default function InventoryTabs({
     brands: { id: string; name: string }[];
     suppliers: { id: string; name: string }[];
   }>;
+
   currentTab: string; // ✅ new prop
 }) {
   const purchases = use(purchasesPromise);
@@ -99,6 +101,7 @@ export default function InventoryTabs({
               total={inventory.totalCount}
               formData={format}
               multipleInventory={multipleInv}
+              payments={payments}
             />
           ),
         },

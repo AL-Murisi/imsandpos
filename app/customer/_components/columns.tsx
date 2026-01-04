@@ -26,6 +26,7 @@ import { deleteCustomer, updateCustomerStatus } from "@/lib/actions/customers";
 import { useAuth } from "@/lib/context/AuthContext";
 import dynamic from "next/dynamic";
 import { useState } from "react";
+import { useFormatter } from "@/hooks/usePrice";
 const CustomerEditForm = dynamic(() => import("./editcustomer"), {
   ssr: false,
   // loading: () => <TableSkeleton />,
@@ -184,6 +185,7 @@ export const customerColumns: ColumnDef<any>[] = [
 
       const isDebit = balance > 0; // customer owes company
       const isCredit = balance < 0; // company owes customer
+      const { formatCurrency } = useFormatter();
 
       return (
         <span
@@ -195,7 +197,7 @@ export const customerColumns: ColumnDef<any>[] = [
                 : "text-gray-600"
           }`}
         >
-          {balance.toFixed(2)}
+          {formatCurrency(balance)}
         </span>
       );
     },
@@ -207,10 +209,10 @@ export const customerColumns: ColumnDef<any>[] = [
       const balance = Number(row.original.balance);
 
       const isCredit = balance < 0; // company owes customer
-
+      const { formatCurrency } = useFormatter();
       return (
         <span className={`font-bold ${"text-green-600"}`}>
-          ${balance.toFixed(2)}
+          {formatCurrency(balance)}
         </span>
       );
     },

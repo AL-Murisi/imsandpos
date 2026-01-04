@@ -15,6 +15,7 @@ import {
 } from "@/lib/zod";
 import { recordSupplierPaymentWithJournalEntries } from "./Journal Entry";
 import { getActiveFiscalYears } from "./fiscalYear";
+import { PaymentState } from "@/components/common/ReusablePayment";
 function serializeData<T>(data: T): T {
   if (data === null || data === undefined) return data;
   if (typeof data !== "object") return data;
@@ -66,6 +67,8 @@ interface ExtendedInventoryUpdateData {
   bankId?: string;
   transferNumber?: string;
   currency_code?: string;
+  exchangeRate?: number;
+  amountFC?: number;
 }
 function generateArabicPurchaseReceiptNumber(lastNumber: number) {
   const padded = String(lastNumber).padStart(5, "0"); // 00001
@@ -93,6 +96,8 @@ export async function updateInventory(
       bankId,
       transferNumber,
       currency_code,
+      exchangeRate,
+      amountFC,
       supplierId: providedSupplierId,
       warehouseId: targetWarehouseId,
       ...updateData
@@ -215,6 +220,7 @@ export async function updateInventory(
         let purchase = null;
         let purchaseId: string | null = null;
         let purchaseItemId: string | null = null;
+        let supplierPaymentId: string | null = null;
 
         // Create purchase if from supplier
         if (updateType === "supplier" && inputCartons && unitCost) {
@@ -267,6 +273,8 @@ export async function updateInventory(
                 },
               }),
             );
+            const supplierPayment = await operations[0];
+            supplierPaymentId = supplierPayment.id;
           }
 
           // Update supplier totals
@@ -341,12 +349,17 @@ export async function updateInventory(
               purchase: purchase,
               userId,
               type: "purchase",
-              paymentMethod: paymentMethod || "",
+
               paymentDetails: {
-                bankId: bankId ?? "",
-                refrenceNumber: transferNumber ?? "",
+                bankId: bankId,
+                referenceNumber: transferNumber ?? "", // Fixed typo from 'refrenceNumber'
+                exchangeRate: exchangeRate ?? undefined,
+                amountFC: amountFC ?? undefined,
+                amountBase: paymentAmount ?? 0,
+                paymentMethod: paymentMethod || "",
+                paymentId: supplierPaymentId ?? "",
+                currency_code: currency_code,
               },
-              currencyCode: currency_code,
             },
             processed: false,
           },
@@ -408,10 +421,8 @@ interface InventoryUpdateData {
   unitCost?: number;
   paymentMethod?: string;
   paymentAmount?: number;
-  currency_code?: string;
-  bankId?: string;
-  referenceNumber?: string;
 
+  payment?: PaymentState;
   notes?: string;
   reason?: string;
   lastStockTake?: Date;
@@ -596,10 +607,10 @@ export async function updateMultipleInventory(
 
             purchaseId = purchase.id;
             createdPurchases.push(purchase);
-
+            let supplierPaymentId: string | null = null;
             // Create supplier payment if applicable
             if (updateData.paymentMethod && paid > 0) {
-              await tx.supplierPayment.create({
+              const supplierPayment = await tx.supplierPayment.create({
                 data: {
                   companyId,
                   supplierId: updateData.supplierId,
@@ -610,6 +621,7 @@ export async function updateMultipleInventory(
                   note: updateData.notes || "دفعة مشتريات",
                 },
               });
+              supplierPaymentId = supplierPayment.id; // ✅ المهم
             }
 
             // Update supplier totals
@@ -637,11 +649,15 @@ export async function updateMultipleInventory(
                   userId,
                   type: "purchase",
                   paymentDetails: {
-                    bankId: updateData.bankId ?? "",
-                    refrenceNumber: updateData.referenceNumber ?? "",
+                    exchangeRate: updateData.payment?.exchangeRate,
+                    amountFC: updateData.payment?.amountFC,
+                    bankId: updateData.payment?.accountId,
+                    amountBase: updateData.paymentAmount,
+                    paymentId: supplierPaymentId,
+                    paymentMethod: updateData.payment?.paymentMethod,
+                    currency_code: updateData.payment?.accountCurrency || "YER",
+                    refrenceNumber: updateData.payment?.transferNumber,
                   },
-                  paymentMethod: updateData.paymentMethod,
-                  currencyCode: updateData.currency_code || "YER",
                 },
                 processed: false,
               },

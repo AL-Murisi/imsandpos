@@ -15,7 +15,9 @@ export default function CustomerStatementPrint({
   const { company } = useCompany();
 
   if (!company) return <div>Loading...</div>;
-
+  const formattedName = company?.name.split(" ").reduce((acc, word, i) => {
+    return acc + word + (i === 1 ? "<br/>" : " ");
+  }, "");
   // ================================
   //  🔥 NEW PRINT FUNCTION (FULL HTML)
   // ================================
@@ -26,79 +28,102 @@ export default function CustomerStatementPrint({
       <html lang="ar" dir="rtl">
       <head>
         <title>كشف حساب عميل</title>
-        <style>
+      <style>
           body { 
-            font-family: Arial, sans-serif; 
+            font-family: "Cairo", Arial, sans-serif; 
             direction: rtl; 
-               background: #fff;
-              color: #000;
+            background: #fff;
+            color: #000;
+            margin: 0;
            
-              margin: 0;
           }
-.balance-highlight {
-            background: #ecf0f1;
-            font-weight: bold;
-          }
+
           h1, h2 {
             text-align: center;
             margin: 0;
             padding: 0;
           }
 
+          .section {
+            padding: 6px 8px;
+          }
+
           .header {
-            text-align: center;
-            margin-bottom: 15px;
-            border-bottom: 2px solid #000;
+            border-bottom: 2px solid black;
+            border-radius: 6px;
+            margin-bottom: 20px;
             padding-bottom: 10px;
           }
 
-          .info-box {
-            margin-top: 20px;
-            padding: 10px;
-            border: 1px solid #000;
-            border-radius: 6px;
+          .flex { display: flex; }
+          .justify-between { justify-content: space-between; }
+          .items-center { align-items: center; }
+          .mb-2 { margin-bottom: 8px; }
+          .gap-2 { gap: 8px; }
+          .grid { display: grid; }
+          .grid-rows-3 { grid-template-rows: repeat(3, auto); }
+          .grid-rows-4 { grid-template-rows: repeat(4, auto); }
+          .text-sm { font-size: 12px; }
+          .text-lg { font-size: 16px; font-weight: bold; }
+          .text-center { text-align: center; }
+          .text-xs { font-size: 10px; }
+          .green { color: green; }
+          .grey { color: grey; }
+          .text-3xl { font-size: 24px; font-weight: bold; }
+          .text-2xl { font-size: 23px; font-weight: bold; }
+
+         .info-box {
+  display: grid;
+  /* Creates two columns of equal width */
+  grid-template-columns: repeat(2, 1fr); 
+  gap: 10px 10px; /* 10px vertical gap, 20px horizontal gap */
+ 
+  padding: 15px;
+  border: 1px solid #ddd; /* Lighter border for cleaner look */
+  border-radius: 8px;
+  background: #f9f9f9;
+  direction: rtl; /* Ensures grid flows correctly for Arabic */
+}
+
+.info-box p {
+  margin: 0; /* Remove default paragraph margins to keep grid tight */
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* Optional: Make the Address or Balance span full width if it's too long */
+.full-width {
+  grid-column: span 2;
+}
+
+          .info-box p {
+            margin: 5px 0;
           }
 
           table {
             width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
+           ;width: 100%;
+    border-collapse: separate; /* Required for border-radius */
+    border-spacing: 0;
+    margin-top: 15px;
+    border: 1px solid #000;
+    border-radius: 8px; /* Rounded corners for the table */
+    overflow: hidden;
+         
           }
+          
           th, td {
             border: 1px solid #000;
-            padding: 6px;
+            padding: 8px;
             font-size: 13px;
             text-align: center;
           }
+          
           th {
-            background: #f0f0f0;
+            background: #39dd83;
+        
             font-weight: bold;
           }
-
-            .section {
-              padding: 6px 8px;
-            }
-
-            .header {
-              border-bottom: 1px solid black;
-              border-radius: 6px;
-            }
-
-            .flex { display: flex; }
-            .justify-between { justify-content: space-between; }
-            .items-center { align-items: center; }
-            .mb-2 { margin-bottom: 8px; }
-            .gap-2 { gap: 8px; }
-            .grid { display: grid; }
-            .grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
-            .text-sm { font-size: 12px; }
-            .text-lg { font-size: 16px; font-weight: bold; }
-            .text-center { text-align: center; }
-            .text-xs { font-size: 10px; }
-            .green { color: green; }
-            .grey { color: grey; }
-            .text-3xl { font-size: 24px; font-weight: bold; }
-            .text-2xl { font-size: 23px; font-weight: bold; }
 
           .totals {
             margin-top: 20px;
@@ -107,7 +132,24 @@ export default function CustomerStatementPrint({
             border-top: 2px solid #000;
             padding-top: 10px;
           }
+/* Container for logo and title to stack them */
+.logo-title-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
 
+/* The small box for the title */
+.title-box {
+  border: 1px solid #000;
+  padding: 4px 12px;
+  border-radius: 4px;
+  background-color: #f0f0f0;
+  font-size: 14px;
+  font-weight: bold;
+  white-space: nowrap;
+}
           footer {
             margin-top: 40px;
             text-align: center;
@@ -115,34 +157,46 @@ export default function CustomerStatementPrint({
             border-top: 1px solid #000;
             padding-top: 10px;
           }
+
+          .balance-highlight {
+            background: #ecf0f1;
+            font-weight: bold;
+          }
         </style>
       </head>
 
       <body>
 
-         <div class="section">
-              <div class="flex header justify-between items-center mb-2" dir="rtl">
-                <!-- Company -->
-                <div class="grid grid-rows-3 items-baseline gap-2 text-right">
-                  <span class="text-3xl green font-bold">  ${company?.name} </span>
-                  <span class="text-2xl">${company?.name} </span>
-                </div>
-
-                <!-- Logo -->
-                <div class="flex flex-col items-center">
-                  <img src="${company?.logoUrl ?? ""}" style="width: 100px; height: 90px;" />
-                </div>
-
-                <!-- Branch -->
-                <div class="grid grid-rows-4">
-                  <div class="text-lg">  ${company?.address} </div>  <div class="text-lg">  ${company?.city} </div>
-                  <div>تلفون:  ${company?.phone}</div>
-
-                </div>
+       <div class="section">
+          <div class="flex header justify-between items-center mb-2" dir="rtl">
+            <!-- Company -->
+            <div class="grid grid-rows-2 gap-2">
+        
+              <div class="text-3xl font-bold text-green-600 leading-tight">
+                ${formattedName}
               </div>
+              <span class="text-2xl">${company?.phone ?? ""}</span>
             </div>
 
-        <h2>🧾 كشف حساب عميل</h2>
+            <!-- Logo -->
+            <div class="logo-title-container">
+              <img src="${company?.logoUrl ?? ""}" style="width: 100px; height: 100px; object-fit: contain;" />
+              <div class="title-box">
+                📋 كشف حساب عميل
+              </div>
+             </div>
+
+            <!-- Branch -->
+            <div class="grid grid-rows-2">
+              <div class="text-lg">${company?.address ?? ""}</div>
+              <div class="text-lg">${company?.city ?? ""}</div>
+             
+            </div>
+              
+          </div>
+        </div>
+
+       
 
         <div class="info-box">
           <p><strong>اسم العميل:</strong> ${customers.customer?.name ?? ""}</p>
@@ -166,15 +220,7 @@ export default function CustomerStatementPrint({
           </thead>
 
           <tbody>
-            <tr>
-              <td></td>
-              <td>رصيد افتتاحي</td>
-              <td>—</td>
-              <td>${customers.openingBalance.toFixed(2)}</td>
-              <td>${customers.openingBalance.toFixed(2)}</td>
-              <td>0.00</td>
-              <td>${customers.openingBalance.toFixed(2)}</td>
-            </tr>
+           
 
             ${customers.transactions
               .map(

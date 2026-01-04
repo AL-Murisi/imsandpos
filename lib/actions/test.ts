@@ -67,6 +67,11 @@ export async function getCustomerStatement(
       where: {
         company_id: companyId,
         reference_id: customerId,
+        reference_type: {
+          contains: "opening_customer_balance",
+          mode: "insensitive", // يتجاهل حالة الأحرف
+        },
+
         entry_date: { lt: fromDate },
       },
       select: {
@@ -436,6 +441,7 @@ export async function getSupplierStatement(
       where: {
         company_id: companyId,
         reference_id: supplierId,
+        reference_type: "رصيد افتتاحي مورد",
         entry_date: { lt: fromDate },
       },
       select: {

@@ -55,6 +55,7 @@ type ProductClientProps = {
       };
     }[];
   };
+  payments: any;
   formData: {
     warehouses: { id: string; name: string }[];
     categories: { id: string; name: string }[];
@@ -68,6 +69,7 @@ export default function ManageStocksClient({
   multipleInventory,
   total,
   formData,
+  payments,
 }: ProductClientProps) {
   const {
     pagination,
@@ -100,7 +102,10 @@ export default function ManageStocksClient({
               paramKey="warehouseId"
               placeholder={t("warehouseId")}
             />
-            <MultiInventoryUpdateForm multipleInventory={multipleInventory} />
+            <MultiInventoryUpdateForm
+              multipleInventory={multipleInventory}
+              payments={payments}
+            />
             <SelectField
               options={formData.categories}
               paramKey="categoryId"

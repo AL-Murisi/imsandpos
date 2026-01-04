@@ -116,6 +116,7 @@ export async function GET() {
             payment: eventData.supplierPayment,
             companyId: eventData.companyId,
             userId: eventData.userId,
+            paymentDetails: eventData.paymentDetails,
           });
           results.purchase_payment++;
         } else if (event.eventType === "createCutomer") {
@@ -992,10 +993,12 @@ async function createSupplierPaymentJournalEntries({
   payment,
   companyId,
   userId,
+  paymentDetails,
 }: {
   payment: any;
   companyId: string;
   userId: string;
+  paymentDetails: any;
 }) {
   // Get all default account mappings for the company
   const mappings = await prisma.account_mappings.findMany({
@@ -1016,59 +1019,67 @@ async function createSupplierPaymentJournalEntries({
   }
 
   const paymentAccount =
-    payment.paymentMethod === "bank" ? bankAccount : cashAccount;
+    paymentDetails.paymentMethod === "bank" ? bankAccount : cashAccount;
   const entry_number = `SP-${payment.id.slice(0, 6)}`;
-  const description = `${payment.id} سداد للمورد`;
+  const description =
+    `سداد للمورد` +
+    (paymentDetails.paymentMethod === "bank"
+      ? `رقم  الحوالة :${paymentDetails.referenceNumber} `
+      : " (نقداً)");
 
-  // Helper to update account balance
-  const updateAccountBalance = async (
-    account_id: string,
-    debit: number,
-    credit: number,
-  ) => {
-    await prisma.accounts.update({
-      where: { id: account_id },
-      data: { balance: { increment: credit - debit } },
+  await prisma.$transaction(async (tx) => {
+    // 1️⃣ Debit Accounts Payable
+    await tx.journal_entries.create({
+      data: {
+        company_id: companyId,
+        account_id: payableAccount,
+        description,
+        exchange_rate: paymentDetails.exchangeRate,
+        foreign_amount: paymentDetails.amountFC,
+        base_amount: payment.amount,
+        debit: payment.amount,
+        credit: 0,
+        fiscal_period: fy.period_name,
+        reference_type: "سداد دين المورد",
+
+        reference_id: payment.supplierId,
+        entry_number: entry_number + "-D",
+        created_by: userId,
+        is_automated: true,
+      },
     });
-  };
 
-  // 1️⃣ Debit Accounts Payable
-  await prisma.journal_entries.create({
-    data: {
-      company_id: companyId,
-      account_id: payableAccount,
-      description,
-      debit: payment.amount,
-      credit: 0,
-      fiscal_period: fy.period_name,
-      reference_type: "سداد_دين_المورد",
+    // 2️⃣ Credit Cash/Bank
+    await tx.journal_entries.create({
+      data: {
+        company_id: companyId,
+        account_id: paymentDetails.bankId,
+        description,
+        debit: 0,
+        exchange_rate: paymentDetails.exchangeRate,
+        foreign_amount: paymentDetails.amountFC,
+        base_amount: payment.amount,
+        fiscal_period: fy.period_name,
+        credit: payment.amount,
+        reference_type: "سداد دين المورد",
+        reference_id: payment.id,
+        entry_number: entry_number + "-C",
+        created_by: userId,
+        is_automated: true,
+      },
+    });
+    await tx.accounts.update({
+      where: { id: payableAccount },
+      data: { balance: { decrement: payment.amount } }, // AP ↓
+    });
 
-      reference_id: payment.supplierId,
-      entry_number: entry_number + "-D",
-      created_by: userId,
-      is_automated: true,
-    },
+    await tx.accounts.update({
+      where: { id: paymentDetails.bankId },
+      data: { balance: { decrement: payment.amount } }, // Cash/Bank ↓
+    });
   });
-  await updateAccountBalance(payableAccount, payment.amount, 0);
-
-  // 2️⃣ Credit Cash/Bank
-  await prisma.journal_entries.create({
-    data: {
-      company_id: companyId,
-      account_id: paymentAccount,
-      description,
-      debit: payment.amount,
-      fiscal_period: fy.period_name,
-      credit: 0,
-      reference_type: "سداد_دين_المورد",
-      reference_id: payment.id,
-      entry_number: entry_number + "-C",
-      created_by: userId,
-      is_automated: true,
-    },
-  });
-  await updateAccountBalance(paymentAccount, payment.amount, 0);
 }
+
 function requireAccount(accountId: string | undefined, name: string) {
   if (!accountId) {
     throw new Error(`Missing required account mapping: ${name}`);
@@ -1514,7 +1525,7 @@ async function createPurchaseJournalEntries({
   userId: string;
   type: string;
   currencyCode: string;
-  paymentDetails?: { bankId: string; refrenceNumber: string };
+  paymentDetails: any;
 }) {
   // 1️⃣ Fetch mappings and fiscal year in parallel
   const [mappings, fy] = await Promise.all([
@@ -1524,7 +1535,7 @@ async function createPurchaseJournalEntries({
     }),
     getActiveFiscalYears(),
   ]);
-  const safeCurrency = currencyCode || "YERt";
+  const safeCurrency = currencyCode || "YER";
 
   if (!fy) {
     console.warn("No active fiscal year - skipping journal entries");
@@ -1582,12 +1593,15 @@ async function createPurchaseJournalEntries({
     if (amountPaid === totalAmount) {
       // 1️⃣ Fully Paid
       const paymentAccount =
-        purchase.paymentMethod === "bank" ? bankAccount : cashAccount;
+        paymentDetails.paymentMethod === "bank" ? bankAccount : cashAccount;
 
       entries.push(
         // Debit Inventory
         {
           ...baseEntry,
+          exchange_rate: paymentDetails.exchangeRate,
+          foreign_amount: paymentDetails.amountFC,
+          base_amount: paymentDetails.amountBase,
 
           account_id: inventoryAccount,
           description:
@@ -1603,7 +1617,11 @@ async function createPurchaseJournalEntries({
         // Credit Cash/Bank
         {
           ...baseEntry,
-          account_id: paymentAccount,
+          account_id: paymentDetails.bankId,
+          exchange_rate: paymentDetails.exchangeRate,
+          foreign_amount: paymentDetails.amountFC,
+          base_amount: paymentDetails.amountBase,
+
           description:
             description +
             " - مدفوع بالكامل" +
@@ -1635,6 +1653,9 @@ async function createPurchaseJournalEntries({
             (paymentDetails?.refrenceNumber
               ? ` - ${paymentDetails.refrenceNumber}`
               : ""),
+          exchange_rate: paymentDetails.exchangeRate,
+          foreign_amount: paymentDetails.amountFC,
+          base_amount: paymentDetails.amountBase,
           debit: totalAmount,
           credit: 0,
           reference_type: "إضافة مخزون",
@@ -1644,7 +1665,10 @@ async function createPurchaseJournalEntries({
         // Credit Cash/Bank (paid amount)
         {
           ...baseEntry,
-          account_id: paymentAccount,
+          account_id: paymentDetails.bankId,
+          exchange_rate: paymentDetails.exchangeRate,
+          foreign_amount: paymentDetails.amountFC,
+          base_amount: paymentDetails.amountBase,
           description:
             description +
             " - دفع جزئي" +
@@ -1654,13 +1678,16 @@ async function createPurchaseJournalEntries({
           debit: 0,
           credit: amountPaid,
           reference_type: "دفع مشتريات",
-          reference_id: purchase.id,
+          reference_id: paymentDetails.id,
           entry_number: `${entryBase}-CR1`,
         },
         // Credit Accounts Payable (remaining)
         {
           ...baseEntry,
           account_id: payableAccount,
+          exchange_rate: paymentDetails.exchangeRate,
+          foreign_amount: paymentDetails.amountFC,
+          base_amount: paymentDetails.amountBase,
           description:
             description +
             " - آجل للمورد" +
@@ -1675,6 +1702,9 @@ async function createPurchaseJournalEntries({
         },
         {
           ...baseEntry,
+          exchange_rate: paymentDetails.exchangeRate,
+          foreign_amount: paymentDetails.amountFC,
+          base_amount: paymentDetails.amountBase,
           account_id: payableAccount,
           description: description + " - آجل للمورد",
           debit: amountPaid,
@@ -1690,6 +1720,9 @@ async function createPurchaseJournalEntries({
         // Debit Inventory
         {
           ...baseEntry,
+          exchange_rate: paymentDetails.exchangeRate,
+          foreign_amount: paymentDetails.amountFC,
+          base_amount: totalAmount,
           account_id: inventoryAccount,
           description: description + " - إضافة للمخزون",
           debit: totalAmount,
@@ -1704,8 +1737,11 @@ async function createPurchaseJournalEntries({
           account_id: payableAccount,
           description: description + " - آجل كامل",
           debit: 0,
+          exchange_rate: paymentDetails.exchangeRate,
+          foreign_amount: paymentDetails.amountFC,
+          base_amount: totalAmount,
           credit: totalAmount,
-          reference_type: "ذمم دائنة للمورد",
+          reference_type: " دين للمورد",
           reference_id: purchase.supplierId,
           entry_number: `${entryBase}-CR1`,
         },
