@@ -235,7 +235,7 @@ export default function CustomerStatement({
                   <tr className="bg-gray-50 font-medium">
                     <td className="border p-2 text-center">-</td>
                     <td className="border p-2">رصيد افتتاحي</td>
-                    <td className="border p-2 text-center">-</td>
+
                     <td className="border p-2">-</td>
 
                     {/* خانة المدين: تظهر القيمة إذا كانت موجبة */}
