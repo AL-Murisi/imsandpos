@@ -30,8 +30,10 @@ interface SupplierStatement {
 }
 export default function ClientWarper({
   suppliers,
+  fiscalYear,
 }: {
   suppliers: SupplierStatement | undefined;
+  fiscalYear: any;
 }) {
-  return <SupplierStatement suppliers={suppliers} />;
+  return <SupplierStatement suppliers={suppliers} fiscalYear={fiscalYear} />;
 }

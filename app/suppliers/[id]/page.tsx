@@ -2,6 +2,7 @@ import { getSupplierStatement } from "@/lib/actions/test";
 import { getSession } from "@/lib/session";
 
 import ClientWarper from "./clientWarper";
+import { getAllFiscalYears } from "@/lib/actions/fiscalYear";
 
 export default async function SupplierStatementPage({
   params,
@@ -24,7 +25,7 @@ export default async function SupplierStatementPage({
     from ||
     new Date(new Date().getFullYear(), 0, 1).toISOString().split("T")[0];
   const dateTo = to || new Date().toISOString().split("T")[0];
-
+  const fiscalYear = await getAllFiscalYears();
   const result = await getSupplierStatement(
     id,
     user.companyId,
@@ -43,5 +44,5 @@ export default async function SupplierStatementPage({
     );
   }
 
-  return <ClientWarper suppliers={result.data} />;
+  return <ClientWarper suppliers={result.data} fiscalYear={fiscalYear ?? []} />;
 }

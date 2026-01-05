@@ -37,12 +37,14 @@ interface MultiExpenseFormProps {
   companyId: string;
   userId: string;
   categories: { id: string; name: string }[];
+  payment: any;
 }
 
 export default function ExpenseForm({
   companyId,
   userId,
   categories,
+  payment,
 }: MultiExpenseFormProps) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -81,7 +83,7 @@ export default function ExpenseForm({
 
     async function loadAccountsForAll() {
       try {
-        const { banks, cashAccounts } = await fetchPayments();
+        const { banks, cashAccounts } = payment;
 
         const newAccountsByExpense: Record<string, Account[]> = {};
 
@@ -146,19 +148,18 @@ export default function ExpenseForm({
 
   // Calculate total
   const totalAmount = expenses.reduce(
-    (sum, exp) => sum + (parseFloat(exp.amount) || 0),
+    (sum, exp) => sum + (exp.payment?.amountBase || 0),
     0,
   );
 
   // Validate and submit
   const handleSubmit = async () => {
-    // Validation
+    // Validation`
     const invalidExpenses = expenses.filter(
       (exp) =>
         !exp.account_id ||
         !exp.description ||
-        !exp.amount ||
-        parseFloat(exp.amount) <= 0 ||
+        !exp.payment?.amountBase ||
         !exp.payment?.paymentMethod ||
         !exp.payment?.accountId,
     );
@@ -171,7 +172,7 @@ export default function ExpenseForm({
     // Check amount matches
     for (const exp of expenses) {
       const expAmount = parseFloat(exp.amount);
-      if (exp.payment && exp.payment.amountBase !== expAmount) {
+      if (exp.payment && exp.payment.amountBase !== totalAmount) {
         toast.error("مبلغ الدفع يجب أن يطابق مبلغ المصروف");
         return;
       }
@@ -184,12 +185,13 @@ export default function ExpenseForm({
       const expensesData = expenses.map((exp) => ({
         account_id: exp.account_id,
         description: exp.description,
-        amount: parseFloat(exp.amount),
+        amount: exp.payment?.amountBase ?? 0,
         expense_date: new Date(expenseDate),
         paymentMethod: exp.payment?.paymentMethod || "",
         currency_code: exp.payment?.accountCurrency || "YER",
         referenceNumber: exp.payment?.transferNumber || undefined,
         bankId: exp.payment?.accountId || undefined,
+        baseAmount: exp.payment?.amountBase || 0,
         exchangeRate: exp.payment?.exchangeRate || undefined,
         amountFC: exp.payment?.amountFC || undefined,
         notes: exp.notes || undefined,
@@ -304,7 +306,7 @@ export default function ExpenseForm({
                 {/* Form Fields */}
                 <div className="grid gap-3 md:grid-cols-2">
                   {/* Category */}
-                  <div className="space-y-2">
+                  <div className="grid gap-3">
                     <Label>
                       فئة المصروف <span className="text-red-500">*</span>
                     </Label>
@@ -345,7 +347,7 @@ export default function ExpenseForm({
                   </div> */}
 
                   {/* Description */}
-                  <div className="space-y-2 md:col-span-2">
+                  <div className="grid gap-3">
                     <Label>
                       الوصف <span className="text-red-500">*</span>
                     </Label>
@@ -394,7 +396,7 @@ export default function ExpenseForm({
                 <div className="flex justify-between border-t pt-2 text-sm">
                   <span className="text-muted-foreground">المبلغ:</span>
                   <span className="text-primary font-bold">
-                    {parseFloat(expense.amount || "0").toFixed(2)}{" "}
+                    {expense.payment?.amountBase.toFixed(2)}
                     {expense.payment?.accountCurrency || ""}
                   </span>
                 </div>

@@ -510,7 +510,7 @@ export async function getProductStats(companyId: string) {
   const expiringSoonCount = convertedInventory.filter(
     (item) => item.isExpiringSoon,
   ).length;
-  console.log(expiredCount);
+
   return {
     totalexpiredCount: expiredCount,
     lowStockProducts: lowStockCount,

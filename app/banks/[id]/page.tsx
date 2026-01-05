@@ -2,6 +2,7 @@ import { getBankStatement } from "@/lib/actions/test";
 import { getSession } from "@/lib/session";
 
 import ClientWarper from "./clientWarper";
+import { getAllFiscalYears } from "@/lib/actions/fiscalYear";
 
 export default async function SupplierStatementPage({
   params,
@@ -37,7 +38,7 @@ export default async function SupplierStatementPage({
       </div>
     );
   }
-
+  const fiscalYear = await getAllFiscalYears();
   const bankStatement = result.data
     ? {
         ...result.data,
@@ -53,5 +54,5 @@ export default async function SupplierStatementPage({
       }
     : undefined;
 
-  return <ClientWarper bank={bankStatement} />;
+  return <ClientWarper bank={bankStatement} fiscalYear={fiscalYear ?? []} />;
 }

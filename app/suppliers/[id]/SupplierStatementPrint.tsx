@@ -185,19 +185,19 @@ export default function SupplierStatementPrint({
             <!-- Company -->
             <div class="grid grid-rows-2 gap-2">
         
-<div class="text-3xl font-bold text-green-600 leading-tight">
-  ${formattedName}
-</div>
+              <div class="text-3xl font-bold text-green-600 leading-tight">
+                ${formattedName}
+              </div>
               <span class="text-2xl">${company?.phone ?? ""}</span>
             </div>
 
             <!-- Logo -->
             <div class="logo-title-container">
-    <img src="${company?.logoUrl ?? ""}" style="width: 100px; height: 100px; object-fit: contain;" />
-    <div class="title-box">
-      📋 كشف حساب مورد
-    </div>
-  </div>
+              <img src="${company?.logoUrl ?? ""}" style="width: 100px; height: 100px; object-fit: contain;" />
+              <div class="title-box">
+                📋 كشف حساب مورد
+              </div>
+             </div>
 
             <!-- Branch -->
             <div class="grid grid-rows-2">
@@ -240,15 +240,21 @@ export default function SupplierStatementPrint({
           </thead>
 
           <tbody>
-            <tr class="balance-highlight">
-              <td></td>
-              <td>رصيد افتتاحي</td>
-            
-              <td>رصيد افتتاحي للمورد</td>
-              <td>${suppliers.openingBalance.toFixed(2)}</td>
-              <td>0.00</td>
-              <td>${suppliers.openingBalance.toFixed(2)}</td>
-            </tr>
+           ${
+             Number(suppliers.openingBalance) !== 0
+               ? `
+    <tr class="balance-highlight">
+       <td>-</td>   <td>-</td>
+      <td>رصيد افتتاحي</td>
+      <td>رصيد افتتاحي للمورد</td>
+      <td>${suppliers.openingBalance > 0 ? suppliers.openingBalance.toFixed(2) : "0.00"}</td>
+      <td>${suppliers.openingBalance < 0 ? Math.abs(suppliers.openingBalance).toFixed(2) : "0.00"}</td>
+      <td><strong>${suppliers.openingBalance.toFixed(2)}</strong></td>
+    </tr>
+    `
+               : ""
+           }
+
 
             ${suppliers.transactions
               .map(

@@ -38,8 +38,10 @@ interface CustomerStatement {
 }
 export default function ClientWarper({
   customers,
+  fiscalYear,
 }: {
   customers: CustomerStatement | undefined;
+  fiscalYear: any;
 }) {
-  return <CustomerStatement customers={customers} />;
+  return <CustomerStatement customers={customers} fiscalYear={fiscalYear} />;
 }

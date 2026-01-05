@@ -356,7 +356,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     return (
                       <Collapsible key={item.title} asChild defaultOpen={false}>
                         <SidebarMenuItem>
-                          <CollapsibleTrigger asChild>
+                          <CollapsibleTrigger>
                             <SidebarMenuButton
                               tooltip={item.title}
                               className="text-[15px]"
@@ -366,6 +366,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                               <ChevronDown className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-180" />
                             </SidebarMenuButton>
                           </CollapsibleTrigger>
+
                           <CollapsibleContent>
                             <SidebarMenuSub>
                               {visibleSubItems.map((subItem) => (
@@ -375,6 +376,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                 >
                                   <SidebarMenuButton
                                     asChild
+                                    className={`${
+                                      pathname === subItem.url
+                                        ? "w-40 rounded-l-lg border-r-4 border-r-orange-600 bg-orange-400 text-white"
+                                        : "text-white hover:bg-orange-300/20"
+                                    } !justify-start !pr-4 !pl-8`}
+                                  >
+                                    <Link href={subItem.url || "/"}>
+                                      {subItem.icon}
+                                      <span>{subItem.title}</span>
+                                    </Link>
+                                  </SidebarMenuButton>
+
+                                  {/* <SidebarMenuButton
+                                    asChild
                                     className={` ${
                                       pathname === subItem.url
                                         ? "w-40 rounded-l-lg border-r-4 border-r-orange-600 bg-orange-400 text-white"
@@ -382,10 +397,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                     } !justify-start !pr-4 !pl-8`}
                                   >
                                     <Link href={subItem.url || "#"} dir="rtl">
-                                      {subItem.icon}
-                                      <span>{subItem.title}</span>
+                              
+                                    
                                     </Link>
-                                  </SidebarMenuButton>
+                                  </SidebarMenuButton> */}
                                 </SidebarMenuItem>
 
                                 // <SidebarMenuSubItem key={subItem.title}>
@@ -406,19 +421,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
                   return (
                     <SidebarMenuItem key={item.title} className="text-[20px]">
-                      <SidebarMenuButton
-                        asChild
-                        className={` ${
-                          pathname === item.url
-                            ? "w-52 rounded-l-lg border-r-4 border-r-orange-600 bg-orange-400 text-white"
-                            : "text-white hover:bg-orange-300/20"
-                        } !justify-start !pr-4 !pl-8 text-[18px]`}
-                      >
-                        <Link href={item.url || "#"}>
-                          <item.icon />
-                          <span>{item.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
+                      <Link href={item.url ?? ""} className="block">
+                        <SidebarMenuButton
+                          className={`${
+                            pathname === item.url
+                              ? "w-52 rounded-l-lg border-r-4 border-r-orange-600 bg-orange-400 text-white"
+                              : "text-white hover:bg-orange-300/20"
+                          }`}
+                        >
+                          <>
+                            <item.icon />
+                            <span>{item.title}</span>
+                          </>
+                        </SidebarMenuButton>
+                      </Link>
                     </SidebarMenuItem>
 
                     // <SidebarMenuItem key={item.title}>

@@ -38,7 +38,17 @@ export async function getFiscalYears() {
     orderBy: { start_date: "desc" },
   });
 }
-
+export async function getAllFiscalYears() {
+  const user = await getSession();
+  if (!user) return;
+  const fiscalYear = await prisma.fiscal_periods.findMany({
+    where: {
+      company_id: user.companyId,
+    },
+    select: { start_date: true, end_date: true },
+  });
+  return fiscalYear;
+}
 export async function setActiveFiscalYear(fyId: string) {
   const user = await getSession();
   if (!user) return;

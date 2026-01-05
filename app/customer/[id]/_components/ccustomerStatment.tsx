@@ -3,11 +3,20 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/context/AuthContext";
 import { useCompany } from "@/hooks/useCompany";
-import { getCustomerStatement } from "@/lib/actions/test";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { Calendar22 } from "@/components/common/DatePicker";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
 import CustomerStatementPrint from "./CustonerStatmentprint";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
+
+import { Label } from "recharts";
 type Company =
   | {
       id: string;
@@ -50,27 +59,20 @@ interface CustomerStatement {
     to: string;
   };
 }
-
+interface FiscalYearType {
+  start_date: Date | string;
+  end_date: Date | string;
+}
 export default function CustomerStatement({
   customers,
+  fiscalYear,
 }: {
   customers: CustomerStatement | undefined;
+  fiscalYear: any;
 }) {
   // const [customers, setStatement] = useState<CustomerStatement | undefined>(
   //   undefined,
   // );
-  const getCurrencySymbol = (currency: string) => {
-    switch (currency?.toLowerCase()) {
-      case "usd":
-        return "$";
-      case "yer":
-        return "ر.ي"; // Yemeni Rial in Arabic
-      case "sar":
-        return "ر.س"; // Saudi Riyal in Arabic
-      default:
-        return currency || ""; // Fallback to the original string
-    }
-  };
   const [loading, setLoading] = useState(false);
   // const [selectedCustomerId, setSelectedCustomerId] = useState("");
   // const [dateFrom, setDateFrom] = useState(
@@ -78,11 +80,29 @@ export default function CustomerStatement({
   // );
   // const [dateTo, setDateTo] = useState(new Date().toISOString().split("T")[0]);
   // const { user } = useAuth();
+  const [selectedPeriod, setSelectedPeriod] = useState<string>("");
   const { company } = useCompany();
   //   const [customers, setCustomers] = useState([]);
   if (!company) {
     return <div>Loading...</div>;
   }
+  const { replace } = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const handleYearChange = (value: string) => {
+    const [start, end] = value.split("_");
+
+    // إنشاء كائن URLSearchParams جديد للحفاظ على أي بارامترات أخرى موجودة
+    const params = new URLSearchParams(searchParams.toString());
+
+    // تحديث التواريخ
+    params.set("from", new Date(start).toISOString().split("T")[0]);
+    params.set("to", new Date(end).toISOString().split("T")[0]);
+
+    // دفع التغييرات إلى الرابط
+    replace(`${pathname}?${params.toString()}`);
+  };
   // const loadStatement = async () => {
   //   if (!selectedCustomerId) {
   //     alert("الرجاء اختيار عميل");
@@ -118,11 +138,51 @@ export default function CustomerStatement({
       {/* عرض الكشف */}
       {customers && (
         <div className="bg-accent flex w-full flex-col rounded-lg p-6 shadow">
-          <h1 className="text-3xl font-bold">كشف حساب عميل</h1>
+          <h1 className="text-3xl font-bold">كشف حساب عميل</h1>{" "}
           <div className="grid grid-cols-1 justify-center gap-3 md:grid-cols-2 print:hidden">
+            {" "}
             <div className="grid grid-cols-1 gap-3 md:grid-cols-1 lg:grid-cols-2">
-              <Calendar22 />
-              <CustomerStatementPrint customers={customers} />
+              <div className="grid grid-rows-2 gap-2">
+                {" "}
+                <Label className="text-right">الفترة المالية</Label>
+                <Select
+                  onValueChange={(value: any) => {
+                    setSelectedPeriod(value);
+                    handleYearChange(value);
+                    // logic to reload data based on this year's dates
+                    // window.location.search = `?from=${start}&to=${end}`
+                  }}
+                >
+                  <SelectTrigger className="bg-background w-full">
+                    <SelectValue placeholder="اختر السنة المالية" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {fiscalYear?.map((year: FiscalYearType, index: number) => {
+                      const startDate = new Date(year.start_date);
+                      const endDate = new Date(year.end_date);
+                      const startYear = startDate.getFullYear();
+                      const endYear = endDate.getFullYear();
+
+                      return (
+                        <SelectItem
+                          key={index}
+                          value={`${year.start_date}_${year.end_date}`}
+                        >
+                          السنة المالية{" "}
+                          {startYear === endYear
+                            ? startYear
+                            : `${startYear} - ${endYear}`}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>{" "}
+              </div>
+              <div className="grid grid-rows-2 gap-2">
+                {" "}
+                <Label className="text-right"> طباعه الكشف</Label>
+                <CustomerStatementPrint customers={customers} />
+              </div>
             </div>
             <div className="inline-block rounded px-6 py-3">
               <strong className="text-lg">الرصيد الحالي: </strong>
@@ -130,7 +190,7 @@ export default function CustomerStatement({
                 {customers.closingBalance.toFixed(2)} ر.ي
               </span>
             </div>
-          </div>
+          </div>{" "}
           {/* رأس التقرير */}
           {/* <div className="mb-6 border-b pb-4 text-center">
             <h2 className="text-2xl font-bold">{company.name}</h2>
@@ -155,7 +215,7 @@ export default function CustomerStatement({
                 {customers.period.to}
               </div>
             </div>
-          </div>
+          </div>{" "}
           <ScrollArea className="h-[65vh] p-2" dir="rtl">
             {/* جدول الحركات */}
             <table className="w-full border">
@@ -163,7 +223,7 @@ export default function CustomerStatement({
                 <tr>
                   <th className="border p-2">التاريخ</th>
                   <th className="border p-2">نوع السند</th>
-                  <th className="border p-2">رقم المستند</th>
+
                   <th className="border p-2">البيان</th>
                   <th className="border p-2">مدين</th>
                   <th className="border p-2">دائن</th>
@@ -172,19 +232,33 @@ export default function CustomerStatement({
               </thead>
               <tbody>
                 {customers.openingBalance !== 0 && (
-                  <tr className="">
+                  <tr className="bg-gray-50 font-medium">
+                    <td className="border p-2 text-center">-</td>
+                    <td className="border p-2">رصيد افتتاحي</td>
+                    <td className="border p-2 text-center">-</td>
                     <td className="border p-2">-</td>
-                    <td className="border p-2">-</td>
-                    <td className="border p-2">-</td>
-                    <td className="border p-2 text-center">
-                      {customers.openingBalance.toFixed(2)}
+
+                    {/* خانة المدين: تظهر القيمة إذا كانت موجبة */}
+                    <td className="border p-2 text-center text-green-700">
+                      {customers.openingBalance > 0
+                        ? customers.openingBalance.toFixed(2)
+                        : "0.00"}
                     </td>
-                    <td className="border p-2 text-center">0.00</td>
+
+                    {/* خانة الدائن: تظهر القيمة (موجبة) إذا كان الرصيد الأصلي سالباً */}
+                    <td className="border p-2 text-center text-red-700">
+                      {customers.openingBalance < 0
+                        ? Math.abs(customers.openingBalance).toFixed(2)
+                        : "0.00"}
+                    </td>
+
+                    {/* خانة الرصيد الإجمالي */}
                     <td className="border p-2 text-center">
                       <strong>{customers.openingBalance.toFixed(2)}</strong>
                     </td>
                   </tr>
                 )}
+
                 {/* الحركات */}
                 {customers.transactions.map((trans, idx) => (
                   <tr key={idx}>
@@ -216,7 +290,7 @@ export default function CustomerStatement({
                 <tr className="font-bold">
                   <td className="border p-2" colSpan={3}>
                     <strong>الإجمالي</strong>
-                  </td>
+                  </td>{" "}
                   <td className="border p-2"></td>
                   <td className="border p-2 text-center">
                     {customers.totalDebit.toFixed(2)}
@@ -229,7 +303,7 @@ export default function CustomerStatement({
                   </td>
                 </tr>
               </tbody>
-            </table>
+            </table>{" "}
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
           {/* الرصيد النهائي */}

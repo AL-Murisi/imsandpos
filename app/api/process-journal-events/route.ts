@@ -21,6 +21,8 @@ export async function GET() {
             "expense",
             "payment-outstanding",
             "manual-journal",
+            "fiscal-year-close", // 👈 NEW
+            "fiscal-year-open", // 👈 NEW
           ],
         }, // Filter for sale events only
       },
@@ -48,6 +50,8 @@ export async function GET() {
       createsupplier: 0,
       expenses: 0,
       manualjournal: 0,
+      fiscal_close: 0, // 👈 NEW
+      fiscal_open: 0,
       errors: [] as any[],
     };
 
@@ -156,6 +160,30 @@ export async function GET() {
         } else if (event.eventType === "manual-journal") {
           await createManualJournalEntriesFromEvent(event.payload);
           results.manualjournal = (results.manualjournal || 0) + 1;
+        } else if (event.eventType === "fiscal-year-close") {
+          await processFiscalYearClose({
+            companyId: eventData.companyId,
+            fiscalPeriod: eventData.fiscalPeriod,
+            closingDate: new Date(eventData.closingDate),
+            accounts: eventData.accounts,
+            userId: eventData.userId,
+          });
+          results.fiscal_close++;
+          console.log(`✅ Processed fiscal year close event ${event.id}`);
+        }
+
+        // 🆕 FISCAL YEAR OPENING
+        else if (event.eventType === "fiscal-year-open") {
+          await processFiscalYearOpen({
+            companyId: eventData.companyId,
+            openingDate: new Date(eventData.openingDate),
+            accounts: eventData.accounts,
+            customers: eventData.customers,
+            suppliers: eventData.suppliers,
+            userId: eventData.userId,
+          });
+          results.fiscal_open++;
+          console.log(`✅ Processed fiscal year open event ${event.id}`);
         }
         success = true;
         // Mark as processed
@@ -1668,7 +1696,7 @@ async function createPurchaseJournalEntries({
           account_id: paymentDetails.bankId,
           exchange_rate: paymentDetails.exchangeRate,
           foreign_amount: paymentDetails.amountFC,
-          base_amount: paymentDetails.amountBase,
+          base_amount: amountPaid,
           description:
             description +
             " - دفع جزئي" +
@@ -1704,7 +1732,7 @@ async function createPurchaseJournalEntries({
           ...baseEntry,
           exchange_rate: paymentDetails.exchangeRate,
           foreign_amount: paymentDetails.amountFC,
-          base_amount: paymentDetails.amountBase,
+          base_amount: amountPaid,
           account_id: payableAccount,
           description: description + " - آجل للمورد",
           debit: amountPaid,
@@ -1853,6 +1881,265 @@ async function createPurchaseJournalEntries({
       ),
     );
   });
+}
+async function processFiscalYearClose({
+  companyId,
+  fiscalPeriod,
+  closingDate,
+  accounts,
+  userId,
+}: {
+  companyId: string;
+  fiscalPeriod: string;
+  closingDate: Date;
+  accounts: any[];
+  userId: string;
+}) {
+  // Get account mappings
+  const mappings = await prisma.account_mappings.findMany({
+    where: { company_id: companyId, is_default: true },
+  });
+
+  const getAcc = (type: string) =>
+    mappings.find((m) => m.mapping_type === type)?.account_id;
+
+  const retainedEarningsAcc = getAcc("retained_earnings");
+  if (!retainedEarningsAcc) {
+    throw new Error("حساب الأرباح المحتجزة غير موجود");
+  }
+
+  const entryBase = `CLOSE-${new Date().getFullYear()}-${Date.now()}`;
+  const entries: any[] = [];
+
+  // Process Revenue accounts
+  const revenueAccounts = accounts.filter((a) => a.type === "REVENUE");
+  for (const acc of revenueAccounts) {
+    const balance = Number(acc.balance);
+    if (balance === 0) continue;
+
+    // Debit revenue (close it)
+    entries.push({
+      company_id: companyId,
+      account_id: acc.id,
+      description: `قيد إقفال حساب ${acc.name_ar || acc.name_en}`,
+      debit: Math.abs(balance),
+      credit: 0,
+      entry_date: closingDate,
+      fiscal_period: fiscalPeriod,
+      reference_type: "إقفال سنة مالية - إيرادات",
+      entry_number: `${entryBase}-REV-${acc.id.slice(0, 6)}`,
+      created_by: userId,
+      is_automated: true,
+      is_posted: true,
+    });
+
+    // Credit retained earnings
+    entries.push({
+      company_id: companyId,
+      account_id: retainedEarningsAcc,
+      description: `إقفال إيرادات إلى الأرباح المحتجزة`,
+      debit: 0,
+      credit: Math.abs(balance),
+      entry_date: closingDate,
+      fiscal_period: fiscalPeriod,
+      reference_type: "إقفال سنة مالية - إيرادات",
+      entry_number: `${entryBase}-REV-RE-${acc.id.slice(0, 6)}`,
+      created_by: userId,
+      is_automated: true,
+      is_posted: true,
+    });
+  }
+
+  // Process Expense accounts
+  const expenseAccounts = accounts.filter(
+    (a) => a.type === "EXPENSE" || a.type === "COST_OF_GOODS",
+  );
+  for (const acc of expenseAccounts) {
+    const balance = Number(acc.balance);
+    if (balance === 0) continue;
+
+    // Credit expense (close it)
+    entries.push({
+      company_id: companyId,
+      account_id: acc.id,
+      description: `قيد إقفال حساب ${acc.name_ar || acc.name_en}`,
+      debit: 0,
+      credit: Math.abs(balance),
+      entry_date: closingDate,
+      fiscal_period: fiscalPeriod,
+      reference_type: "إقفال سنة مالية - مصروفات",
+      entry_number: `${entryBase}-EXP-${acc.id.slice(0, 6)}`,
+      created_by: userId,
+      is_automated: true,
+      is_posted: true,
+    });
+
+    // Debit retained earnings
+    entries.push({
+      company_id: companyId,
+      account_id: retainedEarningsAcc,
+      description: `إقفال مصروفات من الأرباح المحتجزة`,
+      debit: Math.abs(balance),
+      credit: 0,
+      entry_date: closingDate,
+      fiscal_period: fiscalPeriod,
+      reference_type: "إقفال سنة مالية - مصروفات",
+      entry_number: `${entryBase}-EXP-RE-${acc.id.slice(0, 6)}`,
+      created_by: userId,
+      is_automated: true,
+      is_posted: true,
+    });
+  }
+
+  // Insert entries and reset accounts in transaction
+  if (entries.length > 0) {
+    await prisma.$transaction(async (tx) => {
+      await tx.journal_entries.createMany({ data: entries });
+
+      // Reset income statement accounts to zero
+      for (const acc of [...revenueAccounts, ...expenseAccounts]) {
+        if (Number(acc.balance) !== 0) {
+          await tx.accounts.update({
+            where: { id: acc.id },
+            data: { balance: 0 },
+          });
+        }
+      }
+    });
+  }
+
+  console.log(`✅ Created ${entries.length} closing entries`);
+}
+
+// ============================================
+// 🆕 FISCAL YEAR OPEN PROCESSOR
+// ============================================
+async function processFiscalYearOpen({
+  companyId,
+  openingDate,
+  accounts,
+  customers,
+  suppliers,
+  userId,
+}: {
+  companyId: string;
+  openingDate: Date;
+  accounts: any[];
+  customers: any[];
+  suppliers: any[];
+  userId: string;
+}) {
+  const entryBase = `OPEN-${new Date().getFullYear()}-${Date.now()}`;
+  const entries: any[] = [];
+
+  // Get account mappings
+  const mappings = await prisma.account_mappings.findMany({
+    where: { company_id: companyId, is_default: true },
+  });
+
+  const getAcc = (type: string) =>
+    mappings.find((m) => m.mapping_type === type)?.account_id;
+
+  const arAccount = getAcc("accounts_receivable");
+  const apAccount = getAcc("accounts_payable");
+
+  // 1️⃣ Create opening entries for balance sheet accounts
+  for (const acc of accounts) {
+    const balance = Number(acc.balance);
+    if (balance === 0) continue;
+
+    const isDebitNormal = acc.type === "ASSET";
+
+    entries.push({
+      company_id: companyId,
+      account_id: acc.id,
+      description: `رصيد افتتاحي - ${acc.name_ar || acc.name_en}`,
+      debit: isDebitNormal ? Math.abs(balance) : 0,
+      credit: !isDebitNormal ? Math.abs(balance) : 0,
+      entry_date: openingDate,
+      reference_type: "رصيد افتتاحي حساب",
+      entry_number: `${entryBase}-ACC-${acc.id.slice(0, 6)}`,
+      created_by: userId,
+      is_automated: true,
+      is_posted: true,
+    });
+  }
+
+  // 2️⃣ Create opening entries for customers
+  if (arAccount) {
+    for (const customer of customers) {
+      const outstanding = Number(customer.outstandingBalance);
+      const balance = Number(customer.balance);
+
+      // Customer owes us (debit AR)
+      if (outstanding > 0) {
+        entries.push({
+          company_id: companyId,
+          account_id: arAccount,
+          description: `رصيد افتتاحي عميل - ${customer.name} (مديونية)`,
+          debit: outstanding,
+          credit: 0,
+          entry_date: openingDate,
+          reference_type: "opening_customer_balance",
+          reference_id: customer.id,
+          entry_number: `${entryBase}-CUST-D-${customer.id.slice(0, 6)}`,
+          created_by: userId,
+          is_automated: true,
+          is_posted: true,
+        });
+      }
+
+      // We owe customer (credit AR)
+      if (balance > 0) {
+        entries.push({
+          company_id: companyId,
+          account_id: arAccount,
+          description: `رصيد افتتاحي عميل - ${customer.name} (رصيد لصالح العميل)`,
+          debit: 0,
+          credit: balance,
+          entry_date: openingDate,
+          reference_type: "opening_customer_balance",
+          reference_id: customer.id,
+          entry_number: `${entryBase}-CUST-C-${customer.id.slice(0, 6)}`,
+          created_by: userId,
+          is_automated: true,
+          is_posted: true,
+        });
+      }
+    }
+  }
+
+  // 3️⃣ Create opening entries for suppliers
+  if (apAccount) {
+    for (const supplier of suppliers) {
+      const outstanding = Number(supplier.outstandingBalance);
+
+      // We owe supplier (credit AP)
+      if (outstanding > 0) {
+        entries.push({
+          company_id: companyId,
+          account_id: apAccount,
+          description: `رصيد افتتاحي مورد - ${supplier.name}`,
+          debit: 0,
+          credit: outstanding,
+          entry_date: openingDate,
+          reference_type: "opening_supplier_balance",
+          reference_id: supplier.id,
+          entry_number: `${entryBase}-SUPP-${supplier.id.slice(0, 6)}`,
+          created_by: userId,
+          is_automated: true,
+          is_posted: true,
+        });
+      }
+    }
+  }
+
+  // Insert all opening entries
+  if (entries.length > 0) {
+    await prisma.journal_entries.createMany({ data: entries });
+  }
+
+  console.log(`✅ Created ${entries.length} opening entries`);
 }
 // You'll need to implement this function based on your fiscal year logic
 async function getActiveFiscalYears() {

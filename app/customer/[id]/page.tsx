@@ -2,7 +2,7 @@ import { getCustomerStatement } from "@/lib/actions/test";
 import { getSession } from "@/lib/session";
 import ClientWarper from "./_components/clientWarper";
 import { ScrollArea } from "@/components/ui/scroll-area";
-
+import { getAllFiscalYears } from "@/lib/actions/fiscalYear";
 export default async function CustomerStatementPage({
   params,
   searchParams,
@@ -22,7 +22,7 @@ export default async function CustomerStatementPage({
     from ||
     new Date(new Date().getFullYear(), 0, 1).toISOString().split("T")[0];
   const dateTo = to || new Date().toISOString().split("T")[0];
-
+  const fiscalYear = await getAllFiscalYears();
   const result = await getCustomerStatement(
     id,
     user.companyId,
@@ -30,9 +30,11 @@ export default async function CustomerStatementPage({
     dateTo,
   );
 
-  if (!result.success) {
-    return <div>Error: {result.error}</div>;
+  if (!result?.success) {
+    return <div>Error: {result?.error}</div>;
   }
 
-  return <ClientWarper customers={result?.data} />;
+  return (
+    <ClientWarper customers={result?.data} fiscalYear={fiscalYear ?? []} />
+  );
 }

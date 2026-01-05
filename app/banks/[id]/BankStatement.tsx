@@ -6,8 +6,17 @@ import { Calendar22 } from "@/components/common/DatePicker";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import SupplierStatementPrint from "./SupplierStatementPrint";
 import { Card } from "@/components/ui/card";
-import { Decimal } from "@prisma/client/runtime/library";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 
+import { Decimal } from "@prisma/client/runtime/library";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 interface BankStatement {
   bank: {
     id: string;
@@ -36,11 +45,16 @@ interface BankStatement {
     to: string;
   };
 }
-
+interface FiscalYearType {
+  start_date: Date | string;
+  end_date: Date | string;
+}
 export default function BankStatement({
   banks,
+  fiscalYear,
 }: {
   banks: BankStatement | undefined;
+  fiscalYear: any;
 }) {
   const [loading, setLoading] = useState(false);
   const { company } = useCompany();
@@ -48,7 +62,23 @@ export default function BankStatement({
   if (!company) {
     return <div>Loading...</div>;
   }
+  const { replace } = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
+  const handleYearChange = (value: string) => {
+    const [start, end] = value.split("_");
+
+    // إنشاء كائن URLSearchParams جديد للحفاظ على أي بارامترات أخرى موجودة
+    const params = new URLSearchParams(searchParams.toString());
+
+    // تحديث التواريخ
+    params.set("from", new Date(start).toISOString().split("T")[0]);
+    params.set("to", new Date(end).toISOString().split("T")[0]);
+
+    // دفع التغييرات إلى الرابط
+    replace(`${pathname}?${params.toString()}`);
+  };
   return (
     <Card className="@container/card border-transparent bg-transparent px-2">
       {/* Header */}
@@ -59,8 +89,45 @@ export default function BankStatement({
           <h1 className="text-3xl font-bold">كشف حساب مورد</h1>
           <div className="grid grid-cols-1 justify-center gap-3 md:grid-cols-1 lg:grid-cols-2 print:hidden">
             <div className="grid grid-cols-1 gap-3 md:grid-cols-1 lg:grid-cols-2">
-              <Calendar22 />
-              <SupplierStatementPrint banks={banks} />
+              <div className="grid grid-rows-2 gap-2">
+                {" "}
+                <Label className="text-right">الفترة المالية</Label>
+                <Select
+                  onValueChange={(value: any) => {
+                    handleYearChange(value);
+                    // logic to reload data based on this year's dates
+                    // window.location.search = `?from=${start}&to=${end}`
+                  }}
+                >
+                  <SelectTrigger className="bg-background w-full">
+                    <SelectValue placeholder="اختر السنة المالية" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {fiscalYear?.map((year: FiscalYearType, index: number) => {
+                      const startDate = new Date(year.start_date);
+                      const endDate = new Date(year.end_date);
+                      const startYear = startDate.getFullYear();
+                      const endYear = endDate.getFullYear();
+
+                      return (
+                        <SelectItem
+                          key={index}
+                          value={`${year.start_date}_${year.end_date}`}
+                        >
+                          السنة المالية{" "}
+                          {startYear === endYear
+                            ? startYear
+                            : `${startYear} - ${endYear}`}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>{" "}
+              </div>{" "}
+              <div className="grid grid-rows-2 gap-2">
+                <Label className="text-right"> طباعه الكشف</Label>
+                <SupplierStatementPrint banks={banks} />{" "}
+              </div>
             </div>
 
             <div className="inline-block rounded px-6 py-3">

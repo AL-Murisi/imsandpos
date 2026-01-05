@@ -5,8 +5,17 @@ import { useCompany } from "@/hooks/useCompany";
 import { Calendar22 } from "@/components/common/DatePicker";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import SupplierStatementPrint from "./SupplierStatementPrint";
-import { Card } from "@/components/ui/card";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 
+import { Card } from "@/components/ui/card";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 interface SupplierStatement {
   supplier: {
     id: string;
@@ -29,11 +38,16 @@ interface SupplierStatement {
     to: string;
   };
 }
-
+interface FiscalYearType {
+  start_date: Date | string;
+  end_date: Date | string;
+}
 export default function SupplierStatement({
   suppliers,
+  fiscalYear,
 }: {
   suppliers: SupplierStatement | undefined;
+  fiscalYear: any;
 }) {
   const [loading, setLoading] = useState(false);
   const { company } = useCompany();
@@ -53,6 +67,24 @@ export default function SupplierStatement({
         return currency || ""; // Fallback to the original string
     }
   };
+  const [selectedPeriod, setSelectedPeriod] = useState<string>("");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const handleYearChange = (value: string) => {
+    const [start, end] = value.split("_");
+
+    // إنشاء كائن URLSearchParams جديد للحفاظ على أي بارامترات أخرى موجودة
+    const params = new URLSearchParams(searchParams.toString());
+
+    // تحديث التواريخ
+    params.set("from", new Date(start).toISOString().split("T")[0]);
+    params.set("to", new Date(end).toISOString().split("T")[0]);
+
+    // دفع التغييرات إلى الرابط
+    router.push(`${pathname}?${params.toString()}`);
+  };
   return (
     <Card className="@container/card border-transparent bg-transparent px-2">
       {/* Header */}
@@ -63,8 +95,46 @@ export default function SupplierStatement({
           <h1 className="text-3xl font-bold">كشف حساب مورد</h1>
           <div className="grid grid-cols-1 justify-center gap-3 md:grid-cols-1 lg:grid-cols-2 print:hidden">
             <div className="grid grid-cols-1 gap-3 md:grid-cols-1 lg:grid-cols-2">
-              <Calendar22 />
-              <SupplierStatementPrint suppliers={suppliers} />
+              <div className="grid grid-rows-2 gap-2">
+                <Label className="text-right">الفترة المالية</Label>
+                <Select
+                  onValueChange={(value: any) => {
+                    setSelectedPeriod(value);
+                    handleYearChange(value);
+                    // logic to reload data based on this year's dates
+                    // window.location.search = `?from=${start}&to=${end}`
+                  }}
+                >
+                  <SelectTrigger className="bg-background w-full">
+                    <SelectValue placeholder="اختر السنة المالية" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {fiscalYear?.map((year: FiscalYearType, index: number) => {
+                      const startDate = new Date(year.start_date);
+                      const endDate = new Date(year.end_date);
+                      const startYear = startDate.getFullYear();
+                      const endYear = endDate.getFullYear();
+
+                      return (
+                        <SelectItem
+                          key={index}
+                          value={`${year.start_date}_${year.end_date}`}
+                        >
+                          السنة المالية{" "}
+                          {startYear === endYear
+                            ? startYear
+                            : `${startYear} - ${endYear}`}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>{" "}
+              </div>{" "}
+              <div className="grid grid-rows-2 gap-2">
+                {" "}
+                <Label className="text-right"> طباعه الكشف</Label>
+                <SupplierStatementPrint suppliers={suppliers} />
+              </div>
             </div>
 
             <div
@@ -126,23 +196,35 @@ export default function SupplierStatement({
                 </tr>
               </thead>
               <tbody>
+                {/* Opening Balance */}
                 {suppliers.openingBalance !== 0 && (
-                  <tr>
-                    <td className="border p-2"></td>
-                    <td className="border p-2 text-center">رصيد افتتاحي</td>
-                    <td className="border p-2 text-center">—</td>
-                    <td className="border p-2 text-center">
-                      رصيد افتتاحي للمورد
+                  <tr className="bg-gray-50 font-medium">
+                    <td className="border p-2 text-center">-</td>
+                    <td className="border p-2">رصيد افتتاحي</td>
+
+                    <td className="border p-2">-</td>
+
+                    {/* خانة المدين: تظهر القيمة إذا كانت موجبة */}
+                    <td className="border p-2 text-center text-green-700">
+                      {suppliers.openingBalance > 0
+                        ? suppliers.openingBalance.toFixed(2)
+                        : "0.00"}
                     </td>
-                    <td className="border p-2 text-center">
-                      {suppliers.openingBalance.toFixed(2)}
+
+                    {/* خانة الدائن: تظهر القيمة (موجبة) إذا كان الرصيد الأصلي سالباً */}
+                    <td className="border p-2 text-center text-red-700">
+                      {suppliers.openingBalance < 0
+                        ? Math.abs(suppliers.openingBalance).toFixed(2)
+                        : "0.00"}
                     </td>
-                    <td className="border p-2 text-center">0.00</td>
+
+                    {/* خانة الرصيد الإجمالي */}
                     <td className="border p-2 text-center">
                       <strong>{suppliers.openingBalance.toFixed(2)}</strong>
                     </td>
                   </tr>
                 )}
+
                 {/* Transactions */}
                 {suppliers.transactions.map((trans, idx) => (
                   <tr key={idx}>
@@ -199,7 +281,7 @@ export default function SupplierStatement({
 
                 {/* Totals */}
                 <tr className="font-bold">
-                  <td className="border p-2" colSpan={3}>
+                  <td className="border p-2" colSpan={2}>
                     <strong>الإجمالي</strong>
                   </td>
                   <td className="border p-2"></td>

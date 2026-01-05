@@ -38,8 +38,10 @@ interface BankStatement {
 
 export default function ClientWrapper({
   bank,
+  fiscalYear,
 }: {
   bank: BankStatement | undefined;
+  fiscalYear: any;
 }) {
-  return <BankStatement banks={bank} />;
+  return <BankStatement banks={bank} fiscalYear={fiscalYear} />;
 }

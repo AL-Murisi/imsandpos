@@ -6,6 +6,7 @@ import { useCompany } from "@/hooks/useCompany";
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { PrinterIcon } from "lucide-react";
+import { number } from "motion/react";
 
 export default function CustomerStatementPrint({
   customers,
@@ -220,14 +221,36 @@ export default function CustomerStatementPrint({
           </thead>
 
           <tbody>
-           
+         ${
+           Number(customers.openingBalance) !== 0
+             ? `
+    <tr class="balance-highlight">
+      <td>-</td>   <td>-</td>
+      <td>رصيد افتتاحي</td>
+      <td>رصيد افتتاحي للمورد</td>
+      <td>${
+        customers.openingBalance > 0
+          ? customers.openingBalance.toFixed(2)
+          : "0.00"
+      }</td>
+      <td>${
+        customers.openingBalance < 0
+          ? Math.abs(customers.openingBalance).toFixed(2)
+          : "0.00"
+      }</td>
+      <td><strong>${customers.openingBalance.toFixed(2)}</strong></td>
+    </tr>
+    `
+             : ""
+         }
+
 
             ${customers.transactions
               .map(
                 (t: any) => `
               <tr>
                 <td>${new Date(t.date).toLocaleDateString("ar-EG")}</td>
-                <td>${t.typeName ?? ""}</td>
+                <td>${t.typeName ?? " "}</td>
                 <td>${t.docNo ?? ""}</td>
                 <td>${t.description ?? ""}</td>
                 <td>${t.debit > 0 ? t.debit.toFixed(2) : ""}</td>

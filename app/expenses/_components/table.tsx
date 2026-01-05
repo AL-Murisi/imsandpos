@@ -34,6 +34,7 @@ type ProductClientProps = {
   total: any;
 
   formData: { id: string; name: string }[];
+  payment: any;
 };
 
 // Loading skeleton for table
@@ -42,6 +43,7 @@ export default function ExpensesPage({
   data,
   total,
   formData,
+  payment,
 }: ProductClientProps) {
   const {
     pagination,
@@ -66,19 +68,21 @@ export default function ExpensesPage({
       className="bg-accent w-full rounded-2xl p-2 shadow-xl/20 shadow-gray-500 group-data-[[state=pending]]:animate-pulse"
       dir="rtl"
     >
-      <div className="flex flex-wrap gap-2 p-1 md:flex-row lg:flex-row">
-        <Calendar22 />
-        <SearchInput placeholder={"بحث "} paramKey={"product"} />
-
-        <ExpenseForm
-          companyId={user.companyId}
-          userId={user.id}
-          categories={formData}
-        />
-      </div>
-
       <DataTable
-        search={<PrintExpenseTable expenses={data} />}
+        search={
+          <div className="flex flex-wrap gap-2 p-1 md:flex-row lg:flex-row">
+            <Calendar22 />
+            <SearchInput placeholder={"بحث "} paramKey={"product"} />
+
+            <ExpenseForm
+              companyId={user.companyId}
+              userId={user.id}
+              payment={payment}
+              categories={formData}
+            />
+            <PrintExpenseTable expenses={data} />
+          </div>
+        }
         data={data}
         columns={expenseColumns}
         initialPageSize={pagination.pageSize}
