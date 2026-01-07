@@ -146,6 +146,13 @@ const reports = [
     icon: "💳",
     description: "الذمم الدائنة",
   },
+  {
+    name: "   كشف حساب الموردين",
+    id: "supplier_statment",
+    type: "purchases",
+    icon: "💳",
+    description: "كشف حساب الموردين",
+  },
 
   // Payments
   {
@@ -264,8 +271,17 @@ const categories = [
 export default function ReportsPage({
   users,
   banks,
+  suppliers,
 }: {
   users:
+    | {
+        id?: string;
+        name?: string;
+        phoneNumber?: string | null;
+        totalDebt?: number;
+      }[]
+    | null;
+  suppliers:
     | {
         id?: string;
         name?: string;
@@ -289,6 +305,8 @@ export default function ReportsPage({
 
   const [toDate, setToDate] = useState<string>(searchParams.get("to") || "");
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
+  const [selectedSupplier, setSelectedSupplier] = useState<any>(null);
+
   const [selectedbank, setSelectedbanks] = useState<any>(null);
   const [reportType, setReportType] = useState<string>(
     searchParams.get("reportType") || "",
@@ -311,48 +329,6 @@ export default function ReportsPage({
     }
   }, [searchParams]);
 
-  // const handleDownload = useCallback(async () => {
-  //   if (!reportType) {
-  //     alert("الرجاء اختيار نوع التقرير");
-  //     return;
-  //   }
-
-  //   setIsSubmitting(true);
-  //   const endpoint = `/api/reports/${reportType}`;
-
-  //   try {
-  //     const res = await fetch(endpoint, {
-  //       method: "POST",
-  //       headers: { "Content-Type": "application/json" },
-  //       body: JSON.stringify({
-  //         fromDate,
-  //         toDate,
-  //         customerId: selectedCustomer?.id,
-  //         accountId: selectedbank?.id,
-  //       }),
-  //     });
-
-  //     if (!res.ok) {
-  //       const error = await res.json();
-  //       alert(`فشل تحميل التقرير: ${error.error || "خطأ غير معروف"}`);
-  //       setIsSubmitting(false);
-  //       return;
-  //     }
-
-  //     const blob = await res.blob();
-  //     const url = window.URL.createObjectURL(blob);
-  //     const a = document.createElement("a");
-  //     a.href = url;
-  //     a.download = `${reportType}-${format(new Date(), "yyyy-MM-dd")}.pdf`;
-  //     a.click();
-  //     window.URL.revokeObjectURL(url);
-  //     setIsSubmitting(false);
-  //   } catch (err) {
-  //     console.error(err);
-  //     setIsSubmitting(false);
-  //     alert("حدث خطأ أثناء تحميل التقرير");
-  //   }
-  // }, [reportType, fromDate, toDate, selectedCustomer]);
   const handleDownload = useCallback(async () => {
     if (!reportType) return;
 
@@ -372,6 +348,7 @@ export default function ReportsPage({
           toDate,
           customerId: selectedCustomer?.id,
           accountId: selectedbank?.id,
+          suppliersId: selectedSupplier?.id,
         }),
       });
 
@@ -395,7 +372,14 @@ export default function ReportsPage({
         setProgress(0);
       }, 600);
     }
-  }, [reportType, fromDate, toDate, selectedCustomer, selectedbank]);
+  }, [
+    reportType,
+    fromDate,
+    toDate,
+    selectedCustomer,
+    selectedbank,
+    selectedSupplier,
+  ]);
 
   return (
     <div className="container mx-auto p-2">
@@ -468,6 +452,39 @@ export default function ReportsPage({
                   </div>
                 )}
                 {/* Customer Filter for customer reports */}
+                {selectedReport.id === "supplier_statment" && (
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm font-medium">
+                      👤 اختر مورد محدد (اختياري)
+                    </label>
+                    <SearchInput
+                      placeholder="ابحث عن المورد"
+                      paramKey="customer"
+                      options={suppliers ?? []}
+                      action={(user) => setSelectedSupplier(user)}
+                    />
+                    {selectedSupplier && (
+                      <Card className="bg-muted/50">
+                        <CardContent className="space-y-1 p-3 text-sm">
+                          <p className="flex items-center gap-2">
+                            <strong>👤 المورد:</strong> {selectedSupplier.name}
+                          </p>
+                          <p className="flex items-center gap-2">
+                            <strong>🆔 رقم المورد:</strong>{" "}
+                            {selectedSupplier.value}
+                          </p>
+                          <Button
+                            size="sm"
+                            onClick={() => setSelectedSupplier(null)}
+                            className="mt-2"
+                          >
+                            إلغاء التحديد
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                )}{" "}
                 {(selectedReport.id === "customer_statment" ||
                   selectedReport.id === "customer-receipts") && (
                   <div className="space-y-2">

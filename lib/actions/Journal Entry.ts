@@ -603,104 +603,94 @@ export async function getProfitAndLoss(
 }
 
 // Balance Sheet
-export async function getBalanceSheet(from?: string, to?: string) {
-  const company = await getSession();
-  if (!company) return [];
-  const fromatDate = from ? new Date(from).toISOString() : undefined;
-  const toDate = to ? new Date(to).toISOString() : undefined;
-
-  const assets = await prisma.accounts.findMany({
-    where: {
-      company_id: company.companyId,
-      account_type: "ASSET",
-      is_active: true,
-      updated_at: {
-        ...(fromatDate && {
-          gte: fromatDate,
-        }),
-        ...(toDate && {
-          lte: toDate,
-        }),
+export async function getBalanceSheet(asOfDate: Date) {
+  try {
+    // Normalize date
+    const endDate = new Date(asOfDate);
+    endDate.setHours(23, 59, 59, 999);
+    const session = await getSession();
+    if (!session) {
+      throw new Error("Unauthorized");
+    }
+    // 1️⃣ Fetch balances per account
+    const rows = await prisma.journal_entries.groupBy({
+      by: ["account_id"],
+      where: {
+        company_id: session.companyId,
+        entry_date: { lte: endDate },
+        accounts: {
+          account_type: {
+            in: ["ASSET", "LIABILITY", "EQUITY"],
+          },
+        },
       },
-    },
-    select: {
-      balance: true,
-      account_name_en: true,
-    },
-  });
-
-  const liabilities = await prisma.accounts.findMany({
-    where: {
-      company_id: company.companyId,
-      account_type: "LIABILITY",
-      is_active: true,
-
-      updated_at: {
-        ...(fromatDate && {
-          gte: fromatDate,
-        }),
-        ...(toDate && {
-          lte: toDate,
-        }),
+      _sum: {
+        debit: true,
+        credit: true,
       },
-    },
-    select: {
-      balance: true,
-      account_name_en: true,
-    },
-  });
+    });
 
-  const equity = await prisma.accounts.findMany({
-    where: {
-      company_id: company.companyId,
-      account_type: "EQUITY",
-      is_active: true,
-      updated_at: {
-        ...(fromatDate && {
-          gte: fromatDate,
-        }),
-        ...(toDate && {
-          lte: toDate,
-        }),
+    // 2️⃣ Fetch account metadata
+    const accountIds = rows.map((r) => r.account_id);
+
+    const accounts = await prisma.accounts.findMany({
+      where: {
+        id: { in: accountIds },
+        company_id: session.companyId,
       },
-    },
-    select: {
-      balance: true,
-      account_name_en: true,
-    },
-  });
+      select: {
+        id: true,
+        account_name_ar: true,
+        account_name_en: true,
+        account_type: true,
+      },
+    });
 
-  const totalAssets = assets.reduce(
-    (sum, account) => sum + Number(account.balance),
-    0,
-  );
-  const totalLiabilities = liabilities.reduce(
-    (sum, account) => sum + Number(account.balance),
-    0,
-  );
-  const totalEquity = equity.reduce(
-    (sum, account) => sum + Number(account.balance),
-    0,
-  );
-  console.log(totalAssets);
-  return {
-    assets: assets.map((acc) => ({
-      name: acc.account_name_en,
-      balance: Number(acc.balance),
-    })),
-    liabilities: liabilities.map((acc) => ({
-      name: acc.account_name_en,
-      balance: Number(acc.balance),
-    })),
-    equity: equity.map((acc) => ({
-      name: acc.account_name_en,
-      balance: Number(acc.balance),
-    })),
-    totalAssets,
-    totalLiabilities,
-    totalEquity,
-    equation: totalAssets === totalLiabilities + totalEquity,
-  };
+    // 3️⃣ Map balances
+    const mapped = rows.map((r) => {
+      const acc = accounts.find((a) => a.id === r.account_id)!;
+      const balance = Number(r._sum.debit || 0) - Number(r._sum.credit || 0);
+
+      return {
+        id: acc.id,
+        name_ar: acc.account_name_ar,
+        name_en: acc.account_name_en,
+        type: acc.account_type,
+        balance,
+      };
+    });
+
+    // 4️⃣ Split sections
+    const assets = mapped.filter((a) => a.type === "ASSET");
+    const liabilities = mapped.filter((a) => a.type === "LIABILITY");
+    const equity = mapped.filter((a) => a.type === "EQUITY");
+
+    const totalAssets = assets.reduce((s, a) => s + a.balance, 0);
+    const totalLiabilities = liabilities.reduce((s, a) => s + a.balance, 0);
+    const totalEquity = equity.reduce((s, a) => s + a.balance, 0);
+
+    return {
+      success: true,
+      data: {
+        asOfDate: endDate.toISOString(),
+        assets,
+        liabilities,
+        equity,
+        totals: {
+          assets: totalAssets,
+          liabilities: Math.abs(totalLiabilities),
+          equity: Math.abs(totalEquity),
+          liabilitiesPlusEquity: Math.abs(totalLiabilities + totalEquity),
+        },
+      },
+    };
+  } catch (error) {
+    console.error("Balance Sheet error:", error);
+    return {
+      success: false,
+      error: "فشل إنشاء الميزانية العمومية",
+    };
+  }
 }
 
 /**

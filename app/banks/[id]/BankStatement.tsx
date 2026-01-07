@@ -80,12 +80,12 @@ export default function BankStatement({
     replace(`${pathname}?${params.toString()}`);
   };
   return (
-    <Card className="@container/card border-transparent bg-transparent px-2">
+    <Card className="bg-accent @container/card border-transparent p-2">
       {/* Header */}
 
       {/* Statement Display */}
       {banks && (
-        <div className="bg-accent flex w-full flex-col rounded-lg p-6 shadow">
+        <div className="bg-accent flex h-[89vh] w-full flex-col rounded-lg p-6 shadow">
           <h1 className="text-3xl font-bold">كشف حساب مورد</h1>
           <div className="grid grid-cols-1 justify-center gap-3 md:grid-cols-1 lg:grid-cols-2 print:hidden">
             <div className="grid grid-cols-1 gap-3 md:grid-cols-1 lg:grid-cols-2">
@@ -171,10 +171,18 @@ export default function BankStatement({
                   <td className="border p-2 text-center">
                     رصيد افتتاحي للمورد
                   </td>
-                  <td className="border p-2 text-center">
-                    {banks.openingBalance.toFixed(2)}
+                  <td className="border p-2 text-center text-green-700">
+                    {banks.openingBalance > 0
+                      ? banks.openingBalance.toFixed(2)
+                      : "0.00"}
                   </td>
-                  <td className="border p-2 text-center">0.00</td>
+
+                  {/* خانة الدائن: تظهر القيمة (موجبة) إذا كان الرصيد الأصلي سالباً */}
+                  <td className="border p-2 text-center text-red-700">
+                    {banks.openingBalance < 0
+                      ? Math.abs(banks.openingBalance).toFixed(2)
+                      : "0.00"}
+                  </td>
                   <td className="border p-2 text-center">
                     <strong>{banks.openingBalance.toFixed(2)}</strong>
                   </td>

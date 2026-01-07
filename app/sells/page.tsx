@@ -98,7 +98,7 @@ export default async function SellsDashboard({ searchParams }: DashboardProps) {
 
   return (
     <ScrollArea className="flex h-[95vh] flex-col space-y-8 p-6" dir="rtl">
-      <PushNotificationManager />
+      {/* <PushNotificationManager /> */}
       <SellsDashboardClient
         debtSales={data.serializedDebts}
         recentSales={data.serializedDebts}

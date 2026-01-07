@@ -1,12 +1,14 @@
 "use client";
+
 import React, { useState } from "react";
-import { ChevronDown, ChevronUp, Download, Calendar } from "lucide-react";
+import { ChevronDown, ChevronUp, Download } from "lucide-react";
 import { useFormatter } from "@/hooks/usePrice";
 import { Calendar22 } from "@/components/common/DatePicker";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
-// Types
 type Account = {
-  name: string;
+  name_ar: string;
+  name_en: string;
   balance: number;
 };
 
@@ -14,80 +16,65 @@ type BalanceSheetData = {
   assets: Account[];
   liabilities: Account[];
   equity: Account[];
-  totalAssets: number;
-  totalLiabilities: number;
-  totalEquity: number;
-  equation: boolean;
+  totals: {
+    assets: number;
+    liabilities: number;
+    equity: number;
+    liabilitiesPlusEquity: number;
+  };
 };
 
-type BalanceSheetProps = {
+type Props = {
   balanceSheetData: BalanceSheetData;
 };
 
 type SectionType = "assets" | "liabilities" | "equity";
 
-type AccountSectionProps = {
-  title: string;
-  accounts: Account[];
-  total: number;
-  type: SectionType;
-  isExpanded: boolean;
-};
+export default function BalanceSheet({ balanceSheetData }: Props) {
+  const { formatCurrency } = useFormatter();
 
-export default function BalanceSheet({ balanceSheetData }: BalanceSheetProps) {
-  const [expandedSections, setExpandedSections] = useState<
-    Record<SectionType, boolean>
-  >({
+  const [expanded, setExpanded] = useState<Record<SectionType, boolean>>({
     assets: true,
     liabilities: true,
     equity: true,
   });
 
-  const { formatCurrency } = useFormatter();
+  const toggle = (section: SectionType) =>
+    setExpanded((p) => ({ ...p, [section]: !p[section] }));
 
-  const toggleSection = (section: SectionType) => {
-    setExpandedSections((prev) => ({
-      ...prev,
-      [section]: !prev[section],
-    }));
-  };
-
-  const AccountSection = ({
+  const Section = ({
     title,
+    type,
     accounts,
     total,
-    type,
-    isExpanded,
-  }: AccountSectionProps) => (
-    <div className="mb-6 overflow-hidden rounded-xl border-r-4 border-emerald-600 bg-white shadow-lg">
+  }: {
+    title: string;
+    type: SectionType;
+    accounts: Account[];
+    total: number;
+  }) => (
+    <div className="bg-accent mb-6 overflow-hidden rounded-xl border-r-4 border-emerald-600 shadow-lg">
       <div
+        onClick={() => toggle(type)}
         className="flex cursor-pointer items-center justify-between bg-gradient-to-l from-emerald-700 to-emerald-800 p-5"
-        onClick={() => toggleSection(type)}
       >
         <div className="flex items-center gap-3">
-          {isExpanded ? (
-            <ChevronUp className="text-white" />
+          {expanded[type] ? (
+            <ChevronUp className="" />
           ) : (
-            <ChevronDown className="text-white" />
+            <ChevronDown className="" />
           )}
-          <h3 className="text-xl font-bold text-white">{title}</h3>
+          <h3 className="text-xl font-bold">{title}</h3>
         </div>
-        <div className="text-xl font-bold text-white">
-          {formatCurrency(total)}
-        </div>
+        <div className="text-xl font-bold">{formatCurrency(total)}</div>
       </div>
 
-      {isExpanded && (
+      {expanded[type] && (
         <div className="p-6">
-          {accounts.map((account: Account, idx: number) => (
-            <div
-              key={idx}
-              className="flex items-center justify-between rounded border-b border-gray-100 px-4 py-3 transition-colors hover:bg-emerald-50"
-            >
-              <span className="text-lg text-gray-700">{account.name}</span>
-              <span className="text-lg font-semibold text-gray-900">
-                {formatCurrency(account.balance)}
-              </span>
+          {accounts.map((a, i) => (
+            <div key={i} className="flex justify-between border-b px-4 py-3">
+              <span className="">{a.name_ar || a.name_en}</span>
+              <span className="font-semibold">{formatCurrency(a.balance)}</span>
             </div>
           ))}
         </div>
@@ -95,123 +82,90 @@ export default function BalanceSheet({ balanceSheetData }: BalanceSheetProps) {
     </div>
   );
 
+  const balanced =
+    Math.round(balanceSheetData.totals.assets) ===
+    Math.round(balanceSheetData.totals.liabilitiesPlusEquity);
+
   return (
-    <div
-      className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 p-6"
-      dir="rtl"
-    >
+    <ScrollArea className="h-[94vh] p-3">
       <div className="mx-auto max-w-5xl">
         {/* Header */}
-        <div className="mb-8 rounded-2xl border-t-4 border-emerald-600 bg-white p-8 shadow-xl">
-          <div className="mb-6 flex items-center justify-between">
+        <div className="rounded-2xl border-t-4 border-emerald-600 p-8 shadow-xl">
+          <div className="flex justify-between">
             <div>
-              <h1 className="mb-2 text-4xl font-bold text-gray-800">
-                الميزانية العمومية
-              </h1>
-              <p className="text-lg text-gray-600">Balance Sheet Report</p>
+              <h1 className="text-4xl font-bold">الميزانية العمومية</h1>
+              <p className="text-gray-600">Balance Sheet</p>
             </div>
-            <button className="flex items-center gap-2 rounded-lg bg-emerald-600 px-6 py-3 text-white shadow-lg transition-colors hover:bg-emerald-700">
-              <Download size={20} />
+            <div className="rounded-lg bg-emerald-50 p-4">
+              <Calendar22 />
+            </div>
+            <button className="flex items-center gap-2 rounded-lg bg-emerald-600 px-6 py-3 hover:bg-emerald-700">
+              <Download size={18} />
               تصدير
             </button>
           </div>
-
-          <div className="flex items-center gap-3 rounded-lg bg-emerald-50 p-4 text-gray-600">
-            <Calendar22 />
-          </div>
         </div>
+        <div className="grid gap-8 md:grid-cols-3">
+          <Section
+            title="الأصول"
+            type="assets"
+            accounts={balanceSheetData.assets}
+            total={balanceSheetData.totals.assets}
+          />
 
-        {/* Assets Section */}
-        <AccountSection
-          title="الأصول"
-          accounts={balanceSheetData.assets}
-          total={balanceSheetData.totalAssets}
-          type="assets"
-          isExpanded={expandedSections.assets}
-        />
+          <Section
+            title="الخصوم"
+            type="liabilities"
+            accounts={balanceSheetData.liabilities}
+            total={balanceSheetData.totals.liabilities}
+          />
 
-        {/* Liabilities Section */}
-        <AccountSection
-          title="الخصوم"
-          accounts={balanceSheetData.liabilities}
-          total={balanceSheetData.totalLiabilities}
-          type="liabilities"
-          isExpanded={expandedSections.liabilities}
-        />
+          <Section
+            title="حقوق الملكية"
+            type="equity"
+            accounts={balanceSheetData.equity}
+            total={balanceSheetData.totals.equity}
+          />
+        </div>
+        {/* Summary */}
+        <div className="rounded-2xl bg-emerald-900 p-8 shadow-2xl">
+          <h3 className="border-b pb-4 text-2xl font-bold">الملخص</h3>
 
-        {/* Equity Section */}
-        <AccountSection
-          title="حقوق الملكية"
-          accounts={balanceSheetData.equity}
-          total={balanceSheetData.totalEquity}
-          type="equity"
-          isExpanded={expandedSections.equity}
-        />
+          <Row label="إجمالي الأصول" value={balanceSheetData.totals.assets} />
+          <Row
+            label="إجمالي الخصوم"
+            value={balanceSheetData.totals.liabilities}
+          />
+          <Row
+            label="إجمالي حقوق الملكية"
+            value={balanceSheetData.totals.equity}
+          />
 
-        {/* Summary Section */}
-        <div className="rounded-2xl bg-gradient-to-l from-emerald-800 to-emerald-900 p-8 text-white shadow-2xl">
-          <h3 className="mb-6 border-b border-emerald-600 pb-4 text-2xl font-bold">
-            الملخص
-          </h3>
-
-          <div className="space-y-4 text-lg">
-            <div className="flex items-center justify-between">
-              <span>إجمالي الأصول:</span>
-              <span className="text-2xl font-bold">
-                {formatCurrency(balanceSheetData.totalAssets)}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span>إجمالي الخصوم:</span>
-              <span className="text-2xl font-bold">
-                {formatCurrency(balanceSheetData.totalLiabilities)}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span>إجمالي حقوق الملكية:</span>
-              <span className="text-2xl font-bold">
-                {formatCurrency(balanceSheetData.totalEquity)}
-              </span>
-            </div>
-
-            <div className="mt-4 border-t-2 border-emerald-600 pt-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xl">الخصوم + حقوق الملكية:</span>
-                <span className="text-2xl font-bold">
-                  {formatCurrency(
-                    balanceSheetData.totalLiabilities +
-                      balanceSheetData.totalEquity,
-                  )}
-                </span>
-              </div>
-            </div>
+          <div className="mt-4 border-t pt-4">
+            <Row
+              label="الخصوم + حقوق الملكية"
+              value={balanceSheetData.totals.liabilitiesPlusEquity}
+            />
           </div>
 
-          {/* Equation Check */}
           <div
             className={`mt-6 rounded-lg p-4 text-center ${
-              balanceSheetData.equation
-                ? "bg-opacity-30 bg-green-600"
-                : "bg-opacity-30 bg-red-600"
+              balanced ? "bg-green-600/30" : "bg-red-600/30"
             }`}
           >
-            <span className="text-lg font-semibold">
-              {balanceSheetData.equation
-                ? "✓ الميزانية متوازنة"
-                : "✗ الميزانية غير متوازنة"}
-            </span>
+            {balanced ? "✓ الميزانية متوازنة" : "✗ الميزانية غير متوازنة"}
           </div>
-        </div>
-
-        {/* Footer */}
-        <div className="mt-8 text-center text-gray-600">
-          <p className="text-sm">
-            تم إنشاء التقرير تلقائياً • Automatically Generated Report
-          </p>
-        </div>
+        </div>{" "}
       </div>
-    </div>
+    </ScrollArea>
   );
+
+  function Row({ label, value }: { label: string; value: number }) {
+    return (
+      <div className="flex justify-between text-lg">
+        <span>{label}</span>
+        <span className="font-bold">{formatCurrency(value)}</span>
+      </div>
+    );
+  }
 }

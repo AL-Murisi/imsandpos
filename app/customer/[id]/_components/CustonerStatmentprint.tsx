@@ -185,7 +185,7 @@ export default function CustomerStatementPrint({
               <div class="title-box">
                 📋 كشف حساب عميل
               </div>
-             </div>
+           </div>
 
             <!-- Branch -->
             <div class="grid grid-rows-2">

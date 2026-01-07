@@ -244,11 +244,11 @@ export default function SupplierStatementPrint({
              Number(suppliers.openingBalance) !== 0
                ? `
     <tr class="balance-highlight">
-       <td>-</td>   <td>-</td>
+       <td>-</td>   
       <td>رصيد افتتاحي</td>
       <td>رصيد افتتاحي للمورد</td>
-      <td>${suppliers.openingBalance > 0 ? suppliers.openingBalance.toFixed(2) : "0.00"}</td>
-      <td>${suppliers.openingBalance < 0 ? Math.abs(suppliers.openingBalance).toFixed(2) : "0.00"}</td>
+ 
+      <td>${suppliers.openingBalance < 0 ? Math.abs(suppliers.openingBalance).toFixed(2) : "0.00"}</td>     <td>${suppliers.openingBalance > 0 ? suppliers.openingBalance.toFixed(2) : "0.00"}</td>
       <td><strong>${suppliers.openingBalance.toFixed(2)}</strong></td>
     </tr>
     `

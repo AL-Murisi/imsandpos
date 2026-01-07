@@ -86,7 +86,7 @@ export default function SupplierStatement({
     router.push(`${pathname}?${params.toString()}`);
   };
   return (
-    <Card className="@container/card border-transparent bg-transparent px-2">
+    <Card className="@container/card h-[85vh] border-transparent bg-transparent px-2">
       {/* Header */}
 
       {/* Statement Display */}
@@ -203,7 +203,11 @@ export default function SupplierStatement({
                     <td className="border p-2">رصيد افتتاحي</td>
 
                     <td className="border p-2">-</td>
-
+                    <td className="border p-2 text-center text-red-700">
+                      {suppliers.openingBalance < 0
+                        ? Math.abs(suppliers.openingBalance).toFixed(2)
+                        : "0.00"}
+                    </td>
                     {/* خانة المدين: تظهر القيمة إذا كانت موجبة */}
                     <td className="border p-2 text-center text-green-700">
                       {suppliers.openingBalance > 0
@@ -212,11 +216,6 @@ export default function SupplierStatement({
                     </td>
 
                     {/* خانة الدائن: تظهر القيمة (موجبة) إذا كان الرصيد الأصلي سالباً */}
-                    <td className="border p-2 text-center text-red-700">
-                      {suppliers.openingBalance < 0
-                        ? Math.abs(suppliers.openingBalance).toFixed(2)
-                        : "0.00"}
-                    </td>
 
                     {/* خانة الرصيد الإجمالي */}
                     <td className="border p-2 text-center">

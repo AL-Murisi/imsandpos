@@ -28,12 +28,12 @@ export default async function SupplierStatementPage({
 
   const result = await getBankStatement(id, user.companyId, dateFrom, dateTo);
 
-  if (!result.success) {
+  if (!result?.success) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="rounded-lg border border-red-300 bg-red-50 p-6 text-center">
           <h2 className="text-xl font-bold text-red-700">خطأ</h2>
-          <p className="mt-2 text-red-600">{result.error}</p>
+          <p className="mt-2 text-red-600">{result?.error}</p>
         </div>
       </div>
     );
@@ -54,5 +54,9 @@ export default async function SupplierStatementPage({
       }
     : undefined;
 
-  return <ClientWarper bank={bankStatement} fiscalYear={fiscalYear ?? []} />;
+  return (
+    <div className="p-3">
+      <ClientWarper bank={bankStatement} fiscalYear={fiscalYear ?? []} />
+    </div>
+  );
 }

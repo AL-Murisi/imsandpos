@@ -57,7 +57,9 @@ export async function POST(req: NextRequest, context: RouteContext) {
       from: rawFrom,
       to: rawTo,
       customerId,
+
       accountId,
+      suppliersId,
     } = await req.json();
 
     const fromDate = rawFrom ? new Date(rawFrom).toISOString() : undefined;
@@ -815,11 +817,27 @@ export async function POST(req: NextRequest, context: RouteContext) {
       }
       case "customer_statment": {
         templateFile = "customer_statment.html";
+        const fiscalYear = await prisma.fiscal_periods.findFirst({
+          where: {
+            company_id: user.companyId,
+            is_closed: false,
+          },
+          select: { start_date: true, end_date: true },
+        });
+        if (!fiscalYear) return;
+        const fromDate = new Date(fiscalYear.start_date);
+        fromDate.setHours(0, 0, 0, 0); // Start of day
+
+        const toDate = new Date(fiscalYear.end_date);
+        toDate.setHours(23, 59, 59, 999); // End of day
 
         // 1️⃣ جلب العملاء (عميل واحد أو الجميع)
         const customers = customerId
           ? await prisma.customer.findMany({
-              where: { id: customerId, companyId: user.companyId },
+              where: {
+                id: customerId,
+                companyId: user.companyId,
+              },
               select: {
                 id: true,
                 name: true,
@@ -858,7 +876,10 @@ export async function POST(req: NextRequest, context: RouteContext) {
             },
             select: { debit: true, credit: true },
           });
-
+          const openingBalance = openingEntries.reduce(
+            (sum, e) => sum + Number(e.debit) - Number(e.credit),
+            0,
+          );
           // قيود الفترة
           const entries = await prisma.journal_entries.findMany({
             where: {
@@ -898,21 +919,186 @@ export async function POST(req: NextRequest, context: RouteContext) {
           const totalDebit = transactions.reduce((s, t) => s + t.debit, 0);
           const totalCredit = transactions.reduce((s, t) => s + t.credit, 0);
           const closingBalance = Math.abs(totalDebit - totalCredit);
+          const periodDebit = transactions.reduce((s, t) => s + t.debit, 0);
+          const periodCredit = transactions.reduce((s, t) => s + t.credit, 0);
 
+          // المنطق للعميل:
+          // إذا كان الافتتاحي موجب (مدين) يضاف للمدين، وإذا كان سالب (دائن) يضاف للدائن
+          const finalTotalDebit =
+            openingBalance > 0 ? periodDebit + openingBalance : periodDebit;
+          const finalTotalCredit =
+            openingBalance < 0
+              ? periodCredit + Math.abs(openingBalance)
+              : periodCredit;
           customerStatements.push({
             customer: c,
-
+            openingBalance: openingEntries.reduce(
+              (sum, e) => sum + Number(e.debit) - Number(e.credit),
+              0,
+            ),
             closingBalance: closingBalance.toFixed(2),
-            totalDebit: totalDebit.toFixed(2),
-            totalCredit: totalCredit.toFixed(2),
+            totalDebit: finalTotalDebit.toFixed(2),
+            totalCredit: finalTotalCredit.toFixed(2),
             transactions,
-            period: { from: fromDisplay, to: toDisplay },
+            period: {
+              from:
+                fromDate instanceof Date
+                  ? fromDate.toLocaleDateString("ar-EG")
+                  : fromDate,
+              to:
+                toDate instanceof Date
+                  ? toDate.toLocaleDateString("ar-EG")
+                  : toDate,
+            },
           });
         }
 
         // 3️⃣ إخراج التقرير
         data = {
           customers: customerStatements,
+          period: { from: fromDisplay, to: toDisplay },
+          ...baseData,
+        };
+
+        break;
+      }
+      case "supplier_statment": {
+        templateFile = "supplier_statment.html";
+        const fiscalYear = await prisma.fiscal_periods.findFirst({
+          where: {
+            company_id: user.companyId,
+            is_closed: false,
+          },
+          select: { start_date: true, end_date: true },
+        });
+        if (!fiscalYear) return;
+        console.log(suppliersId);
+        const fromDate = new Date(fiscalYear.start_date);
+        fromDate.setHours(0, 0, 0, 0); // Start of day
+
+        const toDate = new Date(fiscalYear.end_date);
+        toDate.setHours(23, 59, 59, 999); // End of day
+
+        // 1️⃣ جلب العملاء (عميل واحد أو الجميع)
+        const suppliers = suppliersId
+          ? await prisma.supplier.findMany({
+              where: {
+                id: suppliersId,
+                companyId: user.companyId,
+              },
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phoneNumber: true,
+                address: true,
+                city: true,
+              },
+            })
+          : await prisma.supplier.findMany({
+              where: {
+                companyId: user.companyId,
+                outstandingBalance: { gt: 0 },
+              },
+              select: {
+                id: true,
+                name: true,
+                phoneNumber: true,
+
+                outstandingBalance: true,
+              },
+            });
+
+        // 2️⃣ تجهيز كشف حساب لكل عميل
+        const supplierStatements = [];
+
+        for (const c of suppliers) {
+          // رصيد افتتاحي
+          const openingEntries = await prisma.journal_entries.findMany({
+            where: {
+              company_id: user.companyId,
+              reference_id: c.id,
+              entry_date: { lt: fromDate },
+            },
+            select: { debit: true, credit: true },
+          });
+          const openingBalance = openingEntries.reduce(
+            (sum, e) => sum + Number(e.credit) - Number(e.debit),
+            0,
+          );
+          // قيود الفترة
+          const entries = await prisma.journal_entries.findMany({
+            where: {
+              company_id: user.companyId,
+              reference_id: c.id,
+              entry_date: { gte: fromDate, lte: toDate },
+            },
+            orderBy: { entry_date: "asc" },
+            select: {
+              id: true,
+              entry_date: true,
+              debit: true,
+              credit: true,
+              description: true,
+              entry_number: true,
+              reference_type: true,
+            },
+          });
+
+          // بناء كشف الحساب
+          let runningBalance: number = 0;
+          const transactions = entries.map((entry) => {
+            runningBalance =
+              runningBalance + Number(entry.credit) - Number(entry.debit);
+
+            return {
+              date: entry.entry_date?.toLocaleDateString("ar-EG"),
+              debit: Number(entry.debit),
+              credit: Number(entry.credit),
+              balance: runningBalance.toFixed(2),
+              description: entry.description,
+              docNo: entry.entry_number,
+              typeName: mapType(entry.reference_type),
+            };
+          });
+          const totalDebit = transactions.reduce((s, t) => s + t.debit, 0);
+          const totalCredit = transactions.reduce((s, t) => s + t.credit, 0);
+          const periodDebit = transactions.reduce((s, t) => s + t.debit, 0);
+          const periodCredit = transactions.reduce((s, t) => s + t.credit, 0);
+
+          // المنطق المطلوب: إضافة الرصيد الافتتاحي للإجمالي المناسب بناءً على حالته
+          // إذا كان الرصيد الافتتاحي موجب (Credit) يضاف للدائن، وإذا كان سالب (Debit) يضاف للمدين
+          const finalTotalDebit =
+            openingBalance < 0
+              ? periodDebit + Math.abs(openingBalance)
+              : periodDebit;
+          const finalTotalCredit =
+            openingBalance > 0 ? periodCredit + openingBalance : periodCredit;
+
+          supplierStatements.push({
+            supplier: c,
+
+            openingBalance,
+            closingBalance: openingBalance + totalCredit - totalDebit,
+            totalDebit: finalTotalDebit.toFixed(2),
+            totalCredit: finalTotalCredit.toFixed(2),
+            transactions,
+            period: {
+              from:
+                fromDate instanceof Date
+                  ? fromDate.toLocaleDateString("ar-EG")
+                  : fromDate,
+              to:
+                toDate instanceof Date
+                  ? toDate.toLocaleDateString("ar-EG")
+                  : toDate,
+            },
+          });
+        }
+
+        // 3️⃣ إخراج التقرير
+        data = {
+          suppliers: supplierStatements,
           period: { from: fromDisplay, to: toDisplay },
           ...baseData,
         };

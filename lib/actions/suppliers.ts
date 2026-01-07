@@ -1113,3 +1113,42 @@ export async function getSupplierSummary(
     throw error;
   }
 }
+export async function FetchSupplierbyname(searchQuery?: string) {
+  const combinedWhere: any = {
+    companyId: (await getSession())?.companyId,
+
+    OR: [
+      { name: { contains: searchQuery, mode: "insensitive" } },
+      { phoneNumber: { contains: searchQuery, mode: "insensitive" } },
+    ],
+  };
+
+  const supplier = await prisma.supplier.findMany({
+    where: combinedWhere,
+    select: {
+      id: true,
+      name: true,
+      phoneNumber: true,
+      outstandingBalance: true,
+      address: true,
+      city: true,
+    },
+    take: 10, // Limit to 10 results
+    orderBy: { name: "asc" },
+  });
+
+  if (!supplier) return null;
+
+  // const debts = await prisma.sale.findMany({
+  //   where: {
+  //     customerId: customer.id,
+  //     amountDue: { gt: 0 },
+  //   },
+  //   select: {
+  //     amountDue: true,
+  //   },
+  // });
+  const cusomers = serializeData(supplier);
+
+  return cusomers;
+}

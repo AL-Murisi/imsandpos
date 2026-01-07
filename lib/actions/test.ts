@@ -134,15 +134,25 @@ export async function getCustomerStatement(
     });
     const totalDebit = transactions.reduce((s, t) => s + t.debit, 0);
     const totalCredit = transactions.reduce((s, t) => s + t.credit, 0);
+    const periodDebit = transactions.reduce((s, t) => s + t.debit, 0);
+    const periodCredit = transactions.reduce((s, t) => s + t.credit, 0);
 
+    // المنطق للعميل:
+    // إذا كان الافتتاحي موجب (مدين) يضاف للمدين، وإذا كان سالب (دائن) يضاف للدائن
+    const finalTotalDebit =
+      openingBalance > 0 ? periodDebit + openingBalance : periodDebit;
+    const finalTotalCredit =
+      openingBalance < 0
+        ? periodCredit + Math.abs(openingBalance)
+        : periodCredit;
     return {
       success: true,
       data: {
         customer: serializeData(customer),
         openingBalance,
-        closingBalance: openingBalance + totalDebit - totalCredit,
-        totalDebit,
-        totalCredit,
+        closingBalance: openingBalance + totalCredit - totalDebit,
+        totalDebit: finalTotalDebit,
+        totalCredit: finalTotalCredit,
         transactions,
         period: {
           from:
@@ -477,7 +487,7 @@ export async function getSupplierStatement(
     });
 
     const openingBalance = openingEntries.reduce(
-      (sum, e) => sum + Number(e.debit) - Number(e.credit),
+      (sum, e) => sum + Number(e.credit) - Number(e.debit),
       0,
     );
 
@@ -505,7 +515,7 @@ export async function getSupplierStatement(
     let runningBalance = openingBalance;
     const transactions = entries.map((entry) => {
       runningBalance =
-        runningBalance + Number(entry.debit) - Number(entry.credit);
+        runningBalance + Number(entry.credit) - Number(entry.debit);
 
       return {
         date: entry.entry_date,
@@ -520,15 +530,23 @@ export async function getSupplierStatement(
     });
     const totalDebit = transactions.reduce((s, t) => s + t.debit, 0);
     const totalCredit = transactions.reduce((s, t) => s + t.credit, 0);
+    const periodDebit = transactions.reduce((s, t) => s + t.debit, 0);
+    const periodCredit = transactions.reduce((s, t) => s + t.credit, 0);
 
+    // المنطق المطلوب: إضافة الرصيد الافتتاحي للإجمالي المناسب بناءً على حالته
+    // إذا كان الرصيد الافتتاحي موجب (Credit) يضاف للدائن، وإذا كان سالب (Debit) يضاف للمدين
+    const finalTotalDebit =
+      openingBalance < 0 ? periodDebit + Math.abs(openingBalance) : periodDebit;
+    const finalTotalCredit =
+      openingBalance > 0 ? periodCredit + openingBalance : periodCredit;
     return {
       success: true,
       data: {
         supplier: serializeData(supplier),
         openingBalance,
-        closingBalance: openingBalance + totalDebit - totalCredit,
-        totalDebit,
-        totalCredit,
+        closingBalance: openingBalance + totalCredit - totalDebit,
+        totalDebit: finalTotalDebit,
+        totalCredit: finalTotalCredit,
         transactions,
         period: { from: dateFrom, to: dateTo },
       },
@@ -545,9 +563,20 @@ export async function getBankStatement(
   dateTo: string,
 ) {
   try {
-    const fromDate = new Date(dateFrom);
-    const toDate = new Date(dateTo);
-    toDate.setHours(23, 59, 59, 999);
+    const fiscalYear = await prisma.fiscal_periods.findFirst({
+      where: {
+        company_id: companyId,
+        is_closed: false,
+      },
+      select: { start_date: true, end_date: true },
+    });
+    if (!fiscalYear) return;
+    console.log(fiscalYear.start_date, fiscalYear.end_date);
+    const fromDate = new Date(fiscalYear.start_date);
+    fromDate.setHours(0, 0, 0, 0); // Start of day
+
+    const toDate = new Date(fiscalYear.end_date);
+    toDate.setHours(23, 59, 59, 999); // End of day
 
     // 1️⃣ جلب حساب المدينون
 
@@ -560,16 +589,32 @@ export async function getBankStatement(
         account: { select: { opening_balance: true } },
       },
     });
+    const openingEntries = await prisma.journal_entries.findMany({
+      where: {
+        company_id: companyId,
+        account_id: id,
+        // reference_type: {
+        //   contains: "opening_customer_balance",
+        //   mode: "insensitive", // يتجاهل حالة الأحرف
+        // },
 
+        entry_date: { lt: fromDate },
+      },
+      select: {
+        debit: true,
+        credit: true,
+      },
+    });
+    const openingBalance = openingEntries.reduce(
+      (sum, e) => sum + Number(e.debit) - Number(e.credit),
+      0,
+    );
     if (!bank) {
       return { success: false, error: "المورد غير موجود" };
     }
 
     // 2️⃣ الرصيد الافتتاحي قبل الفترة
 
-    const openingBalance = bank.account.opening_balance
-      ? Number(bank.account.opening_balance)
-      : 0;
     // 3️⃣ قيود الفترة
     const entries = await prisma.journal_entries.findMany({
       where: {
@@ -607,6 +652,8 @@ export async function getBankStatement(
     });
     const totalDebit = transactions.reduce((s, t) => s + t.debit, 0);
     const totalCredit = transactions.reduce((s, t) => s + t.credit, 0);
+    const periodDebit = transactions.reduce((s, t) => s + t.debit, 0);
+    const periodCredit = transactions.reduce((s, t) => s + t.credit, 0);
 
     return {
       success: true,
@@ -614,8 +661,8 @@ export async function getBankStatement(
         bank: serializeData(bank),
         openingBalance,
         closingBalance: openingBalance + totalDebit - totalCredit,
-        totalDebit,
-        totalCredit,
+        totalDebit: periodDebit,
+        totalCredit: periodCredit,
         transactions,
         period: { from: dateFrom, to: dateTo },
       },

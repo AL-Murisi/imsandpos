@@ -132,7 +132,7 @@ export default function CustomerStatement({
   // };
 
   return (
-    <Card className="@container/card border-transparent bg-transparent px-2">
+    <Card className="@container/card h-[85vh] border-transparent bg-transparent px-2">
       {/* فورم البحث */}
 
       {/* عرض الكشف */}
@@ -269,7 +269,7 @@ export default function CustomerStatement({
                     </td>
 
                     <td className="border p-2">{trans.typeName ?? ""}</td>
-                    <td className="border p-2">{trans.docNo ?? ""}</td>
+                    {/* <td className="border p-2">{trans.docNo ?? ""}</td> */}
                     <td className="border p-2">{trans.description}</td>
 
                     <td className="border p-2 text-center">
@@ -288,7 +288,7 @@ export default function CustomerStatement({
 
                 {/* الإجماليات */}
                 <tr className="font-bold">
-                  <td className="border p-2" colSpan={3}>
+                  <td className="border p-2" colSpan={2}>
                     <strong>الإجمالي</strong>
                   </td>{" "}
                   <td className="border p-2"></td>

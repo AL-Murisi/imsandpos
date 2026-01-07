@@ -175,8 +175,16 @@ export default function SupplierStatementPrint({
               <td>رصيد افتتاحي</td>
               <td>—</td>
               <td>رصيد افتتاحي للمورد</td>
-              <td>${banks.openingBalance.toFixed(2)}</td>
-              <td>0.00</td>
+              <td>${
+                banks.openingBalance > 0
+                  ? banks.openingBalance.toFixed(2)
+                  : "0.00"
+              }</td>
+      <td>${
+        banks.openingBalance < 0
+          ? Math.abs(banks.openingBalance).toFixed(2)
+          : "0.00"
+      }</td>
               <td>${banks.openingBalance.toFixed(2)}</td>
             </tr>
 

@@ -161,7 +161,7 @@
   </head>
 
   <body>
-    {{#each customers}}
+    {{#each suppliers}}
     <div class="page-container">
       <div class="header">
         <div class="header-right">
@@ -186,7 +186,7 @@
             height="80"
             style="width: 100px; height: 100px; object-fit: contain"
           />
-          <div class="title-box">📋 كشف حساب عميل</div>
+          <div class="title-box">📋 كشف حساب مورد</div>
         </div>
 
         <div class="header-left">
@@ -196,8 +196,8 @@
       </div>
 
       <div class="info-box">
-        <p><strong>اسم العميل:</strong> {{customer.name}}</p>
-        <p><strong>الهاتف:</strong> {{customer.phoneNumber}}</p>
+        <p><strong>اسم المورد:</strong> {{supplier.name}}</p>
+        <p><strong>الهاتف:</strong> {{supplier.phoneNumber}}</p>
         <p><strong>من تاريخ:</strong> {{period.from}}</p>
         <p><strong>إلى تاريخ:</strong> {{period.to}}</p>
       </div>
@@ -219,7 +219,7 @@
             <td>-</td>
             <td>-</td>
             <td>رصيد افتتاحي</td>
-            <td>رصيد افتتاحي للعميل</td>
+            <td>رصيد افتتاحي للمورد</td>
 
             <td>
               {{#if (gt openingBalance 0)}} {{formatNumber openingBalance}}
