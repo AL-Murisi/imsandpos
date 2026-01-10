@@ -266,12 +266,12 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
           dir="rtl"
         >
           {/* Update Type Selection */}
-          <div className="rounded-lg border border-gray-200 p-4">
+          {/* <div className="rounded-lg border border-gray-200 p-4">
             <Label className="mb-3 block text-sm font-medium">
               نوع التحديث
             </Label>
             <div className="flex gap-4">
-              {["manual", "supplier"].map((type) => (
+              {["manual", ""].map((type) => (
                 <label
                   key={type}
                   className="flex cursor-pointer items-center gap-2"
@@ -291,8 +291,11 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
                 </label>
               ))}
             </div>
+          </div> */}
+          <div className="grid gap-3">
+            <Label>سبب التحديث اليدوي</Label>
+            <Textarea placeholder="أدخل السبب" {...register("reason")} />
           </div>
-
           {/* Manual Update Reason */}
           {updateType === "manual" && (
             <div className="grid gap-3">

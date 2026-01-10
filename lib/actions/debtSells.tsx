@@ -131,12 +131,14 @@ export async function updateSalesBulk(
   saleIds: string[],
   paymentAmount: number,
   cashierId: string,
-  paymentMethod: string,
-  currencyCode: string,
-  paymentDetails?: {
-    bankId?: string;
+
+  paymentDetails: {
+    paymentMethod: string;
+    currencyCode: string;
+    bankId: string;
     exchange_rate?: number;
     transferNumber?: string;
+    baseAmount?: number;
     amountFC?: number;
   },
 ) {
@@ -191,7 +193,7 @@ export async function updateSalesBulk(
       customerId: s.customerId,
       cashierId,
       payment_type: "outstanding_payment",
-      paymentMethod: paymentMethod,
+      paymentMethod: paymentDetails.paymentMethod,
       amount: payNow,
       status: "completed",
       notes: `تسديد الدين للفاتورة رقم ${s.saleNumber}`,
@@ -267,10 +269,8 @@ export async function updateSalesBulk(
         saleId: payment.saleId,
         customerId: payment.customerId,
         amount: payment.amount,
-        paymentMethod: payment.paymentMethod,
+
         paymentDetails: paymentDetails || {},
-        currencyCode: currencyCode,
-        bas_amount: paymentAmount,
       },
       cashierId,
     },
@@ -300,14 +300,15 @@ export async function payOutstandingOnly(
   customerId: string,
   paymentAmount: number,
   cashierId: string,
-  paymentMethod: string,
-  currencyCode: string,
-  paymentDetails?: {
-    bankId?: string;
+
+  paymentDetails: {
+    paymentMethod: string;
+    currencyCode: string;
+    bankId: string;
     transferNumber?: string;
 
     exchangeRate?: number;
-
+    baseAmount?: number;
     amountFC?: number;
   },
 ) {
@@ -325,7 +326,7 @@ export async function payOutstandingOnly(
       saleId: null,
       cashierId,
       payment_type: "outstanding_payment",
-      paymentMethod,
+      paymentMethod: paymentDetails.paymentMethod,
       amount: paymentAmount,
       status: "completed",
       notes: "تسديد رصيد مستحق غير مرتبط بفاتورة",
@@ -358,9 +359,8 @@ export async function payOutstandingOnly(
           saleId: null,
           customerId,
           amount: payment.amount,
-          paymentMethod: payment.paymentMethod,
+
           paymentDetails: paymentDetails || {},
-          currencyCode: currencyCode,
         },
         cashierId,
       },

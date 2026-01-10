@@ -8,12 +8,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/lib/context/AuthContext";
-import { CreateProductInput, CreateProductSchema } from "@/lib/zod";
+import { CreateProductInputs, CreateProductSchemas } from "@/lib/zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useFieldArray, useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { Card } from "@/components/ui/card";
+import WarehouseForm from "@/components/forms/warehouseShortcut";
+import SupplierForm from "@/components/forms/suppliershortcut";
+import CategoryForm from "@/components/forms/catigresShortcut";
+import { Check, Plus, Trash2 } from "lucide-react";
 
 interface Option {
   id: string;
@@ -61,22 +66,28 @@ export default function ProductEditForm({
     setValue,
     reset,
     watch,
+    control,
     formState: { errors },
-  } = useForm<CreateProductInput>({
-    resolver: zodResolver(CreateProductSchema),
+  } = useForm<CreateProductInputs>({
+    resolver: zodResolver(CreateProductSchemas),
   });
 
   const watchedWarehouseId = watch("warehouseId");
   const watchedCategoryId = watch("categoryId");
   const watchedSupplierId = watch("supplierId");
-  const unitsPerPacket = watch("unitsPerPacket");
-  const packetsPerCarton = watch("packetsPerCarton");
-  const pricePerCarton = watch("pricePerCarton");
-  const pricePerUnit = watch("pricePerUnit");
-  const pricePerPacket = watch("pricePerPacket");
+  // const unitsPerPacket = watch("unitsPerPacket");
+  // const packetsPerCarton = watch("packetsPerCarton");
+  // const pricePerCarton = watch("pricePerCarton");
+  // const pricePerUnit = watch("pricePerUnit");
+  // const pricePerPacket = watch("pricePerPacket");
   const expiredAt = watch("expiredAt");
   const t = useTranslations("productForm");
+  const sellingUnits = watch("sellingUnits");
 
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "sellingUnits",
+  });
   // ✅ Load form options once on mount
   useEffect(() => {
     if (!open) {
@@ -112,62 +123,46 @@ export default function ProductEditForm({
       supplierId: product.supplierId || "",
       warehouseId: product.warehouseId || "",
       description: product.description || "",
-      unitsPerPacket: product.unitsPerPacket || 0,
-      packetsPerCarton: product.packetsPerCarton || 0,
-      costPrice: product.costPrice || undefined,
-      pricePerUnit: product.pricePerUnit || undefined,
-      pricePerPacket: product.pricePerPacket || undefined,
-      pricePerCarton: product.pricePerCarton || undefined,
+      // unitsPerPacket: product.unitsPerPacket || 0,
+      // packetsPerCarton: product.packetsPerCarton || 0,
+      // costPrice: product.costPrice || undefined,
+      // pricePerUnit: product.pricePerUnit || undefined,
+      // pricePerPacket: product.pricePerPacket || undefined,
+      // pricePerCarton: product.pricePerCarton || undefined,
       wholesalePrice: product.wholesalePrice || undefined,
       minWholesaleQty: product.minWholesaleQty || undefined,
       dimensions: product.dimensions || "",
-      type: product.type || "cartonOnly", // ✅ Keep original type
+      type: product.type || "cartonOnly", // ✅ Keep original typesellingUnits: product.sellingUnits?.length > 0
+      sellingUnits:
+        product.sellingUnits?.length > 0
+          ? product.sellingUnits.map((u: any) => ({
+              id: u.id,
+              name: u.name,
+              nameEn: u.nameEn,
+              unitsPerParent: u.unitsPerParent,
+              price: u.price,
+              isBase: u.isBase,
+              // إذا كان لديك حقل للكمية في قاعدة البيانات لكل وحدة
+              stock: u.stock || 0,
+            }))
+          : [
+              {
+                id: "unit-1",
+                name: "حبة",
+                nameEn: "Unit",
+                unitsPerParent: 1,
+                price: 0,
+                isBase: true,
+              },
+            ],
     });
   }, [product?.id, reset]);
 
   // ✅ Auto-calculate prices for full mode - FIXED
-  useEffect(() => {
-    if (isUpdatingRef.current) return;
-
-    if (
-      pricingMode === "full" &&
-      pricePerCarton &&
-      unitsPerPacket &&
-      packetsPerCarton &&
-      pricePerCarton > 0
-    ) {
-      isUpdatingRef.current = true;
-      const calculatedPricePerPacket = pricePerCarton / packetsPerCarton;
-      setValue(
-        "pricePerPacket",
-        Math.round(calculatedPricePerPacket * 100) / 100,
-      );
-      setValue("type", "full");
-      const calculatedPricePerUnit = calculatedPricePerPacket / unitsPerPacket;
-      setValue("pricePerUnit", Math.round(calculatedPricePerUnit * 100) / 100);
-      isUpdatingRef.current = false;
-    }
-  }, [pricePerCarton, unitsPerPacket, packetsPerCarton, pricingMode]);
 
   // ✅ Auto-calculate prices for cartonUnit mode - FIXED
-  useEffect(() => {
-    if (isUpdatingRef.current) return;
 
-    if (
-      pricingMode === "cartonUnit" &&
-      pricePerCarton &&
-      unitsPerPacket &&
-      pricePerCarton > 0
-    ) {
-      isUpdatingRef.current = true;
-      const calculatedPricePerUnit = pricePerCarton / unitsPerPacket;
-      setValue("pricePerUnit", Math.round(calculatedPricePerUnit * 100) / 100);
-      isUpdatingRef.current = false;
-      setValue("type", "cartonUnit");
-    }
-  }, [pricePerCarton, unitsPerPacket, pricingMode]);
-
-  const onSubmit = async (data: CreateProductInput) => {
+  const onSubmit = async (data: CreateProductInputs) => {
     try {
       setIsSubmitting(true);
       await UpdateProduct(data, user.companyId, user.userId);
@@ -181,7 +176,45 @@ export default function ProductEditForm({
       setIsSubmitting(false);
     }
   };
+  const addSellingUnit = () => {
+    append({
+      id: `unit-${Date.now()}`,
+      name: "",
+      nameEn: "",
+      unitsPerParent: 1,
+      price: 0,
+      isBase: false,
+    });
+  };
 
+  // 🔹 حساب السعر التلقائي بناءً على الوحدة الأساسية
+  // 🔹 حساب السعر التلقائي بناءً على تسلسل الوحدات
+  const calculatePrice = (index: number) => {
+    const currentUnits = watch("sellingUnits");
+    if (!currentUnits || index === 0) return;
+
+    // 1. جلب سعر الوحدة الأساسية (الحبة)
+    const basePrice = currentUnits[0]?.price || 0;
+
+    // 2. حساب إجمالي عدد الحبات في هذه الوحدة
+    // المعادلة: (عدد الحبات في الوحدة السابقة) × (معامل تحويل الوحدة الحالية)
+    let totalUnitsInThisLevel = 1;
+    for (let i = 1; i <= index; i++) {
+      const multiplier = currentUnits[i]?.unitsPerParent || 1;
+      totalUnitsInThisLevel *= multiplier;
+    }
+
+    // 3. السعر النهائي = سعر الحبة × إجمالي الحبات في هذه الوحدة
+    const calculatedPrice = basePrice * totalUnitsInThisLevel;
+
+    setValue(
+      `sellingUnits.${index}.price`,
+      Number(calculatedPrice.toFixed(2)),
+      {
+        shouldValidate: true,
+      },
+    );
+  };
   return (
     <Dailogreuse
       open={open}
@@ -192,300 +225,42 @@ export default function ProductEditForm({
       description={`تعديل المنتج: ${product?.name}`}
     >
       <ScrollArea className="max-h-[85vh]" dir="rtl">
-        <form onSubmit={handleSubmit(onSubmit)} className="w-full space-y-6">
-          {/* Pricing Mode Selection */}
-          <div className="rounded-lg border p-4">
-            <h3 className="mb-4 text-right font-semibold">نموذج البيع</h3>
-            <div className="mb-4 flex flex-col gap-3 md:flex-row">
-              <label className="flex cursor-pointer items-center gap-2">
-                <input
-                  type="radio"
-                  checked={pricingMode === "full"}
-                  onChange={() => {
-                    setPricingMode("full");
-                    setValue("packetsPerCarton", 0);
-                    setValue("pricePerPacket", 0);
-                  }}
-                  className="cursor-pointer"
-                />
-                <span className="text-sm font-medium">
-                  بيع متعدد المستويات (وحدة + عبوة + كرتونة)
-                </span>
-              </label>
-              <label className="flex cursor-pointer items-center gap-2">
-                <input
-                  type="radio"
-                  checked={pricingMode === "cartonUnit"}
-                  onChange={() => {
-                    setPricingMode("cartonUnit");
-                    setValue("packetsPerCarton", 0);
-                    setValue("pricePerPacket", 0);
-                  }}
-                  className="cursor-pointer"
-                />
-                <span className="text-sm font-medium">
-                  بيع بالوحدة والكرتونة فقط
-                </span>
-              </label>
-              <label className="flex cursor-pointer items-center gap-2">
-                <input
-                  type="radio"
-                  checked={pricingMode === "cartonOnly"}
-                  onChange={() => {
-                    setPricingMode("cartonOnly");
-                    setValue("unitsPerPacket", 0);
-                    setValue("packetsPerCarton", 0);
-                    setValue("pricePerUnit", 0);
-                    setValue("pricePerPacket", 0);
-                  }}
-                  className="cursor-pointer"
-                />
-                <span className="text-sm font-medium">بيع بالكرتونة فقط</span>
-              </label>
-            </div>
-          </div>
-
-          {/* Packaging Fields */}
-          {pricingMode === "full" && (
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-              <div className="grid gap-2">
-                <Label htmlFor="unitsPerPacket">
-                  عدد الوحدات في العبوة الواحدة
-                </Label>
-                <Input
-                  id="unitsPerPacket"
-                  type="number"
-                  {...register("unitsPerPacket", { valueAsNumber: true })}
-                  className="text-right"
-                />
-                {errors.unitsPerPacket && (
-                  <p className="text-right text-xs text-red-500">
-                    {errors.unitsPerPacket.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="packetsPerCarton">
-                  عدد العبوات في الكرتونة
-                </Label>
-                <Input
-                  id="packetsPerCarton"
-                  type="number"
-                  {...register("packetsPerCarton", { valueAsNumber: true })}
-                  className="text-right"
-                />
-                {errors.packetsPerCarton && (
-                  <p className="text-right text-xs text-red-500">
-                    {errors.packetsPerCarton.message}
-                  </p>
-                )}
-              </div>
-
-              {unitsPerPacket && packetsPerCarton && (
-                <div className="grid gap-2 rounded-lg p-3">
-                  <p className="text-right text-sm font-medium text-gray-700">
-                    الإجمالي لكل كرتونة:
-                  </p>
-                  <p className="text-right text-lg font-bold text-blue-600">
-                    {unitsPerPacket * packetsPerCarton} وحدة
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {pricingMode === "cartonUnit" && (
-            <div className="grid gap-2">
-              <Label htmlFor="unitsPerPacket">عدد الوحدات في الكرتونة</Label>
-              <Input
-                id="unitsPerPacket"
-                type="number"
-                {...register("unitsPerPacket", { valueAsNumber: true })}
-                className="text-right"
-              />
-              {errors.unitsPerPacket && (
-                <p className="text-right text-xs text-red-500">
-                  {errors.unitsPerPacket.message}
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Product Details */}
-          <div className="grid gap-6">
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-              <div className="grid gap-2">
-                <Label htmlFor="name">اسم المنتج</Label>
-                <Input id="name" {...register("name")} className="text-right" />
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" dir="rtl">
+          {/* معلومات المنتج الأساسية */}
+          <Card className="p-4">
+            <h3 className="mb-4 text-lg font-semibold">معلومات المنتج</h3>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="grid gap-3">
+                <Label>اسم المنتج</Label>
+                <Input {...register("name")} placeholder="مثال: أرز أبيض" />
                 {errors.name && (
-                  <p className="text-right text-xs text-red-500">
-                    {errors.name.message}
-                  </p>
+                  <p className="text-xs text-red-500">{errors.name.message}</p>
                 )}
               </div>
 
-              <div className="grid gap-2">
-                <Label htmlFor="sku">الرمز (SKU)</Label>
+              <div className="grid gap-3">
+                <Label>رمز SKU</Label>
                 <Input
                   id="sku"
                   type="text"
                   {...register("sku")}
-                  disabled
-                  className="bg-gray-100 text-right"
+                  className="bg-muted/50 text-right"
+                  placeholder="سيتم التوليد تلقائياً"
                 />
               </div>
 
-              <div className="grid gap-2">
-                <Label htmlFor="categoryId">الفئة</Label>
-                <SelectField
-                  options={formData.categories}
-                  value={watchedCategoryId}
-                  action={(val) => setValue("categoryId", val)}
-                  placeholder="اختر الفئة"
+              <div className="grid gap-3">
+                <Label>سعر التكلفة (للوحدة الأساسية)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  {...register("costPrice", { valueAsNumber: true })}
+                  placeholder="0.00"
                 />
-                {errors.categoryId && (
-                  <p className="text-right text-xs text-red-500">
-                    {errors.categoryId.message}
-                  </p>
-                )}
               </div>
-            </div>
-
-            {/* Pricing Grid */}
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              {/* Cost Price */}
-              <div className="rounded-lg border border-green-100 p-4">
-                <h3 className="mb-4 text-right font-semibold text-green-900">
-                  سعر الشراء من المورد
-                </h3>
-                <div className="grid gap-2">
-                  <Label htmlFor="costPrice">سعر الشراء للوحدة</Label>
-                  <Input
-                    id="costPrice"
-                    type="number"
-                    step="0.01"
-                    {...register("costPrice", { valueAsNumber: true })}
-                    className="text-right"
-                  />
-                  {errors.costPrice && (
-                    <p className="text-right text-xs text-red-500">
-                      {errors.costPrice.message}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Retail Pricing */}
-              <div className="rounded-lg border border-amber-100 p-4">
-                <h3 className="mb-4 text-right font-semibold text-amber-900">
-                  أسعار البيع بالتجزئة
-                </h3>
-                {pricingMode === "full" && (
-                  <div className="space-y-3">
-                    <div className="grid gap-2">
-                      <Label htmlFor="pricePerUnit">سعر الوحدة</Label>
-                      <Input
-                        id="pricePerUnit"
-                        type="number"
-                        step="0.01"
-                        disabled
-                        value={pricePerUnit || ""}
-                        className="bg-gray-100 text-right"
-                      />
-                    </div>
-
-                    <div className="grid gap-2">
-                      <Label htmlFor="pricePerPacket">سعر العبوة</Label>
-                      <Input
-                        id="pricePerPacket"
-                        type="number"
-                        step="0.01"
-                        disabled
-                        value={pricePerPacket || ""}
-                        className="bg-gray-100 text-right"
-                      />
-                    </div>
-                  </div>
-                )}
-                {pricingMode === "cartonUnit" && (
-                  <div className="grid gap-2">
-                    <Label htmlFor="pricePerUnit">سعر الوحدة</Label>
-                    <Input
-                      id="pricePerUnit"
-                      type="number"
-                      step="0.01"
-                      disabled
-                      value={pricePerUnit || ""}
-                      className="bg-gray-100 text-right"
-                    />
-                  </div>
-                )}
-                {pricingMode === "cartonOnly" && (
-                  <p className="text-right text-sm text-gray-600">
-                    بيع بالكرتونة فقط
-                  </p>
-                )}
-              </div>
-
-              {/* Bulk Pricing */}
-              <div className="rounded-lg border border-purple-100 p-4">
-                <h3 className="mb-4 text-right font-semibold text-purple-900">
-                  أسعار البيع بالجملة
-                </h3>
-                <div className="space-y-3">
-                  <div className="grid gap-2">
-                    <Label htmlFor="pricePerCarton">سعر الكرتونة</Label>
-                    <Input
-                      id="pricePerCarton"
-                      type="number"
-                      step="0.01"
-                      {...register("pricePerCarton", { valueAsNumber: true })}
-                      className="text-right"
-                    />
-                    {errors.pricePerCarton && (
-                      <p className="text-right text-xs text-red-500">
-                        {errors.pricePerCarton.message}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="grid gap-2">
-                    <Label htmlFor="wholesalePrice">السعر الجملي</Label>
-                    <Input
-                      id="wholesalePrice"
-                      type="number"
-                      step="0.01"
-                      {...register("wholesalePrice", { valueAsNumber: true })}
-                      className="text-right"
-                    />
-                    {errors.wholesalePrice && (
-                      <p className="text-right text-xs text-red-500">
-                        {errors.wholesalePrice.message}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="grid gap-2">
-                    <Label htmlFor="minWholesaleQty">الحد الأدنى</Label>
-                    <Input
-                      id="minWholesaleQty"
-                      type="number"
-                      {...register("minWholesaleQty", { valueAsNumber: true })}
-                      className="text-right"
-                    />
-                    {errors.minWholesaleQty && (
-                      <p className="text-right text-xs text-red-500">
-                        {errors.minWholesaleQty.message}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Additional Fields */}
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              {/* Warehouse and Dimensions */}
+            </div>{" "}
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
               <div className="grid gap-2">
                 <Label htmlFor="warehouseId">المستودع</Label>
                 <SelectField
@@ -493,25 +268,11 @@ export default function ProductEditForm({
                   value={watchedWarehouseId}
                   action={(val) => setValue("warehouseId", val)}
                   placeholder="اختر المستودع"
+                  add={<WarehouseForm />}
                 />
                 {errors.warehouseId && (
                   <p className="text-right text-xs text-red-500">
                     {errors.warehouseId.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="supplierId">المورد</Label>
-                <SelectField
-                  options={formData.suppliers}
-                  value={watchedSupplierId}
-                  action={(val) => setValue("supplierId", val)}
-                  placeholder="اختر المورد"
-                />
-                {errors.supplierId && (
-                  <p className="text-right text-xs text-red-500">
-                    {errors.supplierId.message}
                   </p>
                 )}
               </div>
@@ -523,56 +284,223 @@ export default function ProductEditForm({
                   {...register("expiredAt")}
                 />
               </div>
-              {/* <div className="grid gap-2">
-              <Label htmlFor="dimensions">الأبعاد</Label>
-              <Input
-                id="dimensions"
-                type="text"
-                {...register("dimensions")}
-                className="text-right"
-              />
-              {errors.dimensions && (
-                <p className="text-right text-xs text-red-500">
-                  {errors.dimensions.message}
-                </p>
-              )}
-            </div> */}
-
               <div className="grid gap-2">
-                <Label htmlFor="description">الوصف</Label>
-                <Input
-                  id="description"
-                  type="text"
-                  {...register("description")}
-                  className="text-right"
+                <Label htmlFor="supplierId">المورد</Label>
+                <SelectField
+                  options={formData.suppliers}
+                  value={watchedSupplierId}
+                  action={(val) => setValue("supplierId", val)}
+                  placeholder="اختر المورد"
+                  add={<SupplierForm />}
                 />
-                {errors.description && (
+                {errors.supplierId && (
                   <p className="text-right text-xs text-red-500">
-                    {errors.description.message}
+                    {errors.supplierId.message}
+                  </p>
+                )}
+              </div>{" "}
+              <div className="grid gap-2">
+                <Label htmlFor="categoryId">الفئة</Label>
+                <SelectField
+                  options={formData.categories}
+                  value={watchedCategoryId}
+                  action={(val) => setValue("categoryId", val)}
+                  placeholder="اختر الفئة"
+                  add={<CategoryForm />}
+                />
+                {errors.categoryId && (
+                  <p className="text-right text-xs text-red-500">
+                    {errors.categoryId.message}
+                  </p>
+                )}
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="wholesalePrice">السعر الجملي</Label>
+                <Input
+                  id="wholesalePrice"
+                  type="number"
+                  step="0.01"
+                  {...register("wholesalePrice", { valueAsNumber: true })}
+                  className="text-right"
+                  placeholder="0.00"
+                />
+                {errors.wholesalePrice && (
+                  <p className="text-right text-xs text-red-500">
+                    {errors.wholesalePrice.message}
+                  </p>
+                )}
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="minWholesaleQty">الحد الأدنى</Label>
+                <Input
+                  id="minWholesaleQty"
+                  type="number"
+                  {...register("minWholesaleQty", {
+                    valueAsNumber: true,
+                  })}
+                  className="text-right"
+                  placeholder="0"
+                />
+                {errors.minWholesaleQty && (
+                  <p className="text-right text-xs text-red-500">
+                    {errors.minWholesaleQty.message}
                   </p>
                 )}
               </div>
             </div>
-          </div>
+          </Card>
 
-          {/* Submit Buttons */}
-          <div className="flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setOpen(false)}
-              disabled={isSubmitting}
-            >
-              إلغاء
-            </Button>
-            <Button
-              type="submit"
-              disabled={isSubmitting || loading}
-              className="min-w-[120px] bg-green-600 hover:bg-green-700"
-            >
-              {isSubmitting || loading ? "جاري الحفظ..." : "حفظ التعديلات"}
-            </Button>
-          </div>
+          {/* وحدات البيع المخصصة */}
+          <Card className="p-4">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold">وحدات البيع</h3>
+              <Button type="button" onClick={addSellingUnit} size="sm">
+                <Plus className="ml-2 h-4 w-4" />
+                إضافة وحدة
+              </Button>
+            </div>
+
+            <div className="space-y-4">
+              {fields.map((field, index) => (
+                <Card
+                  key={field.id}
+                  className={`p-4 ${index === 0 ? "border-green-500" : ""}`}
+                >
+                  <div className="mb-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold">
+                        {index === 0
+                          ? "🟢 الوحدة الأساسية"
+                          : `وحدة ${index + 1}`}
+                      </span>
+                      {index === 0 && (
+                        <span className="text-xs text-gray-500">
+                          (أصغر وحدة قابلة للبيع)
+                        </span>
+                      )}
+                    </div>
+
+                    {index > 0 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => remove(index)}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+                    <div className="grid gap-3">
+                      <Label>اسم الوحدة (عربي)</Label>
+                      <Input
+                        {...register(`sellingUnits.${index}.name`)}
+                        placeholder="مثال: علبة، كرتون"
+                        disabled={index === 0}
+                      />
+                      {errors.sellingUnits?.[index]?.name && (
+                        <p className="text-xs text-red-500">
+                          {errors.sellingUnits[index]?.name?.message}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="grid gap-3">
+                      <Label>اسم الوحدة (English)</Label>
+                      <Input
+                        {...register(`sellingUnits.${index}.nameEn`)}
+                        placeholder="Box, Carton"
+                        disabled={index === 0}
+                      />
+                    </div>
+
+                    {index > 0 && (
+                      <div className="grid gap-3">
+                        <Label>
+                          عدد {sellingUnits[index - 1]?.name || "الوحدات"} في
+                          هذه الوحدة
+                        </Label>
+                        <Input
+                          type="number"
+                          {...register(`sellingUnits.${index}.unitsPerParent`, {
+                            valueAsNumber: true,
+                          })}
+                          placeholder="مثال: 12"
+                          onChange={() => calculatePrice(index)}
+                        />
+                      </div>
+                    )}
+
+                    <div className="grid gap-3">
+                      <Label className="flex items-center gap-2">
+                        السعر
+                        {index > 0 && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => calculatePrice(index)}
+                          >
+                            <Check className="h-3 w-3" />
+                            حساب تلقائي
+                          </Button>
+                        )}
+                      </Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        {...register(`sellingUnits.${index}.price`, {
+                          valueAsNumber: true,
+                        })}
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+
+                  {/* عرض الحسابات */}
+                  {index > 0 && sellingUnits[index]?.unitsPerParent > 0 && (
+                    <div className="mt-3 rounded p-2 text-sm">
+                      💡 {sellingUnits[index]?.name || "هذه الوحدة"} ={" "}
+                      {sellingUnits[index]?.unitsPerParent}{" "}
+                      {sellingUnits[index - 1]?.name || "وحدة"}
+                    </div>
+                  )}
+                </Card>
+              ))}
+            </div>
+
+            {errors.sellingUnits && (
+              <p className="mt-2 text-xs text-red-500">
+                {errors.sellingUnits.message}
+              </p>
+            )}
+          </Card>
+
+          {/* ملخص الأسعار */}
+          {sellingUnits && sellingUnits.length > 0 && (
+            <Card className="p-4">
+              <h4 className="mb-3 font-semibold">📊 ملخص الأسعار</h4>
+              <div className="grid grid-cols-3 gap-3">
+                {sellingUnits.map((unit, idx) => (
+                  <div
+                    key={idx}
+                    className="bg-primary rounded-lg p-3 text-center shadow-sm"
+                  >
+                    <p className="text-xs text-gray-500">{unit.name}</p>
+                    <p className="text-lg font-bold">
+                      {unit.price?.toFixed(2) || "0.00"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          <Button type="submit" className="w-full" size="lg">
+            حفظ المنتج
+          </Button>
         </form>
       </ScrollArea>
     </Dailogreuse>

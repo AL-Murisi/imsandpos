@@ -72,3 +72,19 @@ export async function getLatestExchangeRate({
   const d = serializeData(rate);
   return d;
 }
+// export async function getforgeincurrncy ({
+//   amount,
+//   fromCurrency,
+//   toCurrency,
+// }: {
+//   amount: number;
+//   fromCurrency: string;
+//   toCurrency: string;
+// }) {
+//   const rate = await getLatestExchangeRate({ fromCurrency, toCurrency });
+//   if (!rate) return null;
+//   return {
+//     amount: amount * rate.rate,
+//     currency: toCurrency,
+//   };
+// }

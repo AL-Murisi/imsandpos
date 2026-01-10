@@ -34,7 +34,9 @@ export default function InventoryTabs({
       sku: string;
       name: string;
       supplierId: string | null;
+      warehouseId: string | null;
       costPrice: Prisma.Decimal;
+      sellingUnits: any;
     }[];
     warehouses: {
       id: string;
@@ -54,6 +56,7 @@ export default function InventoryTabs({
         name: string;
         supplierId: string | null;
         costPrice: Prisma.Decimal;
+        sellingUnits: any;
       };
       productId: string;
       stockQuantity: number;

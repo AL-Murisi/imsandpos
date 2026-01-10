@@ -1,7 +1,7 @@
 "use client";
 
 import { Selection } from "@/components/common/sellingcat";
-import { ProductForSale } from "@/lib/zod";
+import { ProductForSale, SellingUnit } from "@/lib/zod";
 import SearchInput from "@/components/common/searchlist";
 import { getTranslations } from "next-intl/server";
 import dynamic from "next/dynamic";
@@ -14,6 +14,8 @@ import { useAppDispatch } from "@/lib/store";
 type forsale = ProductForSale & {
   warehousename: string;
   sellingMode: string;
+  sellingUnits: SellingUnit[];
+  availableStock: Record<string, number>;
 };
 
 type prop = {

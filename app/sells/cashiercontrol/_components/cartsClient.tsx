@@ -42,7 +42,7 @@ import {
 } from "@/lib/slices/cartSlice";
 import { useAppDispatch, useAppSelector } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { ProductForSale } from "@/lib/zod";
+import { ProductForSale, SellingUnit } from "@/lib/zod";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -51,7 +51,10 @@ import dynamic from "next/dynamic";
 import { useCompany } from "@/hooks/useCompany";
 import Link from "next/link";
 import { Clock } from "lucide-react";
-import { updateProductStockOptimistic } from "@/lib/slices/productsSlice";
+import {
+  CartItem,
+  updateProductStockOptimistic,
+} from "@/lib/slices/productsSlice";
 
 const PrintButton = dynamic(
   () => import("./test").then((mod) => mod.PrintButton),
@@ -69,11 +72,13 @@ const Receipt = dynamic(
   () => import("@/components/common/receipt").then((mod) => mod.Receipt),
   { ssr: false },
 );
-export type SellingUnit = "carton" | "packet" | "unit";
+
 export type discountType = "fixed" | "percentage";
 type forsale = ProductForSale & {
   warehousename: string;
   sellingMode: string;
+  sellingUnits: SellingUnit[];
+  availableStock: Record<string, number>;
 };
 interface UserOption {
   id?: string;
@@ -121,7 +126,10 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
   // Local state
   if (!user) return; // wait until user is loaded
   const { company } = useCompany();
-
+  const cartItems =
+    useAppSelector(
+      (s) => s.cart.carts.find((c) => c.id === s.cart.activeCartId)?.items,
+    ) ?? [];
   const [discountType, setDiscountType] = useState<discountType>("fixed");
   const [discountValue, setDiscountsValue] = useState(0);
   const [receivedAmount, setReceivedAmount] = useState(0);
@@ -167,53 +175,107 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
   const handleUpdateQty = useCallback(
     (
       id: string,
-      sellingUnit: SellingUnit,
+      selectedUnitId: string,
+
       quantity: number,
       action: string,
     ) => {
-      dispatch(updateQty({ id, sellingUnit, quantity, action }));
+      dispatch(updateQty({ id, selectedUnitId, quantity, action }));
     },
     [dispatch],
   );
 
   const handleChangeUnit = useCallback(
-    (id: string, from: SellingUnit, to: SellingUnit, item: any) => {
+    (id: string, fromUnit: SellingUnit, toUnit: SellingUnit, item: any) => {
+      // 1️⃣ التأكد من أن الوحدة الجديدة لا تسبب تكراراً مع سطر آخر موجود فعلاً
+      const exits = items.find(
+        (i) => i.id === id && i.selectedUnitId === toUnit.id,
+      );
+
+      if (exits) {
+        toast.error("⚠️ هذه الوحدة مضافة بالفعل في السلة");
+        return;
+      }
+
+      // 2️⃣ تغيير الوحدة: نرسل fromUnitId ليعرف الـ reducer أي سطر يغير تحديداً
       dispatch(
         changeSellingUnit({
           id,
-          from,
-          to,
-          product: {
-            packetsPerCarton: item.packetsPerCarton,
-            unitsPerPacket: item.unitsPerPacket,
-          },
-          qty: item.selectedQty,
+          fromUnitId: item.selectedUnitId, // المعرف القديم للسطر
+          toUnitId: toUnit.id, // المعرف الجديد للسطر
         }),
       );
+
+      // 3️⃣ تحديث المخزون (Optimistic)
+      // نرجع الكمية القديمة للمخزون
       dispatch(
         updateProductStockOptimistic({
           productId: id,
-          sellingUnit: from,
+          sellingUnit: item.selectedUnitId,
           quantity: item.selectedQty,
           mode: "restore",
         }),
       );
 
-      // 2️⃣ خصم المخزون الجديد
+      // نخصم الكمية الجديدة (1 لأن التغيير يعيد التعيين لـ 1 عادةً)
       dispatch(
         updateProductStockOptimistic({
           productId: id,
-          sellingUnit: to,
-          quantity: item.selectedQty,
+          sellingUnit: toUnit.id,
+          quantity: 1,
           mode: "consume",
         }),
       );
     },
-    [dispatch],
+    [dispatch, items], // أضف items هنا لضمان عمل التحقق (exits) بشكل صحيح
   );
+  // const handleChangeUnit = useCallback(
+  //   (id: string, fromUnit: SellingUnit, toUnit: SellingUnit, item: any) => {
+  //     // 1️⃣ الفحص: هل الوحدة الجديدة موجودة بالفعل في السلة لهذا المنتج؟
+  //     // نقوم بالبحث في cartItems (تأكد من وجودها في الـ scope أو جلبها عبر Selector)
+  //     const isAlreadyInCart = cartItems.some(
+  //       (i: any) => i.id === id && i.selectedUnitId === toUnit.id,
+  //     );
 
+  //     if (isAlreadyInCart) {
+  //       // إشعار للمستخدم (اختياري)
+  //       console.warn("هذه الوحدة مضافة بالفعل في السلة");
+  //       return; // توقف هنا ولا ترسل أي Dispatch
+  //     }
+
+  //     // 2️⃣ تغيير الوحدة في السلة
+  //     dispatch(
+  //       changeSellingUnit({
+  //         id,
+  //         fromUnitId: item.selectedUnitId,
+  //         toUnitId: toUnit.id,
+  //       }),
+  //     );
+
+  //     // 3️⃣ إعادة المخزون للوحدة القديمة (بناءً على الكمية التي كانت في السلة)
+  //     dispatch(
+  //       updateProductStockOptimistic({
+  //         productId: id,
+  //         sellingUnit: fromUnit.id, // نرسل الـ ID
+  //         quantity: item.selectedQty,
+  //         mode: "restore",
+  //       }),
+  //     );
+
+  //     // 4️⃣ خصم المخزون من الوحدة الجديدة (بناءً على الكمية الافتراضية الجديدة وهي 1)
+  //     dispatch(
+  //       updateProductStockOptimistic({
+  //         productId: id,
+  //         sellingUnit: toUnit.id, // نرسل الـ ID
+  //         quantity: 1, // لأن changeSellingUnit تقوم بتعيين الكمية لـ 1
+  //         mode: "consume",
+  //       }),
+  //     );
+  //   },
+  //   [dispatch, cartItems], // أضف cartItems للتأكد من دقة الفحص
+  // );
   const handleRemoveItem = useCallback(
-    (id: string) => {
+    (id: string, unitId: string) => {
       // 1️⃣ Find the item in the current cart items before removing it
       const itemToRestore = items.find((item) => item.id === id);
 
@@ -222,15 +284,19 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
         dispatch(
           updateProductStockOptimistic({
             productId: id,
-            sellingUnit: itemToRestore.sellingUnit,
+            sellingUnit: itemToRestore.selectedUnitId,
             quantity: itemToRestore.selectedQty,
             mode: "restore",
           }),
         );
       }
-
+      dispatch(
+        removeFromCart({
+          productId: id,
+          unitId: unitId,
+        }),
+      );
       // 3️⃣ Remove from cart
-      dispatch(removeFromCart(id));
     },
     [dispatch, items], // Add items to dependency array
   );
@@ -309,7 +375,35 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
   const canPay =
     (isCash && receivedAmount >= totals.totalAfter) ||
     (!isCash && selectedUser?.name);
-
+  // const UnitSelect = ({
+  //   item,
+  //   onChange,
+  // }: {
+  //   item: CartItem;
+  //   onChange: (unitId: string) => void;
+  // }) => {
+  //   return (
+  //     <Select value={item.selectedUnitId} onValueChange={onChange}>
+  //       <SelectTrigger>
+  //         <SelectValue />
+  //       </SelectTrigger>
+  //       <SelectContent>
+  //         {item.sellingUnit.map((unit) => (
+  //           <SelectItem
+  //             key={unit.id}
+  //             value={unit.id}
+  //             disabled={
+  //               !item.availableStock[unit.id] ||
+  //               item.availableStock[unit.id] <= 0
+  //             }
+  //           >
+  //             {unit.name} - ${unit.price}
+  //           </SelectItem>
+  //         ))}
+  //       </SelectContent>
+  //     </Select>
+  //   );
+  // };
   return (
     <div className="bg-accent flex h-[45hv] flex-col rounded-2xl p-2 shadow-xl/20 shadow-gray-500 lg:col-span-1">
       {/* Header & Cart Tabs */}
@@ -405,7 +499,7 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
               {items.length > 0 ? (
                 items.map((item, index) => (
                   <CartItemRow
-                    key={`${item.id}-${item.sellingUnit}`}
+                    key={`${item.id}-${item.selectedUnitId}-${index}`}
                     item={item}
                     index={index}
                     products={product}
@@ -539,7 +633,13 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
               {isMobileUA ? (
                 <PrintButton
                   saleNumber={saleNumber}
-                  items={items}
+                  items={items.map((item) => ({
+                    ...item,
+                    sellingUnit:
+                      item.sellingUnits.find(
+                        (unit) => unit.id === item.selectedUnitId,
+                      )?.name || "",
+                  }))}
                   totals={totals}
                   receivedAmount={receivedAmount}
                   calculatedChange={calculatedChange}
@@ -553,7 +653,13 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
               ) : (
                 <Receipt
                   saleNumber={saleNumber}
-                  items={items}
+                  items={items.map((item) => ({
+                    ...item,
+                    sellingUnit:
+                      item.sellingUnits.find(
+                        (unit) => unit.id === item.selectedUnitId,
+                      )?.name || "",
+                  }))}
                   totals={totals}
                   receivedAmount={receivedAmount}
                   calculatedChange={calculatedChange}
@@ -564,19 +670,6 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
                   t={tt}
                   company={company} // ✅ new prop
                 />
-
-                // <Receipt
-                //   saleNumber={saleNumber}
-                //   items={items}
-                //   totals={totals}
-                //   receivedAmount={receivedAmount}
-                //   calculatedChange={calculatedChange}
-                //   userName={user?.name}
-                //   customerName={selectedUser?.name}
-                //   customerDebt={selectedUser?.outstandingBalance}
-                //   isCash={receivedAmount >= totals.totalAfter}
-                //   t={tt}
-                // />
               )}
               <Button
                 disabled={!canPay || isSubmitting || isLoadingSaleNumber}
@@ -598,7 +691,7 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
                     dispatch(
                       updateProductStockOptimistic({
                         productId: item.id,
-                        sellingUnit: item.sellingUnit,
+                        sellingUnit: item.selectedUnitId,
                         quantity: item.selectedQty,
                         mode: "restore",
                       }),

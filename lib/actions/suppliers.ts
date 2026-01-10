@@ -10,28 +10,44 @@ import { getSession } from "@/lib/session";
 import { getActiveFiscalYears } from "./fiscalYear";
 function serializeData<T>(data: T): T {
   if (data === null || data === undefined) return data;
-  if (typeof data !== "object") return data;
+
+  // إذا كان كائن Decimal الخاص ببريسما
+  if (
+    typeof data === "object" &&
+    (data as any).toNumber &&
+    typeof (data as any).toNumber === "function"
+  ) {
+    return (data as any).toNumber() as T;
+  }
 
   if (Array.isArray(data)) {
     return data.map((item) => serializeData(item)) as T;
   }
 
-  const plainObj: any = {};
-  for (const [key, value] of Object.entries(data)) {
-    if (value instanceof Prisma.Decimal) {
-      plainObj[key] = Number(value);
-    } else if (value instanceof Date) {
-      plainObj[key] = value.toISOString();
-    } else if (typeof value === "bigint") {
-      plainObj[key] = value.toString();
-    } else if (typeof value === "object" && value !== null) {
-      plainObj[key] = serializeData(value);
-    } else {
-      plainObj[key] = value;
+  if (typeof data === "object") {
+    const plainObj: any = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (value instanceof Date) {
+        plainObj[key] = value.toISOString();
+      } else if (typeof value === "bigint") {
+        plainObj[key] = value.toString();
+      } else if (
+        value &&
+        typeof value === "object" &&
+        (value as any).constructor?.name === "Decimal"
+      ) {
+        // حماية إضافية للتحقق من اسم الكلاس
+        plainObj[key] = Number(value);
+      } else if (typeof value === "object" && value !== null) {
+        plainObj[key] = serializeData(value);
+      } else {
+        plainObj[key] = value;
+      }
     }
+    return plainObj;
   }
 
-  return plainObj;
+  return data;
 }
 async function getUserCompany() {
   const session = await getSession();

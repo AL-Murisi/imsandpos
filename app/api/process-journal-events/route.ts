@@ -74,6 +74,7 @@ export async function GET() {
             customerId: eventData.customerId,
             saleItems: eventData.saleItems,
             cashierId: eventData.cashierId,
+            returnTotalCOGS: eventData.returnTotalCOGS,
           });
 
           results.sales++;
@@ -86,7 +87,7 @@ export async function GET() {
             customerId: eventData.customerId,
             cashierId: eventData.cashierId,
             returnNumber: eventData.returnNumber,
-            returnSubtotal: eventData.returnSubtotal,
+            returnToCustomer: eventData.returnToCustomer,
             returnTotalCOGS: eventData.returnTotalCOGS,
             refundFromAR: eventData.refundFromAR,
             refundFromCashBank: eventData.refundFromCashBank,
@@ -411,7 +412,7 @@ async function createReturnJournalEntries({
   customerId,
   cashierId,
   returnNumber,
-  returnSubtotal,
+  returnToCustomer,
   returnTotalCOGS,
   refundFromAR,
   refundFromCashBank,
@@ -423,7 +424,7 @@ async function createReturnJournalEntries({
   customerId: string;
   cashierId: string;
   returnNumber: string;
-  returnSubtotal: number;
+  returnToCustomer: number;
   returnTotalCOGS: number;
   refundFromAR: number;
   refundFromCashBank: number;
@@ -492,7 +493,7 @@ async function createReturnJournalEntries({
       account_id: revenueAccount,
       description: `إرجاع بيع ${returnNumber}`,
       debit: 0,
-      credit: returnSubtotal,
+      credit: returnToCustomer,
     },
     // Reverse COGS (Credit)
     {
@@ -655,7 +656,7 @@ async function createPaymentJournalEntries({
     const cashAcc = getAcc("cash");
     const arAcc = getAcc("accounts_receivable");
 
-    const bank = paymentDetails?.bankId || getAcc("bank");
+    const bank = paymentDetails.bankId;
 
     if (!cashAcc || !arAcc || (payment.paymentMethod === "bank" && !bank)) {
       console.error("Missing account mappings");
@@ -668,13 +669,17 @@ async function createPaymentJournalEntries({
     const desc = `تسديد دين لعملية بيع ${sale.saleNumber}`;
 
     let entries: any[] = [];
-    if (payment.paymentMethod === "cash") {
+    if (paymentDetails.paymentMethod === "cash") {
       entries = [
         {
           company_id: companyId,
-          account_id: cashAcc,
+          account_id: paymentDetails.bankId,
           description: desc,
           debit: amount,
+          // currency_code: paymentDetails.currencyCode,
+          foreign_amount: paymentDetails.amountFC,
+          exchange_rate: paymentDetails.exchange_rate,
+          base_amount: paymentDetails.baseAmount,
           credit: 0,
           fiscal_period: fy.period_name,
           entry_date: new Date(),
@@ -688,6 +693,10 @@ async function createPaymentJournalEntries({
           company_id: companyId,
           account_id: arAcc,
           description: desc,
+          // currency_code: paymentDetails.currencyCode,
+          foreign_amount: paymentDetails.amountFC,
+          exchange_rate: paymentDetails.exchange_rate,
+          base_amount: paymentDetails.baseAmount,
           debit: 0,
           credit: amount,
           fiscal_period: fy.period_name,
@@ -699,11 +708,11 @@ async function createPaymentJournalEntries({
           is_automated: true,
         },
       ];
-    } else if (payment.paymentMethod === "bank") {
+    } else if (paymentDetails.paymentMethod === "bank") {
       entries = [
         {
           company_id: companyId,
-          account_id: bank,
+          account_id: paymentDetails.bankId,
           description:
             "رقم التحويل : " +
             paymentDetails.transferNumber +
@@ -711,6 +720,9 @@ async function createPaymentJournalEntries({
             sale.customer?.name,
           debit: amount,
           credit: 0,
+          foreign_amount: paymentDetails.amountFC,
+          exchange_rate: paymentDetails.exchange_rate,
+          base_amount: paymentDetails.baseAmount,
           fiscal_period: fy.period_name,
           entry_date: new Date(),
           reference_id: payment.id,
@@ -726,6 +738,9 @@ async function createPaymentJournalEntries({
           debit: 0,
           fiscal_period: fy.period_name,
           credit: amount,
+          foreign_amount: paymentDetails.amountFC,
+          exchange_rate: paymentDetails.exchange_rate,
+          base_amount: paymentDetails.baseAmount,
           entry_date: new Date(),
           reference_id: customerId,
           reference_type: "سند قبض",
@@ -1231,12 +1246,14 @@ async function createSaleJournalEntries({
   saleItems,
   customerId,
   cashierId,
+  returnTotalCOGS,
 }: {
   companyId: string;
   sale: any;
   customerId: string;
   saleItems: any[];
   cashierId: string;
+  returnTotalCOGS: number;
 }) {
   // 1️⃣ Early exits
   if (sale.sale_type !== "sale" || sale.status !== "completed") return;
@@ -1269,22 +1286,22 @@ async function createSaleJournalEntries({
 
   const productMap = new Map(products.map((p) => [p.id, p]));
 
-  let totalCOGS = 0;
-  for (const item of saleItems) {
-    const product = productMap.get(item.id);
-    if (!product) continue;
+  // let totalCOGS = 0;
+  // for (const item of saleItems) {
+  //   const product = productMap.get(item.id);
+  //   if (!product) continue;
 
-    const unitsPerCarton =
-      (product.unitsPerPacket || 1) * (product.packetsPerCarton || 1);
-    let costPerUnit = Number(product.costPrice);
+  //   const unitsPerCarton =
+  //     (product.unitsPerPacket || 1) * (product.packetsPerCarton || 1);
+  //   let costPerUnit = Number(product.costPrice);
 
-    if (item.sellingUnit === "packet")
-      costPerUnit = costPerUnit / (product.packetsPerCarton || 1);
-    else if (item.sellingUnit === "unit")
-      costPerUnit = costPerUnit / unitsPerCarton;
+  //   if (item.sellingUnit === "packet")
+  //     costPerUnit = costPerUnit / (product.packetsPerCarton || 1);
+  //   else if (item.sellingUnit === "unit")
+  //     costPerUnit = costPerUnit / unitsPerCarton;
 
-    totalCOGS += item.selectedQty * costPerUnit;
-  }
+  //   totalCOGS += item.selectedQty * costPerUnit;
+  // }
 
   // 4️⃣ Generate JE number safely
   const year = new Date().getFullYear().toString();
@@ -1471,13 +1488,13 @@ async function createSaleJournalEntries({
   }
 
   // 7️⃣ COGS + Inventory
-  if (totalCOGS > 0 && cogs && inventory) {
+  if (returnTotalCOGS > 0 && cogs && inventory) {
     entries.push(
       {
         ...baseEntry,
         account_id: cogs,
         description: desc,
-        debit: totalCOGS,
+        debit: returnTotalCOGS,
         credit: 0,
         reference_id: sale.id,
         reference_type: "تكلفة البضاعة المباعة",
@@ -1488,7 +1505,7 @@ async function createSaleJournalEntries({
         account_id: inventory,
         description: desc,
         debit: 0,
-        credit: totalCOGS,
+        credit: returnTotalCOGS,
         reference_id: sale.id,
         reference_type: "خرج من المخزن",
         entry_number: `${entryBase}-CG2`,

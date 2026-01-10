@@ -126,11 +126,7 @@ export default function Recitp({ id }: Props) {
                 <TableBody>
                   {data.items?.length > 0 ? (
                     data.items.map((item: any, index: number) => {
-                      const unitPrice =
-                        item.pricePerUnit ||
-                        item.pricePerPacket ||
-                        item.pricePerCarton ||
-                        0;
+                      const unitPrice = item.unit_price;
                       const total = unitPrice * item.selectedQty;
 
                       return (
@@ -140,7 +136,7 @@ export default function Recitp({ id }: Props) {
                           <TableCell>{item.warehousename}</TableCell>
                           <TableCell>{item.selectedQty}</TableCell>
                           <TableCell>{item.sellingUnit}</TableCell>
-                          <TableCell>{unitPrice.toFixed(2)}</TableCell>
+                          <TableCell>{}</TableCell>
                           <TableCell>{total.toFixed(2)} ﷼</TableCell>
                         </TableRow>
                       );

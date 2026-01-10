@@ -22,7 +22,7 @@ export interface ReceiptItem {
   name: string;
   warehousename: string;
   selectedQty: number;
-  sellingUnit: "unit" | "packet" | "carton";
+  sellingUnit: string;
   pricePerUnit?: number;
   pricePerPacket?: number;
   pricePerCarton?: number;
@@ -87,6 +87,8 @@ export const Receipt: React.FC<ReceiptProps> = ({
   };
 
   const handlePrint = () => {
+    if ((window as any).__printing) return;
+    (window as any).__printing = true;
     const printHTML = `
       <html>
         <head>
@@ -271,7 +273,7 @@ export const Receipt: React.FC<ReceiptProps> = ({
                       <td>${item.name}</td>
                       <td>${item.warehousename}</td>
                       <td>${item.selectedQty}</td>
-                      <td>${unitToArabic(item.sellingUnit)}</td>
+                      <td>${item.sellingUnit}</td>
                       <td>${getItemPrice(item)}</td>
                       <td>${(getItemPrice(item) * item.selectedQty).toFixed(2)}</td>
                     </tr>
@@ -351,17 +353,23 @@ export const Receipt: React.FC<ReceiptProps> = ({
     iframe.style.height = "0";
     iframe.style.border = "none";
     document.body.appendChild(iframe);
+    iframe.onload = () => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } finally {
+        setTimeout(() => {
+          document.body.removeChild(iframe);
+          (window as any).__printing = false;
+        }, 500);
+      }
+    };
 
     const doc = iframe.contentWindow?.document;
     if (!doc) return;
-
     doc.open();
     doc.write(printHTML);
     doc.close();
-
-    iframe.contentWindow?.focus();
-    iframe.contentWindow?.print();
-
     setTimeout(() => {
       document.body.removeChild(iframe);
       setIsLoading2(false);

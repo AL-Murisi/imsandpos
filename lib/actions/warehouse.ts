@@ -772,6 +772,8 @@ export async function fetchAllFormDatas(companyId: string) {
           sku: true,
           costPrice: true,
           supplierId: true,
+          sellingUnits: true,
+          warehouseId: true,
         },
         orderBy: { name: "asc" },
       }),
@@ -818,6 +820,7 @@ export async function fetchAllFormDatas(companyId: string) {
               // type: true,
               unitsPerPacket: true,
               packetsPerCarton: true,
+              sellingUnits: true,
             },
           },
           warehouse: {
@@ -997,8 +1000,7 @@ export async function processPurchaseReturn(
                 product: {
                   select: {
                     id: true,
-                    unitsPerPacket: true,
-                    packetsPerCarton: true,
+                    sellingUnits: true, // 🆕 Get selling units
                   },
                 },
               },
@@ -1049,24 +1051,13 @@ export async function processPurchaseReturn(
         }
 
         // 3. Convert return quantity to base units
-        function convertToBaseUnits(
-          qty: number,
-          unit: string,
-          unitsPerPacket: number,
-          packetsPerCarton: number,
-        ): number {
-          if (unit === "unit") return qty;
-          if (unit === "packet") return qty * (unitsPerPacket || 1);
-          if (unit === "carton")
-            return qty * (unitsPerPacket || 1) * (packetsPerCarton || 1);
-          return qty;
-        }
 
+        const sellingUnits = (product.sellingUnits as any[]) || [];
+        const selectedUnit = sellingUnits.find((u: any) => u.id === returnUnit);
         const returnQuantityInUnits = convertToBaseUnits(
           returnQuantity,
-          returnUnit,
-          product.unitsPerPacket || 1,
-          product.packetsPerCarton || 1,
+          selectedUnit,
+          sellingUnits,
         );
 
         // Validate: Can't return more than what's in stock
@@ -1077,18 +1068,18 @@ export async function processPurchaseReturn(
         }
 
         // Validate: Can't return more than originally purchased
-        const originalPurchasedInUnits = convertToBaseUnits(
-          purchaseItem.quantity,
-          returnUnit,
-          product.unitsPerPacket || 1,
-          product.packetsPerCarton || 1,
-        );
+        // const originalPurchasedInUnits = convertToBaseUnits(
+        //   purchaseItem.quantity,
+        //   returnUnit,
+        //   product.unitsPerPacket || 1,
+        //   product.packetsPerCarton || 1,
+        // );
 
-        if (returnQuantityInUnits > originalPurchasedInUnits) {
-          throw new Error(
-            `لا يمكن إرجاع كمية أكبر من الكمية المشتراة الأصلية (${purchaseItem.quantity})`,
-          );
-        }
+        // if (returnQuantityInUnits > originalPurchasedInUnits) {
+        //   throw new Error(
+        //     `لا يمكن إرجاع كمية أكبر من الكمية المشتراة الأصلية (${purchaseItem.quantity})`,
+        //   );
+        // }
 
         // 4. Calculate return cost (ALWAYS POSITIVE)
         const returnTotalCost = returnQuantity * unitCost;
@@ -1122,7 +1113,8 @@ export async function processPurchaseReturn(
         });
 
         // 7. Create purchase item for return (POSITIVE QUANTITY)
-        await tx.purchaseItem.create({
+        await tx.purchaseItem.update({
+          where: { id: purchaseItemId },
           data: {
             companyId,
             purchaseId: purchaseReturn.id,
@@ -1268,7 +1260,7 @@ interface PurchaseReturnData {
   purchaseItemId: string; // Added to identify specific item
   warehouseId: string;
   returnQuantity: number;
-  returnUnit: "unit" | "packet" | "carton";
+  returnUnit: string; // Specify the type as string or another appropriate type
   unitCost: number;
   paymentMethod?: string;
   refundAmount?: number;
@@ -1298,8 +1290,9 @@ export async function getPurchaseReturnData(
                 name: true,
                 sku: true,
                 costPrice: true,
-                unitsPerPacket: true,
-                packetsPerCarton: true,
+                sellingUnits: true,
+                // unitsPerPacket: true,
+                // packetsPerCarton: true,
                 type: true,
                 warehouseId: true,
                 supplier: { select: { id: true, name: true } },
@@ -1319,7 +1312,25 @@ export async function getPurchaseReturnData(
     if (!item) {
       return { success: false, message: "لا توجد منتجات في هذه المشتريات" };
     }
+    function calculateStockByUnit(baseQuantity: number, units: any[]) {
+      const stockByUnit: Record<string, number> = {};
 
+      // نفترض أن المصفوفة مرتبة من الأصغر (Base) إلى الأكبر
+      // أو نقوم بالبحث عن المعاملات
+      units.forEach((unit) => {
+        if (unit.isBase) {
+          stockByUnit[unit.id] = baseQuantity;
+        } else {
+          // إذا كان الكرتون يحتوي على 10 حبات، نقسم الكمية الأساسية على 10
+          // ملاحظة: تأكد من أن unitsPerParent تعبر عن التحويل من القاعدة
+          stockByUnit[unit.id] = Number(
+            (baseQuantity / unit.unitsPerParent).toFixed(2),
+          );
+        }
+      });
+
+      return stockByUnit;
+    }
     // 2️⃣ Fetch inventory for the product
     const inventory = await prisma.inventory.findFirst({
       where: {
@@ -1328,72 +1339,17 @@ export async function getPurchaseReturnData(
         warehouseId: item.product.warehouseId || undefined,
       },
     });
+    const currentStock = inventory ? Number(inventory.availableQuantity) : 0;
 
-    // 3️⃣ Get available quantity (base unit)
+    const sellingUnits = (item.product.sellingUnits as any[]) || [];
+    const stockByUnit = calculateStockByUnit(currentStock, sellingUnits);
 
-    // 4️⃣ Convert base units to packets and cartons based on product type
-    function convertFromBaseUnit(product: any, availableCartons: number) {
-      const unitsPerPacket = product.unitsPerPacket || 1;
-      const packetsPerCarton = product.packetsPerCarton || 1;
+    // التحقق من حالة البيع:
+    // إذا كانت الكمية في المخزن أقل من الكمية التي تم شراؤها في هذا الفاتورة
+    // فهذا يعني أن جزءاً منها قد تم بيعه (أو تم التصرف فيه)
+    const originalPurchaseQty = item.quantity; // الكمية عند الشراء
+    const hasBeenSold = currentStock < originalPurchaseQty; // 3️⃣ Get available quantity (base unit)
 
-      // 1 carton → packetsPerCarton packets
-      const availablePackets = Number(
-        (availableCartons * packetsPerCarton).toFixed(2),
-      );
-
-      // 1 packet → unitsPerPacket units
-      const availableUnits = Number(
-        (availablePackets * unitsPerPacket).toFixed(2),
-      );
-
-      return {
-        availableCartons,
-        availablePackets,
-        availableUnits,
-      };
-    }
-
-    const calculatedInventory = convertFromBaseUnit(
-      item.product,
-      item.quantity,
-    );
-
-    // 5️⃣ Filter available quantities based on product type
-    let inventoryByType: any = {};
-
-    switch (item.product.type) {
-      case "full":
-        // Full products have all three: units, packets, cartons
-        inventoryByType = {
-          availableUnits: calculatedInventory.availableUnits,
-          availablePackets: calculatedInventory.availablePackets,
-          availableCartons: calculatedInventory.availableCartons,
-        };
-        break;
-
-      case "cartonOnly":
-        // Only cartons available
-        inventoryByType = {
-          availableCartons: calculatedInventory.availableCartons,
-        };
-        break;
-
-      case "cartonUnit":
-        // Only cartons and units (no packets)
-        inventoryByType = {
-          availableUnits: calculatedInventory.availableUnits,
-          availableCartons: calculatedInventory.availableCartons,
-        };
-        break;
-
-      case "unit":
-      default:
-        // Only units available
-        inventoryByType = {
-          availableUnits: calculatedInventory.availableUnits,
-        };
-        break;
-    }
     const supplierdata = serializeData(purchase.supplier);
     const products = serializeData(item.product);
     // 6️⃣ Final Return Object
@@ -1421,7 +1377,12 @@ export async function getPurchaseReturnData(
           totalCost: Number(item.totalCost),
         },
 
-        inventory: inventoryByType,
+        inventory: {
+          stockByUnit, // سيعيد {"unit-1": 13, "unit-176...": 1.3}
+          currentStockInBaseUnit: currentStock,
+          isPartiallySold: hasBeenSold,
+          maxReturnableQty: Math.min(currentStock, originalPurchaseQty), // لا يمكن إرجاع أكثر مما هو موجود فعلياً
+        },
       },
     };
   } catch (error) {
@@ -1431,18 +1392,6 @@ export async function getPurchaseReturnData(
 }
 
 // Helper function to determine allowed units based on product type
-function getUnitsByProductType(type: string): ("unit" | "packet" | "carton")[] {
-  switch (type) {
-    case "full":
-      return ["unit", "packet", "carton"];
-    case "cartonOnly":
-      return ["carton"];
-    case "cartonUnit":
-      return ["carton", "unit"];
-    default:
-      return ["unit"];
-  }
-}
 
 export async function adjustStock(
   productId: string,
@@ -1692,6 +1641,216 @@ export async function getStockMovements(
 }
 
 // 7. Get single inventory item by ID
+// export async function getInventoryById(
+//   companyId: string,
+//   searchQuery: string = "",
+//   where: Prisma.InventoryWhereInput = {},
+//   from?: string,
+//   to?: string,
+//   page: number = 1,
+//   pageSize: number = 7,
+//   sort: SortState = [],
+// ) {
+//   try {
+//     const fromatDate = from ? new Date(from).toISOString() : undefined;
+//     const toDate = to ? new Date(to).toISOString() : undefined;
+
+//     const combinedWhere: Prisma.InventoryWhereInput = {
+//       ...where,
+//       companyId,
+//     };
+
+//     if (searchQuery) {
+//       combinedWhere.OR = [
+//         { product: { name: { contains: searchQuery, mode: "insensitive" } } },
+//         { location: { contains: searchQuery, mode: "insensitive" } },
+//         { warehouseId: { contains: searchQuery, mode: "insensitive" } },
+//         { productId: { contains: searchQuery, mode: "insensitive" } },
+//       ];
+//     }
+
+//     if (fromatDate || toDate) {
+//       combinedWhere.createdAt = {
+//         ...(fromatDate && { gte: fromatDate }),
+//         ...(toDate && { lte: toDate }),
+//       };
+//     }
+
+//     const totalCount = await prisma.inventory.count({ where: { companyId } });
+
+//     const inventory = await prisma.inventory.findMany({
+//       select: {
+//         id: true,
+//         product: {
+//           select: {
+//             id: true,
+//             name: true,
+//             sku: true,
+//             costPrice: true,
+//             unitsPerPacket: true,
+//             type: true,
+//             packetsPerCarton: true,
+
+//             supplier: { select: { id: true, name: true } }, // ✅ تأكد أن هذا موجود
+//           },
+//         },
+
+//         productId: true,
+//         warehouse: {
+//           select: {
+//             name: true,
+//             location: true,
+//           },
+//         },
+//         receiptNo: true,
+//         lastPurchaseId: true,
+//         lastPurchaseItemId: true,
+//         warehouseId: true,
+//         stockQuantity: true,
+//         reservedQuantity: true,
+//         availableQuantity: true,
+//         reorderLevel: true,
+//         maxStockLevel: true,
+//         location: true,
+//         status: true,
+
+//         lastStockTake: true,
+//         createdAt: true,
+//         updatedAt: true,
+//       },
+//       where: combinedWhere,
+//       skip: page * pageSize,
+//       take: pageSize,
+//     });
+
+//     // ✅ Convert all unit-based quantities to carton-based
+//     function convertFromBaseUnit(product: any, availableUnits: number) {
+//       const unitsPerPacket = product.unitsPerPacket || 1;
+//       const packetsPerCarton = product.packetsPerCarton || 1;
+
+//       const availablePackets = Number(
+//         (availableUnits / unitsPerPacket).toFixed(2),
+//       );
+//       const availableCartons = Number(
+//         (availablePackets / packetsPerCarton).toFixed(2),
+//       );
+
+//       return { availablePackets, availableCartons };
+//     }
+//     const convertedInventory = inventory.map((item) => {
+//       const availableUnits = item.availableQuantity ?? 0;
+
+//       const { availablePackets, availableCartons } = convertFromBaseUnit(
+//         item.product,
+//         item.availableQuantity,
+//       );
+
+//       const { availablePackets: stockPackets, availableCartons: stockCartons } =
+//         convertFromBaseUnit(item.product, item.stockQuantity);
+
+//       const {
+//         availablePackets: reservedPackets,
+//         availableCartons: reservedCartons,
+//       } = convertFromBaseUnit(item.product, item.reservedQuantity);
+
+//       let finalAvailableUnits = 0;
+//       let finalAvailablePackets = 0;
+//       let finalAvailableCartons = 0;
+
+//       let finalStockUnits = 0;
+//       let finalStockPackets = 0;
+//       let finalStockCartons = 0;
+
+//       let finalReservedUnits = 0;
+//       let finalReservedPackets = 0;
+//       let finalReservedCartons = 0;
+
+//       if (item.product.type === "full") {
+//         finalAvailableUnits = availableUnits;
+//         finalAvailablePackets = availablePackets;
+//         finalAvailableCartons = availableCartons;
+
+//         finalStockUnits = availableUnits;
+//         finalStockPackets = stockPackets;
+//         finalStockCartons = stockCartons;
+
+//         finalReservedUnits = availableUnits;
+//         finalReservedPackets = reservedPackets;
+//         finalReservedCartons = reservedCartons;
+//       } else if (item.product.type === "cartonUnit") {
+//         finalAvailableUnits = availableUnits;
+//         finalAvailableCartons = availableCartons;
+//         finalAvailablePackets = 0;
+
+//         finalStockUnits = availableUnits;
+//         finalStockCartons = stockCartons;
+//         finalStockPackets = 0;
+
+//         finalReservedUnits = availableUnits;
+//         finalReservedCartons = reservedCartons;
+//         finalReservedPackets = 0;
+//       } else if (item.product.type === "cartonOnly") {
+//         finalAvailableCartons = availableCartons;
+//         finalAvailableUnits = 0;
+//         finalAvailablePackets = 0;
+
+//         finalStockCartons = stockCartons;
+//         finalStockUnits = 0;
+//         finalStockPackets = 0;
+
+//         finalReservedCartons = reservedCartons;
+//         finalReservedUnits = 0;
+//         finalReservedPackets = 0;
+//       } else if (item.product.type === "unit") {
+//         finalAvailableUnits = availableUnits;
+//         finalAvailablePackets = 0;
+//         finalAvailableCartons = 0;
+
+//         finalStockUnits = availableUnits;
+//         finalStockPackets = 0;
+//         finalStockCartons = 0;
+
+//         finalReservedUnits = availableUnits;
+//         finalReservedPackets = 0;
+//         finalReservedCartons = 0;
+//       } else if (item.product.type === "packetUnit") {
+//         finalAvailableUnits = availableUnits;
+//         finalAvailablePackets = availablePackets;
+//         finalAvailableCartons = 0;
+
+//         finalStockUnits = availableUnits;
+//         finalStockPackets = stockPackets;
+//         finalStockCartons = 0;
+
+//         finalReservedUnits = availableUnits;
+//         finalReservedPackets = reservedPackets;
+//         finalReservedCartons = 0;
+//       }
+
+//       return {
+//         ...item,
+//         availableUnits: finalAvailableUnits,
+//         availablePackets: finalAvailablePackets,
+//         availableCartons: finalAvailableCartons,
+
+//         stockUnits: finalStockUnits,
+//         stockPackets: finalStockPackets,
+//         stockCartons: finalStockCartons,
+
+//         reservedUnits: finalReservedUnits,
+//         reservedPackets: finalReservedPackets,
+//         reservedCartons: finalReservedCartons,
+//       };
+//     });
+//     const inventories = serializeData(convertedInventory);
+//     return { inventory: inventories, totalCount };
+//   } catch (error) {
+//     console.error("Error getting inventory by ID:", error);
+//     throw error;
+//   }
+// }
+// lib/actions/warehouse.ts - getInventoryById update
+
 export async function getInventoryById(
   companyId: string,
   searchQuery: string = "",
@@ -1738,14 +1897,10 @@ export async function getInventoryById(
             name: true,
             sku: true,
             costPrice: true,
-            unitsPerPacket: true,
-            type: true,
-            packetsPerCarton: true,
-
-            supplier: { select: { id: true, name: true } }, // ✅ تأكد أن هذا موجود
+            sellingUnits: true, // 🆕
+            supplier: { select: { id: true, name: true } },
           },
         },
-
         productId: true,
         warehouse: {
           select: {
@@ -1755,7 +1910,6 @@ export async function getInventoryById(
         },
         receiptNo: true,
         lastPurchaseId: true,
-        lastPurchaseItemId: true,
         warehouseId: true,
         stockQuantity: true,
         reservedQuantity: true,
@@ -1764,7 +1918,6 @@ export async function getInventoryById(
         maxStockLevel: true,
         location: true,
         status: true,
-
         lastStockTake: true,
         createdAt: true,
         updatedAt: true,
@@ -1774,133 +1927,54 @@ export async function getInventoryById(
       take: pageSize,
     });
 
-    // ✅ Convert all unit-based quantities to carton-based
-    function convertFromBaseUnit(product: any, availableUnits: number) {
-      const unitsPerPacket = product.unitsPerPacket || 1;
-      const packetsPerCarton = product.packetsPerCarton || 1;
-
-      const availablePackets = Number(
-        (availableUnits / unitsPerPacket).toFixed(2),
-      );
-      const availableCartons = Number(
-        (availablePackets / packetsPerCarton).toFixed(2),
-      );
-
-      return { availablePackets, availableCartons };
-    }
+    // 🆕 Convert base units to all selling units
     const convertedInventory = inventory.map((item) => {
-      const availableUnits = item.availableQuantity ?? 0;
+      const sellingUnits = (item.product.sellingUnits as any[]) || [];
+      const baseStock = item.stockQuantity;
 
-      const { availablePackets, availableCartons } = convertFromBaseUnit(
-        item.product,
-        item.availableQuantity,
-      );
+      // Calculate quantity for each selling unit
+      const stockByUnit: Record<string, number> = {};
+      const availableByUnit: Record<string, number> = {};
+      const reservedByUnit: Record<string, number> = {};
 
-      const { availablePackets: stockPackets, availableCartons: stockCartons } =
-        convertFromBaseUnit(item.product, item.stockQuantity);
-
-      const {
-        availablePackets: reservedPackets,
-        availableCartons: reservedCartons,
-      } = convertFromBaseUnit(item.product, item.reservedQuantity);
-
-      let finalAvailableUnits = 0;
-      let finalAvailablePackets = 0;
-      let finalAvailableCartons = 0;
-
-      let finalStockUnits = 0;
-      let finalStockPackets = 0;
-      let finalStockCartons = 0;
-
-      let finalReservedUnits = 0;
-      let finalReservedPackets = 0;
-      let finalReservedCartons = 0;
-
-      if (item.product.type === "full") {
-        finalAvailableUnits = availableUnits;
-        finalAvailablePackets = availablePackets;
-        finalAvailableCartons = availableCartons;
-
-        finalStockUnits = availableUnits;
-        finalStockPackets = stockPackets;
-        finalStockCartons = stockCartons;
-
-        finalReservedUnits = availableUnits;
-        finalReservedPackets = reservedPackets;
-        finalReservedCartons = reservedCartons;
-      } else if (item.product.type === "cartonUnit") {
-        finalAvailableUnits = availableUnits;
-        finalAvailableCartons = availableCartons;
-        finalAvailablePackets = 0;
-
-        finalStockUnits = availableUnits;
-        finalStockCartons = stockCartons;
-        finalStockPackets = 0;
-
-        finalReservedUnits = availableUnits;
-        finalReservedCartons = reservedCartons;
-        finalReservedPackets = 0;
-      } else if (item.product.type === "cartonOnly") {
-        finalAvailableCartons = availableCartons;
-        finalAvailableUnits = 0;
-        finalAvailablePackets = 0;
-
-        finalStockCartons = stockCartons;
-        finalStockUnits = 0;
-        finalStockPackets = 0;
-
-        finalReservedCartons = reservedCartons;
-        finalReservedUnits = 0;
-        finalReservedPackets = 0;
-      } else if (item.product.type === "unit") {
-        finalAvailableUnits = availableUnits;
-        finalAvailablePackets = 0;
-        finalAvailableCartons = 0;
-
-        finalStockUnits = availableUnits;
-        finalStockPackets = 0;
-        finalStockCartons = 0;
-
-        finalReservedUnits = availableUnits;
-        finalReservedPackets = 0;
-        finalReservedCartons = 0;
-      } else if (item.product.type === "packetUnit") {
-        finalAvailableUnits = availableUnits;
-        finalAvailablePackets = availablePackets;
-        finalAvailableCartons = 0;
-
-        finalStockUnits = availableUnits;
-        finalStockPackets = stockPackets;
-        finalStockCartons = 0;
-
-        finalReservedUnits = availableUnits;
-        finalReservedPackets = reservedPackets;
-        finalReservedCartons = 0;
-      }
+      sellingUnits.forEach((unit, index) => {
+        if (index === 0) {
+          // Base unit
+          stockByUnit[unit.id] = baseStock;
+          availableByUnit[unit.id] = item.availableQuantity;
+          reservedByUnit[unit.id] = item.reservedQuantity;
+        } else {
+          // Calculate for higher units
+          let divisor = 1;
+          for (let i = 1; i <= index; i++) {
+            divisor *= sellingUnits[i].unitsPerParent;
+          }
+          stockByUnit[unit.id] = Math.floor(baseStock / divisor);
+          availableByUnit[unit.id] = Math.floor(
+            item.availableQuantity / divisor,
+          );
+          reservedByUnit[unit.id] = Math.floor(item.reservedQuantity / divisor);
+        }
+      });
 
       return {
         ...item,
-        availableUnits: finalAvailableUnits,
-        availablePackets: finalAvailablePackets,
-        availableCartons: finalAvailableCartons,
-
-        stockUnits: finalStockUnits,
-        stockPackets: finalStockPackets,
-        stockCartons: finalStockCartons,
-
-        reservedUnits: finalReservedUnits,
-        reservedPackets: finalReservedPackets,
-        reservedCartons: finalReservedCartons,
+        sellingUnits,
+        stockByUnit,
+        availableByUnit,
+        reservedByUnit,
       };
     });
-    const inventories = serializeData(convertedInventory);
-    return { inventory: inventories, totalCount };
+
+    return {
+      inventory: serializeData(convertedInventory),
+      totalCount,
+    };
   } catch (error) {
     console.error("Error getting inventory by ID:", error);
     throw error;
   }
 }
-
 export async function fetchWarehouse(companyId: string) {
   return await prisma.warehouse.findMany({
     where: { companyId },
@@ -1997,4 +2071,428 @@ export async function deleteWarehouse(id: string) {
     console.error("Failed to delete warehouse:", error);
     return { success: false, error: "حدث خطأ أثناء حذف المستودع" };
   }
+}
+
+export interface InventoryUpdateDatas {
+  id?: string;
+  productId: string;
+  warehouseId: string;
+  updateType: "manual" | "supplier";
+
+  // 🆕 Selling Unit Info
+  selectedUnitId: string; // Which unit is being updated
+  quantity: number; // Quantity in the selected unit
+
+  // Old fields (kept for backward compatibility)
+  stockQuantity?: number;
+  reservedQuantity?: number;
+  availableQuantity?: number;
+
+  // Supplier fields
+  supplierId?: string;
+  unitCost?: number;
+  currency_code?: string;
+
+  // Payment
+  paymentAmount?: number;
+  paymentMethod?: string;
+  payment?: any;
+
+  notes?: string;
+  reason?: string;
+  lastStockTake?: Date;
+}
+
+export async function updateMultipleInventories(
+  updatesData: InventoryUpdateDatas[],
+  userId: string,
+  companyId: string,
+) {
+  try {
+    // Validate required fields
+    if (!companyId || !userId) {
+      return {
+        success: false,
+        error: "معرف الشركة ومعرف المستخدم مطلوبان",
+      };
+    }
+
+    if (!updatesData || updatesData.length === 0) {
+      return {
+        success: false,
+        error: "يجب إضافة تحديث واحد على الأقل",
+      };
+    }
+
+    // Validate each update
+    for (let i = 0; i < updatesData.length; i++) {
+      const update = updatesData[i];
+
+      if (!update.productId || !update.warehouseId) {
+        return {
+          success: false,
+          error: `التحديث ${i + 1}: المنتج والمستودع مطلوبان`,
+        };
+      }
+
+      if (!update.selectedUnitId) {
+        return {
+          success: false,
+          error: `التحديث ${i + 1}: يجب اختيار وحدة البيع`,
+        };
+      }
+
+      if (!update.quantity || update.quantity <= 0) {
+        return {
+          success: false,
+          error: `التحديث ${i + 1}: الكمية يجب أن تكون أكبر من صفر`,
+        };
+      }
+
+      if (update.updateType === "supplier") {
+        if (!update.supplierId || !update.unitCost || update.unitCost <= 0) {
+          return {
+            success: false,
+            error: `التحديث ${i + 1}: المورد وسعر الوحدة مطلوبان للتحديثات من المورد`,
+          };
+        }
+
+        // if ((update.paymentAmount || 0) > totalCost) {
+        //   return {
+        //     success: false,
+        //     error: `التحديث ${i + 1}: مبلغ الدفع أكبر من التكلفة الإجمالية`,
+        //   };
+        // }
+      }
+    }
+
+    console.log(
+      `Updating ${updatesData.length} inventory records for company:`,
+      companyId,
+    );
+
+    // Process all updates in a transaction
+    const result = await prisma.$transaction(
+      async (tx) => {
+        const updatedInventories = [];
+        const createdPurchases = [];
+        const stockMovements = [];
+        let totalCost = 0;
+        for (const updateData of updatesData) {
+          // Fetch product and current inventory
+          const [product, currentInventory] = await Promise.all([
+            tx.product.findUnique({
+              where: { id: updateData.productId },
+              select: {
+                id: true,
+                name: true,
+                sku: true,
+                sellingUnits: true, // 🆕 Get selling units
+                supplierId: true,
+              },
+            }),
+            tx.inventory.findFirst({
+              where: {
+                companyId,
+                productId: updateData.productId,
+                warehouseId: updateData.warehouseId,
+              },
+            }),
+          ]);
+
+          if (!product) {
+            throw new Error(`المنتج غير موجود: ${updateData.productId}`);
+          }
+
+          // 🆕 Parse selling units
+          const sellingUnits = (product.sellingUnits as any[]) || [];
+          const selectedUnit = sellingUnits.find(
+            (u: any) => u.id === updateData.selectedUnitId,
+          );
+
+          if (!selectedUnit) {
+            throw new Error(
+              `الوحدة المحددة غير موجودة: ${updateData.selectedUnitId}`,
+            );
+          }
+
+          // 🆕 Convert to base units
+          const stockUnits = convertToBaseUnits(
+            updateData.quantity,
+            selectedUnit,
+            sellingUnits,
+          );
+          totalCost = stockUnits * updateData.unitCost!;
+          console.log(totalCost);
+          // Generate receipt number
+          const nextNumber = currentInventory?.receiptNo
+            ? parseInt(currentInventory.receiptNo.match(/(\d+)$/)?.[1] || "0") +
+              1
+            : 1;
+          const receiptNo = `مشتريات-${new Date().getFullYear()}-${String(nextNumber).padStart(5, "0")}`;
+
+          // Get or create inventory record
+          let inventory = currentInventory;
+          if (!inventory) {
+            inventory = await tx.inventory.create({
+              data: {
+                companyId,
+                productId: product.id,
+                warehouseId: updateData.warehouseId,
+                availableQuantity: 0,
+                stockQuantity: 0,
+                reorderLevel: 10,
+                status: "available",
+                lastStockTake: new Date(),
+              },
+            });
+          }
+
+          // Calculate final quantities (in base units)
+          const finalStockQty = inventory.stockQuantity + stockUnits;
+          const finalAvailableQty = inventory.availableQuantity + stockUnits;
+          const finalReorderLevel = inventory.reorderLevel;
+
+          let calculatedStatus: "available" | "low" | "out_of_stock" =
+            "available";
+          if (finalAvailableQty <= 0) calculatedStatus = "out_of_stock";
+          else if (finalAvailableQty < finalReorderLevel)
+            calculatedStatus = "low";
+
+          let purchaseId: string | null = null;
+
+          // Create purchase if from supplier
+          if (
+            updateData.updateType === "supplier" &&
+            updateData.unitCost &&
+            updateData.supplierId
+          ) {
+            const paid = updateData.paymentAmount || 0;
+            const due = totalCost - paid;
+
+            const purchase = await tx.purchase.create({
+              data: {
+                companyId,
+                supplierId: updateData.supplierId,
+                totalAmount: totalCost,
+                amountPaid: paid,
+                purchaseType: "purchases",
+                amountDue: due,
+                status:
+                  paid >= totalCost ? "paid" : paid > 0 ? "partial" : "pending",
+              },
+            });
+
+            await tx.purchaseItem.create({
+              data: {
+                companyId,
+                purchaseId: purchase.id,
+                productId: product.id,
+                quantity: stockUnits,
+                unitCost: updateData.unitCost,
+                totalCost,
+                // 🆕 Store unit information
+                // unitId: selectedUnit.id,
+                // unitName: selectedUnit.name,
+              },
+            });
+
+            purchaseId = purchase.id;
+            createdPurchases.push(purchase);
+            let supplierPaymentId: string | null = null;
+
+            // Create supplier payment if applicable
+            if (updateData.paymentMethod && paid > 0) {
+              const supplierPayment = await tx.supplierPayment.create({
+                data: {
+                  companyId,
+                  supplierId: updateData.supplierId,
+                  createdBy: userId,
+                  purchaseId: purchase.id,
+                  amount: paid,
+                  paymentMethod: updateData.paymentMethod,
+                  note: updateData.notes || "دفعة مشتريات",
+                },
+              });
+              supplierPaymentId = supplierPayment.id;
+            }
+
+            // Update supplier totals
+            const outstanding = totalCost - paid;
+            await tx.supplier.update({
+              where: { id: updateData.supplierId, companyId },
+              data: {
+                totalPurchased: { increment: totalCost },
+                totalPaid: { increment: paid },
+                outstandingBalance: { increment: outstanding },
+              },
+            });
+
+            // Create journal event
+            await tx.journalEvent.create({
+              data: {
+                companyId,
+                eventType: "purchase",
+                status: "pending",
+                entityType: "purchase",
+                payload: {
+                  companyId,
+                  supplierId: updateData.supplierId,
+                  purchase: purchase,
+                  userId,
+                  type: "purchase",
+                  paymentDetails: {
+                    exchangeRate: updateData.payment?.exchangeRate,
+                    amountFC: updateData.payment?.amountFC,
+                    bankId: updateData.payment?.accountId,
+                    amountBase: updateData.paymentAmount,
+                    paymentId: supplierPaymentId,
+                    paymentMethod: updateData.payment?.paymentMethod,
+                    currency_code: updateData.payment?.accountCurrency || "YER",
+                    refrenceNumber: updateData.payment?.transferNumber,
+                  },
+                },
+                processed: false,
+              },
+            });
+          }
+
+          // Update inventory
+          const updatedInventory = await tx.inventory.update({
+            where: { id: inventory.id },
+            data: {
+              lastPurchaseId: purchaseId,
+              availableQuantity: finalAvailableQty,
+              stockQuantity: finalStockQty,
+              reservedQuantity:
+                updateData.reservedQuantity || inventory.reservedQuantity,
+              receiptNo,
+              status: calculatedStatus,
+              lastStockTake: updateData.lastStockTake || new Date(),
+            },
+            include: {
+              product: { select: { name: true, sku: true } },
+              warehouse: { select: { name: true } },
+            },
+          });
+
+          updatedInventories.push(updatedInventory);
+
+          // Record stock movement
+          const stockDifference = finalStockQty - inventory.stockQuantity;
+          if (stockDifference !== 0) {
+            const movement = await tx.stockMovement.create({
+              data: {
+                companyId,
+                productId: product.id,
+                warehouseId: updateData.warehouseId,
+                userId,
+                movementType: stockDifference > 0 ? "وارد" : "صادر",
+                quantity: Math.abs(stockDifference),
+                reason:
+                  updateData.updateType === "supplier"
+                    ? "تم_استلام_المورد"
+                    : updateData.reason || "تحديث_يدوي",
+                notes:
+                  updateData.notes ||
+                  `${updateData.updateType === "supplier" ? "المخزون من المورد" : "تحديث المخزون"}`,
+                quantityBefore: inventory.stockQuantity,
+                quantityAfter: finalStockQty,
+                // 🆕 Store unit information
+                // unitId: selectedUnit.id,
+                // unitName: selectedUnit.name,
+              },
+            });
+            stockMovements.push(movement);
+          }
+
+          await new Promise((resolve) => setTimeout(resolve, 10));
+        }
+
+        // Create activity log for batch
+        const totalUnits = updatesData.reduce((sum, u) => sum + u.quantity, 0);
+        await tx.activityLogs.create({
+          data: {
+            userId,
+            companyId,
+            action: "تحديث_مخزون_متعدد",
+            details: `تم تحديث ${updatesData.length} سجل مخزون. إجمالي الوحدات: ${totalUnits}`,
+          },
+        });
+
+        return {
+          updatedInventories,
+          createdPurchases,
+          stockMovements,
+        };
+      },
+      {
+        timeout: 30000,
+        maxWait: 10000,
+      },
+    );
+
+    console.log(
+      `✅ Successfully updated ${result.updatedInventories.length} inventory records`,
+    );
+
+    revalidatePath("/manageStocks");
+
+    return {
+      success: true,
+      count: result.updatedInventories.length,
+      inventories: result.updatedInventories,
+      purchases: result.createdPurchases,
+      message: `تم تحديث ${result.updatedInventories.length} سجل مخزون بنجاح`,
+    };
+  } catch (error) {
+    console.error("Error updating multiple inventory:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "فشل تحديث المخزون",
+    };
+  }
+}
+
+// 🆕 Helper function to convert to base units
+function convertToBaseUnits(
+  quantity: number,
+  selectedUnit: any,
+  allUnits: any[],
+): number {
+  // Find the index of the selected unit
+  const unitIndex = allUnits.findIndex((u) => u.id === selectedUnit.id);
+
+  if (unitIndex === 0) {
+    // Already in base units
+    return quantity;
+  }
+
+  // Calculate total multiplier from base to selected unit
+  let multiplier = 1;
+  for (let i = 1; i <= unitIndex; i++) {
+    multiplier *= allUnits[i].unitsPerParent;
+  }
+
+  return quantity * multiplier;
+}
+
+// 🆕 Helper function to convert from base units to any unit
+export async function convertFromBaseUnits(
+  baseQuantity: number,
+  targetUnitId: string,
+  allUnits: any[],
+): Promise<number> {
+  const unitIndex = allUnits.findIndex((u: any) => u.id === targetUnitId);
+
+  if (unitIndex === 0) {
+    return Promise.resolve(baseQuantity);
+  }
+
+  let divisor = 1;
+  for (let i = 1; i <= unitIndex; i++) {
+    divisor *= allUnits[i].unitsPerParent;
+  }
+
+  return Promise.resolve(baseQuantity / divisor);
 }

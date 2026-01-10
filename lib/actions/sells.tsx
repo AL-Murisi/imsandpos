@@ -133,6 +133,7 @@ export async function FetchDebtSales(
             select: {
               name: true,
               warehouseId: true,
+              sellingUnits: true,
             },
           },
         },
@@ -440,10 +441,8 @@ export async function fetchReceipt(saleId: string, companyId: string) {
         si.product_id,
         si.quantity,
         si.selling_unit,
+        si.unit_price,
         p.name AS product_name,
-        p.price_per_unit,
-        p.price_per_packet,
-        p.price_per_carton,
         p.warehouse_id,
         w.name AS warehouse_name
       FROM sale_items si
@@ -484,9 +483,7 @@ export async function fetchReceipt(saleId: string, companyId: string) {
             'warehousename', si.warehouse_name,
             'selectedQty', si.quantity,
             'sellingUnit', si.selling_unit,
-            'pricePerUnit', si.price_per_unit,
-            'pricePerPacket', si.price_per_packet,
-            'pricePerCarton', si.price_per_carton
+            'pricePerUnit', si.unit_price
           )
         )
         FROM sale_items si

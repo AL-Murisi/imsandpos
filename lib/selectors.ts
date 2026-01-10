@@ -116,11 +116,7 @@ export const selectCartTotals = createSelector(
   (items, discountType, discountValue) => {
     const totalBefore = items.reduce((acc, item) => {
       const price =
-        item.sellingUnit === "unit"
-          ? (item.pricePerUnit ?? 0)
-          : item.sellingUnit === "packet"
-            ? (item.pricePerPacket ?? 0)
-            : (item.pricePerCarton ?? 0);
+        item.sellingUnits.find((u) => u.id === item.selectedUnitId)?.price || 0;
       return acc + price * item.selectedQty;
     }, 0);
 
@@ -259,34 +255,34 @@ export const selectCartTotals = createSelector(
 //     });
 //   },
 // );
-export const selectAvailableStock = createSelector(
-  [selectProducts, selectCarts],
-  (products, carts) => {
-    return products.map((p) => {
-      // 🔸 Calculate total quantity in cart for this product
-      const totalInCart = carts.reduce((sum, cart) => {
-        return (
-          sum +
-          cart.items
-            .filter((i) => i.id === p.id)
-            .reduce((subSum, item) => subSum + item.selectedQty, 0)
-        );
-      }, 0);
+// export const selectAvailableStock = createSelector(
+//   [selectProducts, selectCarts],
+//   (products, carts) => {
+//     return products.map((p) => {
+//       // 🔸 Calculate total quantity in cart for this product
+//       const totalInCart = carts.reduce((sum, cart) => {
+//         return (
+//           sum +
+//           cart.items
+//             .filter((i) => i.id === p.id)
+//             .reduce((subSum, item) => subSum + item.selectedQty, 0)
+//         );
+//       }, 0);
 
-      // 🔸 Subtract from already available quantities
-      const availableUnits = Math.max(p.availableUnits - totalInCart, 0);
-      const availablePackets = Math.max(p.availablePackets - totalInCart, 0); // optionally adjust
-      const availableCartons = Math.max(p.availableCartons - totalInCart, 0); // optionally adjust
+//       // 🔸 Subtract from already available quantities
+//       const availableUnits = Math.max(p.availableUnits - totalInCart, 0);
+//       const availablePackets = Math.max(p.availablePackets - totalInCart, 0); // optionally adjust
+//       const availableCartons = Math.max(p.availableCartons - totalInCart, 0); // optionally adjust
 
-      return {
-        ...p,
-        availableUnits,
-        availablePackets,
-        availableCartons,
-      };
-    });
-  },
-);
+//       return {
+//         ...p,
+//         availableUnits,
+//         availablePackets,
+//         availableCartons,
+//       };
+//     });
+//   },
+// );
 
 // export const selectAvailableStock = createSelector(
 //   [selectProducts, selectCarts],

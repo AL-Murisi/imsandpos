@@ -34,6 +34,8 @@ export default function SupplierStatementPrint({
   const handlePrint = () => {
     if (!suppliers) return;
 
+    if ((window as any).__printing) return;
+    (window as any).__printing = true;
     const printHTML = `
       <html lang="ar" dir="rtl">
       <head>
@@ -233,8 +235,8 @@ export default function SupplierStatementPrint({
               <th>نوع السند</th>
               
               <th>البيان</th>
-              <th>مدين</th>
-              <th>دائن</th>
+               <th>مدين (عليه)</th>
+              <th> دائن (له)</th>
               <th>الرصيد</th>
             </tr>
           </thead>
@@ -304,17 +306,24 @@ export default function SupplierStatementPrint({
     iframe.style.position = "fixed";
     iframe.style.right = "0";
     iframe.style.bottom = "0";
-
     document.body.appendChild(iframe);
+    iframe.onload = () => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } finally {
+        setTimeout(() => {
+          document.body.removeChild(iframe);
+          (window as any).__printing = false;
+        }, 500);
+      }
+    };
+
     const doc = iframe.contentWindow?.document;
     if (!doc) return;
-
     doc.open();
     doc.write(printHTML);
     doc.close();
-
-    iframe.contentWindow?.focus();
-    iframe.contentWindow?.print();
 
     setTimeout(() => document.body.removeChild(iframe), 1000);
   };

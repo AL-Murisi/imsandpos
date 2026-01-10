@@ -202,26 +202,71 @@ export const inventoryColumns: ColumnDef<any>[] = [
     accessorKey: "warehouse.location",
     header: "الموقع",
   },
-
   {
-    accessorKey: "reservedQuantity",
+    accessorKey: "reservedByUnit",
     header: "الكمية المحجوزة",
-  },
-  {
-    accessorKey: "availableQuantity",
-    header: "الكمية المتاحة (وحدات)",
     cell: ({ row }) => {
       const item = row.original;
+      const reservedMap = item.reservedByUnit || {};
 
-      // Show the correct available quantity based on product type
+      // إذا لم يكن هناك كميات محجوزة
+      if (Object.values(reservedMap).every((v) => v === 0)) return "0";
+
+      return (
+        <div className="flex flex-col gap-1 text-xs">
+          {item.sellingUnits?.map((unit: any) => {
+            const qty = reservedMap[unit.id] || 0;
+            if (qty <= 0) return null;
+            return (
+              <span key={unit.id} className="font-medium text-orange-600">
+                {qty} {unit.name}
+              </span>
+            );
+          })}
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: "availableByUnit",
+    header: "الكمية المتاحة",
+    cell: ({ row }) => {
+      const item = row.original;
+      const availableMap = item.availableByUnit || {};
+
       const parts: string[] = [];
-      if (item.availableUnits > 0)
-        parts.push(`${item.availableUnits.toFixed(0)} وحدة`);
-      if (item.availablePackets > 0)
-        parts.push(`${item.availablePackets.toFixed(0)} علبة`);
-      if (item.availableCartons > 0)
-        parts.push(`${item.availableCartons.toFixed(0)} كرتون`);
-      return parts.join(" / ") || "0";
+
+      // نمر على الوحدات المعرفة للمنتج ونجلب كمية كل واحدة من الخريطة
+      item.sellingUnits?.forEach((unit: any) => {
+        const qty = availableMap[unit.id] || 0;
+        if (qty > 0) {
+          parts.push(`${qty.toFixed(0)} ${unit.name}`);
+        }
+      });
+
+      return (
+        <div className="font-medium text-blue-700">
+          {parts.join(" / ") || "0"}
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: "stockByUnit",
+    header: "إجمالي المخزون",
+    cell: ({ row }) => {
+      const item = row.original;
+      const stockMap = item.stockByUnit || {};
+
+      const parts: string[] = [];
+      item.sellingUnits?.forEach((unit: any) => {
+        const qty = stockMap[unit.id] || 0;
+        if (qty > 0) {
+          parts.push(`${qty.toFixed(0)} ${unit.name}`);
+        }
+      });
+
+      return parts.join(" | ") || "0";
     },
   },
   {
@@ -233,16 +278,29 @@ export const inventoryColumns: ColumnDef<any>[] = [
     header: "الحالة",
     cell: ({ row }) => {
       const item = row.original;
-      const available = item.availableCartons ?? 0;
+
+      // جلب الخريطة والتأكد من أنها كائن
+      const availableMap: Record<string, number> = item.availableByUnit || {};
+
+      // تصحيح الخطأ: تعريف نوع sum و val يدوياً في reduce
+      const totalAvailable = Object.values(availableMap).reduce(
+        (sum: number, val: number) => sum + val,
+        0,
+      );
+
       const reorder = item.reorderLevel ?? 0;
 
-      if (available === 0) {
-        return <Badge className="bg-red-500">نفد</Badge>;
-      } else if (available <= reorder) {
-        return <Badge className="bg-yellow-500">قريب من النفاد</Badge>;
-      } else {
-        return <Badge className="bg-green-600">متوفر</Badge>;
+      if (totalAvailable === 0) {
+        return <Badge className="bg-red-500 text-white">نفد</Badge>;
       }
+
+      if (totalAvailable <= reorder) {
+        return (
+          <Badge className="bg-yellow-500 text-black">قريب من النفاد</Badge>
+        );
+      }
+
+      return <Badge className="bg-green-600 text-white">متوفر</Badge>;
     },
   },
   {

@@ -24,7 +24,8 @@ export default function CustomerStatementPrint({
   // ================================
   const handlePrint = () => {
     if (!customers) return;
-
+    if ((window as any).__printing) return;
+    (window as any).__printing = true;
     const printHTML = `
       <html lang="ar" dir="rtl">
       <head>
@@ -214,8 +215,8 @@ export default function CustomerStatementPrint({
               <th>نوع السند</th>
               <th>رقم المستند</th>
               <th>البيان</th>
-              <th>مدين</th>
-              <th>دائن</th>
+              <th>مدين (عليه)</th>
+              <th> دائن (له)</th>
               <th>الرصيد</th>
             </tr>
           </thead>
@@ -295,15 +296,23 @@ export default function CustomerStatementPrint({
     iframe.style.bottom = "0";
 
     document.body.appendChild(iframe);
+    iframe.onload = () => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } finally {
+        setTimeout(() => {
+          document.body.removeChild(iframe);
+          (window as any).__printing = false;
+        }, 500);
+      }
+    };
+
     const doc = iframe.contentWindow?.document;
     if (!doc) return;
-
     doc.open();
     doc.write(printHTML);
     doc.close();
-
-    iframe.contentWindow?.focus();
-    iframe.contentWindow?.print();
 
     setTimeout(() => document.body.removeChild(iframe), 1000);
   };

@@ -1,7 +1,5 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { CashierItem } from "@/lib/zod";
-
-export type SellingUnit = "carton" | "packet" | "unit";
+import { CashierItem, SellingUnit } from "@/lib/zod";
 
 export type Cart = {
   id: string; // tab/cart id
@@ -11,14 +9,18 @@ export type Cart = {
 export interface CartItem extends CashierItem {
   id: string;
   name: string;
-  sellingUnit: SellingUnit;
+  selectedUnitId: string;
+  selectedUnitName: string; // 🆕
+  selectedUnitPrice: number; // 🆕
   selectedQty: number;
   action: string;
   warehousename: string;
   sellingMode: string;
   originalStockQuantity: number;
-  unitsPerPacket: number;
-  packetsPerCarton: number;
+  sellingUnits: SellingUnit[];
+  availableStock: Record<string, number>;
+  // unitsPerPacket: number;
+  // packetsPerCarton: number;
 }
 interface CartState {
   carts: Cart[];
@@ -58,30 +60,99 @@ const cartSlice = createSlice({
     },
 
     // 🔹 Item Management
+    // addItem: (state, action: PayloadAction<CartItem>) => {
+    //   const cart = state.carts.find((c) => c.id === state.activeCartId);
+    //   if (!cart) return;
+
+    //   // 1️⃣ البحث عن المنتج باستخدام المعرف والوحدة معاً
+    //   // هذا يسمح بوجود نفس المنتج بوحدات مختلفة في السلة
+    //   const existing = cart.items.find(
+    //     (i) =>
+    //       i.id === action.payload.id &&
+    //       i.selectedUnitId === action.payload.selectedUnitId,
+    //   );
+
+    //   // 2️⃣ جلب المخزون المتاح لهذه الوحدة تحديداً من البيانات المرسلة
+    //   // ملاحظة: نفترض أن action.payload يحتوي على availableStock المحدث
+    //   const availableForThisUnit =
+    //     action.payload.availableStock?.[action.payload.selectedUnitId] ?? 0;
+
+    //   if (existing) {
+    //     // 3️⃣ التحقق من عدم تجاوز المخزون عند الزيادة
+    //     // الكمية الجديدة = الموجود في السلة + 1
+    //     if (existing.selectedQty < availableForThisUnit) {
+    //       existing.selectedQty += 1;
+    //     } else {
+    //       // اختياري: يمكنك إضافة تنبيه هنا إذا كنت تستخدم نظام إشعارات داخل الـ Reducer
+    //       console.warn("Out of stock for this unit");
+    //     }
+    //   } else {
+    //     // 4️⃣ إضافة المنتج كسطر جديد إذا كانت الوحدة مختلفة أو المنتج جديد
+    //     // نتحقق أيضاً من توفر قطعة واحدة على الأقل
+    //     if (availableForThisUnit > 0) {
+    //       cart.items.push(action.payload);
+    //     }
+    //   }
+    // },
+    //     removeFromCart: (
     addItem: (state, action: PayloadAction<CartItem>) => {
       const cart = state.carts.find((c) => c.id === state.activeCartId);
       if (!cart) return;
-      const existing = cart.items.find((i) => i.id === action.payload.id);
+
+      // 1️⃣ البحث عن المنتج باستخدام المعرف والوحدة معاً
+      // هذا يسمح بوجود نفس المنتج بوحدات مختلفة في السلة
+      const existing = cart.items.find(
+        (i) =>
+          i.id === action.payload.id &&
+          i.selectedUnitId === action.payload.selectedUnitId,
+      );
+
+      // 2️⃣ جلب المخزون المتاح لهذه الوحدة تحديداً من البيانات المرسلة
+      // ملاحظة: نفترض أن action.payload يحتوي على availableStock المحدث
+      const availableForThisUnit =
+        action.payload.availableStock?.[action.payload.selectedUnitId] ?? 0;
+
       if (existing) {
-        existing.selectedQty += action.payload.selectedQty;
+        // 3️⃣ التحقق من عدم تجاوز المخزون عند الزيادة
+        // الكمية الجديدة = الموجود في السلة + 1
+        if (existing.selectedQty < availableForThisUnit) {
+          existing.selectedQty += 1;
+        } else {
+          // اختياري: يمكنك إضافة تنبيه هنا إذا كنت تستخدم نظام إشعارات داخل الـ Reducer
+          console.warn("Out of stock for this unit");
+        }
       } else {
-        cart.items.push(action.payload);
+        // 4️⃣ إضافة المنتج كسطر جديد إذا كانت الوحدة مختلفة أو المنتج جديد
+        // نتحقق أيضاً من توفر قطعة واحدة على الأقل
+        if (availableForThisUnit > 0) {
+          cart.items.push(action.payload);
+        }
       }
     },
-    //     removeFromCart: (
-
-    removeFromCart: (state, action: PayloadAction<string>) => {
+    removeFromCart: (
+      state,
+      action: PayloadAction<{ productId: string; unitId: string }>,
+    ) => {
       const cart = state.carts.find((c) => c.id === state.activeCartId);
       if (!cart) return;
-      cart.items = cart.items.filter((i) => i.id !== action.payload);
-    },
 
+      // الفلترة بناءً على الشرطين معاً
+      // سنحتفظ بكل العناصر التي (لا تملك نفس الـ ID) أو (لا تملك نفس الـ UnitId)
+      cart.items = cart.items.filter(
+        (i) =>
+          !(
+            i.id === action.payload.productId &&
+            i.selectedUnitId === action.payload.unitId
+          ),
+      );
+    },
+    // في cartSlice.ts
     updateQty(
       state,
       action: PayloadAction<{
         id: string;
         quantity: number;
-        sellingUnit: SellingUnit;
+        selectedUnitId: string; // نستخدم ID بدلاً من Name
         action: string;
       }>,
     ) {
@@ -91,18 +162,21 @@ const cartSlice = createSlice({
       const item = cart.items.find(
         (i) =>
           i.id === action.payload.id &&
-          i.sellingUnit === action.payload.sellingUnit,
+          i.selectedUnitId === action.payload.selectedUnitId,
       );
+
       if (item) {
         if (action.payload.action === "plus") {
           item.selectedQty += action.payload.quantity;
-        } else if (action.payload.action === "mins") {
-          item.selectedQty -= action.payload.quantity;
+        } else {
+          item.selectedQty = Math.max(
+            1,
+            item.selectedQty - action.payload.quantity,
+          );
         }
       }
     },
 
-    // 🔹 Discounts & Selling Unit
     setDiscount: (
       state,
       action: PayloadAction<{ type: "fixed" | "percentage"; value: number }>,
@@ -110,34 +184,60 @@ const cartSlice = createSlice({
       state.discountType = action.payload.type;
       state.discountValue = action.payload.value;
     },
-
     changeSellingUnit: (
       state,
       action: PayloadAction<{
         id: string;
-        from: SellingUnit;
-        to: SellingUnit;
-        product: { packetsPerCarton: number; unitsPerPacket: number };
-        qty: number;
+        fromUnitId: string;
+        toUnitId: string;
       }>,
     ) => {
       const cart = state.carts.find((c) => c.id === state.activeCartId);
       if (!cart) return;
 
+      // البحث عن السطر المحدد باستخدام ID المنتج + ID الوحدة القديمة
       const item = cart.items.find(
         (i) =>
-          i.id === action.payload.id && i.sellingUnit === action.payload.from,
+          i.id === action.payload.id &&
+          i.selectedUnitId === action.payload.fromUnitId,
       );
 
-      if (!item) return;
-
-      const { to } = action.payload;
-
-      // Simply set quantity to 1 when changing units
-      item.sellingUnit = to;
-      item.selectedQty = 1;
+      if (item) {
+        const newUnit = item.sellingUnits.find(
+          (u) => u.id === action.payload.toUnitId,
+        );
+        if (newUnit) {
+          item.selectedUnitId = newUnit.id;
+          item.selectedUnitName = newUnit.name;
+          item.selectedUnitPrice = newUnit.price;
+          item.selectedQty = 1; // تعيين الكمية لـ 1 عند تغيير نوع الوحدة
+        }
+      }
     },
+    // changeSellingUnit: (
+    //   state,
+    //   action: PayloadAction<{
+    //     id: string;
+    //     fromUnitId: string;
+    //     toUnitId: string;
+    //   }>,
+    // ) => {
+    //   const cart = state.carts.find((c) => c.id === state.activeCartId);
+    //   if (!cart) return;
 
+    //   const item = cart.items.find((i) => i.id === action.payload.id);
+    //   if (!item) return;
+
+    //   const newUnit = item.sellingUnits.find(
+    //     (u) => u.id === action.payload.toUnitId,
+    //   );
+    //   if (!newUnit) return;
+
+    //   item.selectedUnitId = newUnit.id;
+    //   item.selectedUnitName = newUnit.name;
+    //   item.selectedUnitPrice = newUnit.price;
+    //   item.selectedQty = 1; // إعادة تعيين الكمية
+    // },
     // 🔹 Cart Utilities
     clearCart: (state) => {
       const cart = state.carts.find((c) => c.id === state.activeCartId);

@@ -14,111 +14,54 @@ import { TableCell, TableRow } from "@/components/ui/table";
 import { FormatPrice, useFormatter } from "@/hooks/usePrice";
 import { updateProductStockOptimistic } from "@/lib/slices/productsSlice";
 import { useAppDispatch } from "@/lib/store";
-import { ProductForSale } from "@/lib/zod";
+import { ProductForSale, SellingUnit } from "@/lib/zod";
 import { Minus, Plus, Trash2Icon } from "lucide-react";
 import { memo, useCallback } from "react";
 
-export type SellingUnit = "carton" | "packet" | "unit";
-export type discountType = "fixed" | "percentage";
-type forsale = ProductForSale & {
+// تم تعديل النوع ليشمل مصفوفة الوحدات الديناميكية
+type props = ProductForSale & {
   warehousename: string;
   sellingMode: string;
+  sellingUnits: SellingUnit[];
+  availableStock: Record<string, number>; // التعديل هنا: سجل يحتوي على الكمية لكل وحدة ID
 };
-interface CustomDialogProps {
-  users: {
-    id?: string;
-    name?: string;
-    phoneNumber?: string | null;
-    outstanding?: any;
-  } | null;
-  product: forsale[];
-}
 
-// 🚀 Memoized Cart Tab Component
-export const CartTab = memo(
-  ({
-    cart,
-    isActive,
-    onSelect,
-    onRemove,
-  }: {
-    cart: any;
-    isActive: boolean;
-    onSelect: () => void;
-    onRemove: () => void;
-  }) => (
-    <div className="flex flex-row gap-1">
-      <Button
-        className={`rounded ${
-          isActive
-            ? "bg-primary hover:bg-secondary rounded-md border-2 text-black hover:scale-100"
-            : "bg-card hover:bg-primary border-primary text-foreground rounded-md border-2 hover:text-black"
-        }`}
-        onClick={onSelect}
-      >
-        {cart.name}
-      </Button>
-      <div className="mt-1" onClick={onRemove}>
-        <Trash2Icon color="red" />
-      </div>
-    </div>
-  ),
-);
-
+// 🚀 مكون التبويبات (لم يتغير كثيراً)
+export const CartTab = memo(({ cart, isActive, onSelect, onRemove }: any) => (
+  <div className="flex flex-row gap-1">
+    <Button
+      className={`rounded ${
+        isActive
+          ? "bg-primary border-2 text-black"
+          : "bg-card text-foreground border-primary border-2"
+      }`}
+      onClick={onSelect}
+    >
+      {cart.name}
+    </Button>
+    <button className="mt-1" onClick={onRemove}>
+      <Trash2Icon color="red" size={20} />
+    </button>
+  </div>
+));
 CartTab.displayName = "CartTab";
 
-// 🚀 Memoized Cart Item Row
+// 🚀 مكون سطر المنتج في السلة (تم تحديثه للوحدات الديناميكية)
 export const CartItemRow = memo(
-  ({
-    item,
-    index,
-    products,
-    onUpdateQty,
-    onChangeUnit,
-    onRemove,
-    t,
-  }: {
-    item: any;
-    index: number;
-    products: forsale[];
-    onUpdateQty: (
-      id: string,
-      sellingUnit: SellingUnit,
-      quantity: number,
-      action: string,
-    ) => void;
-    onChangeUnit: (
-      id: string,
-      from: SellingUnit,
-      to: SellingUnit,
-      item: any,
-    ) => void;
-    onRemove: (id: string) => void;
-    t: any;
-  }) => {
+  ({ item, index, products, onUpdateQty, onChangeUnit, onRemove, t }: any) => {
     const dispatch = useAppDispatch();
-    const itemPrice =
-      item.sellingUnit === "unit"
-        ? (item.pricePerUnit ?? 0)
-        : item.sellingUnit === "packet"
-          ? (item.pricePerPacket ?? 0)
-          : (item.pricePerCarton ?? 0);
 
+    // جلب السعر مباشرة من الوحدة المختارة في الـ item
+    const itemPrice = item.selectedUnitPrice || 0;
+
+    // حساب الحد الأقصى للكمية بناءً على المخزون المتاح لهذه الوحدة المحددة
     const getMaxQty = useCallback(() => {
       const product = products.find((p: any) => p.id === item.id);
-      if (!product) return 0;
+      if (!product || !product.availableStock) return 0;
+      // نستخدم ID الوحدة لجلب المخزون المتاح لها
+      return product.availableStock[item.selectedUnitId] || 0;
+    }, [products, item.id, item.selectedUnitId]);
 
-      if (item.sellingUnit === "carton") {
-        return Math.floor(product.availableCartons);
-      } else if (item.sellingUnit === "packet") {
-        const decimalPart = product.availableCartons % 1;
-        const packetsFromCartons = Math.floor(decimalPart * 100);
-        return packetsFromCartons + product.availablePackets;
-      }
-      return product.availableUnits;
-    }, [products, item.id, item.sellingUnit]);
-    const product = products.find((p: any) => p.id === item.id);
-    if (!product) return 0;
     const maxQty = getMaxQty();
 
     return (
@@ -127,211 +70,166 @@ export const CartItemRow = memo(
         <TableCell>{item.sku}</TableCell>
         <TableCell>{item.name}</TableCell>
         <TableCell>{item.warehousename}</TableCell>
+
+        {/* التحكم في الكمية */}
         <TableCell>
-          <button
-            disabled={item.selectedQty <= 1}
-            onClick={() => {
-              dispatch(
-                updateProductStockOptimistic({
-                  productId: item.id,
-                  sellingUnit: item.sellingUnit,
-                  quantity: 1,
-                  mode: "restore", // 👈 نحدد الاتجاه
-                }),
-              );
-              onUpdateQty(item.id, item.sellingUnit, 1, "mins");
-            }}
-            className="bg-primary text-background rounded p-1 disabled:bg-gray-400"
-          >
-            <Minus size={16} />
-          </button>
-          <input
-            value={item.selectedQty}
-            onChange={(e) => {
-              const qty = Math.max(1, Number(e.target.value) || 1);
-              onUpdateQty(item.id, item.sellingUnit, qty, "plus");
-            }}
-            className="w-16 rounded border bg-white px-2 py-1 text-center text-black dark:bg-gray-800 dark:text-white"
-            min={1}
-          />
-          <button
-            disabled={item.selectedQty >= maxQty}
-            onClick={() => {
-              dispatch(
-                updateProductStockOptimistic({
-                  productId: item.id,
-                  sellingUnit: item.sellingUnit,
-                  quantity: 1,
-                  mode: "consume",
-                }),
-              );
-              onUpdateQty(item.id, item.sellingUnit, 1, "plus");
-            }}
-            className="bg-primary text-background rounded p-1 disabled:bg-gray-400"
-          >
-            <Plus size={16} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              disabled={item.selectedQty <= 1}
+              onClick={() => {
+                dispatch(
+                  updateProductStockOptimistic({
+                    productId: item.id,
+                    sellingUnit: item.selectedUnitId,
+                    quantity: 1,
+                    mode: "restore",
+                  }),
+                );
+                onUpdateQty(item.id, item.selectedUnitId, 1, "mins");
+              }}
+              className="bg-primary text-background rounded p-1 disabled:bg-gray-400"
+            >
+              <Minus size={16} />
+            </button>
+            <input
+              readOnly
+              value={item.selectedQty}
+              className="w-12 rounded border text-center text-sm"
+            />
+            <button
+              disabled={item.selectedQty >= maxQty}
+              onClick={() => {
+                dispatch(
+                  updateProductStockOptimistic({
+                    productId: item.id,
+                    sellingUnit: item.selectedUnitId,
+                    quantity: 1,
+                    mode: "consume",
+                  }),
+                );
+                onUpdateQty(item.id, item.selectedUnitId, 1, "plus");
+              }}
+              className="bg-primary text-background rounded p-1 disabled:bg-gray-400"
+            >
+              <Plus size={16} />
+            </button>
+          </div>
         </TableCell>
+
+        {/* اختيار الوحدة (ديناميكي) */}
         <TableCell>
           <Select
-            value={item.sellingUnit}
-            onValueChange={(value: string) =>
-              onChangeUnit(
-                item.id,
-                item.sellingUnit,
-                value as SellingUnit,
-                item,
-              )
-            }
+            value={item.selectedUnitId}
+            onValueChange={(newUnitId) => {
+              const newUnit = item.sellingUnits.find(
+                (u: any) => u.id === newUnitId,
+              );
+              // تأكد من تمرير الكائن القديم والجديد بشكل صحيح للدالة
+              const fromUnit = item.sellingUnits.find(
+                (u: any) => u.id === item.selectedUnitId,
+              );
+              onChangeUnit(item.id, fromUnit, newUnit, item);
+            }}
           >
-            <SelectTrigger className="rounded border px-2 py-1">
+            <SelectTrigger className="h-8 w-[110px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {/* ✅ Full mode → all options available */}
-              {item.sellingMode === "full" && (
-                <>
-                  <SelectItem
-                    disabled={item.selectedQty >= product.availableCartons}
-                    value="carton"
-                  >
-                    كرتون
-                  </SelectItem>
-                  <SelectItem
-                    disabled={item.selectedQty >= product.packetsPerCarton}
-                    value="packet"
-                  >
-                    حزمة
-                  </SelectItem>
-                  <SelectItem value="unit">حبة</SelectItem>
-                </>
-              )}
+              {item.sellingUnits?.map((unit: SellingUnit) => {
+                // 1. جلب المخزون المتاح لهذه الوحدة من البيانات التي مررناها للمنتج
+                // ملاحظة: تأكد أن availableStock موجود في كائن item داخل السلة
+                const isOutOfStock = (item.availableStock?.[unit.id] ?? 0) <= 0;
 
-              {/* ✅ Carton + Unit mode (no packet) */}
-              {item.sellingMode === "cartonUnit" && (
-                <>
+                return (
                   <SelectItem
-                    disabled={item.selectedQty >= product.availableCartons}
-                    value="carton"
+                    key={unit.id}
+                    value={unit.id}
+                    // 2. تعطيل الاختيار إذا نفد المخزون
+                    disabled={isOutOfStock}
+                    className={
+                      isOutOfStock ? "cursor-not-allowed opacity-50" : ""
+                    }
                   >
-                    كرتون
+                    <div className="flex w-full justify-between gap-2">
+                      <span>{unit.name}</span>
+                      {isOutOfStock && (
+                        <span className="text-[10px] font-bold text-red-500">
+                          (نفد)
+                        </span>
+                      )}
+                    </div>
                   </SelectItem>
-                  <SelectItem value="unit">حبة</SelectItem>
-                </>
-              )}
-
-              {/* ✅ Carton only mode */}
-              {item.sellingMode === "cartonOnly" && (
-                <SelectItem value="carton">كرتون</SelectItem>
-              )}
+                );
+              })}
             </SelectContent>
           </Select>
         </TableCell>
-        <TableCell className="whitespace-nowrap">${itemPrice}</TableCell>
+
         <TableCell className="whitespace-nowrap">
-          ${(itemPrice * item.selectedQty).toFixed(2)}
+          {FormatPrice(itemPrice)}
+        </TableCell>
+        <TableCell className="font-bold whitespace-nowrap">
+          {FormatPrice(itemPrice * item.selectedQty)}
         </TableCell>
         <TableCell>
-          <Button onClick={() => onRemove(item.id)} variant="ghost" size="icon">
-            <Trash2Icon color="red" size={18} />
+          <Button
+            onClick={() => onRemove(item.id, item.selectedUnitId)}
+            variant="ghost"
+            size="icon"
+          >
+            <Trash2Icon className="text-red-500" size={18} />
           </Button>
         </TableCell>
       </TableRow>
     );
   },
-  (prev, next) => {
-    return (
-      prev.item.selectedQty === next.item.selectedQty &&
-      prev.item.sellingUnit === next.item.sellingUnit &&
-      prev.products === next.products
-    );
-  },
 );
+CartItemRow.displayName = "CartItemRow";
 
-// Memoized Product Card Component
+// 🚀 مكون بطاقة المنتج (تم تحديثه للعرض الديناميكي)
+// 🚀 مكون بطاقة المنتج
 export const ProductCard = memo(
-  ({
-    product,
-    onAdd,
-    t,
-    formatCurrency,
-  }: {
-    product: forsale;
-    onAdd: (product: forsale) => void;
-    t: any;
-    formatCurrency: any;
-  }) => {
-    if (product.availableCartons <= 0) return null;
-    const { formatQty } = useFormatter();
-    // Determine selling mode automatically
-    const isCartonOnly =
-      product.availablePackets === 0 && product.availableUnits === 0;
-    const isCartonUnit =
-      product.availablePackets === 0 && product.availableUnits > 0;
-
-    const showPacket = !isCartonOnly && !isCartonUnit; // only for full mode
-    const showUnit = !isCartonOnly; // for all except carton-only
+  ({ product, onAdd, t, formatCurrency }: any) => {
+    if (!product.sellingUnits || product.sellingUnits.length === 0) return null;
 
     return (
-      <div className="border-primary rounded-2xl border-2 shadow-xl/20 shadow-gray-500 transition group-has-[[data-pending]]:animate-pulse hover:scale-[1.02] hover:shadow-lg">
-        <Card
-          onClick={() => onAdd(product)}
-          className="group relative flex h-44 cursor-pointer flex-col justify-between overflow-hidden p-2"
-        >
-          {/* Product header (quantities and prices) */}
-          <div className="bg-primary text-background flex flex-col rounded-md px-3 py-1 text-xs font-bold">
-            {/* Carton */}
-            <div className="flex items-center justify-between py-1">
-              <span className="w-8 text-left">
-                {formatQty(Number(product.availableCartons.toFixed(0)))}
-              </span>
-              <span className="flex-1 text-center">
-                {isCartonOnly ? " كرتون " : t("carton")}
-              </span>
-              <span className="w-16 text-right">
-                {FormatPrice(Number(product.pricePerCarton))}
-              </span>
-            </div>
-
-            {/* Packet */}
-            {showPacket && (
-              <div className="flex items-center justify-between py-1">
-                <span className="w-8 text-left">
-                  {formatQty(Number(product.availablePackets.toFixed(0)))}
-                </span>
-                <span className="flex-1 text-center">{t("packet")}</span>
-                <span className="w-16 text-right">
-                  {FormatPrice(Number(product.pricePerPacket))}
-                </span>
-              </div>
-            )}
-
-            {/* Unit */}
-            {showUnit && product.pricePerUnit !== undefined && (
-              <div className="flex items-center justify-between py-1">
-                <span className="w-8 text-left">
-                  {formatQty(Number(product.availableUnits.toFixed(0)))}
-                </span>
-                <span className="flex-1 text-center">{t("unit")}</span>
-                <span className="w-16 text-right">
-                  {FormatPrice(Number(product.pricePerUnit))}
-                </span>
-              </div>
-            )}
-
-            {/* Fillers (for consistent height) */}
-            {isCartonOnly && (
-              <>
-                <div className="h-[24px]" />
-                <div className="h-[24px]" />
-              </>
-            )}
-            {isCartonUnit && <div className="h-[24px]" />}
+      <div className="border-primary rounded-2xl border-2 shadow-sm transition hover:scale-[1.02] hover:shadow-md">
+        <Card className="group relative flex h-48 cursor-pointer flex-col justify-between overflow-hidden p-2">
+          {/* قسم الوحدات */}
+          <div className="bg-primary text-background flex flex-col rounded-md px-2 py-1 text-[11px] font-bold">
+            {product.sellingUnits.map((unit: any) => {
+              const stock = product.availableStock?.[unit.id] || 0;
+              return (
+                <div
+                  key={unit.id}
+                  onClick={(e) => {
+                    e.stopPropagation(); // منع تفعيل الضغط على الكارت
+                    if (stock > 0) onAdd(product, unit);
+                  }}
+                  className={`flex items-center justify-between rounded border-b border-white/20 px-1 py-1 transition-colors last:border-0 hover:bg-white/10 ${stock <= 0 ? "cursor-not-allowed opacity-40" : "cursor-pointer"}`}
+                >
+                  <span className="w-6 rounded-sm bg-white/20 text-center text-white dark:text-black">
+                    {stock}
+                  </span>
+                  <span className="flex-1 truncate px-1 text-center text-white dark:text-black">
+                    {unit.name}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-white dark:text-black">
+                      {FormatPrice(unit.price)}
+                    </span>
+                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-green-500 text-[10px] text-white shadow-sm">
+                      +
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
-          {/* Product Name */}
-          <div className="bg-primary-foreground text-foreground flex h-[60px] items-center justify-center rounded-md">
-            <Label className="line-clamp-2 px-2 text-center text-sm font-medium">
+          {/* قسم اسم المنتج */}
+          <div className="bg-primary-foreground text-foreground mt-1 flex h-[50px] items-center justify-center rounded-md">
+            <Label className="line-clamp-2 cursor-pointer px-2 text-center text-xs font-bold">
               {product.name}
             </Label>
           </div>
@@ -339,9 +237,13 @@ export const ProductCard = memo(
       </div>
     );
   },
-  (prev, next) =>
-    prev.product.id === next.product.id &&
-    prev.product.availableCartons === next.product.availableCartons &&
-    prev.product.availablePackets === next.product.availablePackets &&
-    prev.product.availableUnits === next.product.availableUnits,
+  (prev, next) => {
+    return (
+      prev.product.id === next.product.id &&
+      JSON.stringify(prev.product.availableStock) ===
+        JSON.stringify(next.product.availableStock)
+    );
+  },
 );
+
+ProductCard.displayName = "ProductCard";

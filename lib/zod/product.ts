@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SellingUnitSchema } from "./cashier";
 
 // ✅ Base product schema
 export const productSchema = z.object({
@@ -33,61 +34,114 @@ export const productSchema = z.object({
 });
 export type ProductFormValues = z.infer<typeof productSchema>;
 
-export const CreateProductSchema = z
-  .object({
-    name: z.string().min(1, "اسم المنتج مطلوب"),
-    sku: z.string().min(1, "رمز المنتج مطلوب"),
-    description: z.string().nullable().optional(),
-    categoryId: z.string().min(1, "معرّف الفئة مطلوب"),
-    brandId: z.string().nullable().optional(),
-    type: z
-      .enum(["full", "cartonUnit", "cartonOnly"])
-      .default("full")
-      .optional(),
+export const CreateProductSchema = z.object({
+  name: z.string().min(1, "اسم المنتج مطلوب"),
+  sku: z.string().min(1, "رمز المنتج مطلوب"),
+  description: z.string().nullable().optional(),
+  categoryId: z.string().min(1, "معرّف الفئة مطلوب"),
+  brandId: z.string().nullable().optional(),
+  type: z.enum(["full", "cartonUnit", "cartonOnly"]).default("full").optional(),
+  sellingUnits: z
+    .array(SellingUnitSchema)
+    .min(1, "يجب إضافة وحدة بيع واحدة على الأقل"),
 
-    // ✅ Allow 0 for carton-only products
-    unitsPerPacket: z
-      .number()
-      .int()
-      .min(0, "عدد الوحدات في العبوة يجب أن يكون 0 أو أكثر"),
-    packetsPerCarton: z
-      .number()
-      .int()
-      .min(0, "عدد العبوات في الكرتون يجب أن يكون 0 أو أكثر"),
+  // ✅ Allow 0 for carton-only products
+  unitsPerPacket: z
+    .number()
+    .int()
+    .min(0, "عدد الوحدات في العبوة يجب أن يكون 0 أو أكثر"),
+  packetsPerCarton: z
+    .number()
+    .int()
+    .min(0, "عدد العبوات في الكرتون يجب أن يكون 0 أو أكثر"),
 
-    costPrice: z.number().positive("سعر التكلفة يجب أن يكون موجبًا"),
+  costPrice: z.number().positive("سعر التكلفة يجب أن يكون موجبًا"),
 
-    // ✅ Optional for single-unit products, can be 0 for carton-only
-    pricePerUnit: z
-      .number()
-      .min(0, "سعر الوحدة يجب أن يكون 0 أو أكثر")
-      .optional(),
-    expiredAt: z.union([z.string(), z.date()]),
-    // ✅ Allow 0 for carton-only products
-    pricePerPacket: z.number().min(0, "سعر العبوة يجب أن يكون 0 أو أكثر"),
+  // // ✅ Optional for single-unit products, can be 0 for carton-only
+  pricePerUnit: z
+    .number()
+    .min(0, "سعر الوحدة يجب أن يكون 0 أو أكثر")
+    .optional(),
+  expiredAt: z.union([z.string(), z.date()]),
+  // ✅ Allow 0 for carton-only products
+  pricePerPacket: z.number().min(0, "سعر العبوة يجب أن يكون 0 أو أكثر"),
 
-    pricePerCarton: z.number().positive("سعر الكرتون يجب أن يكون موجبًا"),
+  pricePerCarton: z.number().positive("سعر الكرتون يجب أن يكون موجبًا"),
 
-    wholesalePrice: z.number().positive("سعر الجملة يجب أن يكون موجبًا"),
+  wholesalePrice: z.number().positive("سعر الجملة يجب أن يكون موجبًا"),
 
-    // ✅ Allow 0 for carton-only products
-    minWholesaleQty: z
-      .number()
-      .int()
-      .min(0, "الحد الأدنى للكمية بالجملة يجب أن يكون 0 أو أكثر"),
+  // ✅ Allow 0 for carton-only products
+  minWholesaleQty: z
+    .number()
+    .int()
+    .min(0, "الحد الأدنى للكمية بالجملة يجب أن يكون 0 أو أكثر"),
 
-    dimensions: z.string().nullable().optional(),
-    supplierId: z.string().min(1, "معرّف المورد مطلوب").optional(),
-    warehouseId: z.string().min(1, "معرّف المستودع مطلوب"),
-  })
-  .refine((data) => data.pricePerCarton > data.costPrice, {
-    message: "سعر البيع يجب أن يكون أكبر من سعر التكلفة",
-    path: ["pricePerCarton"],
-  })
-  .refine((data) => data.wholesalePrice >= data.costPrice, {
-    message: "سعر الجملة يجب أن يكون أكبر أو يساوي سعر التكلفة",
-    path: ["wholesalePrice"],
-  });
+  dimensions: z.string().nullable().optional(),
+  supplierId: z.string().min(1, "معرّف المورد مطلوب").optional(),
+  warehouseId: z.string().min(1, "معرّف المستودع مطلوب"),
+});
+export const CreateProductSchemas = z.object({
+  name: z.string().min(1, "اسم المنتج مطلوب"),
+  sku: z.string().min(1, "رمز المنتج مطلوب"),
+  description: z.string().nullable().optional(),
+  categoryId: z.string().min(1, "معرّف الفئة مطلوب"),
+  brandId: z.string().nullable().optional(),
+  type: z.enum(["full", "cartonUnit", "cartonOnly"]).default("full").optional(),
+  sellingUnits: z
+    .array(SellingUnitSchema)
+    .min(1, "يجب إضافة وحدة بيع واحدة على الأقل"),
+
+  // ✅ Allow 0 for carton-only products
+  // unitsPerPacket: z
+  //   .number()
+  //   .int()
+  //   .min(0, "عدد الوحدات في العبوة يجب أن يكون 0 أو أكثر"),
+  // packetsPerCarton: z
+  //   .number()
+  //   .int()
+  //   .min(0, "عدد العبوات في الكرتون يجب أن يكون 0 أو أكثر"),
+
+  costPrice: z.number().positive("سعر التكلفة يجب أن يكون موجبًا"),
+
+  // // ✅ Optional for single-unit products, can be 0 for carton-only
+  // pricePerUnit: z
+  //   .number()
+  //   .min(0, "سعر الوحدة يجب أن يكون 0 أو أكثر")
+  //   .optional(),
+  expiredAt: z.union([z.string(), z.date()]),
+  // ✅ Allow 0 for carton-only products
+  // pricePerPacket: z.number().min(0, "سعر العبوة يجب أن يكون 0 أو أكثر"),
+
+  // pricePerCarton: z.number().positive("سعر الكرتون يجب أن يكون موجبًا"),
+
+  wholesalePrice: z.number().positive("سعر الجملة يجب أن يكون موجبًا"),
+
+  // ✅ Allow 0 for carton-only products
+  minWholesaleQty: z
+    .number()
+    .int()
+    .min(0, "الحد الأدنى للكمية بالجملة يجب أن يكون 0 أو أكثر"),
+
+  dimensions: z.string().nullable().optional(),
+  supplierId: z.string().min(1, "معرّف المورد مطلوب").optional(),
+  warehouseId: z.string().min(1, "معرّف المستودع مطلوب"),
+});
+// .refine((data) => data.pricePerCarton > data.costPrice, {
+//   message: "سعر البيع يجب أن يكون أكبر من سعر التكلفة",
+//   path: ["pricePerCarton"],
+// })
+// .refine((data) => data.wholesalePrice >= data.costPrice, {
+//   message: "سعر الجملة يجب أن يكون أكبر أو يساوي سعر التكلفة",
+//   path: ["wholesalePrice"],
+// });
 export type CreateProductInput = z.infer<typeof CreateProductSchema>;
+export type CreateProductInputs = z.infer<typeof CreateProductSchemas>;
 export const UpdateProductSchema = productSchema.partial();
 export type UpdateProductFormValues = z.infer<typeof UpdateProductSchema>;
+export type SellingUnit = {
+  id: string;
+  name: string;
+  price: number;
+  isbase: boolean;
+  unitsPerParent: number;
+};

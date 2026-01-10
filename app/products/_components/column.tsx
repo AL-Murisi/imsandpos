@@ -131,59 +131,117 @@ export const createColumns = (
       header: tt("supplierId"),
     },
     {
-      accessorKey: "unitsPerPacket",
-      header: tt("unitsPerPacket"),
-    },
-    {
-      accessorKey: "pricePerUnit",
-      header: tt("pricePerUnit"),
+      accessorKey: "sellingUnits",
+      header: "وحدات البيع", // تأكد من إضافة الترجمة في ملفات الـ i18n
       cell: ({ row }) => {
-        const price = row.getValue("pricePerUnit") as number;
+        const units = row.getValue("sellingUnits") as any[];
         const { currency } = useCurrency();
-        return price
-          ? new Intl.NumberFormat(currency.locale, {
-              style: "currency",
-              currency: currency.currency,
-              numberingSystem: "latn",
-            }).format(price)
-          : "N/A";
-      },
-    },
-    {
-      accessorKey: "pricePerPacket",
-      header: tt("pricePerPacket"),
-      cell: ({ row }) => {
-        const price = row.getValue("pricePerPacket") as number;
-        const { currency } = useCurrency();
-        return price
-          ? new Intl.NumberFormat(currency.locale, {
-              style: "currency",
-              currency: currency.currency,
-              numberingSystem: "latn",
-            }).format(price)
-          : "N/A";
-      },
-    },
 
-    {
-      accessorKey: "packetsPerCarton",
-      header: tt("packetsPerCarton"),
-    },
-    {
-      accessorKey: "pricePerCarton",
-      header: tt("pricePerCarton"),
-      cell: ({ row }) => {
-        const price = row.getValue("pricePerCarton") as number;
-        const { currency } = useCurrency();
-        return price
-          ? new Intl.NumberFormat(currency.locale, {
-              style: "currency",
-              currency: currency.currency,
-              numberingSystem: "latn",
-            }).format(price)
-          : "N/A";
+        if (!units || units.length === 0)
+          return (
+            <span className="text-muted-foreground text-xs">لا توجد وحدات</span>
+          );
+
+        return (
+          <div className="flex max-w-[250px] flex-wrap gap-1">
+            {units.map((unit, index) => (
+              <Badge
+                key={index}
+                variant="secondary"
+                className={`px-1.5 py-0 text-[10px] ${unit.isBase ? "border-green-500 bg-green-50 text-green-700" : ""}`}
+              >
+                {unit.name}:{" "}
+                {new Intl.NumberFormat(currency.locale, {
+                  style: "currency",
+                  currency: currency.currency,
+                  numberingSystem: "latn",
+                }).format(unit.price)}
+              </Badge>
+            ))}
+          </div>
+        );
       },
     },
+    {
+      accessorKey: "sellingUnitsQty",
+      header: " الكميه لكل وحده", // تأكد من إضافة الترجمة في ملفات الـ i18n
+      cell: ({ row }) => {
+        const units = row.getValue("sellingUnitsQty") as any[];
+
+        if (!units || units.length === 0)
+          return (
+            <span className="text-muted-foreground text-xs">لا توجد وحدات</span>
+          );
+
+        return (
+          <div className="flex max-w-[250px] flex-wrap gap-1">
+            {units.map((unit, index) => (
+              <Badge
+                key={index}
+                variant="secondary"
+                className={`px-1.5 py-0 text-[10px] ${unit.isBase ? "border-green-500 bg-green-50 text-green-700" : ""}`}
+              >
+                {unit.name}: {unit.unitsPerParent}
+              </Badge>
+            ))}
+          </div>
+        );
+      },
+    },
+    // {
+    //   accessorKey: "unitsPerPacket",
+    //   header: tt("unitsPerPacket"),
+    // },
+    // {
+    //   accessorKey: "pricePerUnit",
+    //   header: tt("pricePerUnit"),
+    //   cell: ({ row }) => {
+    //     const price = row.getValue("pricePerUnit") as number;
+    //     const { currency } = useCurrency();
+    //     return price
+    //       ? new Intl.NumberFormat(currency.locale, {
+    //           style: "currency",
+    //           currency: currency.currency,
+    //           numberingSystem: "latn",
+    //         }).format(price)
+    //       : "N/A";
+    //   },
+    // },
+    // {
+    //   accessorKey: "pricePerPacket",
+    //   header: tt("pricePerPacket"),
+    //   cell: ({ row }) => {
+    //     const price = row.getValue("pricePerPacket") as number;
+    //     const { currency } = useCurrency();
+    //     return price
+    //       ? new Intl.NumberFormat(currency.locale, {
+    //           style: "currency",
+    //           currency: currency.currency,
+    //           numberingSystem: "latn",
+    //         }).format(price)
+    //       : "N/A";
+    //   },
+    // },
+
+    // {
+    //   accessorKey: "packetsPerCarton",
+    //   header: tt("packetsPerCarton"),
+    // },
+    // {
+    //   accessorKey: "pricePerCarton",
+    //   header: tt("pricePerCarton"),
+    //   cell: ({ row }) => {
+    //     const price = row.getValue("pricePerCarton") as number;
+    //     const { currency } = useCurrency();
+    //     return price
+    //       ? new Intl.NumberFormat(currency.locale, {
+    //           style: "currency",
+    //           currency: currency.currency,
+    //           numberingSystem: "latn",
+    //         }).format(price)
+    //       : "N/A";
+    //   },
+    // },
     {
       accessorKey: "minWholesaleQty",
       header: tt("minWholesaleQty"),

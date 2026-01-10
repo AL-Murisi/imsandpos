@@ -599,13 +599,15 @@ export default function DebtReport({
         selectedIds,
         payment.amountBase,
         user.userId,
-        payment.paymentMethod,
-        payment.accountCurrency,
+
         {
+          paymentMethod: payment.paymentMethod,
+          currencyCode: payment.accountCurrency,
           bankId: payment.accountId,
           transferNumber: payment.transferNumber,
           exchange_rate: payment.exchangeRate,
           amountFC: payment.amountFC,
+          baseAmount: payment.amountBase,
         },
       );
 
@@ -650,12 +652,14 @@ export default function DebtReport({
         customerID,
         payment.amountBase,
         user.userId,
-        payment.paymentMethod,
-        payment.accountCurrency,
+
         {
+          paymentMethod: payment.paymentMethod,
+          currencyCode: payment.accountCurrency,
           bankId: payment.accountId,
           transferNumber: payment.transferNumber,
           exchangeRate: payment.exchangeRate,
+          baseAmount: payment.amountBase,
           amountFC: payment.amountFC,
         },
       );

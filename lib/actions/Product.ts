@@ -6,7 +6,12 @@ import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { availableMemory } from "process";
 import { logActivity } from "./activitylogs";
-import { CreateProductInput, CreateProductSchema } from "@/lib/zod";
+import {
+  CreateProductInput,
+  CreateProductInputs,
+  CreateProductSchema,
+  CreateProductSchemas,
+} from "@/lib/zod";
 import { success } from "zod";
 
 export async function CreateProduct(
@@ -14,7 +19,7 @@ export async function CreateProduct(
   userId: string,
   companyId: string,
 ) {
-  const parsed = CreateProductSchema.safeParse(data);
+  const parsed = CreateProductSchemas.safeParse(data);
   const initialStock = 0;
 
   if (!parsed.success) {
@@ -29,13 +34,9 @@ export async function CreateProduct(
     categoryId,
     brandId,
     type,
-    unitsPerPacket,
-    packetsPerCarton,
+    sellingUnits,
     costPrice,
-    pricePerUnit,
     expiredAt,
-    pricePerPacket,
-    pricePerCarton,
     wholesalePrice,
     minWholesaleQty,
     dimensions,
@@ -56,13 +57,14 @@ export async function CreateProduct(
         categoryId,
         brandId,
         type,
-        unitsPerPacket,
-        packetsPerCarton,
+        unitsPerPacket: 0,
+        packetsPerCarton: 0,
         costPrice,
-        pricePerUnit,
+        sellingUnits,
+        pricePerUnit: 0,
         expiredAt: date,
-        pricePerPacket,
-        pricePerCarton,
+        pricePerPacket: 0,
+        pricePerCarton: 0,
         wholesalePrice,
         minWholesaleQty,
         dimensions,
@@ -254,13 +256,14 @@ export async function fetchProduct(
         categoryId: true,
 
         type: true,
-        unitsPerPacket: true,
-        packetsPerCarton: true,
+        // unitsPerPacket: true,
+        // packetsPerCarton: true,
         costPrice: true,
-        pricePerUnit: true,
+        // pricePerUnit: true,
+        sellingUnits: true,
         expiredAt: true,
-        pricePerPacket: true,
-        pricePerCarton: true,
+        // pricePerPacket: true,
+        // pricePerCarton: true,
         wholesalePrice: true,
         minWholesaleQty: true,
         category: true,
@@ -291,13 +294,18 @@ export async function fetchProduct(
     const formattedProducts = products.map((product) => ({
       ...product,
       costPrice: product.costPrice ? Number(product.costPrice) : null,
-      pricePerUnit: product.pricePerUnit ? Number(product.pricePerUnit) : null,
-      pricePerPacket: product.pricePerPacket
-        ? Number(product.pricePerPacket)
-        : null,
-      pricePerCarton: product.pricePerCarton
-        ? Number(product.pricePerCarton)
-        : null,
+      sellingUnits: Array.isArray(product.sellingUnits)
+        ? product.sellingUnits.map((u: any) => ({
+            ...u,
+            price: Number(u.price),
+          }))
+        : [],
+      sellingUnitsQty: Array.isArray(product.sellingUnits)
+        ? product.sellingUnits.map((u: any) => ({
+            ...u,
+            qty: Number(u.unitsPerParent),
+          }))
+        : [],
       wholesalePrice: product.wholesalePrice
         ? Number(product.wholesalePrice)
         : null,
@@ -368,11 +376,11 @@ export async function fetchProductStats(role: string, companyId: string) {
 }
 
 export async function UpdateProduct(
-  data: CreateProductInput,
+  data: CreateProductInputs,
   companyId: string,
   userId: string,
 ) {
-  const parsed = CreateProductSchema.safeParse(data);
+  const parsed = CreateProductSchemas.safeParse(data);
   if (!parsed.success) {
     console.error(parsed.error.format());
     throw new Error("Invalid product data");
@@ -384,15 +392,16 @@ export async function UpdateProduct(
     name,
     description,
     categoryId,
-    brandId,
-    type,
-    unitsPerPacket,
-    packetsPerCarton,
-    costPrice,
-    pricePerUnit,
+    // brandId,
+    // type,
+    // unitsPerPacket,
+    // packetsPerCarton,
+    // costPrice,
+    // pricePerUnit,
     expiredAt,
-    pricePerPacket,
-    pricePerCarton,
+    sellingUnits,
+    // pricePerPacket,
+    // pricePerCarton,
     wholesalePrice,
     minWholesaleQty,
     dimensions,
@@ -433,15 +442,16 @@ export async function UpdateProduct(
         name,
         description,
         categoryId,
-        brandId,
-        type,
-        unitsPerPacket,
-        packetsPerCarton,
-        costPrice,
-        pricePerUnit,
+        // brandId,
+        // type,
+        // unitsPerPacket,
+        // packetsPerCarton,
+        // costPrice,
+        // pricePerUnit,
+        sellingUnits,
         expiredAt: date,
-        pricePerPacket,
-        pricePerCarton,
+        // pricePerPacket,
+        // pricePerCarton,
         wholesalePrice,
         minWholesaleQty,
         dimensions,

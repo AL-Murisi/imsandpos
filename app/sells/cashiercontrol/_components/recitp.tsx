@@ -1,15 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { fetchReceipt } from "@/lib/actions/sells";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogTrigger,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import {
   Table,
@@ -19,15 +11,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { toast } from "sonner";
+import { fetchReceipt } from "@/lib/actions/sells";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
+import { toast } from "sonner";
 
-import { PrintButton } from "./test";
-import { Receipt } from "@/components/common/receipt";
-import { useAuth } from "@/lib/context/AuthContext";
-import { useCompany } from "@/hooks/useCompany";
 import Dailogreuse from "@/components/common/dailogreuse";
+import { Receipt } from "@/components/common/receipt";
+import { useCompany } from "@/hooks/useCompany";
+import { useAuth } from "@/lib/context/AuthContext";
+import { PrintButton } from "./test";
 
 type Props = {
   id: string;

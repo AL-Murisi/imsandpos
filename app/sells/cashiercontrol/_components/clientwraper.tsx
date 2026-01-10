@@ -1,6 +1,6 @@
 "use client";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ProductForSale } from "@/lib/zod";
+import { ProductForSale, SellingUnit } from "@/lib/zod";
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
 const CartDisplayRedux = dynamic(() => import("./Showpriceandquanityt"), {
@@ -105,6 +105,8 @@ const ProductListRedux = dynamic(() => import("./ProductList"), {
 type forsale = ProductForSale & {
   warehousename: string;
   sellingMode: string;
+  sellingUnits: SellingUnit[];
+  availableStock: Record<string, number>;
 };
 interface CustomDialogProps {
   users:

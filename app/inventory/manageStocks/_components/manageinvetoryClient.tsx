@@ -23,7 +23,9 @@ type ProductClientProps = {
       sku: string;
       name: string;
       supplierId: string | null;
+      warehouseId: string | null;
       costPrice: Prisma.Decimal;
+      sellingUnits: any;
     }[];
     warehouses: {
       id: string;
@@ -43,6 +45,7 @@ type ProductClientProps = {
         name: string;
         supplierId: string | null;
         costPrice: Prisma.Decimal;
+        sellingUnits: any;
       };
       productId: string;
       stockQuantity: number;

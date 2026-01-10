@@ -83,16 +83,15 @@ export default function Loading() {
           <div className="flex-grow animate-pulse rounded-xl bg-gray-800 opacity-50"></div>
 
           {/* Bottom Totals/Discount area */}
-          <div className="flex flex-col space-y-2 rounded-xl bg-gray-800 p-4">
+          {/* <div className="flex flex-col space-y-2 rounded-xl bg-gray-800 p-4">
             <div className="flex justify-between">
               <div className="h-4 w-1/3 animate-pulse rounded bg-gray-700"></div>
               <div className="h-4 w-1/4 animate-pulse rounded bg-gray-600"></div>
             </div>
             <div className="flex justify-between">
               <div className="h-6 w-1/4 animate-pulse rounded bg-gray-700"></div>
-              {/* <div className="h-6 w-1/5 animate-pulse rounded bg-red-600"></div>{" "} */}
             </div>
-          </div>
+          </div> */}
         </div>
 
         {/* 2. Products Side Skeleton (Right Side) */}
