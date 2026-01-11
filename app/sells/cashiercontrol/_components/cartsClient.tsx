@@ -635,10 +635,15 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
                   saleNumber={saleNumber}
                   items={items.map((item) => ({
                     ...item,
+                    unit_price:
+                      item.sellingUnits.find(
+                        (unit) => unit.id === item.selectedUnitId,
+                      )?.price || 0,
                     sellingUnit:
                       item.sellingUnits.find(
                         (unit) => unit.id === item.selectedUnitId,
                       )?.name || "",
+                    total: totals.totalAfter,
                   }))}
                   totals={totals}
                   receivedAmount={receivedAmount}
@@ -655,10 +660,15 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
                   saleNumber={saleNumber}
                   items={items.map((item) => ({
                     ...item,
+                    unit_price:
+                      item.sellingUnits.find(
+                        (unit) => unit.id === item.selectedUnitId,
+                      )?.price || 0,
                     sellingUnit:
                       item.sellingUnits.find(
                         (unit) => unit.id === item.selectedUnitId,
                       )?.name || "",
+                    total: totals.totalAfter,
                   }))}
                   totals={totals}
                   receivedAmount={receivedAmount}

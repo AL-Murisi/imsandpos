@@ -428,338 +428,6 @@ interface InventoryUpdateData {
   lastStockTake?: Date;
 }
 
-export async function updateMultipleInventory(
-  updatesData: InventoryUpdateData[],
-  userId: string,
-  companyId: string,
-) {
-  try {
-    // Validate required fields
-    if (!companyId || !userId) {
-      return {
-        success: false,
-        error: "معرف الشركة ومعرف المستخدم مطلوبان",
-      };
-    }
-
-    if (!updatesData || updatesData.length === 0) {
-      return {
-        success: false,
-        error: "يجب إضافة تحديث واحد على الأقل",
-      };
-    }
-
-    // Validate each update
-    for (let i = 0; i < updatesData.length; i++) {
-      const update = updatesData[i];
-
-      if (!update.productId || !update.warehouseId) {
-        return {
-          success: false,
-          error: `التحديث ${i + 1}: المنتج والمستودع مطلوبان`,
-        };
-      }
-
-      if (!update.stockQuantity || update.stockQuantity <= 0) {
-        return {
-          success: false,
-          error: `التحديث ${i + 1}: الكمية يجب أن تكون أكبر من صفر`,
-        };
-      }
-
-      if (update.updateType === "supplier") {
-        if (!update.supplierId || !update.unitCost || update.unitCost <= 0) {
-          return {
-            success: false,
-            error: `التحديث ${i + 1}: المورد وسعر الوحدة مطلوبان للتحديثات من المورد`,
-          };
-        }
-
-        const totalCost = update.stockQuantity * update.unitCost;
-        if ((update.paymentAmount || 0) > totalCost) {
-          return {
-            success: false,
-            error: `التحديث ${i + 1}: مبلغ الدفع أكبر من التكلفة الإجمالية`,
-          };
-        }
-      }
-    }
-
-    console.log(
-      `Updating ${updatesData.length} inventory records for company:`,
-      companyId,
-    );
-
-    // Process all updates in a transaction
-    const result = await prisma.$transaction(
-      async (tx) => {
-        const updatedInventories = [];
-        const createdPurchases = [];
-        const stockMovements = [];
-
-        for (const updateData of updatesData) {
-          // Fetch product and current inventory
-          const [product, currentInventory] = await Promise.all([
-            tx.product.findUnique({
-              where: { id: updateData.productId },
-              select: {
-                id: true,
-                name: true,
-                sku: true,
-                unitsPerPacket: true,
-                packetsPerCarton: true,
-                supplierId: true,
-              },
-            }),
-            tx.inventory.findFirst({
-              where: {
-                companyId,
-                productId: updateData.productId,
-                warehouseId: updateData.warehouseId,
-              },
-            }),
-          ]);
-
-          if (!product) {
-            throw new Error(`المنتج غير موجود: ${updateData.productId}`);
-          }
-
-          // Helper functions
-          const unitsPerPacket = product.unitsPerPacket || 1;
-          const packetsPerCarton = product.packetsPerCarton || 1;
-          const cartonToUnits = (cartons: number) =>
-            cartons * packetsPerCarton * unitsPerPacket;
-
-          const stockUnits = cartonToUnits(updateData.stockQuantity);
-          const availableUnits = cartonToUnits(updateData.availableQuantity);
-
-          // Generate receipt number
-          const nextNumber = currentInventory?.receiptNo
-            ? parseInt(currentInventory.receiptNo.match(/(\d+)$/)?.[1] || "0") +
-              1
-            : 1;
-          const receiptNo = `مشتريات-${new Date().getFullYear()}-${String(nextNumber).padStart(5, "0")}`;
-
-          // Get or create inventory record
-          let inventory = currentInventory;
-          if (!inventory) {
-            inventory = await tx.inventory.create({
-              data: {
-                companyId,
-                productId: product.id,
-                warehouseId: updateData.warehouseId,
-                availableQuantity: 0,
-                stockQuantity: 0,
-                reorderLevel: 10,
-                status: "available",
-                lastStockTake: new Date(),
-              },
-            });
-          }
-
-          // Calculate final quantities
-          const finalStockQty = inventory.stockQuantity + stockUnits;
-          const finalAvailableQty =
-            inventory.availableQuantity + availableUnits;
-          const finalReorderLevel = inventory.reorderLevel;
-
-          let calculatedStatus: "available" | "low" | "out_of_stock" =
-            "available";
-          if (finalAvailableQty <= 0) calculatedStatus = "out_of_stock";
-          else if (finalAvailableQty < finalReorderLevel)
-            calculatedStatus = "low";
-
-          let purchaseId: string | null = null;
-
-          // Create purchase if from supplier
-          if (
-            updateData.updateType === "supplier" &&
-            updateData.unitCost &&
-            updateData.supplierId
-          ) {
-            const totalCost = updateData.stockQuantity * updateData.unitCost;
-            const paid = updateData.paymentAmount || 0;
-            const due = totalCost - paid;
-
-            const purchase = await tx.purchase.create({
-              data: {
-                companyId,
-                supplierId: updateData.supplierId,
-                totalAmount: totalCost,
-                amountPaid: paid,
-                purchaseType: "purchases",
-                amountDue: due,
-                status:
-                  paid >= totalCost ? "paid" : paid > 0 ? "partial" : "pending",
-              },
-            });
-
-            await tx.purchaseItem.create({
-              data: {
-                companyId,
-                purchaseId: purchase.id,
-                productId: product.id,
-                quantity: updateData.stockQuantity,
-                unitCost: updateData.unitCost,
-                totalCost,
-              },
-            });
-
-            purchaseId = purchase.id;
-            createdPurchases.push(purchase);
-            let supplierPaymentId: string | null = null;
-            // Create supplier payment if applicable
-            if (updateData.paymentMethod && paid > 0) {
-              const supplierPayment = await tx.supplierPayment.create({
-                data: {
-                  companyId,
-                  supplierId: updateData.supplierId,
-                  createdBy: userId,
-                  purchaseId: purchase.id,
-                  amount: paid,
-                  paymentMethod: updateData.paymentMethod,
-                  note: updateData.notes || "دفعة مشتريات",
-                },
-              });
-              supplierPaymentId = supplierPayment.id; // ✅ المهم
-            }
-
-            // Update supplier totals
-            const outstanding = totalCost - paid;
-            await tx.supplier.update({
-              where: { id: updateData.supplierId, companyId },
-              data: {
-                totalPurchased: { increment: totalCost },
-                totalPaid: { increment: paid },
-                outstandingBalance: { increment: outstanding },
-              },
-            });
-
-            // Create journal event
-            await tx.journalEvent.create({
-              data: {
-                companyId,
-                eventType: "purchase",
-                status: "pending",
-                entityType: "purchase",
-                payload: {
-                  companyId,
-                  supplierId: updateData.supplierId,
-                  purchase: purchase,
-                  userId,
-                  type: "purchase",
-                  paymentDetails: {
-                    exchangeRate: updateData.payment?.exchangeRate,
-                    amountFC: updateData.payment?.amountFC,
-                    bankId: updateData.payment?.accountId,
-                    amountBase: updateData.paymentAmount,
-                    paymentId: supplierPaymentId,
-                    paymentMethod: updateData.payment?.paymentMethod,
-                    currency_code: updateData.payment?.accountCurrency || "YER",
-                    refrenceNumber: updateData.payment?.transferNumber,
-                  },
-                },
-                processed: false,
-              },
-            });
-          }
-
-          // Update inventory
-          const updatedInventory = await tx.inventory.update({
-            where: { id: inventory.id },
-            data: {
-              lastPurchaseId: purchaseId,
-              availableQuantity: finalAvailableQty,
-              stockQuantity: finalStockQty,
-              reservedQuantity: updateData.reservedQuantity,
-              receiptNo,
-              status: calculatedStatus,
-              lastStockTake: updateData.lastStockTake || new Date(),
-            },
-            include: {
-              product: { select: { name: true, sku: true } },
-              warehouse: { select: { name: true } },
-            },
-          });
-
-          updatedInventories.push(updatedInventory);
-
-          // Record stock movement
-          const stockDifference = finalStockQty - inventory.stockQuantity;
-          if (stockDifference !== 0) {
-            const movement = await tx.stockMovement.create({
-              data: {
-                companyId,
-                productId: product.id,
-                warehouseId: updateData.warehouseId,
-                userId,
-                movementType: stockDifference > 0 ? "وارد" : "صادر",
-                quantity: Math.abs(stockDifference),
-                reason:
-                  updateData.updateType === "supplier"
-                    ? "تم_استلام_المورد"
-                    : updateData.reason || "تحديث_يدوي",
-                notes:
-                  updateData.notes ||
-                  `${updateData.updateType === "supplier" ? "المخزون من المورد" : "تحديث المخزون"}`,
-                quantityBefore: inventory.stockQuantity,
-                quantityAfter: finalStockQty,
-              },
-            });
-            stockMovements.push(movement);
-          }
-
-          // Small delay to ensure unique timestamps
-          await new Promise((resolve) => setTimeout(resolve, 10));
-        }
-
-        // Create activity log for batch
-        const totalUnits = updatesData.reduce(
-          (sum, u) => sum + u.stockQuantity,
-          0,
-        );
-        await tx.activityLogs.create({
-          data: {
-            userId,
-            companyId,
-            action: "تحديث_مخزون_متعدد",
-            details: `تم تحديث ${updatesData.length} سجل مخزون. إجمالي الوحدات: ${totalUnits}`,
-          },
-        });
-
-        return {
-          updatedInventories,
-          createdPurchases,
-          stockMovements,
-        };
-      },
-      {
-        timeout: 30000,
-        maxWait: 10000,
-      },
-    );
-
-    console.log(
-      `✅ Successfully updated ${result.updatedInventories.length} inventory records`,
-    );
-
-    revalidatePath("/manageStocks");
-
-    return {
-      success: true,
-      count: result.updatedInventories.length,
-      inventories: result.updatedInventories,
-      purchases: result.createdPurchases,
-      message: `تم تحديث ${result.updatedInventories.length} سجل مخزون بنجاح`,
-    };
-  } catch (error) {
-    console.error("Error updating multiple inventory:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "فشل تحديث المخزون",
-    };
-  }
-}
 export async function fetchAllFormDatas(companyId: string) {
   try {
     const [products, warehouses, suppliers, inventories] = await Promise.all([
@@ -1103,10 +771,7 @@ export async function processPurchaseReturn(
             purchaseType: "return",
             totalAmount: returnTotalCost,
             amountPaid: refundAmount,
-            amountDue:
-              Number(originalPurchase.amountDue) > 0
-                ? Math.max(0, Number(originalPurchase.amountDue) - refundAmount)
-                : 0,
+            amountDue: 0,
             status: "مرتجع",
             // Link to original purchase
           },
@@ -2267,7 +1932,7 @@ export async function updateMultipleInventories(
             updateData.unitCost &&
             updateData.supplierId
           ) {
-            const paid = updateData.paymentAmount || 0;
+            const paid = updateData.payment.amountBase || 0;
             const due = totalCost - paid;
 
             const purchase = await tx.purchase.create({
@@ -2302,16 +1967,16 @@ export async function updateMultipleInventories(
             let supplierPaymentId: string | null = null;
 
             // Create supplier payment if applicable
-            if (updateData.paymentMethod && paid > 0) {
-              const supplierPayment = await tx.supplierPayment.create({
+            if (updateData.payment.paymentMethod && paid > 0) {
+              const supplierPayment = await tx.financialTransaction.create({
                 data: {
                   companyId,
                   supplierId: updateData.supplierId,
-                  createdBy: userId,
+                  userId,
                   purchaseId: purchase.id,
                   amount: paid,
-                  paymentMethod: updateData.paymentMethod,
-                  note: updateData.notes || "دفعة مشتريات",
+                  paymentMethod: updateData.payment.paymentMethod,
+                  notes: updateData.notes || "دفعة مشتريات",
                 },
               });
               supplierPaymentId = supplierPayment.id;
@@ -2345,7 +2010,7 @@ export async function updateMultipleInventories(
                     exchangeRate: updateData.payment?.exchangeRate,
                     amountFC: updateData.payment?.amountFC,
                     bankId: updateData.payment?.accountId,
-                    amountBase: updateData.paymentAmount,
+                    amountBase: updateData.payment.amountBase,
                     paymentId: supplierPaymentId,
                     paymentMethod: updateData.payment?.paymentMethod,
                     currency_code: updateData.payment?.accountCurrency || "YER",
@@ -2387,12 +2052,12 @@ export async function updateMultipleInventories(
                 productId: product.id,
                 warehouseId: updateData.warehouseId,
                 userId,
-                movementType: stockDifference > 0 ? "وارد" : "صادر",
+                movementType: "وارد للمخزن",
                 quantity: Math.abs(stockDifference),
                 reason:
                   updateData.updateType === "supplier"
-                    ? "تم_استلام_المورد"
-                    : updateData.reason || "تحديث_يدوي",
+                    ? "تم استلام المورد"
+                    : updateData.reason || "تحديث يدوي",
                 notes:
                   updateData.notes ||
                   `${updateData.updateType === "supplier" ? "المخزون من المورد" : "تحديث المخزون"}`,
@@ -2430,10 +2095,6 @@ export async function updateMultipleInventories(
         timeout: 30000,
         maxWait: 10000,
       },
-    );
-
-    console.log(
-      `✅ Successfully updated ${result.updatedInventories.length} inventory records`,
     );
 
     revalidatePath("/manageStocks");

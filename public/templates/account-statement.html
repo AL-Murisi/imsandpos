@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <title>كشف حساب</title>
+
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      @page {
+        margin: 8mm;
+        size: A4;
+      }
+
+      body {
+        font-family: "Cairo", Arial, sans-serif;
+        direction: rtl;
+      }
+
+      .receipt-page {
+        border: 1px solid #000;
+        padding: 15px;
+        min-height: 95vh;
+      }
+
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 2px solid #000;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+      }
+
+      .header-right {
+        width: 33%;
+        text-align: right;
+      }
+
+      .header-center {
+        width: 33%;
+        text-align: center;
+      }
+
+      .header-left {
+        width: 33%;
+        text-align: left;
+        font-size: 14px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+
+      th,
+      td {
+        border: 1px solid #000;
+        padding: 5px;
+        text-align: center;
+      }
+
+      th {
+        background: #eee;
+      }
+
+      .debit {
+        color: green;
+        font-weight: bold;
+      }
+
+      .credit {
+        color: red;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+
+  <body>
+    {{#each accounts}}
+    <div class="receipt-page">
+      <div class="header">
+        <div class="header-right">
+          <div style="font-size: 20px; font-weight: bold">
+            {{@root.company.name}}
+          </div>
+          <div dir="ltr">Tel: {{@root.company.phone}}</div>
+        </div>
+
+        <div class="header-center">
+          <img
+            src="{{@root.company.logoUrl}}"
+            width="90"
+            height="80"
+            style="object-fit: contain"
+          />
+        </div>
+
+        <div class="header-left">
+          <div>{{@root.company.address}}</div>
+          <div>{{@root.company.city}}</div>
+        </div>
+      </div>
+
+      <div
+        style="
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 15px;
+          padding: 10px;
+          border: 1px solid #eee;
+          background-color: #fcfcfc;
+          font-size: 13px;
+        "
+      >
+        <div><strong>الحساب:</strong> {{account.name}}</div>
+        <div><strong>الكود:</strong> {{account.code}}</div>
+        <div><strong>العملة:</strong> {{account.currency}}</div>
+        <div><strong>الفترة:</strong> {{from}} ← {{to}}</div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>م</th>
+            <th>التاريخ</th>
+            <th>المرجع</th>
+            <th>الوصف</th>
+
+            <th>مدين</th>
+            <th>دائن</th>
+            <th>الرصيد</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each transactions}}
+          <tr>
+            <td>{{index}}</td>
+            <td>{{date}}</td>
+            <td>{{typeName}}</td>
+            <td>{{description}}</td>
+
+            <td class="debit">{{debit}}</td>
+            <td class="credit">{{credit}}</td>
+            <td>{{balance}}</td>
+          </tr>
+          {{/each}}
+          <tr class="total-row">
+            <td colspan="4">الإجمالي</td>
+            <td>{{totalDebit}}</td>
+            <td>{{totalCredit}}</td>
+            <td>{{closingBalance}}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    {{/each}}
+  </body>
+</html>

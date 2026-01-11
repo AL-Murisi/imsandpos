@@ -24,7 +24,7 @@ import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 
 import { PrintButton } from "./test";
-import { Receipt } from "@/components/common/receipt";
+import { Receipt, ReceiptItem } from "@/components/common/receipt";
 import { useAuth } from "@/lib/context/AuthContext";
 import { useCompany } from "@/hooks/useCompany";
 import Dailogreuse from "@/components/common/dailogreuse";
@@ -51,6 +51,7 @@ export default function Recitp({ id }: Props) {
   const t = useTranslations("payment");
   const { user } = useAuth();
   const { company } = useCompany();
+
   const userAgent =
     typeof window !== "undefined" ? navigator.userAgent.toLowerCase() : "";
   const isMobileUA =
@@ -58,8 +59,29 @@ export default function Recitp({ id }: Props) {
       userAgent,
     );
   if (!user) return;
+  let unitPrice = 0;
+  let total = 0;
+  const formattedItems: ReceiptItem[] =
+    data.items.map((item: any) => {
+      const unitPrice = Number(
+        item.unit_price ?? item.unitPrice ?? item.price ?? 0,
+      );
+
+      const qty = Number(item.selectedQty ?? item.quantity ?? 0);
+
+      return {
+        id: item.id,
+        name: item.name,
+        warehousename: item.warehousename ?? item.warehouseName ?? "-",
+        selectedQty: qty,
+        sellingUnit: item.sellingUnit ?? item.unit_name ?? item.unitType ?? "-",
+        unit_price: unitPrice,
+        total: unitPrice * qty,
+      };
+    }) ?? [];
 
   const handleFetch = async () => {
+    if (!id) return;
     try {
       setLoading(true);
       const res = await fetchReceipt(id, user.companyId);
@@ -126,8 +148,8 @@ export default function Recitp({ id }: Props) {
                 <TableBody>
                   {data.items?.length > 0 ? (
                     data.items.map((item: any, index: number) => {
-                      const unitPrice = item.unit_price;
-                      const total = unitPrice * item.selectedQty;
+                      unitPrice = item.unit_price;
+                      total = unitPrice * item.selectedQty;
 
                       return (
                         <TableRow key={`${item.id}-${index}`}>
@@ -136,7 +158,7 @@ export default function Recitp({ id }: Props) {
                           <TableCell>{item.warehousename}</TableCell>
                           <TableCell>{item.selectedQty}</TableCell>
                           <TableCell>{item.sellingUnit}</TableCell>
-                          <TableCell>{}</TableCell>
+                          <TableCell>{unitPrice}</TableCell>
                           <TableCell>{total.toFixed(2)} ﷼</TableCell>
                         </TableRow>
                       );
@@ -202,7 +224,12 @@ export default function Recitp({ id }: Props) {
           {isMobileUA ? (
             <PrintButton
               saleNumber={data.sale_number ?? ""}
-              items={data.items ?? []}
+              items={data.items.map((item: any) => ({
+                ...item,
+                unit_price: item.sellingUnits,
+
+                total: item.unit_price * item.selectedQty,
+              }))}
               totals={{
                 totalBefore: Number(data.total_before ?? 0),
                 discount: Number(data.discount_amount ?? 0),
@@ -220,7 +247,12 @@ export default function Recitp({ id }: Props) {
           ) : (
             <Receipt
               saleNumber={data.sale_number ?? ""}
-              items={data.items ?? []}
+              items={data.items.map((item: any) => ({
+                ...item,
+                unit_price: item.sellingUnits,
+
+                total: item.unit_price * item.selectedQty,
+              }))}
               totals={{
                 totalBefore: Number(data.total_before ?? 0),
                 discount: Number(data.discount_amount ?? 0),

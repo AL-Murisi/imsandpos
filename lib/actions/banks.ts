@@ -281,3 +281,26 @@ export async function getExchangeRate() {
   const rate = serializeData(exchange_rates);
   return rate;
 }
+export async function fetchAccountsForSelect() {
+  const session = await getSession();
+  if (!session) return;
+  const accounts = await prisma.accounts.findMany({
+    where: {
+      company_id: session.companyId,
+      is_active: true,
+    },
+    select: {
+      id: true,
+      account_name_en: true,
+    },
+    orderBy: {
+      account_code: "asc",
+    },
+  });
+
+  const acount = accounts.map((acc) => ({
+    id: acc.id,
+    name: acc.account_name_en,
+  }));
+  return acount;
+}

@@ -59,6 +59,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
       customerId,
 
       accountId,
+      id,
       suppliersId,
     } = await req.json();
 
@@ -962,6 +963,40 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
         break;
       }
+      case "customer-receipts": {
+        if (!customerId) {
+          return new Response(
+            JSON.stringify({ error: "customerId is required" }),
+            { status: 400 },
+          );
+        }
+
+        templateFile = "customer-recepit.html";
+
+        const receiptsRaw = await fetchReceiptsByCustomer(
+          customerId,
+          user.companyId,
+        );
+
+        if (!receiptsRaw.length) {
+          data = {
+            ...baseData,
+            customer: "",
+            receipts: [],
+          };
+          break;
+        }
+
+        const receipts = receiptsRaw.map(prepareReceipt);
+
+        data = {
+          ...baseData,
+          customer: receipts[0]?.customer_name ?? "",
+          receipts,
+        };
+
+        break;
+      }
       case "supplier_statment": {
         templateFile = "supplier_statment.html";
         const fiscalYear = await prisma.fiscal_periods.findFirst({
@@ -1105,36 +1140,116 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
         break;
       }
-      case "customer-receipts": {
-        if (!customerId) {
+      case "supplier-receipts": {
+        if (!suppliersId) {
           return new Response(
-            JSON.stringify({ error: "customerId is required" }),
+            JSON.stringify({ error: "supplierId is required" }),
             { status: 400 },
           );
         }
 
-        templateFile = "customer-recepit.html";
+        templateFile = "purches-receipt.html";
 
-        const receiptsRaw = await fetchReceiptsByCustomer(
-          customerId,
+        const receiptsRaw = await fetchReceiptsBySupplier(
+          suppliersId,
           user.companyId,
         );
 
         if (!receiptsRaw.length) {
           data = {
             ...baseData,
-            customer: "",
-            receipts: [],
+            purchases: [],
           };
           break;
         }
 
-        const receipts = receiptsRaw.map(prepareReceipt);
+        const purchases = receiptsRaw.map(preparePurchaseReceipt);
 
         data = {
           ...baseData,
-          customer: receipts[0]?.customer_name ?? "",
-          receipts,
+          purchases,
+        };
+
+        break;
+      }
+      case "accounts-statement": {
+        if (!id) {
+          return new Response(
+            JSON.stringify({ error: "accountId is required" }),
+            { status: 400 },
+          );
+        }
+
+        templateFile = "account-statement.html";
+
+        const fiscalYear = await prisma.fiscal_periods.findFirst({
+          where: {
+            company_id: user.companyId,
+            is_closed: false,
+          },
+          select: { start_date: true, end_date: true },
+        });
+
+        if (!fiscalYear) {
+          return new Response(
+            JSON.stringify({ error: "No open fiscal year" }),
+            { status: 400 },
+          );
+        }
+
+        const fromDate = new Date(fiscalYear.start_date);
+        fromDate.setHours(0, 0, 0, 0);
+
+        const toDate = new Date(fiscalYear.end_date);
+        toDate.setHours(23, 59, 59, 999);
+
+        const rows = await fetchAccountStatement({
+          accountId: id,
+          companyId: user.companyId,
+          fromDate,
+          toDate,
+        });
+
+        let runningBalance = 0;
+
+        const transactions = rows.map((r: any, i: number) => {
+          runningBalance += Number(r.debit) - Number(r.credit);
+          return {
+            ...prepareAccountStatement(r, i),
+            balance: runningBalance.toFixed(2),
+          };
+        });
+        console.log("Account Statement Rows:", rows);
+        const totalDebit = rows.reduce(
+          (s: number, r: any) => s + Number(r.debit || 0),
+          0,
+        );
+        const totalCredit = rows.reduce(
+          (s: number, r: any) => s + Number(r.credit || 0),
+          0,
+        );
+
+        data = {
+          ...baseData,
+          accounts: [
+            // نغلف البيانات بمصفوفة accounts كما يتوقع القالب
+            {
+              account: {
+                name:
+                  rows[0]?.accountName || rows[0]?.account_name || "حساب عام",
+                code: rows[0]?.accountCode || rows[0]?.account_code || "",
+                currency:
+                  rows[0]?.currency || rows[0]?.account_currency || "EGP",
+              },
+
+              from: fromDate.toLocaleDateString("ar-EG"),
+              to: toDate.toLocaleDateString("ar-EG"),
+              transactions: transactions,
+              totalDebit: totalDebit.toFixed(2),
+              totalCredit: totalCredit.toFixed(2),
+              closingBalance: (totalDebit - totalCredit).toFixed(2),
+            },
+          ],
         };
 
         break;
@@ -1256,7 +1371,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
           status: 400,
         });
     }
-
+    console.log(id);
     /* ==================== PDF GENERATION ==================== */
     const templatePath = path.join(
       process.cwd(),
@@ -1323,9 +1438,8 @@ async function fetchReceiptsByCustomer(customerId: string, companyId: string) {
               'warehousename', w.name,
               'selectedQty', si.quantity,
               'sellingUnit', LOWER(si.selling_unit),
-              'pricePerUnit', p.price_per_unit,
-              'pricePerPacket', p.price_per_packet,
-              'pricePerCarton', p.price_per_carton
+            
+            'pricePerUnit', si.unit_price
             )
           )
           FROM sale_items si
@@ -1369,7 +1483,7 @@ function prepareReceipt(receipt: any) {
       name: item.name,
       warehousename: item.warehousename ?? "",
       selectedQty: qty,
-      sellingUnitArabic: unitToArabic(unit),
+      sellingUnitArabic: unit,
       price: price.toFixed(2),
       total: (price * qty).toFixed(2),
     };
@@ -1396,15 +1510,153 @@ function prepareReceipt(receipt: any) {
   };
 }
 
-const unitToArabic = (sellingUnit: "unit" | "packet" | "carton") => {
-  switch (sellingUnit) {
-    case "unit":
-      return "حبة";
-    case "packet":
-      return "كيس";
-    case "carton":
-      return "كرتون";
-    default:
-      return "";
-  }
-};
+async function fetchReceiptsBySupplier(supplierId: string, companyId: string) {
+  const results = await prisma.$queryRawUnsafe<any[]>(
+    `
+    WITH purchase_data AS (
+      SELECT
+        p.id AS purchase_id,
+        
+        p.total_amount,
+        p.amount_paid,
+        p.amount_due,
+        p.purchase_type,
+        p.currency_code,
+        p.exchange_rate,
+        p.created_at,
+        s.name AS supplier_name
+       
+      FROM purchases p
+      JOIN suppliers s ON p.supplier_id = s.id
+     
+      WHERE p.supplier_id = $1
+        AND p.company_id = $2
+      ORDER BY p.created_at ASC
+    )
+    SELECT
+      p.*,
+      COALESCE(
+        (
+          SELECT json_agg(
+            json_build_object(
+              'product_name', pr.name,
+              'warehouse_name', w.name,
+              'quantity', pi.quantity,
+              'unit_cost', pi.unit_cost,
+              'total_cost', pi.total_cost
+            )
+          )
+          FROM purchase_items pi
+          JOIN products pr ON pi.product_id = pr.id
+          LEFT JOIN warehouses w ON pr.warehouse_id = w.id
+          WHERE pi.purchase_id = p.purchase_id
+        ),
+        '[]'::json
+      ) AS items
+    FROM purchase_data p;
+    `,
+    supplierId,
+    companyId,
+  );
+
+  return results.map((r) =>
+    JSON.parse(
+      JSON.stringify(r, (_k, v) => (typeof v === "bigint" ? Number(v) : v)),
+    ),
+  );
+}
+function preparePurchaseReceipt(receipt: any) {
+  const createdAt = new Date(receipt.created_at);
+
+  const items = (receipt.items ?? []).map((item: any, i: number) => ({
+    index: i + 1,
+    product_name: item.product_name,
+    warehouse_name: item.warehouse_name ?? "",
+    quantity: Number(item.quantity || 0),
+    unit: "وحدة",
+    unit_cost: Number(item.unit_cost || 0).toFixed(2),
+    total_cost: Number(item.total_cost || 0).toFixed(2),
+  }));
+
+  return {
+    purchase_number: receipt.purchase_number,
+    suppliername: receipt.supplier_name,
+    purchase_type: receipt.purchase_type,
+
+    is_cash: Number(receipt.amount_due || 0) <= 0,
+
+    total_amount: Number(receipt.total_amount || 0).toFixed(2),
+    amount_paid: Number(receipt.amount_paid || 0).toFixed(2),
+    amount_due: Number(receipt.amount_due || 0).toFixed(2),
+
+    currency: receipt.currency_code,
+    exchange_rate: receipt.exchange_rate,
+
+    date: createdAt.toLocaleDateString("ar-EG"),
+    time: createdAt.toLocaleTimeString("ar-EG"),
+
+    items,
+  };
+}
+async function fetchAccountStatement({
+  accountId,
+  companyId,
+  fromDate,
+  toDate,
+}: {
+  accountId: string;
+  companyId: string;
+  fromDate: Date;
+  toDate: Date;
+}) {
+  const rows = await prisma.$queryRawUnsafe<any[]>(
+    `
+    SELECT 
+      je.id,
+      je.entry_number,
+      je.entry_date,
+      je.description,
+      je.debit,
+      je.credit,
+      je.reference_type,
+      je.currency_code,
+      a.account_name_en AS account_name,
+      a.account_code AS account_code,
+      a.currency_code AS account_currency
+    FROM journal_entries je
+    INNER JOIN accounts a ON je.account_id = a.id  -- الربط مع جدول الحسابات
+    WHERE je.company_id = $1
+      AND je.account_id = $2
+      AND je.entry_date BETWEEN $3 AND $4
+      AND je.is_posted = true
+    ORDER BY je.entry_date ASC, je.created_at ASC
+    `,
+    companyId,
+    accountId,
+    fromDate,
+    toDate,
+  );
+
+  return rows.map((r) =>
+    JSON.parse(
+      JSON.stringify(r, (_k, v) => (typeof v === "bigint" ? Number(v) : v)),
+    ),
+  );
+}
+function prepareAccountStatement(row: any, index: number) {
+  return {
+    index: index + 1,
+    date: row.entry_date
+      ? new Date(row.entry_date).toLocaleDateString("ar-EG")
+      : "",
+    debit: Number(row.debit || 0).toFixed(2),
+    credit: Number(row.credit || 0).toFixed(2),
+    description: row.description || "-",
+    docNo: row.entry_number || "-",
+    typeName: mapType(row.reference_type),
+    // الحقول المضافة
+    accountName: row.account_name,
+    accountCode: row.account_code,
+    currency: row.account_currency || row.currency_code,
+  };
+}

@@ -15,7 +15,6 @@ import { serialize } from "v8";
 import { getLatestExchangeRate } from "./currency";
 import { SellingUnit } from "../zod";
 import { console } from "inspector";
-import { toBaseQty } from "@/hooks/frombaseunit";
 
 type CartItem = {
   id: string;
@@ -41,7 +40,22 @@ type SaleData = {
   saleNumber: string;
   receivedAmount: number;
 };
+function toBaseQty(
+  qty: number,
+  sellingUnitId: string,
+  sellingUnits: {
+    id: string;
+    unitsPerParent: number;
+    isBase: boolean;
+  }[],
+) {
+  const unit = sellingUnits.find((u) => u.id === sellingUnitId);
+  if (!unit) {
+    throw new Error("Selling unit not found");
+  }
 
+  return qty * unit.unitsPerParent;
+}
 export async function generateSaleNumber(companyId: string): Promise<string> {
   const currentYear = new Date().getFullYear();
   const prefix = `-${currentYear}-بيع`;
@@ -261,7 +275,7 @@ export async function processSale(data: any, companyId: string) {
           companyId,
           productId: item.id,
           warehouseId: item.warehouseId,
-          movementType: "صادر",
+          movementType: "صادر بيع",
           quantity: baseQty,
           quantityBefore: inventory.stockQuantity,
           quantityAfter: inventory.stockQuantity - baseQty,
@@ -318,14 +332,14 @@ export async function processSale(data: any, companyId: string) {
       // 6️⃣ Payment
       // ==========================================
       if (receivedAmount > 0) {
-        await tx.payment.create({
+        await tx.financialTransaction.create({
           data: {
             companyId,
             saleId: sale.id,
-            cashierId,
+            userId: cashierId,
             customerId,
             paymentMethod: "cash",
-            payment_type: "sale_payment",
+            type: "PAYMENT",
             amount: receivedAmount,
             status: "completed",
           },
@@ -495,7 +509,6 @@ export async function getAllActiveProductsForSale(
   });
 }
 
-// Updated processReturn Function
 // ============================================
 // export async function processReturn(data: any, companyId: string) {
 //   const {
@@ -1079,7 +1092,7 @@ export async function processReturn(data: any, companyId: string) {
           productId: returnItem.productId,
           warehouseId: returnItem.warehouseId,
           userId: cashierId,
-          movementType: "وارد",
+          movementType: "مرتجع",
           quantity: quantityInUnits,
           reason: reason ?? "إرجاع بيع",
           quantityBefore: inventory.stockQuantity,
@@ -1149,14 +1162,14 @@ export async function processReturn(data: any, companyId: string) {
       // 8. Create payment record
       if (returnToCustomer > 0) {
         customerUpdatePromises.push(
-          tx.payment.create({
+          tx.financialTransaction.create({
             data: {
               companyId,
               saleId: returnSale.id,
-              cashierId,
+              userId: cashierId,
               customerId: originalSale.customerId,
               paymentMethod: paymentMethod || "cash",
-              payment_type: "return_refund",
+              type: "PAYMENT",
               amount: returnToCustomer,
               status: "completed",
               notes: reason || "إرجاع بيع",

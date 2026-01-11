@@ -9,6 +9,7 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import BankFormDialog from "./form";
 import { useRouter } from "next/navigation";
+import { VoucherReceipt } from "@/components/common/VoucherReceipt";
 export type BankRow = {
   id: string;
   name: string;
@@ -89,6 +90,16 @@ export const bankColumns: ColumnDef<BankRow>[] = [
             {isLoading && <Clock className="h-4 w-4 animate-spin" />}
             {isLoading ? "جاري الفتح..." : "كشف حساب"}
           </Button>
+          <VoucherReceipt
+            voucherType="صرف" // أو "قبض"
+            voucherNumber="PV-1002"
+            amount={5000}
+            personName="شركة التوريدات الحديثة"
+            description="تسوية رصيد فاتورة رقم 554"
+            paymentMethod="نقداً"
+            company={{ name: "Default Company", address: "Default Address" }}
+            userName="أحمد علي"
+          />
           {/* <Button
             variant="ghost"
             size="icon"

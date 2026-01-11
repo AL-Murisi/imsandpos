@@ -16,6 +16,8 @@ import { Edit } from "lucide-react";
 import InvonteryEditFormm from "./form";
 import PurchaseReturnForm from "./returnform";
 import { PaymentCreateForm } from "./PaymentCreateForm";
+import { PurchaseReceipt } from "@/components/common/purchasreceitp";
+import { useCompany } from "@/hooks/useCompany";
 
 export const StockMovementColumns: ColumnDef<any>[] = [
   {
@@ -385,7 +387,15 @@ export const purchaseColumns: ColumnDef<any>[] = [
     accessorKey: "supplier.name",
     header: "المورد",
   },
-
+  {
+    accessorKey: "paymentMethod",
+    header: "طريقة الدفع",
+    cell: ({ row }) => {
+      // التأكد من وجود القيمة قبل عرضها
+      const method = row.original?.paymentMethod;
+      return <span>{method || "-"}</span>;
+    },
+  },
   {
     accessorKey: "createdAt",
     header: "تاريخ الشراء",
@@ -503,15 +513,17 @@ export const purchaseColumns: ColumnDef<any>[] = [
     id: "actions",
     header: "إجراءات",
     cell: ({ row }) => {
+      const company = useCompany();
       const supplierId = row.original;
-      const supplier_name = row.original.name;
+      const items = row.original.purchaseItems || [];
+      const supplier_name = row.original.supplier.name;
       const purchaseId = row.original.id;
       const amountDue = Number(supplierId.amountDue);
       const status = row.original.purchaseType;
       return (
         <div className="flex gap-2 p-2">
           {" "}
-          {amountDue > 0 && (
+          {amountDue > 0 && status != "return" && (
             <PaymentCreateForm
               purchaseId={purchaseId}
               supplier={supplierId}
@@ -519,6 +531,62 @@ export const purchaseColumns: ColumnDef<any>[] = [
             />
           )}{" "}
           {status != "return" && <PurchaseReturnForm purchaseId={purchaseId} />}
+          <PurchaseReceipt
+            purchaseNumber={""}
+            items={items.map((item: any) => {
+              const baseQty = Number(item.quantity || 0);
+              const basePrice = Number(item.unitCost || 0);
+
+              // 1. استخراج مصفوفة الوحدات (التي أرسلتها أنت في الرد السابق)
+              const unitsArray = item.product.units || [];
+
+              // 2. البحث عن الوحدة التي ليست "Base" (الوحدة الكبرى مثل الكرتون)
+              // نفترض هنا أن الوحدة الكبرى هي التي isBase فيها false
+              const parentUnit = unitsArray.find((u: any) => !u.isBase);
+
+              // 3. معامل التحويل من الحقل unitsPerParent
+              const conversionFactor = parentUnit?.unitsPerParent || 1;
+
+              // 4. التحقق: هل الكمية تملأ وحدات كبرى بالكامل؟
+              const canConvert =
+                conversionFactor > 1 &&
+                baseQty >= conversionFactor &&
+                baseQty % conversionFactor === 0;
+
+              return {
+                id: item.product.id,
+                name: item.product.name,
+                warehousename: item.product.warehouse.name,
+
+                // الكمية: محولة إذا تحقق الشرط، وإلا تبقى بالوحدة الأساسية
+                quantity: canConvert ? baseQty / conversionFactor : baseQty,
+
+                // اسم الوحدة: نأخذه ديناميكياً من الحقل name الخاص بالوحدة
+                sellingUnit: canConvert
+                  ? parentUnit.name
+                  : unitsArray.find((u: any) => u.isBase)?.name || "حبة",
+
+                // السعر: نضرب السعر الأساسي في معامل التحويل ليطابق الوحدة الجديدة
+                unitCost: canConvert ? basePrice * conversionFactor : basePrice,
+
+                totalCost: item.totalCost,
+              };
+            })}
+            totals={{
+              total: supplierId.totalAmount,
+              paid: supplierId.amountPaid,
+              due: supplierId.amountDue,
+            }}
+            supplierName={supplier_name}
+            isCash={supplierId.transaction.paymentMethod}
+            company={{
+              name: company.company?.name || "",
+              address: company.company?.address || "",
+              city: company.company?.city || "",
+              phone: company.company?.phone || "",
+              logoUrl: company.company?.logoUrl || "",
+            }}
+          />
         </div>
       );
     },

@@ -121,35 +121,35 @@ const reports = [
   {
     name: "تقرير المشتريات",
     id: "purchases",
-    type: "purchases",
+    type: "inventory",
     icon: "🛒",
     description: "سجل المشتريات",
   },
   {
     name: "تقرير مرتجعات المشتريات",
     id: "purchase-returns",
-    type: "purchases",
+    type: "inventory",
     icon: "↩️",
     description: "المرتجعات للموردين",
   },
   {
     name: "تقرير الموردين",
     id: "suppliers",
-    type: "purchases",
+    type: "inventory",
     icon: "🏢",
     description: "قائمة الموردين ونشاطهم",
   },
   {
     name: "تقرير المبالغ المستحقة للموردين",
     id: "supplier-balance",
-    type: "purchases",
+    type: "inventory",
     icon: "💳",
     description: "الذمم الدائنة",
   },
   {
     name: "   كشف حساب الموردين",
     id: "supplier_statment",
-    type: "purchases",
+    type: "inventory",
     icon: "💳",
     description: "كشف حساب الموردين",
   },
@@ -227,6 +227,21 @@ const reports = [
     icon: "💰",
     description: "كشف حساب بنكي",
   },
+  ,
+  {
+    name: "سندات الموردين ",
+    id: "supplier-receipts",
+    type: "inventory",
+    icon: "🧾",
+    description: "كشف حساب بنكي",
+  },
+  {
+    name: " كشف حساب  ",
+    id: "accounts-statement",
+    type: "others",
+    icon: "🧾",
+    description: "كشف حساب بنكي",
+  },
 ];
 
 const categories = [
@@ -248,12 +263,7 @@ const categories = [
     icon: <PackageIcon className="h-4 w-4" />,
     color: "bg-blue-500",
   },
-  {
-    name: "المشتريات",
-    id: "purchases",
-    icon: <ShoppingCartIcon className="h-4 w-4" />,
-    color: "bg-purple-500",
-  },
+
   {
     name: "المدفوعات",
     id: "payments",
@@ -266,12 +276,19 @@ const categories = [
     icon: <UsersIcon className="h-4 w-4" />,
     color: "bg-pink-500",
   },
+  {
+    name: " تقارير اخرى ",
+    id: "others",
+    icon: <ShoppingCartIcon className="h-4 w-4" />,
+    color: "bg-purple-500",
+  },
 ];
 
 export default function ReportsPage({
   users,
   banks,
   suppliers,
+  accounts,
 }: {
   users:
     | {
@@ -290,6 +307,7 @@ export default function ReportsPage({
       }[]
     | null;
   banks: any;
+  accounts: any;
 }) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -306,14 +324,16 @@ export default function ReportsPage({
   const [toDate, setToDate] = useState<string>(searchParams.get("to") || "");
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const [selectedSupplier, setSelectedSupplier] = useState<any>(null);
-
+  const [selectedAccountId, setSelectedAccountId] = useState<any>(null);
   const [selectedbank, setSelectedbanks] = useState<any>(null);
   const [reportType, setReportType] = useState<string>(
     searchParams.get("reportType") || "",
   );
 
   const filteredReports =
-    category === "all" ? reports : reports.filter((r) => r.type === category);
+    category === "all"
+      ? reports
+      : reports.filter((r) => r && r.type === category);
 
   useEffect(() => {
     const from = searchParams.get("from");
@@ -324,7 +344,7 @@ export default function ReportsPage({
     if (to) setToDate(to);
     if (type) {
       setReportType(type);
-      const report = reports.find((r) => r.id === type);
+      const report = reports.find((r) => r?.id === type) ?? null;
       if (report) setSelectedReport(report);
     }
   }, [searchParams]);
@@ -348,10 +368,11 @@ export default function ReportsPage({
           toDate,
           customerId: selectedCustomer?.id,
           accountId: selectedbank?.id,
+          id: selectedAccountId,
           suppliersId: selectedSupplier?.id,
         }),
       });
-
+      console.log("Fetch response:", selectedAccountId?.id);
       if (!res.ok) throw new Error("Download failed");
 
       const blob = await res.blob();
@@ -382,7 +403,7 @@ export default function ReportsPage({
   ]);
 
   return (
-    <div className="container mx-auto p-2">
+    <div className="w-full p-2">
       {/* Header */}
       {/* <div className="flex items-center justify-between">
         <div>
@@ -450,9 +471,27 @@ export default function ReportsPage({
                       action={(bank) => setSelectedbanks(bank)}
                     />
                   </div>
+                )}{" "}
+                {selectedReport.id === "accounts-statement" && (
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm font-medium">
+                      👤 اختر محدد (اختياري)
+                    </label>
+                    <SearchInput
+                      placeholder="ابحث عن "
+                      paramKey="account"
+                      options={accounts ?? []}
+                      value={selectedAccountId?.name || ""}
+                      action={(acc) => {
+                        console.log("Received from SearchInput:", acc);
+                        setSelectedAccountId(acc);
+                      }}
+                    />
+                  </div>
                 )}
                 {/* Customer Filter for customer reports */}
-                {selectedReport.id === "supplier_statment" && (
+                {(selectedReport.id === "supplier_statment" ||
+                  selectedReport.id === "supplier-receipts") && (
                   <div className="space-y-2">
                     <label className="flex items-center gap-2 text-sm font-medium">
                       👤 اختر مورد محدد (اختياري)
@@ -564,39 +603,46 @@ export default function ReportsPage({
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-              {filteredReports.map((report) => (
-                <Card
-                  key={report.id}
-                  className={`cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg ${
-                    reportType === report.id
-                      ? "ring-primary bg-primary/5 ring-2"
-                      : ""
-                  }`}
-                  onClick={() => {
-                    setReportType(report.id);
-                    setSelectedReport(report);
-                    // Update URL
-                    const params = new URLSearchParams(searchParams.toString());
-                    params.set("reportType", report.id);
-                    router.push(`?${params.toString()}`);
-                  }}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-start gap-3">
-                      <span className="text-3xl">{report.icon}</span>
-                      <div className="flex-1">
-                        <h3 className="mb-1 font-semibold">{report.name}</h3>
-                        <p className="text-muted-foreground text-xs">
-                          {report.description}
-                        </p>
-                      </div>
-                      {reportType === report.id && (
-                        <Badge variant="default">محدد</Badge>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+              {filteredReports.map(
+                (report) =>
+                  report && (
+                    <Card
+                      key={report?.id}
+                      className={`cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg ${
+                        reportType === report.id
+                          ? "ring-primary bg-primary/5 ring-2"
+                          : ""
+                      }`}
+                      onClick={() => {
+                        setReportType(report.id);
+                        setSelectedReport(report);
+                        // Update URL
+                        const params = new URLSearchParams(
+                          searchParams.toString(),
+                        );
+                        params.set("reportType", report.id);
+                        router.push(`?${params.toString()}`);
+                      }}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-3">
+                          <span className="text-3xl">{report.icon}</span>
+                          <div className="flex-1">
+                            <h3 className="mb-1 font-semibold">
+                              {report.name}
+                            </h3>
+                            <p className="text-muted-foreground text-xs">
+                              {report.description}
+                            </p>
+                          </div>
+                          {reportType === report.id && (
+                            <Badge variant="default">محدد</Badge>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ),
+              )}
             </div>
           </CardContent>
         </Card>{" "}

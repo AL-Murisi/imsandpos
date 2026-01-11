@@ -258,11 +258,9 @@ export default function Receipt() {
                     <td>{item.name}</td>
                     <td>{item.warehousename}</td>
                     <td>{item.selectedQty}</td>
-                    <td>{unitToArabic(item.sellingUnit)}</td>
-                    <td>{getItemPrice(item)}</td>
-                    <td>
-                      {(getItemPrice(item) * item.selectedQty).toFixed(2)}
-                    </td>
+                    <td>{item.sellingUnit}</td>
+                    <td>{item.pricePerUnit}</td>
+                    <td>{item.selectedQty * item.pricePerUnit}</td>
                   </tr>
                 ))}
               </tbody>

@@ -230,25 +230,48 @@ export default function SupplierStatementPrint({
     `;
 
     const iframe = document.createElement("iframe");
-    iframe.style.width = "0";
-    iframe.style.height = "0";
-    iframe.style.border = "none";
-    iframe.style.position = "fixed";
-    iframe.style.right = "0";
-    iframe.style.bottom = "0";
+
+    // Styles to hide the iframe
+    Object.assign(iframe.style, {
+      position: "fixed",
+      right: "0",
+      bottom: "0",
+      width: "0",
+      height: "0",
+      border: "none",
+      visibility: "hidden",
+    });
 
     document.body.appendChild(iframe);
+
     const doc = iframe.contentWindow?.document;
-    if (!doc) return;
+    if (!doc) {
+      (window as any).__printing = false;
+
+      return;
+    }
 
     doc.open();
     doc.write(printHTML);
     doc.close();
 
-    iframe.contentWindow?.focus();
-    iframe.contentWindow?.print();
-
-    setTimeout(() => document.body.removeChild(iframe), 1000);
+    // Wait for resources (images/styles) to load inside the iframe
+    iframe.onload = () => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } catch (e) {
+        console.error("Printing failed", e);
+      } finally {
+        // Small delay to ensure the print dialog opened before removing the iframe
+        setTimeout(() => {
+          if (document.body.contains(iframe)) {
+            document.body.removeChild(iframe);
+          }
+          (window as any).__printing = false;
+        }, 1000);
+      }
+    };
   };
 
   return (

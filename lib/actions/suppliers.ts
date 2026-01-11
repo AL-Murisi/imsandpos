@@ -477,21 +477,36 @@ export const getPurchasesByCompany = cache(
                   name: true,
                   sku: true,
                   costPrice: true,
-                  unitsPerPacket: true,
-                  type: true,
-                  packetsPerCarton: true,
+                  sellingUnits: true,
+                  warehouse: { select: { name: true } },
                 },
               },
             },
           },
           supplier: { select: { id: true, name: true } },
+          transaction: { select: { paymentMethod: true } },
         },
 
         skip: pageIndex * pageSize,
         take: pageSize,
         orderBy: { createdAt: "desc" },
       });
-      const serialized = serializeData(purchases);
+      const paymentMethod = await prisma.financialTransaction.findFirst({
+        where: { companyId: companyId, purchaseId: purchases[0].id },
+        select: {
+          paymentMethod: true,
+        },
+      });
+      const purchasesWithPaymentInfo = purchases.map((p) => ({
+        ...p,
+        // استخراج وسيلة الدفع من أول معاملة مالية (إن وجدت)
+        paymentMethod: String(
+          p.transaction?.[0]?.paymentMethod || "آجل/غير محدد",
+        ),
+      }));
+
+      const serialized = serializeData(purchasesWithPaymentInfo);
+      console.log(serialized);
       return { data: serialized, total };
     } catch (error) {
       console.error("Error fetching company purchases:", error);
@@ -760,16 +775,16 @@ export async function createSupplierPaymentFromPurchases(
     const result = await prisma.$transaction(
       async (tx) => {
         // 1. Create supplier payment record first
-        const supplierPayment = await tx.supplierPayment.create({
+        const supplierPayment = await tx.financialTransaction.create({
           data: {
             companyId,
             supplierId,
             purchaseId, // ✅ Link to purchase
             amount,
             paymentMethod,
-            note,
-            createdBy,
-            paymentDate: paymentDate ?? new Date(),
+            notes: note,
+            userId: createdBy,
+            createdAt: paymentDate ?? new Date(),
           },
           include: {
             supplier: true,
@@ -854,7 +869,7 @@ export async function createSupplierPaymentFromPurchases(
         userId,
         companyId,
         action: "Created supplier payment",
-        details: `Supplier: ${supplierPayment.supplier.name}, Payment: ${amount}, Purchase: ${purchaseId}. Previous paid: ${previousAmountPaid}, New paid: ${newAmountPaid}. Previous due: ${previousAmountDue}, New due: ${newAmountDue}.`,
+        details: `Supplier: ${supplierPayment?.supplier?.name}, Payment: ${amount}, Purchase: ${purchaseId}. Previous paid: ${previousAmountPaid}, New paid: ${newAmountPaid}. Previous due: ${previousAmountDue}, New due: ${newAmountDue}.`,
       },
     });
 

@@ -23,9 +23,9 @@ export interface ReceiptItem {
   warehousename: string;
   selectedQty: number;
   sellingUnit: string;
+  unit_price: number;
   pricePerUnit?: number;
-  pricePerPacket?: number;
-  pricePerCarton?: number;
+  total: number;
 }
 
 export interface ReceiptProps {
@@ -59,36 +59,12 @@ export const Receipt: React.FC<ReceiptProps> = ({
   t,
   company,
 }) => {
-  const getItemPrice = (item: ReceiptItem) => {
-    switch (item.sellingUnit) {
-      case "unit":
-        return item.pricePerUnit ?? 0;
-      case "packet":
-        return item.pricePerPacket ?? 0;
-      case "carton":
-        return item.pricePerCarton ?? 0;
-      default:
-        return 0;
-    }
-  };
   const { formatCurrency, formatPriceK, formatQty } = useFormatter();
-
-  const unitToArabic = (sellingUnit: "unit" | "packet" | "carton") => {
-    switch (sellingUnit) {
-      case "unit":
-        return "حبة";
-      case "packet":
-        return "كيس";
-      case "carton":
-        return "كرتون";
-      default:
-        return "";
-    }
-  };
 
   const handlePrint = () => {
     if ((window as any).__printing) return;
     (window as any).__printing = true;
+    console.log("Preparing to print receipt...", items);
     const printHTML = `
       <html>
         <head>
@@ -265,21 +241,23 @@ export const Receipt: React.FC<ReceiptProps> = ({
                 </tr>
               </thead>
               <tbody>
-                ${items
-                  .map(
-                    (item, index) => `
-                    <tr>
-                      <td>${index + 1}</td>
-                      <td>${item.name}</td>
-                      <td>${item.warehousename}</td>
-                      <td>${item.selectedQty}</td>
-                      <td>${item.sellingUnit}</td>
-                      <td>${getItemPrice(item)}</td>
-                      <td>${(getItemPrice(item) * item.selectedQty).toFixed(2)}</td>
-                    </tr>
-                  `,
-                  )
-                  .join("")}
+             ${items
+               .map((item, index) => {
+                 // نضمن أن القيم أرقام قبل الحساب لمنع ظهور NaN
+
+                 return `
+      <tr>
+        <td>${index + 1}</td>
+        <td>${item.name}</td>
+        <td>${item.warehousename}</td>
+        <td>${item.selectedQty}</td>
+        <td>${item.sellingUnit}</td>
+        <td>${item.pricePerUnit}</td>
+        <td>${item.pricePerUnit !== undefined ? item.selectedQty * item.pricePerUnit : 0}</td>
+      </tr>
+    `;
+               })
+               .join("")}
               </tbody>
             </table>
 
@@ -343,37 +321,80 @@ export const Receipt: React.FC<ReceiptProps> = ({
 
       </html>
     `;
-
-    // ✅ Use hidden iframe for mobile/PWA-safe printing
     const iframe = document.createElement("iframe");
-    iframe.style.position = "fixed";
-    iframe.style.right = "0";
-    iframe.style.bottom = "0";
-    iframe.style.width = "0";
-    iframe.style.height = "0";
-    iframe.style.border = "none";
+
+    // Styles to hide the iframe
+    Object.assign(iframe.style, {
+      position: "fixed",
+      right: "0",
+      bottom: "0",
+      width: "0",
+      height: "0",
+      border: "none",
+      visibility: "hidden",
+    });
+
     document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow?.document;
+    if (!doc) {
+      (window as any).__printing = false;
+      setIsLoading2(false);
+      return;
+    }
+
+    doc.open();
+    doc.write(printHTML);
+    doc.close();
+
+    // Wait for resources (images/styles) to load inside the iframe
     iframe.onload = () => {
       try {
         iframe.contentWindow?.focus();
         iframe.contentWindow?.print();
+      } catch (e) {
+        console.error("Printing failed", e);
       } finally {
+        // Small delay to ensure the print dialog opened before removing the iframe
         setTimeout(() => {
-          document.body.removeChild(iframe);
+          if (document.body.contains(iframe)) {
+            document.body.removeChild(iframe);
+          }
           (window as any).__printing = false;
-        }, 500);
+          setIsLoading2(false);
+        }, 1000);
       }
     };
+    // ✅ Use hidden iframe for mobile/PWA-safe printing
+    // const iframe = document.createElement("iframe");
+    // iframe.style.position = "fixed";
+    // iframe.style.right = "0";
+    // iframe.style.bottom = "0";
+    // iframe.style.width = "0";
+    // iframe.style.height = "0";
+    // iframe.style.border = "none";
+    // document.body.appendChild(iframe);
+    // iframe.onload = () => {
+    //   try {
+    //     iframe.contentWindow?.focus();
+    //     iframe.contentWindow?.print();
+    //   } finally {
+    //     setTimeout(() => {
+    //       document.body.removeChild(iframe);
+    //       (window as any).__printing = false;
+    //     }, 500);
+    //   }
+    // };
 
-    const doc = iframe.contentWindow?.document;
-    if (!doc) return;
-    doc.open();
-    doc.write(printHTML);
-    doc.close();
-    setTimeout(() => {
-      document.body.removeChild(iframe);
-      setIsLoading2(false);
-    }, 1000);
+    // const doc = iframe.contentWindow?.document;
+    // if (!doc) return;
+    // doc.open();
+    // doc.write(printHTML);
+    // doc.close();
+    // setTimeout(() => {
+    //   document.body.removeChild(iframe);
+    //   setIsLoading2(false);
+    // }, 1000);
   };
   const [isLoading2, setIsLoading2] = useState(false);
 
