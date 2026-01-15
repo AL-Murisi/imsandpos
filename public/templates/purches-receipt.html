@@ -68,9 +68,17 @@
       }
 
       .info-section {
+        display: flex; /* Makes items side-by-side */
+        justify-content: space-between; /* Spreads them to the edges */
+        align-items: center;
         margin-bottom: 15px;
-        line-height: 1.6;
         font-size: 14px;
+        border-bottom: 1px dashed #eee; /* Optional styling */
+        padding-bottom: 5px;
+      }
+
+      .info-item {
+        flex: 1; /* Gives equal space to each part */
       }
 
       table {
@@ -147,9 +155,11 @@
           <div style="font-size: 20px; font-weight: bold; color: green">
             {{../company.name}}
           </div>
+          {{#if ../company.branches.[0]}}
           <div style="font-size: 14px">
-            رقم فاتورة الشراء: {{purchase_number}}
+            فرع: {{../company.branches.[0].location}}
           </div>
+          {{/if}}
         </div>
 
         <div class="header-center">
@@ -170,10 +180,14 @@
 
       <!-- INFO -->
       <div class="info-section">
-        <strong>المورد:</strong> {{suppliername}} <br />
-        <strong>نوع الشراء:</strong> {{purchase_type}} <br />
-        <strong>طريقة الدفع:</strong>
-        {{#if is_cash}}نقدي{{else}}آجل{{/if}}
+        <div class="info-item"><strong>المورد:</strong> {{suppliername}}</div>
+        <div class="info-item" style="text-align: center">
+          <strong>نوع الشراء:</strong> {{purchase_type}}
+        </div>
+        <div class="info-item">
+          <strong>طريقة الدفع:</strong> {{#if is_cash}}نقدي{{else}}آجل{{/if}}
+        </div>
+        <div class="info-item">رقم الفاتوره: {{purchase_number}}</div>
       </div>
 
       <!-- ITEMS TABLE -->

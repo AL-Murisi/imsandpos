@@ -15,6 +15,7 @@ import { CreateUserSchema, UserInput } from "@/lib/zod";
 import { toast } from "sonner";
 import Dailogreuse from "@/components/common/dailogreuse";
 import { Plus } from "lucide-react";
+import { fetchbranches } from "@/lib/actions/pos";
 
 type Role = {
   id: string;
@@ -23,6 +24,7 @@ type Role = {
 
 export default function UserForm() {
   const [roles, setRoles] = useState<Role[]>([]);
+  const [branch, setBranch] = useState<Role[]>([]);
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -41,6 +43,7 @@ export default function UserForm() {
       phoneNumber: "",
       password: "",
       roleId: "",
+      branchId: undefined,
     },
   });
   const { user } = useAuth();
@@ -50,7 +53,9 @@ export default function UserForm() {
     if (!open) return;
     const loadRoles = async () => {
       const result = await fetchRolesForSelect();
+      const branch = await fetchbranches();
       setRoles(result);
+      setBranch(branch ?? []);
       if (result.length > 0) {
         setValue("roleId", result[0].id);
 
@@ -61,6 +66,10 @@ export default function UserForm() {
   }, [open]);
 
   const selectedRole = watch("roleId");
+
+  const selectedRoleObj = roles.find((r) => r.id === selectedRole);
+  const isCashier = selectedRoleObj?.name === "cashier";
+
   const onSubmit = async (data: UserInput) => {
     setIsSubmitting(true);
 
@@ -132,16 +141,29 @@ export default function UserForm() {
           {/* Role select */}
           <div className="grid gap-2">
             <Label htmlFor="role">الدور</Label>
-
             <SelectField
               options={roles}
               action={(value) => setValue("roleId", value)}
               value={selectedRole}
             />
-
             {errors.roleId && (
               <p className="text-xs text-red-500">{errors.roleId.message}</p>
             )}
+            {isCashier && (
+              <div className="grid gap-2">
+                <Label>الفرع</Label>
+                <SelectField
+                  options={branch}
+                  action={(value) => setValue("branchId", value)}
+                  value={watch("branchId")}
+                />
+                {errors.branchId && (
+                  <p className="text-xs text-red-500">
+                    {errors.branchId.message}
+                  </p>
+                )}
+              </div>
+            )}{" "}
           </div>
         </div>
 

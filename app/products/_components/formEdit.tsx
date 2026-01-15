@@ -498,8 +498,13 @@ export default function ProductEditForm({
             </Card>
           )}
 
-          <Button type="submit" className="w-full" size="lg">
-            حفظ المنتج
+          <Button
+            disabled={isSubmitting}
+            type="submit"
+            className="w-full"
+            size="lg"
+          >
+            {isSubmitting ? "جاري الحفظ..." : "حفظ "}
           </Button>
         </form>
       </ScrollArea>

@@ -17,6 +17,7 @@ interface JournalEntryLine {
   reference_id: string;
   created_by: string;
   is_automated: boolean;
+  branch_id?: string;
   fiscal_period?: string | null;
   customer_id?: string;
   supplier_id?: string;

@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useCompany } from "@/hooks/useCompany";
 
 const returnSchema = z.object({
   saleId: z.string(),
@@ -60,6 +61,7 @@ interface SellingUnit {
 
 export function ReturnForm({ sale }: { sale: any }) {
   const { user } = useAuth();
+  const company = useCompany();
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
@@ -71,9 +73,10 @@ export function ReturnForm({ sale }: { sale: any }) {
         saleId: sale.id,
         cashierId: user?.userId,
         customerId: sale.customerId || null,
-        returnNumber: sale.saleNumber || "",
+        returnNumber: sale.invoiceNumber || "",
         reason: "",
-        paymentMethod: "cash",
+        paymentMethod:
+          sale.payments.find((p: any) => p.paymentMethod)?.paymentMethod || "",
         items: sale.saleItems.map((item: any) => {
           // 🆕 Parse selling units from product
           const sellingUnits =
@@ -111,8 +114,8 @@ export function ReturnForm({ sale }: { sale: any }) {
   const getReturnAmountForCustomer = (sale: any, totalReturn: number) => {
     if (!sale) return 0;
 
-    switch (sale.paymentStatus) {
-      case "paid":
+    switch (sale.status) {
+      case "completed":
         return totalReturn;
       case "partial":
         return Math.min(sale.amountPaid, totalReturn);
@@ -167,6 +170,7 @@ export function ReturnForm({ sale }: { sale: any }) {
     const payload = {
       ...values,
       cashierId: user.userId,
+      branchId: company.company?.branches[0].id,
       items: mappedItems,
       paymentMethod: paymentMethod,
       totalReturn,

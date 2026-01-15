@@ -14,6 +14,10 @@ type Company =
       city: string | null;
       country: string | null;
       logoUrl: string | null;
+      branches: {
+        name: string;
+        location: string | null;
+      }[];
     }
   | undefined;
 
@@ -204,8 +208,10 @@ export const Receipt: React.FC<ReceiptProps> = ({
                 <!-- Company -->
                 <div class="grid grid-rows-3 items-baseline gap-2 text-right">
                   <span class="text-3xl green font-bold">  ${company?.name} </span>
-                  <span class="text-2xl">${company?.name} </span>
-                  <div>رقم الفاتورة: ${saleNumber}</div>
+                  <span class="text-xl">${company?.branches[0].name} </span>
+                    <span class="text-xl">${company?.branches[0].location} </span>
+
+               
                 </div>
 
                 <!-- Logo -->
@@ -215,14 +221,17 @@ export const Receipt: React.FC<ReceiptProps> = ({
 
                 <!-- Branch -->
                 <div class="grid grid-rows-4">
-                  <div class="text-lg">  ${company?.address} </div>  <div class="text-lg">  ${company?.city} </div>
+                  <div class="text-lg">  ${company?.address}</div>  
+                  <div class="text-lg">  ${company?.city} </div>
                   <div>تلفون:  ${company?.phone}</div>
+                  
 
                 </div>
               </div>
             </div>
 
             <div class="section">
+               <div>رقم الفاتورة: ${saleNumber}</div>
               نوع الدفع: ${isCash ? "نقدي" : "آجل"}<br/>
               <div>العميل: <span class="badge">${customerName ?? "بدون"}</span></div>
             </div>
@@ -252,8 +261,8 @@ export const Receipt: React.FC<ReceiptProps> = ({
         <td>${item.warehousename}</td>
         <td>${item.selectedQty}</td>
         <td>${item.sellingUnit}</td>
-        <td>${item.pricePerUnit}</td>
-        <td>${item.pricePerUnit !== undefined ? item.selectedQty * item.pricePerUnit : 0}</td>
+        <td>${item.unit_price}</td>
+        <td>${item.total}</td>
       </tr>
     `;
                })

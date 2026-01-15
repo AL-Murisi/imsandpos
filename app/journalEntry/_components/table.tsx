@@ -80,11 +80,11 @@ export default function JournalEntriesTable({
         <DataTable
           search={
             <div className="flex flex-wrap gap-2 p-1 md:flex-row lg:flex-row">
-              <ManualJournalEntry
+              {/* <ManualJournalEntry
                 account={acount}
                 suppliers={suppliers}
                 customers={customers}
-              />
+              /> */}
               <BulkPostButton
                 selectedEntries={selectedRows.map((row) => ({
                   entry_number: row.entry_number,

@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ColumnDef } from "@tanstack/react-table";
 import { ArrowDown, ArrowUp, ArrowUpDown, EditIcon } from "lucide-react";
 import Debtupdate from "./form";
-import Recitp from "../cashiercontrol/_components/recitp";
+import Recitp from "./recitp";
 import { useCurrency } from "@/components/CurrencyProvider";
 import { ReturnForm } from "./Returnitems";
 import { useFormatter } from "@/hooks/usePrice";
@@ -156,7 +156,7 @@ export const debtSaleColumns: ColumnDef<any>[] = [
     header: "نوع العملية",
     cell: ({ row }) => {
       const type = row.getValue("sale_type") as string;
-      const label = type === "return" ? "إرجاع" : type === "sale" ? "بيع" : "-";
+      const label = type === "return" ? "إرجاع" : type === "SALE" ? "بيع" : "-";
       const color =
         type === "return"
           ? "bg-red-100 text-red-800"
@@ -178,29 +178,21 @@ export const debtSaleColumns: ColumnDef<any>[] = [
       return reason ? reason : "—";
     },
   },
+
   {
-    accessorKey: "refunded",
-    header: "المبلغ المسترجع",
-    cell: ({ row }) => {
-      const refunded = row.getValue("refunded");
-      const { formatCurrency } = useFormatter();
-      return <div>{formatCurrency(Number(refunded))}</div>;
-    },
-  },
-  {
-    accessorKey: "paymentStatus",
+    accessorKey: "status",
     header: ({ column }) => <SortableHeader column={column} label="الحالة" />,
     cell: ({ row }) => {
-      const status = row.getValue("paymentStatus");
+      const status = row.original.status;
       const color =
-        status === "paid"
+        status === "completed"
           ? "bg-green-100 text-green-800"
           : status === "partial"
             ? "bg-yellow-100 text-yellow-800"
             : "bg-red-100 text-red-800";
 
       const label =
-        status === "paid"
+        status === "completed"
           ? "مدفوع"
           : status === "partial"
             ? "جزئي"
@@ -218,11 +210,11 @@ export const debtSaleColumns: ColumnDef<any>[] = [
 
       return (
         <div className="flex flex-row gap-2">
-          {amountDue > 0 && debt.sale_type !== "return" && (
+          {amountDue > 0 && debt.sale_type !== "RETURN" && (
             <Debtupdate debt={debt} />
           )}
-          <Recitp id={debt.saleNumber} />
-          {debt.sale_type === "sale" && <ReturnForm sale={debt} />}
+          <Recitp id={debt.id} />
+          {debt.sale_type === "SALE" && <ReturnForm sale={debt} />}
         </div>
       );
     },

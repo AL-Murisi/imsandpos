@@ -1,11 +1,9 @@
 "use client";
 import TableSkeleton from "@/components/common/TableSkeleton";
-import DashboardTabs from "@/components/common/Tabs";
-import dynamic from "next/dynamic";
-import React from "react";
-import JournalEntriesTable from "./table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useFormatter } from "@/hooks/usePrice";
+import dynamic from "next/dynamic";
+import JournalEntriesTable from "./table";
 // ✅ تحميل السنة المالية فقط عند الحاجة
 const FiscalYearManager = dynamic(() => import("./FiscalYearManager"), {
   ssr: false,
@@ -72,28 +70,12 @@ export default function Tab({
           <p className="mt-1 text-2xl font-bold">{data.length}قيد</p>
         </div>
       </div>
-      <DashboardTabs
-        defaultTab="journalEntry"
-        loader={<TableSkeleton />}
-        tabs={[
-          {
-            value: "journalEntry",
-            label: "قيود",
-            content: (
-              <JournalEntriesTable
-                data={data}
-                acount={acount}
-                customers={customers}
-                suppliers={suppliers}
-              />
-            ),
-          },
-          {
-            value: "fiscalYear",
-            label: "سنة مالية ",
-            content: <FiscalYearManager fiscalYear={fiscalYear ?? []} />,
-          },
-        ]}
+
+      <JournalEntriesTable
+        data={data}
+        acount={acount}
+        customers={customers}
+        suppliers={suppliers}
       />
     </ScrollArea>
   );

@@ -16,6 +16,11 @@ export type Company =
       country: string | null;
       logoUrl: string | null;
       base_currency: string | null;
+      branches: {
+        id: string;
+        name: string;
+        location: string | null;
+      }[];
     }
   | undefined;
 

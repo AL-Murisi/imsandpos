@@ -649,6 +649,7 @@ export async function processPurchaseReturn(
     returnQuantity,
     returnUnit,
     unitCost,
+    branchId,
     paymentMethod,
     refundAmount = 0,
     reason,
@@ -659,10 +660,10 @@ export async function processPurchaseReturn(
     const result = await prisma.$transaction(
       async (tx) => {
         // 1. Get original purchase and item
-        const originalPurchase = await tx.purchase.findUnique({
+        const originalPurchase = await tx.invoice.findUnique({
           where: { id: purchaseId, companyId },
           include: {
-            purchaseItems: {
+            items: {
               where: { id: purchaseItemId },
               include: {
                 product: {
@@ -688,15 +689,15 @@ export async function processPurchaseReturn(
           throw new Error("الشراء الأصلي غير موجود");
         }
 
-        if (originalPurchase.purchaseItems.length === 0) {
+        if (originalPurchase.items.length === 0) {
           throw new Error("عنصر الشراء غير موجود");
         }
 
-        const purchaseItem = originalPurchase.purchaseItems[0];
+        const purchaseItem = originalPurchase.items[0];
         const product = purchaseItem.product;
         const supplier = originalPurchase.supplier;
         const productId = product.id;
-        const supplierId = supplier.id;
+        const supplierId = supplier?.id;
 
         // 2. Get inventory
         const inventory = await tx.inventory.findUnique({
@@ -721,7 +722,9 @@ export async function processPurchaseReturn(
         // 3. Convert return quantity to base units
 
         const sellingUnits = (product.sellingUnits as any[]) || [];
-        const selectedUnit = sellingUnits.find((u: any) => u.id === returnUnit);
+        const selectedUnit = sellingUnits.find(
+          (u: any) => u.name === returnUnit,
+        );
         const returnQuantityInUnits = convertToBaseUnits(
           returnQuantity,
           selectedUnit,
@@ -763,30 +766,28 @@ export async function processPurchaseReturn(
         }
 
         // 6. Create purchase return record (POSITIVE VALUES)
-        purchaseReturn = await tx.purchase.update({
+        purchaseReturn = await tx.invoice.update({
           where: { id: purchaseId },
           data: {
             companyId,
             supplierId,
-            purchaseType: "return",
+            sale_type: "RETURN_PURCHASE",
             totalAmount: returnTotalCost,
             amountPaid: refundAmount,
             amountDue: 0,
-            status: "مرتجع",
+            status: "completed",
             // Link to original purchase
           },
         });
 
         // 7. Create purchase item for return (POSITIVE QUANTITY)
-        await tx.purchaseItem.update({
-          where: { id: purchaseItemId },
+        await tx.invoiceItem.update({
+          where: { id: purchaseItemId, companyId },
           data: {
-            companyId,
-            purchaseId: purchaseReturn.id,
-            productId,
             quantity: returnQuantity,
-            unitCost,
-            totalCost: returnTotalCost,
+            price: unitCost,
+            unit: returnUnit,
+            totalPrice: returnTotalCost,
           },
         });
 
@@ -837,15 +838,32 @@ export async function processPurchaseReturn(
 
         // 10. Handle refund payment if any
         if (refundAmount > 0 && paymentMethod) {
-          await tx.supplierPayment.create({
+          const aggregate = await tx.financialTransaction.aggregate({
+            where: {
+              companyId: companyId,
+              type: "RECEIPT",
+            },
+            _max: {
+              voucherNumber: true,
+            },
+          });
+
+          // 2. حساب الرقم التالي
+          const lastNumber = aggregate._max.voucherNumber || 0;
+          const nextNumber = lastNumber + 1;
+          await tx.financialTransaction.create({
             data: {
               companyId,
               supplierId,
+              invoiceId: originalPurchase.id,
+              branchId,
+              type: "PAYMENT",
               purchaseId: purchaseReturn.id,
-              createdBy: userId,
+              voucherNumber: nextNumber,
+              userId: userId,
               amount: refundAmount,
               paymentMethod,
-              note: reason || `استرداد مبلغ من المورد - فاتورة ${purchaseId}`,
+              notes: reason || `استرداد مبلغ من المورد - فاتورة ${purchaseId}`,
             },
           });
         }
@@ -857,18 +875,18 @@ export async function processPurchaseReturn(
             totalPurchased: {
               set: Math.max(
                 0,
-                Number(supplier.totalPurchased) - returnTotalCost,
+                Number(supplier?.totalPurchased) - returnTotalCost,
               ),
             },
             ...(refundAmount > 0 && {
               totalPaid: {
-                set: Math.max(0, Number(supplier.totalPaid) - refundAmount),
+                set: Math.max(0, Number(supplier?.totalPaid) - refundAmount),
               },
             }),
             outstandingBalance: {
               set: Math.max(
                 0,
-                Number(supplier.outstandingBalance) - outstandingDecrease,
+                Number(supplier?.outstandingBalance) - outstandingDecrease,
               ),
             },
           },
@@ -881,7 +899,7 @@ export async function processPurchaseReturn(
             entityType: "return-purchase",
             payload: {
               companyId,
-
+              branchId,
               supplierId,
               purchase: purchaseReturn,
               userId,
@@ -927,6 +945,7 @@ interface PurchaseReturnData {
   returnQuantity: number;
   returnUnit: string; // Specify the type as string or another appropriate type
   unitCost: number;
+  branchId?: string;
   paymentMethod?: string;
   refundAmount?: number;
   reason?: string;
@@ -938,7 +957,7 @@ export async function getPurchaseReturnData(
 ) {
   try {
     // 1️⃣ Fetch Purchase + Supplier + Items + Product
-    const purchase = await prisma.purchase.findFirst({
+    const purchase = await prisma.invoice.findFirst({
       where: { id: purchaseId, companyId },
       include: {
         supplier: {
@@ -947,7 +966,7 @@ export async function getPurchaseReturnData(
             name: true,
           },
         },
-        purchaseItems: {
+        items: {
           include: {
             product: {
               select: {
@@ -972,7 +991,7 @@ export async function getPurchaseReturnData(
       return { success: false, message: "لم يتم العثور على المشتريات" };
     }
 
-    const item = purchase.purchaseItems[0];
+    const item = purchase.items[0];
 
     if (!item) {
       return { success: false, message: "لا توجد منتجات في هذه المشتريات" };
@@ -1012,7 +1031,7 @@ export async function getPurchaseReturnData(
     // التحقق من حالة البيع:
     // إذا كانت الكمية في المخزن أقل من الكمية التي تم شراؤها في هذا الفاتورة
     // فهذا يعني أن جزءاً منها قد تم بيعه (أو تم التصرف فيه)
-    const originalPurchaseQty = item.quantity; // الكمية عند الشراء
+    const originalPurchaseQty = Number(item.quantity); // الكمية عند الشراء
     const hasBeenSold = currentStock < originalPurchaseQty; // 3️⃣ Get available quantity (base unit)
 
     const supplierdata = serializeData(purchase.supplier);
@@ -1028,7 +1047,7 @@ export async function getPurchaseReturnData(
           amountDue: Number(purchase.amountDue),
           status: purchase.status,
           supplierId: purchase.supplierId,
-          createdAt: purchase.createdAt,
+          createdAt: purchase.invoiceDate,
         },
 
         supplier: supplierdata,
@@ -1038,8 +1057,8 @@ export async function getPurchaseReturnData(
         purchaseItem: {
           id: item.id,
           quantity: item.quantity,
-          unitCost: Number(item.unitCost),
-          totalCost: Number(item.totalCost),
+          unitCost: Number(item.price),
+          totalCost: Number(item.totalPrice),
         },
 
         inventory: {
@@ -1752,7 +1771,7 @@ export interface InventoryUpdateDatas {
   stockQuantity?: number;
   reservedQuantity?: number;
   availableQuantity?: number;
-
+  branchId?: string;
   // Supplier fields
   supplierId?: string;
   unitCost?: number;
@@ -1935,27 +1954,31 @@ export async function updateMultipleInventories(
             const paid = updateData.payment.amountBase || 0;
             const due = totalCost - paid;
 
-            const purchase = await tx.purchase.create({
+            const purchase = await tx.invoice.create({
               data: {
                 companyId,
+                invoiceNumber: receiptNo,
+                cashierId: userId,
                 supplierId: updateData.supplierId,
                 totalAmount: totalCost,
                 amountPaid: paid,
-                purchaseType: "purchases",
+                branchId: updateData.branchId,
+                sale_type: "PURCHASE",
                 amountDue: due,
                 status:
                   paid >= totalCost ? "paid" : paid > 0 ? "partial" : "pending",
               },
             });
 
-            await tx.purchaseItem.create({
+            await tx.invoiceItem.create({
               data: {
                 companyId,
-                purchaseId: purchase.id,
+                invoiceId: purchase.id,
                 productId: product.id,
                 quantity: stockUnits,
-                unitCost: updateData.unitCost,
-                totalCost,
+                price: updateData.unitCost,
+                totalPrice: totalCost,
+                unit: selectedUnit.name,
                 // 🆕 Store unit information
                 // unitId: selectedUnit.id,
                 // unitName: selectedUnit.name,
@@ -1973,8 +1996,10 @@ export async function updateMultipleInventories(
                   companyId,
                   supplierId: updateData.supplierId,
                   userId,
-                  purchaseId: purchase.id,
+                  branchId: updateData.branchId,
+                  invoiceId: purchase.id,
                   amount: paid,
+                  type: "PAYMENT",
                   paymentMethod: updateData.payment.paymentMethod,
                   notes: updateData.notes || "دفعة مشتريات",
                 },
@@ -2005,6 +2030,7 @@ export async function updateMultipleInventories(
                   supplierId: updateData.supplierId,
                   purchase: purchase,
                   userId,
+                  branchId: updateData.branchId,
                   type: "purchase",
                   paymentDetails: {
                     exchangeRate: updateData.payment?.exchangeRate,
@@ -2026,7 +2052,6 @@ export async function updateMultipleInventories(
           const updatedInventory = await tx.inventory.update({
             where: { id: inventory.id },
             data: {
-              lastPurchaseId: purchaseId,
               availableQuantity: finalAvailableQty,
               stockQuantity: finalStockQty,
               reservedQuantity:

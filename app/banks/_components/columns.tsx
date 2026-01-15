@@ -90,7 +90,7 @@ export const bankColumns: ColumnDef<BankRow>[] = [
             {isLoading && <Clock className="h-4 w-4 animate-spin" />}
             {isLoading ? "جاري الفتح..." : "كشف حساب"}
           </Button>
-          <VoucherReceipt
+          {/* <VoucherReceipt
             voucherType="صرف" // أو "قبض"
             voucherNumber="PV-1002"
             amount={5000}
@@ -99,7 +99,7 @@ export const bankColumns: ColumnDef<BankRow>[] = [
             paymentMethod="نقداً"
             company={{ name: "Default Company", address: "Default Address" }}
             userName="أحمد علي"
-          />
+          /> */}
           {/* <Button
             variant="ghost"
             size="icon"

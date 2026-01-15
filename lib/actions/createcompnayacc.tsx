@@ -136,6 +136,7 @@ export async function updateCompany(
 export async function getCompany() {
   const user = await getSession();
   if (!user) return;
+
   try {
     const company = await prisma.company.findUnique({
       where: { id: user.companyId },
@@ -149,6 +150,27 @@ export async function getCompany() {
         base_currency: true,
         country: true,
         logoUrl: true,
+
+        branches: {
+          where: {
+            OR: [
+              // 👨‍💼 Branch manager
+              { managerId: user.userId },
+
+              // 🧾 Cashier assigned to branch
+              {
+                cashiers: {
+                  some: { id: user.userId },
+                },
+              },
+            ],
+          },
+          select: {
+            id: true,
+            name: true,
+            location: true,
+          },
+        },
       },
     });
 

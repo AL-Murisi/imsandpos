@@ -1,10 +1,21 @@
 "use client";
 
+import { VoucherReceipt } from "@/components/common/VoucherReceipt";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useCompany } from "@/hooks/useCompany";
 import { ColumnDef } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, ArrowUpDown, Eye } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowDownCircle,
+  ArrowUp,
+  ArrowUpCircle,
+  ArrowUpDown,
+  CircleDollarSign,
+  Eye,
+  Printer,
+} from "lucide-react";
 import dynamic from "next/dynamic";
 const JournalEntryDetailsDialog = dynamic(
   () => import("../../_components/JournalEntryDetailsDialog"),
@@ -288,6 +299,148 @@ export const journalEntryColumns: ColumnDef<JournalEntryData>[] = [
       return (
         <div className="flex gap-2">
           <JournalEntryDetailsDialog entry={entry} />
+        </div>
+      );
+    },
+  },
+];
+
+// 🔢 Voucher Type based on your FinancialTransaction model
+export type FinancialVoucher = {
+  id: string;
+  voucherNumber: number;
+  type: "RECEIPT" | "PAYMENT";
+  amount: number;
+  currencyCode: string;
+  paymentMethod: string;
+  date: string | Date;
+  notes?: string;
+  customer?: { name: string };
+  supplier?: { name: string };
+};
+
+export const voucherColumns: ColumnDef<FinancialVoucher>[] = [
+  {
+    id: "select",
+    header: ({ table }) => (
+      <Checkbox
+        checked={table.getIsAllPageRowsSelected()}
+        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+        aria-label="تحديد الكل"
+      />
+    ),
+    cell: ({ row }) => (
+      <Checkbox
+        checked={row.getIsSelected()}
+        onCheckedChange={(value) => row.toggleSelected(!!value)}
+        aria-label="تحديد الصف"
+      />
+    ),
+  },
+  {
+    accessorKey: "voucherNumber",
+    header: ({ column }) => (
+      <SortableHeader column={column} label="رقم السند" />
+    ),
+    cell: ({ row }) => {
+      const num = String(row.original.voucherNumber).padStart(5, "0");
+      const prefix = row.original.type === "RECEIPT" ? "RV-" : "PV-";
+      return (
+        <span className="font-mono font-bold">
+          {prefix}
+          {num}
+        </span>
+      );
+    },
+  },
+  {
+    accessorKey: "type",
+    header: "نوع السند",
+    cell: ({ row }) => {
+      const isReceipt = row.original.type === "RECEIPT";
+      return (
+        <Badge className={isReceipt ? "bg-green-600" : "bg-red-600"}>
+          {isReceipt ? (
+            <ArrowDownCircle className="mr-1 h-3 w-3" />
+          ) : (
+            <ArrowUpCircle className="mr-1 h-3 w-3" />
+          )}
+          {isReceipt ? "سند قبض" : "سند صرف"}
+        </Badge>
+      );
+    },
+  },
+  {
+    id: "party",
+    header: "الطرف",
+    cell: ({ row }) => {
+      const name =
+        row.original.customer?.name ||
+        row.original.supplier?.name ||
+        "مصروفات عامة";
+      return <span>{name}</span>;
+    },
+  },
+  {
+    accessorKey: "amount",
+    header: ({ column }) => <SortableHeader column={column} label="المبلغ" />,
+    cell: ({ row }) => (
+      <div className="text-primary font-bold">
+        {new Intl.NumberFormat().format(row.original.amount)}{" "}
+        {row.original.currencyCode}
+      </div>
+    ),
+  },
+  {
+    accessorKey: "paymentMethod",
+    header: "طريقة الدفع",
+    cell: ({ row }) => (
+      <div className="flex items-center gap-1 text-xs">
+        <CircleDollarSign className="text-muted-foreground h-3 w-3" />
+        {row.original.paymentMethod === "cash" ? "نقداً" : "بنكي / شيك"}
+      </div>
+    ),
+  },
+  {
+    accessorKey: "date",
+    header: ({ column }) => <SortableHeader column={column} label="التاريخ" />,
+    cell: ({ row }) => new Date(row.original.date).toLocaleDateString("ar-EG"),
+  },
+  {
+    id: "actions",
+    cell: ({ row }) => {
+      const voucher = row.original;
+
+      // 1. استخراج بيانات الشركة باستخدام الـ Hook الذي تملكه
+      const { company } = useCompany();
+
+      // 2. تجهيز بيانات الطرف (عميل أو مورد)
+      const partyName =
+        voucher.customer?.name || voucher.supplier?.name || "مصروفات عامة";
+
+      return (
+        <div className="flex items-center gap-2">
+          {/* مكون الطباعة مع تمرير البيانات الحقيقية */}
+          <VoucherReceipt
+            voucherNumber={voucher.voucherNumber} // رقم السند (سيقوم المكون بعمل padding له)
+            voucherType={voucher.type} // RECEIPT أو PAYMENT
+            amount={voucher.amount}
+            personName={partyName}
+            description={voucher.notes || "بدون وصف"}
+            paymentMethod={voucher.paymentMethod === "cash" ? "نقداً" : "بنكي"}
+            date={voucher.date}
+            company={{
+              name: company?.name || "",
+              address: company?.address,
+              city: company?.city,
+              phone: company?.phone,
+              logoUrl: company?.logoUrl,
+            }}
+          />
+
+          <Button variant="ghost" size="sm" title="عرض التفاصيل">
+            <Eye className="h-4 w-4" />
+          </Button>
         </div>
       );
     },

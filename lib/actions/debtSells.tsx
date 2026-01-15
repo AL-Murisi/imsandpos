@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { fetchProductStats } from "./Product";
 import { success } from "zod";
 import { getActiveFiscalYears } from "@/lib/actions/fiscalYear";
+import { TransactionType } from "@prisma/client";
 
 export async function updateSales(
   companyId: string,
@@ -131,7 +132,7 @@ export async function updateSalesBulk(
   saleIds: string[],
   paymentAmount: number,
   cashierId: string,
-
+  branchId: string,
   paymentDetails: {
     paymentMethod: string;
     currencyCode: string;
@@ -148,20 +149,33 @@ export async function updateSalesBulk(
     throw new Error("Missing company ID or sale IDs.");
 
   // 1️⃣ Get all sales
-  const sales = await prisma.sale.findMany({
+  const sales = await prisma.invoice.findMany({
     where: { id: { in: saleIds }, companyId },
     select: {
       id: true,
       totalAmount: true,
       amountPaid: true,
       amountDue: true,
-      saleNumber: true,
+
+      invoiceNumber: true,
       customerId: true,
     },
   });
 
   if (sales.length === 0) throw new Error("No matching sales found.");
+  const lastVoucher = await prisma.financialTransaction.findFirst({
+    where: {
+      companyId,
+      type: "RECEIPT", // 🔥 Crucial: Filter by type to get the correct sequence
+    },
+    orderBy: { voucherNumber: "desc" },
+    select: { voucherNumber: true },
+  });
 
+  // 2. تحديد الرقم الجديدconst nextNumber = (lastVoucher?.voucherNumber || 0) + 1;
+
+  // تحويل الرقم إلى نص مع إضافة أصفار حتى يصل الطول إلى 5 خانات
+  const nextNumber = (lastVoucher?.voucherNumber || 0) + 1;
   // 2️⃣ Allocate payment
   let remaining = paymentAmount;
   const saleUpdates = [];
@@ -190,13 +204,17 @@ export async function updateSalesBulk(
     paymentRecords.push({
       companyId,
       saleId: s.id,
+      invoiceId: s.invoiceNumber, // Ensure the foreign key exists
+      referenceNumber: paymentDetails.paymentMethod ?? "",
       customerId: s.customerId,
-      cashierId,
-      payment_type: "outstanding_payment",
+      userId: cashierId,
+      branchId,
+      voucherNumber: nextNumber,
+      type: TransactionType.PAYMENT,
       paymentMethod: paymentDetails.paymentMethod,
       amount: payNow,
       status: "completed",
-      notes: `تسديد الدين للفاتورة رقم ${s.saleNumber}`,
+      notes: `تسديد الدين للفاتورة رقم ${s.invoiceNumber}`,
       createdAt: new Date(),
     });
 
@@ -218,13 +236,13 @@ export async function updateSalesBulk(
   for (const c of chunk(saleUpdates, CHUNK)) {
     await prisma.$transaction(
       c.map((u) =>
-        prisma.sale.update({
+        prisma.invoice.update({
           where: { id: u.id },
           data: {
             amountPaid: u.amountPaid,
             amountDue: u.amountDue,
-            paymentStatus: u.paymentStatus,
-            updatedAt: new Date(),
+            status: u.paymentStatus,
+            invoiceDate: new Date(),
           },
         }),
       ),
@@ -236,7 +254,7 @@ export async function updateSalesBulk(
   for (const c of chunk(paymentRecords, CHUNK)) {
     const batch = await prisma.$transaction(
       c.map((p) =>
-        prisma.payment.create({
+        prisma.financialTransaction.create({
           data: p,
         }),
       ),
@@ -269,7 +287,7 @@ export async function updateSalesBulk(
         saleId: payment.saleId,
         customerId: payment.customerId,
         amount: payment.amount,
-
+        branchId,
         paymentDetails: paymentDetails || {},
       },
       cashierId,
@@ -300,7 +318,7 @@ export async function payOutstandingOnly(
   customerId: string,
   paymentAmount: number,
   cashierId: string,
-
+  branchId: string,
   paymentDetails: {
     paymentMethod: string;
     currencyCode: string;

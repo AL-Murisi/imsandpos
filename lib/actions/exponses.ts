@@ -242,7 +242,9 @@ interface ExpenseData {
   expense_date: Date;
   paymentMethod: string;
   currency_code: string;
+  branchId: string;
   referenceNumber?: string;
+
   bankId?: string;
   notes?: string;
 }
@@ -324,7 +326,7 @@ export async function createMultipleExpenses(
             payment_method: expenseData.paymentMethod,
             reference_number: expenseData.referenceNumber,
             notes: expenseData.notes || "",
-            status: "pending",
+            status: "approved",
           },
           include: {
             users: true,
@@ -351,6 +353,8 @@ export async function createMultipleExpenses(
                 description: expenseData.description,
                 expenseDate: expenseData.expense_date,
                 bankId: expenseData.bankId ?? "",
+                branchId: expenseData.branchId,
+
                 refrenceNumber: expenseData.referenceNumber ?? "",
                 currency_code: expenseData.currency_code ?? "YER",
               },
@@ -414,6 +418,7 @@ export async function createExpense(
     expense_date: Date;
     paymentMethod: string;
     currency_code: string;
+
     referenceNumber?: string;
     bankId?: string;
     notes?: string;

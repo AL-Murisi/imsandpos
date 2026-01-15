@@ -423,7 +423,12 @@ export const getPurchasesByCompany = cache(
     } = {},
   ) => {
     try {
-      const filters: any = { companyId };
+      const filters: any = {
+        companyId,
+        sale_type: {
+          in: ["PURCHASE", "RETURN_PURCHASE"],
+        },
+      };
 
       // Status filter
       if (where && where !== "all") {
@@ -432,9 +437,9 @@ export const getPurchasesByCompany = cache(
 
       // Date range filter
       if (from || to) {
-        filters.createdAt = {};
-        if (from) filters.createdAt.gte = new Date(from);
-        if (to) filters.createdAt.lte = new Date(to);
+        filters.invoiceDate = {};
+        if (from) filters.invoiceDate.gte = new Date(from);
+        if (to) filters.invoiceDate.lte = new Date(to);
       }
 
       // Product name/SKU filter
@@ -459,17 +464,19 @@ export const getPurchasesByCompany = cache(
       }
 
       // Count total
-      const total = await prisma.purchase.count({ where: filters });
+      const total = await prisma.invoice.count({
+        where: { companyId, ...filters },
+      });
 
       // Sorting
 
       await slow(1000);
 
       // Fetch data
-      const purchases = await prisma.purchase.findMany({
+      const purchases = await prisma.invoice.findMany({
         where: filters,
         include: {
-          purchaseItems: {
+          items: {
             include: {
               product: {
                 select: {
@@ -484,29 +491,34 @@ export const getPurchasesByCompany = cache(
             },
           },
           supplier: { select: { id: true, name: true } },
-          transaction: { select: { paymentMethod: true } },
+          transactions: { select: { paymentMethod: true, status: true } },
         },
 
         skip: pageIndex * pageSize,
         take: pageSize,
-        orderBy: { createdAt: "desc" },
+        orderBy: { invoiceDate: "desc" },
       });
-      const paymentMethod = await prisma.financialTransaction.findFirst({
-        where: { companyId: companyId, purchaseId: purchases[0].id },
-        select: {
-          paymentMethod: true,
-        },
-      });
+      // const paymentMethod = await prisma.financialTransaction.findFirst({
+      //   where: { companyId: companyId, purchaseId: purchases[0].id },
+      //   select: {
+      //     paymentMethod: true,
+      //   },
+      // });
+
       const purchasesWithPaymentInfo = purchases.map((p) => ({
         ...p,
+        purchaseItems: p.items,
+        status: p.status,
+        purchaseType: p.sale_type,
+        createdAt: p.invoiceDate,
+
         // استخراج وسيلة الدفع من أول معاملة مالية (إن وجدت)
-        paymentMethod: String(
-          p.transaction?.[0]?.paymentMethod || "آجل/غير محدد",
-        ),
+        paymentMethod:
+          p.transactions.map((t) => t.paymentMethod).find(Boolean) || "نقدي",
       }));
 
       const serialized = serializeData(purchasesWithPaymentInfo);
-      console.log(serialized);
+
       return { data: serialized, total };
     } catch (error) {
       console.error("Error fetching company purchases:", error);
@@ -774,6 +786,19 @@ export async function createSupplierPaymentFromPurchases(
     // ✅ Transaction with proper sequencing
     const result = await prisma.$transaction(
       async (tx) => {
+        const aggregate = await tx.financialTransaction.aggregate({
+          where: {
+            companyId: companyId,
+            type: "RECEIPT",
+          },
+          _max: {
+            voucherNumber: true,
+          },
+        });
+
+        // 2. حساب الرقم التالي
+        const lastNumber = aggregate._max.voucherNumber || 0;
+        const nextNumber = lastNumber + 1;
         // 1. Create supplier payment record first
         const supplierPayment = await tx.financialTransaction.create({
           data: {
@@ -781,6 +806,8 @@ export async function createSupplierPaymentFromPurchases(
             supplierId,
             purchaseId, // ✅ Link to purchase
             amount,
+            type: "PAYMENT",
+            voucherNumber: nextNumber,
             paymentMethod,
             notes: note,
             userId: createdBy,

@@ -47,9 +47,9 @@ export default function DebtSells({
   } = useTablePrams();
 
   const filteroption = [
-    { id: "sale", name: "بيع" },
+    { id: "SALE", name: "بيع" },
     {
-      id: "return",
+      id: "RETURN_SALE",
       name: "إرجاع",
     },
   ];

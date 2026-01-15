@@ -322,6 +322,7 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
       totalDiscount: totals.discount,
       totalAfterDiscount: totals.totalAfter,
       cashierId: user.userId ?? "",
+      branchId: company?.branches[0].id,
       customerId: selectedUser?.id,
       saleNumber,
       receivedAmount,
@@ -375,38 +376,13 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
   const canPay =
     (isCash && receivedAmount >= totals.totalAfter) ||
     (!isCash && selectedUser?.name);
-  // const UnitSelect = ({
-  //   item,
-  //   onChange,
-  // }: {
-  //   item: CartItem;
-  //   onChange: (unitId: string) => void;
-  // }) => {
-  //   return (
-  //     <Select value={item.selectedUnitId} onValueChange={onChange}>
-  //       <SelectTrigger>
-  //         <SelectValue />
-  //       </SelectTrigger>
-  //       <SelectContent>
-  //         {item.sellingUnit.map((unit) => (
-  //           <SelectItem
-  //             key={unit.id}
-  //             value={unit.id}
-  //             disabled={
-  //               !item.availableStock[unit.id] ||
-  //               item.availableStock[unit.id] <= 0
-  //             }
-  //           >
-  //             {unit.name} - ${unit.price}
-  //           </SelectItem>
-  //         ))}
-  //       </SelectContent>
-  //     </Select>
-  //   );
-  // };
+
   return (
     <div className="bg-accent flex h-[45hv] flex-col rounded-2xl p-2 shadow-xl/20 shadow-gray-500 lg:col-span-1">
       {/* Header & Cart Tabs */}
+      <div className="flex items-center justify-center">
+        <Label className="">فرع: {company?.branches[0].location}</Label>
+      </div>
       <div className="flex flex-wrap-reverse justify-between">
         <div className="flex justify-between gap-1">
           <Button
@@ -459,7 +435,6 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
           </Button>
         </div>
       </div>
-
       <ScrollArea className="w-full py-2" dir="rtl">
         <div className="grid max-h-20 w-full grid-cols-2 gap-5 md:grid-cols-4">
           {carts.map((cart) => (
@@ -473,7 +448,6 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
           ))}
         </div>
       </ScrollArea>
-
       <div className="w-full">
         <ScrollArea
           className="h-[56vh] w-full rounded-2xl border border-amber-300 p-2"
@@ -524,7 +498,6 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
       </div>
-
       {/* Footer with Payment Button */}
       <div
         className="border-t border-gray-200 p-4 dark:border-gray-700"
@@ -668,7 +641,11 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
                       item.sellingUnits.find(
                         (unit) => unit.id === item.selectedUnitId,
                       )?.name || "",
-                    total: totals.totalAfter,
+                    total:
+                      item.selectedQty *
+                      (item.sellingUnits.find(
+                        (unit) => unit.id === item.selectedUnitId,
+                      )?.price || 0),
                   }))}
                   totals={totals}
                   receivedAmount={receivedAmount}

@@ -6,7 +6,7 @@ import {
 import { verifySession } from "@/lib/dal";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
-import SellsDashboardClient from "./_components/sellsDasboard";
+import SellsDashboardClient from "../_components/sellsDasboard";
 import { SortingState } from "@tanstack/react-table";
 import { ParsedSort } from "@/hooks/sort";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -48,7 +48,7 @@ export default async function SellsDashboard({ searchParams }: DashboardProps) {
     usersquery,
     page = "1",
     limit = "13",
-    sale_type,
+    sale_type = "SALE",
     salesFrom,
     salesTo,
     purchasesFrom,
@@ -74,9 +74,9 @@ export default async function SellsDashboard({ searchParams }: DashboardProps) {
   const role = userRole?.includes("admin") ? "admin" : "cashier";
 
   // 🧩 Filter: if cashier → limit to his own sales
-  const filter: Prisma.SaleWhereInput =
+  const filter: Prisma.InvoiceWhereInput =
     role === "cashier"
-      ? ({ cashierId: userId ?? undefined } as Prisma.SaleWhereInput)
+      ? ({ cashierId: userId ?? undefined } as Prisma.InvoiceWhereInput)
       : {};
 
   // 🧩 Fetch data in parallel
@@ -95,13 +95,13 @@ export default async function SellsDashboard({ searchParams }: DashboardProps) {
       parsedSort,
     ),
   ]);
-
+  // console.log("Sales Dashboard data:", data.serilaz[0].transactions);
   return (
     <ScrollArea className="flex h-[95vh] flex-col space-y-8 p-6" dir="rtl">
       {/* <PushNotificationManager /> */}
       <SellsDashboardClient
-        debtSales={data.serializedDebts}
-        recentSales={data.serializedDebts}
+        debtSales={data.serilaz}
+        recentSales={data.serilaz}
         totalSales={data.total}
         salesSummary={salesSummary}
         productStats={productStats}

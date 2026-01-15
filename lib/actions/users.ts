@@ -83,6 +83,7 @@ export async function fetechUser(
       email: true,
       phoneNumber: true,
       isActive: true,
+
       roles: {
         select: {
           role: {
@@ -110,7 +111,7 @@ export async function createUser(form: any, companyId: string) {
     throw new Error("Invalid user data");
   }
 
-  const { email, name, phoneNumber, password, roleId } = parsed.data;
+  const { email, name, phoneNumber, password, roleId, branchId } = parsed.data;
 
   try {
     // ✅ Check if email already exists
@@ -123,7 +124,14 @@ export async function createUser(form: any, companyId: string) {
     }
 
     const user = await prisma.user.create({
-      data: { companyId, email, name, phoneNumber, password },
+      data: {
+        companyId,
+        email,
+        name,
+        phoneNumber,
+        password,
+        ...(branchId && { branchId }),
+      },
     });
 
     await prisma.userRole.create({

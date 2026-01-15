@@ -61,24 +61,24 @@ export default function Recitp({ id }: Props) {
   if (!user) return;
   let unitPrice = 0;
   let total = 0;
-  const formattedItems: ReceiptItem[] =
-    data.items.map((item: any) => {
-      const unitPrice = Number(
-        item.unit_price ?? item.unitPrice ?? item.price ?? 0,
-      );
+  // const formattedItems: ReceiptItem[] =
+  //   data.items.map((item: any) => {
+  //     const unitPrice = Number(
+  //       item.unit_price ?? item.unitPrice ?? item.price ?? 0,
+  //     );
 
-      const qty = Number(item.selectedQty ?? item.quantity ?? 0);
+  //     const qty = Number(item.selectedQty ?? item.quantity ?? 0);
 
-      return {
-        id: item.id,
-        name: item.name,
-        warehousename: item.warehousename ?? item.warehouseName ?? "-",
-        selectedQty: qty,
-        sellingUnit: item.sellingUnit ?? item.unit_name ?? item.unitType ?? "-",
-        unit_price: unitPrice,
-        total: unitPrice * qty,
-      };
-    }) ?? [];
+  //     return {
+  //       id: item.id,
+  //       name: item.name,
+  //       warehousename: item.warehousename ?? item.warehouseName ?? "-",
+  //       selectedQty: qty,
+  //       sellingUnit: item.sellingUnit ?? item.unit_name ?? item.unitType ?? "-",
+  //       unit_price: unitPrice,
+  //       total: unitPrice * qty,
+  //     };
+  //   }) ?? [];
 
   const handleFetch = async () => {
     if (!id) return;
@@ -95,18 +95,19 @@ export default function Recitp({ id }: Props) {
     }
   };
   const label =
-    data?.sale_type === "return"
+    data?.saleType === "RETURN_SALE"
       ? "إرجاع"
-      : data?.sale_type === "sale"
+      : data?.saleType === "SALE"
         ? "بيع"
         : "-";
+
   return (
     <Dailogreuse
       open={open}
       setOpen={setOpen}
       btnLabl={<button onClick={handleFetch}> الفاتورة</button>}
       style="max-w-90 overflow-hidden md:max-w-4xl lg:max-w-6xl"
-      description="  قم بإدخال المبلغ الجديد لتسديد جزء أو كل الدين."
+      description="   بإدخال المبلغ الجديد لتسديد جزء أو كل الدين."
     >
       {!data ? (
         <div className="text-muted-foreground p-6 text-center text-sm">
@@ -122,11 +123,16 @@ export default function Recitp({ id }: Props) {
             <div className="flex flex-wrap justify-center gap-4 text-sm">
               <h2 className="text-lg font-bold">فاتورة : {label}</h2>
               <h2 className="text-lg font-bold">
-                فاتورة رقم: {data.sale_number}
+                فاتورة رقم: {data.invoiceNumber}
               </h2>
-              <span>العميل: {data.customer_name || "بدون"}</span>
-              <span>الكاشير: {data.user_name || "غير محدد"}</span>
-              <span>طريقة الدفع: {data.is_cash ? "نقدي" : "آجل / دين"}</span>
+
+              <span>العميل: {data.customer?.name || "بدون"}</span>
+              <span>الكاشير: {data.cashierId}</span>
+              <span>
+                طريقة الدفع:{" "}
+                {data.payments?.[0]?.method === "cash" ? "نقدي" : "آجل / دين"}
+              </span>
+              <span>التاريخ: {data.date}</span>
             </div>
           </div>
 
@@ -149,7 +155,7 @@ export default function Recitp({ id }: Props) {
                   {data.items?.length > 0 ? (
                     data.items.map((item: any, index: number) => {
                       unitPrice = item.unit_price;
-                      total = unitPrice * item.selectedQty;
+                      total = item.unitPrice * item.selectedQty;
 
                       return (
                         <TableRow key={`${item.id}-${index}`}>
@@ -158,8 +164,8 @@ export default function Recitp({ id }: Props) {
                           <TableCell>{item.warehousename}</TableCell>
                           <TableCell>{item.selectedQty}</TableCell>
                           <TableCell>{item.sellingUnit}</TableCell>
-                          <TableCell>{unitPrice}</TableCell>
-                          <TableCell>{total.toFixed(2)} ﷼</TableCell>
+                          <TableCell>{item.pricePerUnit}</TableCell>
+                          <TableCell>{item.total}</TableCell>
                         </TableRow>
                       );
                     })
@@ -178,17 +184,21 @@ export default function Recitp({ id }: Props) {
               <div className="flex flex-col justify-between gap-4 text-sm sm:flex-row">
                 <Label>
                   {t("discount")}:{" "}
-                  {data.discount_amount ? Number(data.discount_amount) : "0.00"}{" "}
-                  ﷼
+                  {data.items.discount ? Number(data.items.discount) : "0.00"}
                 </Label>
                 <Label>
-                  {t("total_before")}: {data.total_before ?? 0} ﷼
+                  {t("total_after")}: {Number(data.totalAmount)}
                 </Label>
                 <Label>
-                  {t("total_after")}: {data.total_after ?? 0} ﷼
+                  {t("received_amount")}: {Number(data.totalAmount)}
                 </Label>
+
                 <Label>
-                  {t("received_amount")}: {data.received_amount ?? 0} ﷼
+                  {t("total_before")}: {data.totalAmount ?? 0}
+                </Label>
+
+                <Label>
+                  {t("received_amount")}: {data.received_amount ?? 0}
                 </Label>
                 <Label
                   className={
@@ -198,20 +208,18 @@ export default function Recitp({ id }: Props) {
                   }
                 >
                   {Number(data.calculated_change) < 0
-                    ? `على الزبون: ${Math.abs(Number(data.calculated_change))} ﷼`
-                    : `له: ${data.calculated_change ?? 0} ﷼`}
+                    ? `على الزبون: ${Math.abs(Number(data.calculated_change))} `
+                    : `له: ${data.calculated_change ?? 0} `}
                 </Label>
               </div>
-
               {/* Previous Debts */}
               {data.customer_debt > 0 && (
                 <div className="mt-2 flex flex-col text-sm" dir="rtl">
                   <Label>
-                    {t("previous_debts")}: {data.customer_debt} ﷼
+                    {t("previous_debts")}: {data.customer_debt}
                   </Label>
                 </div>
               )}
-
               <ScrollBar orientation="horizontal" />
             </ScrollArea>
           </div>
@@ -223,19 +231,22 @@ export default function Recitp({ id }: Props) {
         <div className="mt-3 flex justify-center">
           {isMobileUA ? (
             <PrintButton
-              saleNumber={data.sale_number ?? ""}
+              saleNumber={data.invoiceNumber ?? ""}
               items={data.items.map((item: any) => ({
-                ...item,
-                unit_price: item.sellingUnits,
-
-                total: item.unit_price * item.selectedQty,
+                name: item.name,
+                warehousename: item.warehousename,
+                selectedQty: item.selectedQty,
+                sellingUnit: item.sellingUnit,
+                unit_price: item.unitPrice,
+                pricePerUnit: item.unitPrice,
+                total: item.total,
               }))}
               totals={{
-                totalBefore: Number(data.total_before ?? 0),
-                discount: Number(data.discount_amount ?? 0),
-                totalAfter: Number(data.total_after ?? 0),
+                totalBefore: data.totalAmount,
+                discount: 0,
+                totalAfter: data.totalAmount,
               }}
-              receivedAmount={Number(data.received_amount ?? 0)}
+              receivedAmount={Number(data.amountPaid ?? 0)}
               calculatedChange={Number(data.calculated_change ?? 0)}
               userName={data.user_name ?? ""}
               customerName={data.customer_name ?? ""}
@@ -246,19 +257,23 @@ export default function Recitp({ id }: Props) {
             />
           ) : (
             <Receipt
-              saleNumber={data.sale_number ?? ""}
+              saleNumber={data.invoiceNumber ?? ""}
               items={data.items.map((item: any) => ({
-                ...item,
-                unit_price: item.sellingUnits,
+                id: item.id,
+                name: item.name,
+                warehousename: item.warehousename,
+                selectedQty: item.selectedQty,
+                sellingUnit: item.sellingUnit,
+                unit_price: item.pricePerUnit,
 
-                total: item.unit_price * item.selectedQty,
+                total: item.total,
               }))}
               totals={{
-                totalBefore: Number(data.total_before ?? 0),
-                discount: Number(data.discount_amount ?? 0),
-                totalAfter: Number(data.total_after ?? 0),
+                totalBefore: data.totalAmount,
+                discount: data.items?.discount ?? 0,
+                totalAfter: data.totalAmount,
               }}
-              receivedAmount={Number(data.received_amount ?? 0)}
+              receivedAmount={Number(data.amountPaid ?? 0)}
               calculatedChange={Number(data.calculated_change ?? 0)}
               userName={data.user_name ?? ""}
               customerName={data.customer_name ?? ""}

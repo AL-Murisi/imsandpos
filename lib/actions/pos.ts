@@ -4,6 +4,7 @@
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { CreatePosSchema, CreatePosType } from "@/lib/zod/pos";
+import { getSession } from "../session";
 
 export async function createPOS(data: CreatePosType, company_id: string) {
   const parsed = CreatePosSchema.safeParse(data);
@@ -11,7 +12,7 @@ export async function createPOS(data: CreatePosType, company_id: string) {
     throw new Error("بيانات غير صحيحة");
   }
 
-  const { name, location, manager_id } = parsed.data;
+  const { name, location, managerId } = parsed.data;
 
   try {
     const existing = await prisma.points_of_sale.findFirst({
@@ -29,7 +30,48 @@ export async function createPOS(data: CreatePosType, company_id: string) {
       data: {
         name,
         location,
-        manager_id,
+        managerId,
+        company_id,
+      },
+    });
+
+    revalidatePath("/sells/pos");
+    return { success: true, pos };
+  } catch (error) {
+    console.error("❌ Failed to create POS:", error);
+    throw error;
+  }
+}
+export async function updateBranch(
+  data: CreatePosType,
+  posId: string,
+  company_id: string,
+) {
+  const parsed = CreatePosSchema.safeParse(data);
+  if (!parsed.success) {
+    throw new Error("بيانات غير صحيحة");
+  }
+
+  const { name, location, managerId } = parsed.data;
+
+  try {
+    const existing = await prisma.points_of_sale.findFirst({
+      where: {
+        name: name,
+        company_id,
+      },
+    });
+
+    if (existing) {
+      return { error: "نقطة البيع هذه موجودة بالفعل" };
+    }
+
+    const pos = await prisma.points_of_sale.update({
+      where: { id: posId },
+      data: {
+        name,
+        location,
+        managerId,
         company_id,
       },
     });
@@ -46,9 +88,10 @@ export async function getPOSList(company_id: string) {
     const posList = await prisma.points_of_sale.findMany({
       where: { company_id },
       include: {
-        accounts_points_of_sale_manager_idToaccounts: {
+        manager: {
           select: { id: true, name: true, email: true },
         },
+        cashiers: { select: { id: true, name: true, phoneNumber: true } },
       },
       orderBy: { created_at: "desc" },
     });
@@ -61,10 +104,17 @@ export async function getPOSList(company_id: string) {
       is_active: pos.is_active ?? true,
       created_at: pos.created_at?.toISOString() ?? "",
       manager: {
-        id: pos.accounts_points_of_sale_manager_idToaccounts?.id ?? "",
-        name: pos.accounts_points_of_sale_manager_idToaccounts?.name ?? "—",
-        email: pos.accounts_points_of_sale_manager_idToaccounts?.email ?? "—",
+        id: pos.manager?.id ?? "",
+        name: pos.manager?.name ?? "—",
+        email: pos.manager?.email ?? "—",
       },
+
+      // ✅ cashiers is an ARRAY
+      cashiers: pos.cashiers.map((c) => ({
+        id: c.id,
+        name: c.name,
+        phoneNumber: c.phoneNumber,
+      })),
     }));
   } catch (error) {
     console.error("❌ Error fetching POS list:", error);
@@ -136,4 +186,16 @@ export async function fetchPOSManagers(companyId: string) {
   });
 
   return managers;
+}
+export async function fetchbranches() {
+  const user = await getSession();
+  if (!user) return;
+  const brnaches = await prisma.points_of_sale.findMany({
+    where: { company_id: user.companyId },
+    select: {
+      id: true,
+      name: true,
+    },
+  });
+  return brnaches;
 }

@@ -1096,6 +1096,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useCompany } from "@/hooks/useCompany";
 
 // --- Types & Schema ---
 
@@ -1195,7 +1196,7 @@ export default function PurchaseReturnForm({
   const supplierId = watch("supplierId");
   const warehouseId = watch("warehouseId");
   const paymentMethod = watch("paymentMethod");
-
+  const { company } = useCompany();
   const totalCost = (quantity || 0) * (unitCost || 0);
 
   // 1. Load Data
@@ -1236,7 +1237,7 @@ export default function PurchaseReturnForm({
 
         setValue("supplierId", data.supplier.id);
         setValue("warehouseId", data.product.warehouseId || "");
-        setValue("selectedUnitId", defaultUnit?.id || "");
+        setValue("selectedUnitId", defaultUnit?.name || "");
         setValue("unitCost", data.purchaseItem.unitCost); // Default to purchase cost
       } catch (error) {
         toast.error("حدث خطأ أثناء تحميل البيانات");
@@ -1290,12 +1291,11 @@ export default function PurchaseReturnForm({
   useEffect(() => {
     if (!inventory || !quantity || !selectedUnitId) return;
 
-    const availableInSelectedUnit =
-      inventory.inventory.stockByUnit[selectedUnitId] || 0;
+    const availableInSelectedUnit = inventory.purchaseItem.quantity || 0;
 
     if (quantity > availableInSelectedUnit) {
       toast.warning(
-        `الكمية المتاحة في المخزن هي ${availableInSelectedUnit.toFixed(2)} فقط`,
+        `الكمية المتاحة في المخزن هي ${availableInSelectedUnit} فقط`,
       );
       setValue("returnQuantity", availableInSelectedUnit);
     }
@@ -1312,6 +1312,7 @@ export default function PurchaseReturnForm({
         purchaseItemId: inventory.purchaseItem.id,
         productId: inventory.product.id,
         returnUnit: data.selectedUnitId,
+        branchId: company?.branches[0].id ?? "",
       };
 
       const result = await processPurchaseReturn(
@@ -1459,7 +1460,8 @@ export default function PurchaseReturnForm({
                 <Label>كمية الإرجاع</Label>
                 <Input
                   type="number"
-                  step="0.01"
+                  step="1"
+                  min={0}
                   className="bg-white"
                   {...register("returnQuantity", { valueAsNumber: true })}
                 />

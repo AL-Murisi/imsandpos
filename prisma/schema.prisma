@@ -17,6 +17,9 @@ model Company {
   city                                               String?
   state                                              String?
   base_currency  String @default("YER") @db.VarChar(3) // Main currency
+  maxBranches   Int @default(1)
+  maxCashiers   Int @default(1)
+  plan          String @default("STARTER") // STARTER, PRO, ENTERPRISE
 
   country                                            String?
   taxNumber                                          String?              @map("tax_number")
@@ -30,12 +33,12 @@ model Company {
   brands                                             Brand[]
   categories                                         Category[]
   customers                                          Customer[]
-pushSubscription                                     pushSubscription[]
+  pushSubscription                                     pushSubscription[]
   expenses                                           expenses[]
   inventory                                          Inventory[]
   journal_entries                                    journal_entries[]
   payments                                           Payment[]
-  points_of_sale_points_of_sale_company_idToaccounts points_of_sale[]     @relation("points_of_sale_company_idToaccounts")
+  branches                                            points_of_sale[]    
   products                                           Product[]
   purchaseItems                                      PurchaseItem[]
   purchases                                          Purchase[]
@@ -47,13 +50,14 @@ pushSubscription                                     pushSubscription[]
   users                                              User[]
   warehouses                                         Warehouse[]
   journal_events                                    journalEvent[]
-account_mappings     account_mappings[]
-fiscal_periods       fiscal_periods[]
-Employee                Employee[]
-  Bank                  Bank[]
- FinancialTransaction                       FinancialTransaction []   
-
- exchange_rates exchange_rates[]
+  account_mappings                                  account_mappings[]
+  fiscal_periods                                   fiscal_periods[]
+  Employee                                        Employee[]
+  Bank                                            Bank[]
+  FinancialTransaction                       FinancialTransaction []   
+  Invoice                                         Invoice[]
+  InvoiceItem                                     InvoiceItem[]
+  exchange_rates exchange_rates[]
   @@map("companies")
 }
 
@@ -68,12 +72,16 @@ model User {
   isActive                                           Boolean           @default(true) @map("is_active")
   createdAt                                          DateTime          @default(now()) @map("created_at")
   updatedAt                                          DateTime          @updatedAt @map("updated_at")
+  
+  branchId  String? @map("branch_id")
+
+  branch    points_of_sale? @relation(fields: [branchId], references: [id])
   activityLogs                                       ActivityLogs[]
   expenses                                           expenses[]
   journal_entries_journal_entries_created_byTousers  journal_entries[] @relation("journal_entries_created_byTousers")
   journal_entries_journal_entries_updated_byTousers  journal_entries[] @relation("journal_entries_updated_byTousers")
   payments                                           Payment[]
-  points_of_sale_points_of_sale_manager_idToaccounts points_of_sale[]  @relation("points_of_sale_manager_idToaccounts")
+  managedBranches                                     points_of_sale[]  @relation("BranchManager")
   sales                                              Sale[]
   stockMovements                                     StockMovement[]
   roles                                              UserRole[]
@@ -148,6 +156,7 @@ model Warehouse {
   companyId      String          @map("company_id")
   name           String
   location       String
+  branchId       String?
   address        String?
   city           String?
   state          String?
@@ -162,7 +171,9 @@ model Warehouse {
   products       Product[]
   stockMovements StockMovement[]
   company        Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+ invoices Invoice[]
 
+  branch    points_of_sale? @relation(fields: [branchId], references: [id])
   @@index([companyId])
   @@index([isActive])
   @@index([createdAt])
@@ -233,6 +244,7 @@ model Supplier {
   payments           SupplierPayment[]
   company            Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
  transaction           FinancialTransaction[]
+  invoice                Invoice[]
   @@index([companyId])
   @@map("suppliers")
 }
@@ -244,6 +256,7 @@ model Product {
   sku              String
   barcode          String?
   description      String?
+  branch_id        String?
   categoryId       String          @map("category_id")
   brandId          String?         @map("brand_id")
   supplierId       String?         @map("supplier_id")
@@ -272,10 +285,12 @@ model Product {
   company          Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
   supplier         Supplier?       @relation(fields: [supplierId], references: [id])
   warehouse        Warehouse       @relation(fields: [warehouseId], references: [id])
+  points_of_sale points_of_sale? @relation(fields: [branch_id], references: [id])
+
   purchaseItems    PurchaseItem[]
   saleItems        SaleItem[]
   stockMovements   StockMovement[]
-
+  invoiceItems InvoiceItem[]
   @@unique([companyId, sku])
   @@unique([companyId, barcode])
   @@index([companyId])
@@ -363,7 +378,7 @@ model Customer {
   state              String?
   country            String?
   preferred_currency String? @default("YER") @db.VarChar(3)
-
+  branch_id String?
   customerType       String    @default("individual") @map("customer_type")
   taxId              String?   @map("tax_id")
   creditLimit        Decimal?  @map("credit_limit") @db.Decimal(10, 2)
@@ -376,7 +391,9 @@ model Customer {
   payments           Payment[]
   sales              Sale[]
  transaction           FinancialTransaction[]
+ invoice                Invoice[]
 
+  points_of_sale points_of_sale? @relation(fields: [branch_id], references: [id])
 
   @@unique([companyId, email])
   @@index([companyId])
@@ -592,11 +609,11 @@ model FinancialTransaction {
   customerId      String?  @map("customer_id")
   supplierId      String?  @map("supplier_id")
   userId          String?  @map("user_id") // للموظفين أو المصاريف الإدارية
-  
+  branchId        String?
   // الربط بالعمليات (اختياري)
   saleId          String?  @map("sale_id")
   purchaseId      String?  @map("purchase_id")
-  
+  voucherNumber Int?            @map("voucher_number")
   // التفاصيل المالية
   amount          Decimal  @db.Decimal(12, 2)
   currencyCode    String   @default("YER") @map("currency_code") @db.VarChar(3)
@@ -604,7 +621,8 @@ model FinancialTransaction {
   
   paymentMethod   String   @map("payment_method") // كاش، بنك، شيك
   referenceNumber String?  @map("reference_number") // رقم الشيك أو رقم التحويل
-  
+  invoiceId       String?  // Ensure the foreign key exists
+
   status          String   @default("completed")
   notes           String?
   date            DateTime @default(now()) @map("transaction_date")
@@ -616,7 +634,9 @@ model FinancialTransaction {
   supplier        Supplier? @relation(fields: [supplierId], references: [id])
   sale            Sale?    @relation(fields: [saleId], references: [id])
   purchase        Purchase? @relation(fields: [purchaseId], references: [id])
+  points_of_sale points_of_sale? @relation(fields: [branchId], references: [id])
 
+  invoice   Invoice? @relation(fields: [invoiceId], references: [id]) // <--- Add this line
   @@index([companyId, type])
   @@map("financial_transactions")
 }
@@ -776,6 +796,7 @@ model journal_entries {
   entry_number                            String    // NEW: JE-2024-001
   account_id                              String
   description                             String?
+  branch_id                               String?
   entry_date                              DateTime? @default(now()) @db.Timestamptz(6)
   debit                                   Decimal?  @default(0) @db.Decimal(15, 2)
   credit                                  Decimal?  @default(0) @db.Decimal(15, 2)
@@ -794,7 +815,8 @@ model journal_entries {
   posted_at                               DateTime? @db.Timestamptz(6)  // NEW
   created_at                              DateTime? @default(now()) @db.Timestamptz(6)
   updated_at                              DateTime? @default(now()) @db.Timestamptz(6)
-                           
+         
+  points_of_sale                          points_of_sale? @relation(fields: [branch_id], references: [id])                 
   accounts                                accounts  @relation(fields: [account_id], references: [id], onDelete: Cascade)
   companies                               Company   @relation(fields: [company_id], references: [id], onDelete: Cascade)
   users_journal_entries_created_byTousers User      @relation("journal_entries_created_byTousers", fields: [created_by], references: [id])
@@ -843,18 +865,30 @@ model fiscal_periods {
 
 
 model points_of_sale {
-  id                                           String    @id @default(dbgenerated("gen_random_uuid()"))
-  company_id                                   String
-  name                                         String    @db.VarChar(100)
-  location                                     String?   @db.VarChar(255)
-  manager_id                                   String
-  is_active                                    Boolean?  @default(true)
-  created_at                                   DateTime? @default(now()) @db.Timestamp(6)
-  updated_at                                   DateTime? @default(now()) @db.Timestamp(6)
-  accounts_points_of_sale_company_idToaccounts Company   @relation("points_of_sale_company_idToaccounts", fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  accounts_points_of_sale_manager_idToaccounts User      @relation("points_of_sale_manager_idToaccounts", fields: [manager_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  sales                                        Sale[]
+  id         String   @id @default(dbgenerated("gen_random_uuid()"))
+  company_id String
+  name       String
+  location   String?
+  managerId  String?
+  is_active  Boolean? @default(true)
+  created_at DateTime? @default(now())
+  updated_at DateTime? @default(now())
+  cashiers  User[]
+  company Company @relation(fields: [company_id], references: [id])
+  manager User? @relation("BranchManager", fields: [managerId], references: [id])
+   // 👈 all users with branchId = this.id
+
+  sales          Sale[]
+  products       Product[]
+  customers      Customer[]
+  transactions   FinancialTransaction[]
+  journalEntries journal_entries[]
+  invoices       Invoice[]
+  warehouses  Warehouse[]
+ 
+  @@map("points_of_sale")
 }
+
 enum account_category {
   // Assets
     CASH_AND_BANK
@@ -905,4 +939,66 @@ enum account_type {
 }enum TransactionType {
   RECEIPT // قبض (من عميل)
   PAYMENT // صرف (لمورد أو مصروف)
+
+}
+
+model InvoiceItem {
+  id              String   @id @default(cuid())
+  invoiceId       String   @map("invoice_id")
+  productId       String   @map("product_id")
+  companyId       String
+  quantity        Decimal  @db.Decimal(12, 3)
+  // السعر (يسمى UnitCost في الشراء و UnitPrice في البيع)
+  price           Decimal  @db.Decimal(12, 2)
+  totalPrice      Decimal  @db.Decimal(12, 2)
+  unit     String  
+
+  // في المبيعات نحتاج لخصم، في المشتريات قد لا نحتاجه دائماً
+  discountAmount  Decimal? @default(0) @db.Decimal(12, 2)
+
+  invoice         Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  product         Product  @relation(fields: [productId], references: [id])
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("invoice_items")
+}
+model Invoice {
+  id              String   @id @default(cuid())
+  companyId       String   @map("company_id")
+  invoiceNumber   String   @map("invoice_number")
+  cashierId        String          @map("cashier_id")
+  branchId        String?
+  warehouseId     String?
+  // التمييز بين البيع والشراء
+  sale_type            InvoiceType @default(SALE) // SALE, PURCHASE, RETURN_SALE, RETURN_PURCHASE
+
+  // الأطراف (اختياري حسب نوع الفاتورة)
+  customerId      String?  @map("customer_id")
+  supplierId      String?  @map("supplier_id")
+
+  totalAmount     Decimal  @db.Decimal(12, 2)
+  amountPaid      Decimal  @default(0) @db.Decimal(12, 2)
+  amountDue       Decimal  @default(0) @db.Decimal(12, 2)
+
+  status          String   @default("completed") // pending, completed, cancelled
+  invoiceDate     DateTime @default(now()) @map("invoice_date")
+  branch    points_of_sale? @relation(fields: [branchId], references: [id])
+  warehouse Warehouse?     @relation(fields: [warehouseId], references: [id])
+  customer         Customer?       @relation(fields: [customerId], references: [id])
+  supplier      Supplier?       @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  // العلاقات
+  items           InvoiceItem[]
+  transactions    FinancialTransaction[]
+ 
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  @@unique([companyId, invoiceNumber, sale_type])
+  @@map("invoices")
+}
+
+enum InvoiceType {
+  SALE
+  PURCHASE
+  RETURN_SALE
+  RETURN_PURCHASE
 }

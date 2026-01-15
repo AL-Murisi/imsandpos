@@ -79,7 +79,7 @@ export async function GET() {
 
           results.sales++;
           console.log(
-            `✅ Processed sale journal event ${event.id} for sale ${eventData.sale.id}`,
+            `✅ Processed sale journal event ${eventData.sale} for sale ${eventData.sale.id}`,
           );
         } else if (event.eventType === "return") {
           await createReturnJournalEntries({
@@ -94,6 +94,7 @@ export async function GET() {
             returnSaleId: eventData.returnSaleId,
             paymentMethod: eventData.paymentMethod || "cash",
             reason: eventData.reason,
+            branchId: eventData.branchId,
           });
 
           results.returns++;
@@ -113,6 +114,7 @@ export async function GET() {
             userId: eventData.userId,
             type: eventData.type,
             currencyCode: eventData.currencyCode,
+            branchId: eventData.branchId,
             paymentDetails: eventData.paymentDetails,
           });
           results.purchase++;
@@ -259,6 +261,7 @@ async function createManualJournalEntriesFromEvent(payload: any) {
         fiscal_period: fiscalYear?.period_name || null,
         reference_type: e.reference_type,
         reference_id: e.reference_id,
+        branch_id: e.branch_id,
         created_by: e.created_by,
         is_automated: false,
       })),
@@ -419,6 +422,7 @@ async function createReturnJournalEntries({
   returnSaleId,
   paymentMethod = "cash",
   reason,
+  branchId,
 }: {
   companyId: string;
   customerId: string;
@@ -431,6 +435,7 @@ async function createReturnJournalEntries({
   returnSaleId: string;
   paymentMethod?: "cash" | "bank";
   reason?: string;
+  branchId: string;
 }) {
   // 1️⃣ Fetch mappings and fiscal year in parallel
   const [mappings, fy] = await Promise.all([
@@ -483,6 +488,7 @@ async function createReturnJournalEntries({
     reference_type: "إرجاع بيع ",
     reference_id: returnSaleId,
     created_by: cashierId,
+    branch_id: branchId,
   };
 
   const entries: any[] = [
@@ -676,6 +682,7 @@ async function createPaymentJournalEntries({
           account_id: paymentDetails.bankId,
           description: desc,
           debit: amount,
+          branch_id: payment.branchId,
           // currency_code: paymentDetails.currencyCode,
           foreign_amount: paymentDetails.amountFC,
           exchange_rate: paymentDetails.exchange_rate,
@@ -693,6 +700,7 @@ async function createPaymentJournalEntries({
           company_id: companyId,
           account_id: arAcc,
           description: desc,
+          branch_id: payment.branchId,
           // currency_code: paymentDetails.currencyCode,
           foreign_amount: paymentDetails.amountFC,
           exchange_rate: paymentDetails.exchange_rate,
@@ -720,6 +728,7 @@ async function createPaymentJournalEntries({
             sale.customer?.name,
           debit: amount,
           credit: 0,
+          branch_id: payment.branchId,
           foreign_amount: paymentDetails.amountFC,
           exchange_rate: paymentDetails.exchange_rate,
           base_amount: paymentDetails.baseAmount,
@@ -738,6 +747,7 @@ async function createPaymentJournalEntries({
           debit: 0,
           fiscal_period: fy.period_name,
           credit: amount,
+          branch_id: payment.branchId,
           foreign_amount: paymentDetails.amountFC,
           exchange_rate: paymentDetails.exchange_rate,
           base_amount: paymentDetails.baseAmount,
@@ -1141,8 +1151,9 @@ async function createExpenseJournalEntries({
     accountId: string; // expense account (electricity, salary, etc.)
     amount: number;
     paymentMethod: string;
-
+    branchId: string;
     description: string;
+
     bankId?: string;
     referenceNumber?: string;
     expenseDate: Date;
@@ -1189,12 +1200,14 @@ async function createExpenseJournalEntries({
       company_id: companyId,
       account_id: expense.accountId,
       fiscal_period: fy.period_name,
+      branch_id: expense.branchId,
       description:
         expense.description +
         (expense.referenceNumber ? ` - ${expense.referenceNumber}` : ""),
       debit: expense.amount,
       credit: 0,
       entry_date: expense.expenseDate,
+
       reference_id: expense.id,
       reference_type: "مصاريف",
       entry_number: `${entryNumber}-1`,
@@ -1206,6 +1219,7 @@ async function createExpenseJournalEntries({
     {
       company_id: companyId,
       account_id: creditAccountId,
+      branch_id: expense.branchId,
       description:
         expense.description +
         (expense.referenceNumber ? ` - ${expense.referenceNumber}` : ""),
@@ -1256,7 +1270,7 @@ async function createSaleJournalEntries({
   returnTotalCOGS: number;
 }) {
   // 1️⃣ Early exits
-  if (sale.sale_type !== "sale" || sale.status !== "completed") return;
+  if (sale.sale_type !== "SALE") return;
 
   // 2️⃣ Check for duplicates and fetch fiscal year in parallel
   const [exists, fy] = await Promise.all([
@@ -1351,13 +1365,14 @@ async function createSaleJournalEntries({
   };
 
   // 6️⃣ Payment Status Logic
-  if (sale.paymentStatus === "paid") {
+  if (sale.status === "completed") {
     if (paid > total) {
       // Overpayment
       const change = paid - total;
       entries.push(
         {
           ...baseEntry,
+          branch_id: sale.branchId,
           account_id: payable,
           description: desc + " - فائض عميل",
           debit: 0,
@@ -1368,6 +1383,7 @@ async function createSaleJournalEntries({
         },
         {
           ...baseEntry,
+          branch_id: sale.branchId,
           account_id: cash,
           description: desc,
           debit: total,
@@ -1379,6 +1395,7 @@ async function createSaleJournalEntries({
         {
           ...baseEntry,
           account_id: revenue,
+          branch_id: sale.branchId,
           description: desc,
           debit: 0,
           credit: total,
@@ -1392,6 +1409,7 @@ async function createSaleJournalEntries({
       entries.push(
         {
           ...baseEntry,
+          branch_id: sale.branchId,
           account_id: cash,
           description: desc,
           debit: paid,
@@ -1403,6 +1421,7 @@ async function createSaleJournalEntries({
         {
           ...baseEntry,
           account_id: revenue,
+          branch_id: sale.branchId,
           description: desc,
           debit: 0,
           credit: total,
@@ -1412,11 +1431,12 @@ async function createSaleJournalEntries({
         },
       );
     }
-  } else if (sale.paymentStatus === "partial") {
+  } else if (sale.status === "partial") {
     // Partial payment
     entries.push(
       {
         ...baseEntry,
+        branch_id: sale.branchId,
         account_id: ar,
         description: desc + " فاتورة بيع اجل",
         debit: total,
@@ -1428,6 +1448,7 @@ async function createSaleJournalEntries({
       {
         ...baseEntry,
         account_id: revenue,
+        branch_id: sale.branchId,
         description: desc + " - فاتورة بيع",
         debit: 0,
         credit: total,
@@ -1442,6 +1463,7 @@ async function createSaleJournalEntries({
         {
           ...baseEntry,
           account_id: cash,
+          branch_id: sale.branchId,
           description: desc + " - دفعة فورية",
           debit: paid,
           credit: 0,
@@ -1452,6 +1474,7 @@ async function createSaleJournalEntries({
         {
           ...baseEntry,
           account_id: ar,
+          branch_id: sale.branchId,
           description: desc + " المدفوع من المبلغ",
           debit: 0,
           credit: paid,
@@ -1467,6 +1490,7 @@ async function createSaleJournalEntries({
       {
         ...baseEntry,
         account_id: ar,
+        branch_id: sale.branchId,
         description: desc + " غير مدفوع",
         debit: total,
         credit: 0,
@@ -1477,6 +1501,7 @@ async function createSaleJournalEntries({
       {
         ...baseEntry,
         account_id: revenue,
+        branch_id: sale.branchId,
         description: desc + " غير مدفوع",
         debit: 0,
         credit: total,
@@ -1494,6 +1519,7 @@ async function createSaleJournalEntries({
         ...baseEntry,
         account_id: cogs,
         description: desc,
+        branch_id: sale.branchId,
         debit: returnTotalCOGS,
         credit: 0,
         reference_id: sale.id,
@@ -1503,6 +1529,7 @@ async function createSaleJournalEntries({
       {
         ...baseEntry,
         account_id: inventory,
+        branch_id: sale.branchId,
         description: desc,
         debit: 0,
         credit: returnTotalCOGS,
@@ -1563,11 +1590,13 @@ async function createPurchaseJournalEntries({
   userId,
   type,
   currencyCode,
+  branchId,
   paymentDetails,
 }: {
   purchase: any;
   companyId: string;
   userId: string;
+  branchId: string;
   type: string;
   currencyCode: string;
   paymentDetails: any;
@@ -1624,6 +1653,7 @@ async function createPurchaseJournalEntries({
     currency_code: safeCurrency,
     fiscal_period: fy.period_name,
     created_by: userId,
+    branch_id: branchId,
   };
 
   const entries: any[] = [];

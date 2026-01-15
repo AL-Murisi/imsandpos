@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowUp, ArrowDown, ArrowUpDown, EditIcon } from "lucide-react";
+import EditPoS from "./EditPOS";
 
 type SortableHeaderProps = {
   column: any;
@@ -59,8 +60,37 @@ export const posColumns: ColumnDef<any>[] = [
   {
     accessorKey: "name",
     header: ({ column }) => (
-      <SortableHeader column={column} label="اسم نقطة البيع" />
+      <SortableHeader column={column} label="اسم  الفرع" />
     ),
+  },
+  {
+    accessorKey: "cashiers",
+    header: "الكاشير",
+    cell: ({ row }) => {
+      const cashiers = row.original.cashiers as {
+        id: string;
+        name: string;
+        phoneNumber?: string | null;
+      }[];
+
+      if (!cashiers.length) return "—";
+
+      return (
+        <div className="space-y-1">
+          {cashiers.map((c) => (
+            <div key={c.id} className="text-sm">
+              {c.name}
+              {c.phoneNumber && (
+                <span className="text-muted-foreground">
+                  {" "}
+                  ({c.phoneNumber})
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      );
+    },
   },
 
   {
@@ -116,14 +146,7 @@ export const posColumns: ColumnDef<any>[] = [
     enableHiding: false,
     cell: ({ row }) => {
       const pos = row.original;
-      return (
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            <EditIcon className="mr-1 h-4 w-4" />
-            تعديل
-          </Button>
-        </div>
-      );
+      return <EditPoS branch={pos} />;
     },
   },
 ];

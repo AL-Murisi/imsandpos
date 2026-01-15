@@ -15,6 +15,7 @@ import {
   ReusablePayment,
 } from "@/components/common/ReusablePayment";
 import { fetchPayments } from "@/lib/actions/banks";
+import { useCompany } from "@/hooks/useCompany";
 
 interface Account {
   id: string;
@@ -93,7 +94,7 @@ export default function ManualJournalEntryForm({
     },
   ]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
+  const { company } = useCompany();
   // ✅ Payment tracking (optional - for cash/bank entries)
   const [includePayment, setIncludePayment] = useState(false);
   const [payment, setPayment] = useState<PaymentState>({
@@ -312,6 +313,7 @@ export default function ManualJournalEntryForm({
           reference_id: referenceId,
           created_by: userId,
           is_automated: false,
+          branch_id: company?.branches[0].id,
           customer_id: line.customerId,
           supplier_id: line.supplierId,
         };
@@ -385,7 +387,7 @@ export default function ManualJournalEntryForm({
   };
 
   return (
-    <ScrollArea className="h-[70vh] w-full pr-4">
+    <ScrollArea className="h-[95vh] w-full px-3 py-3 pr-4">
       <div className="space-y-6">
         {/* Header Section */}
         <div className="bg-card space-y-4 rounded-lg border p-4">

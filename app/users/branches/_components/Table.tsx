@@ -56,21 +56,7 @@ export default function SalesPointTable({ salespoint, total, role }: Props) {
       {/* Add dir="rtl" for proper RTL layout */}
 
       <DataTable
-        search={
-          <CustomDialog
-            trigger={
-              <Button>
-                <Plus className="ml-1" />{" "}
-                {/* Change mr-1 to ml-1 for RTL icon placement */}
-                إضافة نقاط البيع
-              </Button>
-            }
-            title="إضافة مستخدم"
-            description="أدخل تفاصيل المستخدم أدناه."
-          >
-            <POSForm users={user} />
-          </CustomDialog>
-        }
+        search={<POSForm users={user} />}
         data={salespoints}
         columns={posColumns}
         initialPageSize={pagination.pageSize}

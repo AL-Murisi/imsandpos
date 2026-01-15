@@ -4,8 +4,8 @@ import { getActivityLogs } from "@/lib/actions/activitylogs";
 
 import { getSession } from "@/lib/session";
 import { fetchRoles, fetchRolesForSelect } from "@/lib/actions/roles";
-import UserTab from "./_compoent/tabs";
 import { getCompany } from "@/lib/actions/createcompnayacc";
+import UserTab from "../_compoent/tabs";
 
 type Users = {
   searchParams: Promise<{
@@ -39,7 +39,7 @@ export default async function User({ searchParams }: Users) {
   const pageSize = Number(limit);
   const user = await getSession();
   if (!user) return;
-  const [data, logs, roless, roles, company] = await Promise.all([
+  const [data, logs, roless, roles] = await Promise.all([
     fetechUser(
       user.companyId,
       usersquery,
@@ -55,7 +55,6 @@ export default async function User({ searchParams }: Users) {
     // const data = await fetechUser();
     fetchRolesForSelect(),
     fetchRoles(pageIndex, pageSize),
-    getCompany(),
   ]);
   const { logs: log, total: totals } = logs;
   return (
@@ -65,7 +64,6 @@ export default async function User({ searchParams }: Users) {
       logs={log}
       totalLogs={totals}
       roles={roles}
-      company={company?.data as any}
     />
   );
 }

@@ -9,9 +9,10 @@ import { ParsedSort } from "@/hooks/sort";
 import { Prisma } from "@prisma/client";
 import { SortingState } from "@tanstack/react-table";
 import { getSession } from "@/lib/session";
-import InventoryTabs from "./_components/tabs";
+
 import { getPurchasesByCompany } from "@/lib/actions/suppliers";
 import { fetchPayments } from "@/lib/actions/banks";
+import ManagemovementClient from "../_components/getMovementhistry";
 
 type DashboardProps = {
   searchParams: Promise<{
@@ -63,9 +64,9 @@ export default async function manageStocks({ searchParams }: DashboardProps) {
     categoryId,
   };
   // ✅ Run all fetches in parallelfetchAllFormData
-  const MultipleInventory = fetchAllFormDatas(user.companyId);
-  const b = await fetchPayments();
-  const formData = fetchAllFormData(user.companyId);
+
+  //   const b = await fetchPayments();
+  const formData = await fetchAllFormData(user.companyId);
   // Collect common params
   const commonParams = {
     from,
@@ -89,24 +90,8 @@ export default async function manageStocks({ searchParams }: DashboardProps) {
   }
 
   // Then call the functions
-  const inventoryData = getInventoryById(
-    user.companyId,
-    inventoryParams.query,
-    inventoryParams.where,
-    inventoryParams.from,
-    inventoryParams.to,
-    inventoryParams.pageIndex,
-    inventoryParams.pageSize,
-    inventoryParams.parsedSort,
-  );
-  const purchasesPromise = getPurchasesByCompany(user.companyId, {
-    pageIndex,
-    pageSize,
-    from,
-    to,
-    parsedSort,
-  });
-  const movementData = getStockMovements(
+
+  const movementData = await getStockMovements(
     user.companyId,
     movementParams.query,
     movementParams.input,
@@ -117,14 +102,10 @@ export default async function manageStocks({ searchParams }: DashboardProps) {
   );
 
   return (
-    <InventoryTabs
-      inventoryData={inventoryData}
-      movementData={movementData}
-      purchasesPromise={purchasesPromise}
+    <ManagemovementClient
+      products={movementData.movements}
+      total={movementData.totalCount}
       formData={formData}
-      payments={b}
-      multipleInventory={MultipleInventory}
-      currentTab={currentTab}
     />
   );
 }

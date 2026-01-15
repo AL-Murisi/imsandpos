@@ -368,32 +368,52 @@ export const purchaseColumns: ColumnDef<any>[] = [
     header: "النوع",
     cell: ({ row }) => {
       const items = row.original.purchaseItems || [];
-      const rawType = items[0].product?.type;
+      const rawType = items.find((p: any) => p.unit);
 
-      const allowedTypes = ["full", "cartonUnit", "cartonOnly"] as const;
+      // const allowedTypes = ["full", "cartonUnit", "cartonOnly"] as const;
 
-      const isValid = allowedTypes.includes(rawType);
+      // const isValid = allowedTypes.includes(rawType);
 
-      const typeMap = {
-        full: "وحدة + عبوة + كرتونة",
-        cartonUnit: "وحدة + كرتونة",
-        cartonOnly: "كرتونة فقط",
-      } as const;
+      // const typeMap = {
+      //   full: "وحدة + عبوة + كرتونة",
+      //   cartonUnit: "وحدة + كرتونة",
+      //   cartonOnly: "كرتونة فقط",
+      // } as const;
 
-      return isValid ? typeMap[rawType as keyof typeof typeMap] : "غير محدد";
+      return (
+        <>
+          {items.map((item: any) => (
+            <div>{item.unit}</div>
+          ))}
+        </>
+      );
     },
   },
   {
-    accessorKey: "supplier.name",
+    accessorFn: (row) => row.supplier?.name, // Safe access using accessorFn
+    id: "supplierName",
     header: "المورد",
+    cell: ({ row }) => row.original.supplier?.name || "بدون مورد", // Fallback text
   },
   {
     accessorKey: "paymentMethod",
     header: "طريقة الدفع",
     cell: ({ row }) => {
       // التأكد من وجود القيمة قبل عرضها
-      const method = row.original?.paymentMethod;
+      const method = row.original.paymentMethod;
       return <span>{method || "-"}</span>;
+    },
+  },
+  {
+    accessorKey: "sale_type",
+    header: " نوع الشراء",
+    cell: ({ row }) => {
+      // التأكد من وجود القيمة قبل عرضها
+      const method = row.original.sale_type;
+
+      return (
+        <span>{method === "RETURN_PURCHASE" ? "مرتجع شراء" : "شراء"}</span>
+      );
     },
   },
   {
@@ -435,11 +455,15 @@ export const purchaseColumns: ColumnDef<any>[] = [
                     </div>
                     <div>
                       <span className="text-gray-600">تكلفة الوحدة:</span>{" "}
-                      {item.unitCost}
+                      {item.price}
+                    </div>{" "}
+                    <div>
+                      <span className="text-gray-600">تكلفة الوحدة:</span>{" "}
+                      {item.unit}
                     </div>
                     <div>
                       <span className="text-gray-600">الإجمالي:</span>{" "}
-                      {item.totalCost}
+                      {item.totalPrice}
                     </div>
                   </div>
                 </div>
@@ -496,13 +520,13 @@ export const purchaseColumns: ColumnDef<any>[] = [
       if (status === "pending") color = "bg-yellow-500";
       else if (status === "partial") color = "bg-blue-500";
       else if (status === "paid") color = "bg-green-500";
-      else if (status === "received") color = "bg-purple-500";
+      else if (status === "completed") color = "bg-purple-500";
 
       const statusArabic: Record<string, string> = {
         pending: "قيد الانتظار",
         partial: "مدفوع جزئيًا",
         paid: "مدفوع",
-        received: "تم الاستلام",
+        completed: "تم الاستلام",
       };
 
       return <Badge className={color}>{statusArabic[status] || status}</Badge>;
@@ -523,16 +547,19 @@ export const purchaseColumns: ColumnDef<any>[] = [
       return (
         <div className="flex gap-2 p-2">
           {" "}
-          {amountDue > 0 && status != "return" && (
+          {amountDue > 0 && status != "RETURN_PURCHASE" && (
             <PaymentCreateForm
               purchaseId={purchaseId}
               supplier={supplierId}
               supplier_name={supplier_name}
             />
           )}{" "}
-          {status != "return" && <PurchaseReturnForm purchaseId={purchaseId} />}
+          {status != "RETURN_PURCHASE" && (
+            <PurchaseReturnForm purchaseId={purchaseId} />
+          )}
           <PurchaseReceipt
-            purchaseNumber={""}
+            purchaseNumber={supplierId.invoiceNumber}
+            purchasType={status === "RETURN_PURCHASE" ? "مرتجع شراء" : "شراء"}
             items={items.map((item: any) => {
               const baseQty = Number(item.quantity || 0);
               const basePrice = Number(item.unitCost || 0);
@@ -567,9 +594,9 @@ export const purchaseColumns: ColumnDef<any>[] = [
                   : unitsArray.find((u: any) => u.isBase)?.name || "حبة",
 
                 // السعر: نضرب السعر الأساسي في معامل التحويل ليطابق الوحدة الجديدة
-                unitCost: canConvert ? basePrice * conversionFactor : basePrice,
+                unitCost: item.price,
 
-                totalCost: item.totalCost,
+                totalCost: item.totalPrice,
               };
             })}
             totals={{
@@ -578,7 +605,7 @@ export const purchaseColumns: ColumnDef<any>[] = [
               due: supplierId.amountDue,
             }}
             supplierName={supplier_name}
-            isCash={supplierId.transaction.paymentMethod}
+            isCash={supplierId.paymentMethod}
             company={{
               name: company.company?.name || "",
               address: company.company?.address || "",

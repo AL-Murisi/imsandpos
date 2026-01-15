@@ -212,7 +212,27 @@ export async function createSaleWithJournalEntries(
     return sale;
   });
 }
-
+export async function getVouchers(companyId: string) {
+  try {
+    const vouchers = await prisma.financialTransaction.findMany({
+      where: {
+        companyId: companyId,
+      },
+      include: {
+        customer: { select: { name: true } },
+        supplier: { select: { name: true } },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+    const result = serializeData(vouchers);
+    return { success: true, data: result };
+  } catch (error) {
+    console.error("Failed to fetch vouchers:", error);
+    return { success: false, error: "حدث خطأ أثناء جلب السندات" };
+  }
+}
 /**
  * 2. PURCHASE TRANSACTION - Creates journal entries when purchasing inventory
  *
@@ -220,6 +240,7 @@ export async function createSaleWithJournalEntries(
  * - Debit: Inventory (Asset) - $5,000
  * - Credit: Accounts Payable (Liability) - $5,000
  */
+
 export async function createPurchaseWithJournalEntries(
   purchaseData: any,
   userId: string,

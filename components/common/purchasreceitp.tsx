@@ -6,6 +6,7 @@ import { Clock } from "lucide-react";
 import { useFormatter } from "@/hooks/usePrice";
 
 export const PurchaseReceipt: React.FC<PurchaseReceiptProps> = ({
+  purchasType,
   purchaseNumber,
   items,
   totals,
@@ -109,12 +110,13 @@ footer {
       <div dir="ltr">${company.phone ?? ""}</div>
     </div>
   </div>
-
+  <strong>${purchasType}</strong>
   <hr/>
 
   <!-- INFO -->
   <div>
     <strong>نوع الشراء:</strong> ${isCash === "cash" ? "نقدي" : "آجل"} <br/>
+    <strong>${purchasType}</strong>
     <strong>المورد:</strong> ${supplierName ?? "غير محدد"}
   </div>
 
@@ -217,6 +219,7 @@ export interface PurchaseReceiptItem {
 
 export interface PurchaseReceiptProps {
   purchaseNumber: string;
+  purchasType: string;
   items: PurchaseReceiptItem[];
   totals: {
     total: number;

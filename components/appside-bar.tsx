@@ -106,7 +106,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
     {
       title: t("users"),
-      url: "/users",
+      url: "/users/company",
       icon: () => <Users className="text-blue-600" />,
       roles: ["admin"],
     },
@@ -120,7 +120,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       subItems: [
         {
           title: t("manageInventory"),
-          url: "/inventory/manageStocks",
+          url: "/inventory/manageStocks/inventory",
           icon: <PackageSearch className="h-4 w-4 text-green-600" />,
           roles: ["admin", "manager_wh"],
         },
@@ -164,7 +164,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       title: t("customer"),
       url: "/customer",
       icon: () => <User className="h-4 w-4 text-sky-500" />,
-      roles: ["admin"],
+      roles: ["admin", "cashier"],
     },
     {
       title: "البنوك",
@@ -174,7 +174,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     },
     {
       title: t("cashierMain"),
-      url: "/sells",
+      url: "/sells/salesDashboard",
       icon: () => <ShoppingCart className="text-blue-500" />,
       roles: ["cashier"],
     },
@@ -202,7 +202,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
     {
       title: t("journalEntry"),
-      url: "/journalEntry",
+      url: "/journalEntry/journal",
       icon: () => <NotebookPen className="text-pink-600" />,
       roles: ["admin"],
     },
@@ -216,7 +216,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       subItems: [
         {
           title: t("cashierMain"),
-          url: "/sells",
+          url: "/sells/salesDashboard",
           icon: <ShoppingCart className="text-indigo-500" />,
           roles: ["admin"],
         },
@@ -224,14 +224,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           title: t("cashier"),
           url: "/sells/cashiercontrol",
           icon: <ShoppingCart className="text-blue-500" />,
-          roles: ["admin", "cashier"],
-        },
-        {
-          title: t("pos"),
-          url: "/sells/pos",
-          icon: <Store className="text-blue-500" />,
           roles: ["admin"],
         },
+        // {
+        //   title: t("pos"),
+        //   url: "/sells/pos",
+        //   icon: <Store className="text-blue-500" />,
+        //   roles: ["admin"],
+        // },
       ],
     },
 

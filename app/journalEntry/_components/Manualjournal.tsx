@@ -2,6 +2,7 @@
 
 import Dialogreuse from "@/components/common/dailogreuse";
 import ManualJournalEntryForm from "@/components/forms/Manualjornal";
+import { useCompany } from "@/hooks/useCompany";
 import { useAuth } from "@/lib/context/AuthContext";
 import { useState } from "react";
 
@@ -30,6 +31,7 @@ export default function ManualJournalEntry({
 }: JournalEntryDetailsDialogProps) {
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
+
   if (!user) return;
   const handleSuccess = () => {
     // Close dialog after successful creation
@@ -38,22 +40,22 @@ export default function ManualJournalEntry({
   };
 
   return (
-    <Dialogreuse
-      open={open}
-      setOpen={setOpen}
-      btnLabl={"إضافة قيد يدوي"}
-      titel="إضافة قيد محاسبي يدوي"
-      description="قم بإنشاء قيد محاسبي يدوي مع تحديد الحسابات المدينة والدائنة والعملاء والموردين"
-      style={""}
-    >
-      <ManualJournalEntryForm
-        accounts={account}
-        customers={customers}
-        suppliers={suppliers}
-        companyId={user.companyId}
-        userId={user.userId}
-        onSuccess={handleSuccess}
-      />
-    </Dialogreuse>
+    // <Dialogreuse
+    //   open={open}
+    //   setOpen={setOpen}
+    //   btnLabl={"إضافة قيد يدوي"}
+    //   titel="إضافة قيد محاسبي يدوي"
+    //   description="قم بإنشاء قيد محاسبي يدوي مع تحديد الحسابات المدينة والدائنة والعملاء والموردين"
+    //   style={""}
+    // >
+    <ManualJournalEntryForm
+      accounts={account}
+      customers={customers}
+      suppliers={suppliers}
+      companyId={user.companyId}
+      userId={user.userId}
+      onSuccess={handleSuccess}
+    />
+    // </Dialogreuse>
   );
 }

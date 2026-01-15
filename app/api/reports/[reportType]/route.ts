@@ -1406,61 +1406,71 @@ export async function POST(req: NextRequest, context: RouteContext) {
   }
 }
 async function fetchReceiptsByCustomer(customerId: string, companyId: string) {
-  const results = await prisma.$queryRawUnsafe<any[]>(
-    `
-    WITH sale_data AS (
-      SELECT 
-        s.id AS sale_id,
-        s.sale_number,
-        s.subtotal,
-        s.total_amount,
-        s.amount_paid,
-        s.discount_amount,
-        s.sale_type,
-        s.created_at,
-        c.name AS customer_name,
-        c.outstanding_balance,
-        u.name AS cashier_name
-      FROM sales s
-      LEFT JOIN customers c ON s.customer_id = c.id
-      LEFT JOIN users u ON s.cashier_id = u.id
-      WHERE s.customer_id = $1
-        AND s.company_id = $2
-      ORDER BY s.created_at ASC
-    )
-    SELECT 
-      s.*,
-      COALESCE(
-        (
-          SELECT json_agg(
-            json_build_object(
-              'name', p.name,
-              'warehousename', w.name,
-              'selectedQty', si.quantity,
-              'sellingUnit', LOWER(si.selling_unit),
-            
-            'pricePerUnit', si.unit_price
-            )
-          )
-          FROM sale_items si
-          JOIN products p ON si.product_id = p.id
-          LEFT JOIN warehouses w ON p.warehouse_id = w.id
-          WHERE si.sale_id = s.sale_id
-        ),
-        '[]'::json
-      ) AS items
-    FROM sale_data s;
-    `,
-    customerId,
-    companyId,
-  );
+  const invoices = await prisma.invoice.findMany({
+    where: {
+      customerId,
+      companyId,
+      sale_type: { in: ["SALE", "RETURN_SALE"] },
+    },
+    orderBy: {
+      invoiceDate: "asc",
+    },
+    include: {
+      customer: {
+        select: {
+          id: true,
+          name: true,
+          outstandingBalance: true,
+        },
+      },
+      // us: {
+      //   select: {
+      //     name: true,
+      //   },
+      // },
+      items: {
+        include: {
+          product: {
+            include: {
+              warehouse: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
 
-  // Convert bigint safely
-  return results.map((r) =>
-    JSON.parse(
-      JSON.stringify(r, (_k, v) => (typeof v === "bigint" ? Number(v) : v)),
-    ),
-  );
+  return invoices.map((inv) => ({
+    sale_id: inv.id,
+    sale_number: inv.invoiceNumber,
+
+    subtotal: inv.totalAmount, // keep name
+    total_amount: inv.totalAmount,
+    amount_paid: inv.amountPaid,
+    discount_amount: 0, // if you add discount later, map it here
+    sale_type: inv.sale_type == "SALE" ? "بيع" : "مرتجع مبيعات",
+
+    created_at: inv.invoiceDate,
+
+    customer_name: inv.customer?.name ?? "",
+    outstanding_balance: inv.customer?.outstandingBalance ?? 0,
+    cashier_name: "system",
+
+    items: inv.items.map((item) => ({
+      name: item.product.name,
+      warehousename: item.product.warehouse?.name ?? "",
+
+      selectedQty: item.quantity,
+      sellingUnit: item.unit?.toLowerCase() ?? "unit",
+
+      // 🔑 FRONTEND EXPECTS THIS NAME
+      pricePerUnit: item.price,
+    })),
+  }));
 }
 
 function prepareReceipt(receipt: any) {
@@ -1469,13 +1479,7 @@ function prepareReceipt(receipt: any) {
   const items = (receipt.items ?? []).map((item: any, i: number) => {
     const unit = (item.sellingUnit ?? "unit").toLowerCase();
 
-    const price =
-      unit === "carton"
-        ? Number(item.pricePerCarton || 0)
-        : unit === "packet"
-          ? Number(item.pricePerPacket || 0)
-          : Number(item.pricePerUnit || 0);
-
+    const price = Number(item.pricePerUnit || 0);
     const qty = Number(item.selectedQty || 0);
 
     return {
@@ -1494,77 +1498,88 @@ function prepareReceipt(receipt: any) {
     customer_name: receipt.customer_name,
     cashier_name: receipt.cashier_name,
     sale_type: receipt.sale_type,
+
     subtotal: Number(receipt.subtotal || 0).toFixed(2),
     discount: Number(receipt.discount_amount || 0).toFixed(2),
     total: Number(receipt.total_amount || 0).toFixed(2),
     paid: Number(receipt.amount_paid || 0).toFixed(2),
+
     change: (
       Number(receipt.amount_paid || 0) - Number(receipt.total_amount || 0)
     ).toFixed(2),
+
     customer_debt: Number(receipt.outstanding_balance || 0).toFixed(2),
+
     date: createdAt.toLocaleDateString("ar-EG"),
     time: createdAt.toLocaleTimeString("ar-EG"),
+
     is_cash:
       Number(receipt.amount_paid || 0) >= Number(receipt.total_amount || 0),
+
     items,
   };
 }
 
 async function fetchReceiptsBySupplier(supplierId: string, companyId: string) {
-  const results = await prisma.$queryRawUnsafe<any[]>(
-    `
-    WITH purchase_data AS (
-      SELECT
-        p.id AS purchase_id,
-        
-        p.total_amount,
-        p.amount_paid,
-        p.amount_due,
-        p.purchase_type,
-        p.currency_code,
-        p.exchange_rate,
-        p.created_at,
-        s.name AS supplier_name
-       
-      FROM purchases p
-      JOIN suppliers s ON p.supplier_id = s.id
-     
-      WHERE p.supplier_id = $1
-        AND p.company_id = $2
-      ORDER BY p.created_at ASC
-    )
-    SELECT
-      p.*,
-      COALESCE(
-        (
-          SELECT json_agg(
-            json_build_object(
-              'product_name', pr.name,
-              'warehouse_name', w.name,
-              'quantity', pi.quantity,
-              'unit_cost', pi.unit_cost,
-              'total_cost', pi.total_cost
-            )
-          )
-          FROM purchase_items pi
-          JOIN products pr ON pi.product_id = pr.id
-          LEFT JOIN warehouses w ON pr.warehouse_id = w.id
-          WHERE pi.purchase_id = p.purchase_id
-        ),
-        '[]'::json
-      ) AS items
-    FROM purchase_data p;
-    `,
-    supplierId,
-    companyId,
-  );
+  const invoices = await prisma.invoice.findMany({
+    where: {
+      supplierId,
+      companyId,
+      sale_type: { in: ["PURCHASE", "RETURN_PURCHASE"] },
+    },
+    orderBy: {
+      invoiceDate: "asc",
+    },
+    include: {
+      supplier: {
+        select: {
+          name: true,
+        },
+      },
+      items: {
+        include: {
+          product: {
+            include: {
+              warehouse: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
 
-  return results.map((r) =>
-    JSON.parse(
-      JSON.stringify(r, (_k, v) => (typeof v === "bigint" ? Number(v) : v)),
-    ),
-  );
+  // ⬇️ Map to SAME shape your frontend expects
+  return invoices.map((inv) => ({
+    purchase_id: inv.id,
+    purchase_number: inv.invoiceNumber,
+
+    total_amount: inv.totalAmount,
+    amount_paid: inv.amountPaid,
+    amount_due: inv.amountDue,
+    purchase_type: inv.sale_type == "PURCHASE" ? "شراء " : "مرتجع مشتريات",
+
+    currency_code: null, // keep if frontend expects it
+    exchange_rate: null, // keep if frontend expects it
+
+    created_at: inv.invoiceDate,
+    supplier_name: inv.supplier?.name ?? "",
+
+    items: inv.items.map((item) => ({
+      product_name: item.product.name,
+      warehouse_name: item.product.warehouse?.name ?? "",
+      quantity: item.quantity,
+
+      // 🔑 IMPORTANT: keep frontend variable names
+      unit_cost: item.price,
+      total_cost: item.totalPrice,
+    })),
+  }));
 }
+
 function preparePurchaseReceipt(receipt: any) {
   const createdAt = new Date(receipt.created_at);
 
@@ -1573,7 +1588,9 @@ function preparePurchaseReceipt(receipt: any) {
     product_name: item.product_name,
     warehouse_name: item.warehouse_name ?? "",
     quantity: Number(item.quantity || 0),
-    unit: "وحدة",
+    unit: item.unit,
+
+    // frontend names preserved
     unit_cost: Number(item.unit_cost || 0).toFixed(2),
     total_cost: Number(item.total_cost || 0).toFixed(2),
   }));
@@ -1598,6 +1615,7 @@ function preparePurchaseReceipt(receipt: any) {
     items,
   };
 }
+
 async function fetchAccountStatement({
   accountId,
   companyId,

@@ -64,11 +64,18 @@
         border-top: 1px solid #000;
         margin: 10px 0;
       }
-
       .info-section {
+        display: flex; /* Makes items side-by-side */
+        justify-content: space-between; /* Spreads them to the edges */
+        align-items: center;
         margin-bottom: 15px;
-        line-height: 1.6;
         font-size: 14px;
+        border-bottom: 1px dashed #eee; /* Optional styling */
+        padding-bottom: 5px;
+      }
+
+      .info-item {
+        flex: 1; /* Gives equal space to each part */
       }
 
       /* Stable Table Layout */
@@ -147,7 +154,11 @@
           <div style="font-size: 20px; font-weight: bold; color: green">
             {{../company.name}}
           </div>
-          <div style="font-size: 14px">رقم الفاتورة: {{sale_number}}</div>
+          {{#if ../company.branches.[0]}}
+          <div style="font-size: 14px">
+            فرع: {{../company.branches.[0].location}}
+          </div>
+          {{/if}}
         </div>
 
         <div class="header-center">
@@ -165,10 +176,16 @@
       </div>
 
       <hr />
-
       <div class="info-section">
-        <strong>نوع الدفع:</strong> {{#if is_cash}}نقدي{{else}}آجل{{/if}} <br />
-        <strong>العميل:</strong> {{customer_name}}
+        <div class="info-item">
+          <strong>نوع الدفع:</strong> {{#if is_cash}}نقدي{{else}}آجل{{/if}}
+        </div>
+        <div class="info-item" style="text-align: center">
+          <strong>العميل:</strong> {{customer_name}}
+        </div>
+        <div class="info-item" style="text-align: left">
+          <strong>رقم الفاتورة:</strong> {{sale_number}}
+        </div>
       </div>
 
       <table>

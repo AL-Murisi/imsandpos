@@ -39,7 +39,7 @@ export default function LoginPage() {
 
       if (success) {
         router.push("/");
-        toast("logging successfully ✅ ");
+        toast("تم تسجل الدخول ✅ ");
       } else {
         setError("البريد الإلكتروني أو كلمة المرور غير صحيحة");
       }
@@ -51,35 +51,35 @@ export default function LoginPage() {
   };
 
   // Quick login buttons for testing
-  const quickLogin = async (userType: string) => {
-    const credentials = {
-      admin: { email: "admin@example.com", password: "admin123" },
-      worker: { email: "worker@example.com", password: "worker123" },
-      customer: { email: "customer@example.com", password: "customer123" },
-      supplier: { email: "supplier@example.com", password: "supplier123" },
-    };
+  // const quickLogin = async (userType: string) => {
+  //   const credentials = {
+  //     admin: { email: "admin@example.com", password: "admin123" },
+  //     worker: { email: "worker@example.com", password: "worker123" },
+  //     customer: { email: "customer@example.com", password: "customer123" },
+  //     supplier: { email: "supplier@example.com", password: "supplier123" },
+  //   };
 
-    const cred = credentials[userType as keyof typeof credentials];
-    if (cred) {
-      setEmail(cred.email);
-      setPassword(cred.password);
-      setError("");
-      setLoading(true);
+  //   const cred = credentials[userType as keyof typeof credentials];
+  //   if (cred) {
+  //     setEmail(cred.email);
+  //     setPassword(cred.password);
+  //     setError("");
+  //     setLoading(true);
 
-      try {
-        const success = await login(cred.email, cred.password);
-        if (success) {
-          // router.push("/");
-        } else {
-          setError("فشل في تسجيل الدخول");
-        }
-      } catch (err) {
-        setError("حدث خطأ أثناء تسجيل الدخول");
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
+  //     try {
+  //       const success = await login(cred.email, cred.password);
+  //       if (success) {
+  //         // router.push("/");
+  //       } else {
+  //         setError("فشل في تسجيل الدخول");
+  //       }
+  //     } catch (err) {
+  //       setError("حدث خطأ أثناء تسجيل الدخول");
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   }
+  // };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4 dark:from-gray-900 dark:to-gray-800">
@@ -143,7 +143,7 @@ export default function LoginPage() {
                 <Label className="p-3 text-red-600">{error}</Label>
               </div>
             </div>
-            <div className="space-y-2 p-3">
+            {/* <div className="space-y-2 p-3">
               <p className="text-center text-sm text-gray-500">
                 تسجيل دخول سريع للاختبار:
               </p>
@@ -191,7 +191,7 @@ export default function LoginPage() {
               >
                 إنشاء حساب من هنا
               </Link>
-            </div>
+            </div> */}
           </CardContent>
 
           <CardFooter className="top-4 flex flex-col space-y-4">

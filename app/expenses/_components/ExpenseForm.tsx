@@ -17,6 +17,7 @@ import {
   PaymentState,
   ReusablePayment,
 } from "@/components/common/ReusablePayment";
+import { useCompany } from "@/hooks/useCompany";
 
 interface ExpenseItem {
   id: string;
@@ -51,6 +52,7 @@ export default function ExpenseForm({
   const [expenseDate, setExpenseDate] = useState(
     new Date().toISOString().split("T")[0],
   );
+  const { company } = useCompany();
   const { user } = useAuth();
 
   // ✅ Accounts per expense item
@@ -195,6 +197,7 @@ export default function ExpenseForm({
         exchangeRate: exp.payment?.exchangeRate || undefined,
         amountFC: exp.payment?.amountFC || undefined,
         notes: exp.notes || undefined,
+        branchId: company?.branches[0].id ?? "",
       }));
 
       const result = await createMultipleExpenses(

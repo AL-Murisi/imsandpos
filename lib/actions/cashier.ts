@@ -15,6 +15,7 @@ import { serialize } from "v8";
 import { getLatestExchangeRate } from "./currency";
 import { SellingUnit } from "../zod";
 import { console } from "inspector";
+import { stat } from "fs";
 
 type CartItem = {
   id: string;
@@ -61,24 +62,24 @@ export async function generateSaleNumber(companyId: string): Promise<string> {
   const prefix = `-${currentYear}-بيع`;
 
   // Get the last sale number for this company and year
-  const lastSale = await prisma.sale.findFirst({
+  const lastSale = await prisma.invoice.findFirst({
     where: {
       companyId,
-      saleNumber: {
+      invoiceNumber: {
         contains: prefix,
       },
     },
     orderBy: {
-      saleNumber: "desc",
+      invoiceDate: "desc",
     },
     select: {
-      saleNumber: true,
+      invoiceNumber: true,
     },
   });
 
   let nextNumber = 1;
-  if (lastSale?.saleNumber) {
-    const parts = lastSale.saleNumber.split("-");
+  if (lastSale?.invoiceNumber) {
+    const parts = lastSale.invoiceNumber.split("-");
     const lastSeq = parseInt(parts[0], 10); // ✅ "000001"
     nextNumber = lastSeq + 1;
   }
@@ -137,13 +138,13 @@ export async function generateSaleNumberSafe(
   // Use a raw query to get the next number atomically
   const result = await prisma.$queryRawUnsafe<{ next_number: bigint }[]>(`
     SELECT COALESCE(
-      MAX(CAST(SUBSTRING(sale_number FROM ${prefix.length + 1}) AS INTEGER)),
+      MAX(CAST(SUBSTRING(invoice_number FROM ${prefix.length + 1}) AS INTEGER)),
       0
     ) + 1 AS next_number
-    FROM sales
+    FROM invoices
     WHERE company_id = '${companyId}'
-      AND sale_number LIKE '${prefix}%'
-      AND sale_number ~ '^${prefix}[0-9]+$'
+      AND invoice_number LIKE '${prefix}%'
+      AND invoice_number ~ '^${prefix}[0-9]+$'
   `);
 
   const nextNumber = Number(result[0]?.next_number || 1);
@@ -164,41 +165,53 @@ export async function processSale(data: any, companyId: string) {
     cart,
     totalBeforeDiscount,
     totalDiscount,
+
     totalAfterDiscount,
     cashierId,
+    branchId,
     customerId,
     saleNumber,
     receivedAmount,
   } = data;
-
+  console.log(branchId);
   return await prisma.$transaction(
     async (tx) => {
       // ==========================================
       // 1️⃣ Create Sale
       // ==========================================
-      const sale = await tx.sale.create({
+      const sale = await tx.invoice.create({
         data: {
           companyId,
-          saleNumber,
+          invoiceNumber: saleNumber,
           customerId,
           cashierId,
-          sale_type: "sale",
+          branchId: branchId,
+          sale_type: "SALE",
           status: "completed",
-          subtotal: totalBeforeDiscount,
-          discountAmount: totalDiscount,
           totalAmount: totalAfterDiscount,
           amountPaid: receivedAmount,
+          warehouseId: cart[0]?.warehouseId || cart.warehouseId,
           amountDue: Math.max(0, totalAfterDiscount - receivedAmount),
-          paymentStatus:
-            receivedAmount >= totalAfterDiscount ? "paid" : "partial",
-          exchange_rate: 1,
-          taxAmount: 0,
         },
       });
 
       // ==========================================
       // 2️⃣ Fetch inventory per PRODUCT + UNIT
       // ==========================================
+      const aggregate = await tx.financialTransaction.aggregate({
+        where: {
+          companyId: companyId,
+          type: "RECEIPT",
+        },
+        _max: {
+          voucherNumber: true,
+        },
+      });
+
+      // 2. حساب الرقم التالي
+      const lastNumber = aggregate._max.voucherNumber || 0;
+      const nextNumber = lastNumber + 1;
+
       const inventoryUnits = await tx.inventory.findMany({
         where: {
           companyId,
@@ -213,24 +226,7 @@ export async function processSale(data: any, companyId: string) {
       const invMap = new Map(
         inventoryUnits.map((i) => [`${i.productId}-${i.warehouseId}`, i]),
       );
-      // const calculateCostPerUnit = (
-      //   product: any,
-      //   selectedUnitId: string,
-      // ): number => {
-      //   // 1. جلب قائمة الوحدات وتكلفة الحبة الواحدة (الوحدة الأساسية)
-      //   const sellingUnits = (product.sellingUnits as any[]) || [];
-      //   const costPerBaseUnit = product.costPrice.toNumber();
 
-      //   // 2. البحث عن الوحدة التي اختارها المستخدم في السلة
-      //   const unit = sellingUnits.find((u) => u.id === selectedUnitId);
-
-      //   // 3. إذا لم نجد الوحدة، نعتبر التكلفة هي تكلفة الحبة الواحدة
-      //   if (!unit) return costPerBaseUnit;
-
-      //   // 4. الحسبة: (تكلفة الحبة) × (عدد الحبات داخل هذه الوحدة)
-      //   // مثال: طبق البيض (400 تكلفة الحبة × 22 معامل الطبق) = 8,800
-      //   return costPerBaseUnit * unit.unitsPerParent;
-      // };
       const saleItems: any[] = [];
       const stockMovements: any[] = [];
       const inventoryUpdates: any[] = [];
@@ -262,11 +258,14 @@ export async function processSale(data: any, companyId: string) {
         // 🟢 Sale Item (بالوحدة المختارة)
         saleItems.push({
           companyId,
-          saleId: sale.id,
+          invoiceId: sale.id,
           productId: item.id,
-          sellingUnit: item.selectedUnitName,
+
+          unit: item.selectedUnitName,
           quantity: item.selectedQty,
-          unitPrice: item.selectedUnitPrice,
+          price: item.selectedUnitPrice,
+          discountAmount: totalDiscount,
+
           totalPrice: item.selectedQty * item.selectedUnitPrice,
         });
 
@@ -295,7 +294,7 @@ export async function processSale(data: any, companyId: string) {
       // 4️⃣ Execute DB Operations
       // ==========================================
       await Promise.all([
-        tx.saleItem.createMany({ data: saleItems }),
+        tx.invoiceItem.createMany({ data: saleItems }),
         tx.stockMovement.createMany({ data: stockMovements }),
       ]);
 
@@ -332,14 +331,25 @@ export async function processSale(data: any, companyId: string) {
       // 6️⃣ Payment
       // ==========================================
       if (receivedAmount > 0) {
+        let status;
+        if (totalAfterDiscount === receivedAmount) {
+          status === "completed";
+        } else if (receivedAmount > 0) {
+          status = "partial";
+        } else {
+          status = "unpaid";
+        }
         await tx.financialTransaction.create({
           data: {
             companyId,
-            saleId: sale.id,
+            invoiceId: sale.id,
             userId: cashierId,
+            branchId,
             customerId,
+            voucherNumber: nextNumber,
+
             paymentMethod: "cash",
-            type: "PAYMENT",
+            type: "RECEIPT",
             amount: receivedAmount,
             status: "completed",
           },
@@ -359,12 +369,13 @@ export async function processSale(data: any, companyId: string) {
             companyId,
             sale: {
               id: sale.id,
-              saleNumber: sale.saleNumber,
+              saleNumber: sale.invoiceNumber,
               sale_type: sale.sale_type,
               status: sale.status,
               totalAmount: sale.totalAmount.toString(),
               amountPaid: sale.amountPaid.toString(),
-              paymentStatus: sale.paymentStatus,
+              branchId: branchId,
+              // paymentStatus: sale.paymentStatus,
             },
             customerId,
             returnTotalCOGS,
@@ -855,6 +866,7 @@ export async function processReturn(data: any, companyId: string) {
     saleId,
     cashierId,
     customerId,
+    branchId,
     returnNumber,
     reason,
     items,
@@ -871,18 +883,19 @@ export async function processReturn(data: any, companyId: string) {
   const result = await prisma.$transaction(
     async (tx) => {
       // 1. Get original sale with all needed data
-      const originalSale = await tx.sale.findUnique({
+      const originalSale = await tx.invoice.findUnique({
         where: { id: saleId },
         select: {
+          invoiceNumber: true,
           amountDue: true,
           customerId: true,
-          paymentStatus: true,
-          saleItems: {
+          transactions: { select: { status: true } },
+          items: {
             select: {
               id: true,
               productId: true,
               quantity: true,
-              unitPrice: true,
+              price: true,
               product: {
                 select: {
                   id: true,
@@ -899,7 +912,23 @@ export async function processReturn(data: any, companyId: string) {
       if (!originalSale) {
         throw new Error("عملية البيع غير موجودة");
       }
+      const lastVoucher = await tx.financialTransaction.findFirst({
+        where: {
+          companyId,
+          type: "RECEIPT", // 🔥 Crucial: Filter by type to get the correct sequence
 
+          // اختياري: هل تريد تسلسل منفصل للقبض عن الصرف؟
+          // إذا نعم، أضف: type: data.type
+        },
+        orderBy: { voucherNumber: "desc" },
+        select: { voucherNumber: true },
+      });
+
+      // 2. تحديد الرقم الجديدconst nextNumber = (lastVoucher?.voucherNumber || 0) + 1;
+
+      // تحويل الرقم إلى نص مع إضافة أصفار حتى يصل الطول إلى 5 خانات
+      const nextNumber = (lastVoucher?.voucherNumber || 0) + 1;
+      // const nextNumber = String(formattedNumber).padStart(5, "0");
       const originalNumber = returnNumber;
       const randomNumber = Math.floor(Math.random() * 90 + 10); // يولد رقماً بين 10 و 99
       const returnNumberWithArabic =
@@ -908,7 +937,7 @@ export async function processReturn(data: any, companyId: string) {
 
       // 2. Create maps and helper functions
       const saleItemsMap = new Map(
-        originalSale.saleItems.map((item) => [item.productId, item]),
+        originalSale.items.map((item) => [item.productId, item]),
       );
 
       // 🆕 Helper: Convert to base units using selling units structure
@@ -934,28 +963,6 @@ export async function processReturn(data: any, companyId: string) {
       // };
 
       // 🆕 Calculate cost per unit using selling units
-      const calculateCostPerUnit = (
-        product: any,
-        selectedUnitId: string,
-      ): number => {
-        const sellingUnits = (product.sellingUnits as any[]) || [];
-        const costPrice = product.costPrice.toNumber();
-
-        const unitIndex = sellingUnits.findIndex(
-          (u) => u.id === selectedUnitId,
-        );
-
-        if (unitIndex === 0) {
-          return costPrice; // Base unit cost
-        }
-
-        let divisor = 1;
-        for (let i = 1; i <= unitIndex; i++) {
-          divisor *= sellingUnits[i].unitsPerParent;
-        }
-
-        return costPrice / divisor;
-      };
 
       // 3. Validate and calculate totals
       let returnSubtotal = 0;
@@ -1006,24 +1013,23 @@ export async function processReturn(data: any, companyId: string) {
       );
 
       // 5. Create return sale record
-      const returnSale = await tx.sale.update({
-        where: { id: saleId },
-        data: {
+      const returnSale = await tx.invoice.update({
+        where: {
           id: saleId,
           companyId,
-          saleNumber: returnNumberWithArabic,
+        },
+        data: {
+          companyId,
+
+          invoiceNumber: returnNumberWithArabic,
           customerId: originalSale.customerId,
           cashierId,
-          sale_type: "return",
+          sale_type: "RETURN_SALE",
           status: "completed",
-          subtotal: 0,
-          taxAmount: 0,
-          discountAmount: 0,
-          totalAmount: 0,
+
+          totalAmount: returnToCustomer,
           amountPaid: returnToCustomer,
           amountDue: 0,
-          paymentStatus: "paid",
-          refunded: { increment: returnToCustomer },
         },
       });
 
@@ -1068,20 +1074,21 @@ export async function processReturn(data: any, companyId: string) {
 
         // Prepare return sale item
         returnSaleItemsData.push(
-          tx.saleItem.update({
+          tx.invoiceItem.update({
             where: {
-              id: originalSale.saleItems.find(
+              id: originalSale.items.find(
                 (si) => si.productId === returnItem.productId,
               )!.id,
             },
             data: {
               companyId,
-              saleId: returnSale.id,
+
+              invoiceId: returnSale.id,
               productId: returnItem.productId,
               quantity: returnItem.quantity,
-              sellingUnit: returnItem.selectedUnitName, // 🆕 Unit name instead of type
-              unitPrice: saleItem.unitPrice,
-              totalPrice: saleItem.unitPrice.toNumber() * returnItem.quantity,
+              unit: returnItem.selectedUnitName, // 🆕 Unit name instead of type
+              price: saleItem.price,
+              totalPrice: saleItem.price.toNumber() * returnItem.quantity,
             },
           }),
           // 🆕 Store unit information
@@ -1138,8 +1145,8 @@ export async function processReturn(data: any, companyId: string) {
 
       if (customerId) {
         if (
-          originalSale.paymentStatus === "unpaid" ||
-          originalSale.paymentStatus === "partial"
+          originalSale.transactions[0].status === "unpaid" ||
+          originalSale.transactions[0].status === "partial"
         ) {
           const amountToDeduct = Math.min(
             returnSubtotal,
@@ -1165,8 +1172,10 @@ export async function processReturn(data: any, companyId: string) {
           tx.financialTransaction.create({
             data: {
               companyId,
-              saleId: returnSale.id,
+              branchId,
+              invoiceId: returnSale.id,
               userId: cashierId,
+              voucherNumber: nextNumber,
               customerId: originalSale.customerId,
               paymentMethod: paymentMethod || "cash",
               type: "PAYMENT",
@@ -1206,6 +1215,7 @@ export async function processReturn(data: any, companyId: string) {
             refundFromCashBank,
             returnSaleId: returnSale.id,
             paymentMethod: paymentMethod || "cash",
+            branchId,
             reason,
           },
           processed: false,
@@ -1231,3 +1241,31 @@ export async function processReturn(data: any, companyId: string) {
   revalidatePath("/sells");
   return result;
 }
+// export const createVoucher = async (data: any) => {
+//   return await prisma.$transaction(async (tx) => {
+
+//     // 1. البحث عن آخر رقم سند لهذه الشركة
+//     const lastVoucher = await tx.financialTransaction.findFirst({
+//       where: {
+//         companyId: data.companyId,
+//         // اختياري: هل تريد تسلسل منفصل للقبض عن الصرف؟
+//         // إذا نعم، أضف: type: data.type
+//       },
+//       orderBy: { voucherNumber: 'desc' },
+//       select: { voucherNumber: true }
+//     });
+
+//     // 2. تحديد الرقم الجديد
+//     const nextNumber = (lastVoucher?.voucherNumber || 0) + 1;
+
+//     // 3. إنشاء السند بالرقم الجديد
+//     const newVoucher = await tx.financialTransaction.create({
+//       data: {
+//         ...data,
+//         voucherNumber: nextNumber
+//       }
+//     });
+
+//     return newVoucher;
+//   });
+// };

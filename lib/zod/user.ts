@@ -6,7 +6,7 @@ export const CreateUserSchema = z.object({
   phoneNumber: z.string().optional(),
   password: z.string().min(8, "كلمة المرور يجب ألا تقل عن 8 أحرف"),
   roleId: z.string().min(1, "يجب اختيار دور واحد على الأقل"),
-  warehouseIds: z.string().optional(),
+  branchId: z.string().optional(),
 });
 export const UpdateUserSchema = CreateUserSchema.partial().omit({
   password: true,

@@ -1,13 +1,5 @@
-import React from "react";
-import JournalEntriesTable from "./_components/table";
-import {
-  getExpenseCategories,
-  getJournalEntries,
-} from "@/lib/actions/Journal Entry";
 import { getFiscalYears } from "@/lib/actions/fiscalYear";
-import Tab from "./_components/tab";
-import { Fetchcustomerbyname } from "@/lib/actions/customers";
-import { getSuppliers } from "@/lib/actions/manualJournalEntry";
+import FiscalYearManager from "../_components/FiscalYearManager";
 
 type JournalProps = {
   searchParams: Promise<{
@@ -46,21 +38,11 @@ export default async function Page({ searchParams }: JournalProps) {
   const pageSize = Number(limit);
 
   // ✅ Ensure async calls are awaited
-  const [data, accounts, fiscalYear, customers, suppliers] = await Promise.all([
-    getJournalEntries(account_id, posted, from, to, pageIndex, pageSize),
-    getExpenseCategories(),
-    getFiscalYears(),
-    Fetchcustomerbyname(usersquery),
-    getSuppliers(),
-  ]);
+  const fiscalYear = await getFiscalYears();
 
   return (
-    <Tab
-      data={data}
-      acount={accounts}
-      fiscalYear={fiscalYear}
-      customers={customers}
-      suppliers={suppliers}
-    />
+    <div className="p-2">
+      <FiscalYearManager fiscalYear={fiscalYear ?? []} />
+    </div>
   );
 }
