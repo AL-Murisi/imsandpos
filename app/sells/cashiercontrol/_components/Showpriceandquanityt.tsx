@@ -20,16 +20,18 @@ interface CustomDialogProps {
       }[]
     | null;
   product: FullProductForSale[]; // استخدم النوع الموحد هنا
+  nextnumber: string;
 }
 
 export default function CartDisplayRedux({
   users,
   product,
+  nextnumber,
 }: CustomDialogProps) {
   return (
     <div className="p-2">
       {/* الآن لن يظهر خطأ لأن الأنواع متطابقة تماماً */}
-      <CartDisplay users={users} product={product} />
+      <CartDisplay users={users} product={product} nextnumber={nextnumber} />
     </div>
   );
 }

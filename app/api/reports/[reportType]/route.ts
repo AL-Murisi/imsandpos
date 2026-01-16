@@ -1423,11 +1423,11 @@ async function fetchReceiptsByCustomer(customerId: string, companyId: string) {
           outstandingBalance: true,
         },
       },
-      // us: {
-      //   select: {
-      //     name: true,
-      //   },
-      // },
+      cashier: {
+        select: {
+          name: true,
+        },
+      },
       items: {
         include: {
           product: {
@@ -1458,7 +1458,7 @@ async function fetchReceiptsByCustomer(customerId: string, companyId: string) {
 
     customer_name: inv.customer?.name ?? "",
     outstanding_balance: inv.customer?.outstandingBalance ?? 0,
-    cashier_name: "system",
+    cashier_name: inv.cashier?.name ?? "",
 
     items: inv.items.map((item) => ({
       name: item.product.name,

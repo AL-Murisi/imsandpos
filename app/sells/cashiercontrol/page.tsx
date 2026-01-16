@@ -1,5 +1,8 @@
 // // Cart.tsx
-import { getAllActiveProductsForSale } from "@/lib/actions/cashier";
+import {
+  generateSaleNumber,
+  getAllActiveProductsForSale,
+} from "@/lib/actions/cashier";
 import { Fetchcustomerbyname } from "@/lib/actions/customers";
 import { fetchAllFormData } from "@/lib/actions/roles";
 import { Prisma } from "@prisma/client";
@@ -53,9 +56,11 @@ export default async function Cart({ searchParams }: Props) {
     productquery,
   );
 
-  const [formData, users] = await Promise.all([
+  const [formData, users, nextNumber] = await Promise.all([
     fetchAllFormData(user.companyId),
     Fetchcustomerbyname(usersquery),
+    generateSaleNumber(user.companyId),
+
     // fetchProductStats("admin"),
     // Fetchusers(true),
   ]);
@@ -68,6 +73,7 @@ export default async function Cart({ searchParams }: Props) {
         users={users}
         product={products}
         formData={formData}
+        nextnumber={nextNumber}
         searchParams={searchParam}
         queryr={productquery}
       />

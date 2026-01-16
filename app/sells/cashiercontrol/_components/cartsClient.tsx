@@ -91,6 +91,7 @@ interface UserOption {
 interface CustomDialogProps {
   users: UserOption[] | null;
   product: forsale[];
+  nextnumber: string;
 }
 type company =
   | {
@@ -105,7 +106,11 @@ type company =
     }
   | undefined;
 
-export default function CartDisplay({ users, product }: CustomDialogProps) {
+export default function CartDisplay({
+  users,
+  product,
+  nextnumber,
+}: CustomDialogProps) {
   const { user } = useAuth();
   const dispatch = useAppDispatch();
   const t = useTranslations("cashier");
@@ -136,26 +141,26 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserOption | null>(null);
   const [isLoadingSaleNumber, setIsLoadingSaleNumber] = useState(false);
-  const [saleNumber, setSaleNumber] = useState("");
-  useEffect(() => {
-    async function loadSaleNumber() {
-      if (!user?.companyId) return;
+  // const [saleNumber, setSaleNumber] = useState("");
+  // useEffect(() => {
+  //   async function loadSaleNumber() {
+  //     if (!user?.companyId) return;
 
-      setIsLoadingSaleNumber(true);
-      try {
-        const nextNumber = await generateSaleNumber(user.companyId);
-        setSaleNumber(nextNumber);
-      } catch (error) {
-        console.error("Error loading sale number:", error);
-        // Fallback to timestamp-based number
-        setSaleNumber(`SALE-${Date.now()}`);
-      } finally {
-        setIsLoadingSaleNumber(false);
-      }
-    }
+  //     setIsLoadingSaleNumber(true);
+  //     try {
+  //       const nextNumber = await generateSaleNumber(user.companyId);
+  //       setSaleNumber(nextNumber);
+  //     } catch (error) {
+  //       console.error("Error loading sale number:", error);
+  //       // Fallback to timestamp-based number
+  //       setSaleNumber(`SALE-${Date.now()}`);
+  //     } finally {
+  //       setIsLoadingSaleNumber(false);
+  //     }
+  //   }
 
-    loadSaleNumber();
-  }, [, activeCartId]); // Reload when cart changes
+  //   loadSaleNumber();
+  // }, [, activeCartId]); // Reload when cart changes
   const debtLimit = totals.totalAfter + (selectedUser?.outstandingBalance ?? 0);
 
   // Check only when we actually have a selected user and a credit limit
@@ -324,7 +329,7 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
       cashierId: user.userId ?? "",
       branchId: company?.branches[0].id,
       customerId: selectedUser?.id,
-      saleNumber,
+      saleNumber: nextnumber,
       receivedAmount,
       change: calculatedChange,
       paidAt: new Date(),
@@ -346,9 +351,9 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
       dispatch(setDiscount({ type: "fixed", value: 0 }));
       setDiscountsValue(0);
 
-      // Generate new sale number
-      const newSaleNumber = `SALE-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-      setSaleNumber(newSaleNumber);
+      // // Generate new sale number
+      // const newSaleNumber = `SALE-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      // setSaleNumber(newSaleNumber);
 
       dispatch(removeCart(activeCartId ?? ""));
 
@@ -605,7 +610,7 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
             <div className="mt-4 flex flex-col gap-3 md:flex-row">
               {isMobileUA ? (
                 <PrintButton
-                  saleNumber={saleNumber}
+                  saleNumber={nextnumber}
                   items={items.map((item) => ({
                     ...item,
                     unit_price:
@@ -630,7 +635,7 @@ export default function CartDisplay({ users, product }: CustomDialogProps) {
                 />
               ) : (
                 <Receipt
-                  saleNumber={saleNumber}
+                  saleNumber={nextnumber}
                   items={items.map((item) => ({
                     ...item,
                     unit_price:

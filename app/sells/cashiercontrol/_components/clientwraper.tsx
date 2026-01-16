@@ -122,6 +122,7 @@ interface CustomDialogProps {
     warehouses: { id: string; name: string }[];
     categories: { id: string; name: string }[];
   };
+  nextnumber: string;
   searchParams: any;
   queryr: string;
 }
@@ -130,6 +131,7 @@ export default function Clientwraper({
   users,
   product,
   formData,
+  nextnumber,
   searchParams,
   queryr,
 }: CustomDialogProps) {
@@ -144,7 +146,11 @@ export default function Clientwraper({
         />
       </Suspense>{" "}
       <Suspense>
-        <CartDisplayRedux users={users} product={product} />{" "}
+        <CartDisplayRedux
+          users={users}
+          product={product}
+          nextnumber={nextnumber}
+        />{" "}
       </Suspense>
     </div>
   );

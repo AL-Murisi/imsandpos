@@ -86,6 +86,8 @@ model User {
   stockMovements                                     StockMovement[]
   roles                                              UserRole[]
   company                                            Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  invoices Invoice[] @relation("UserSales")
   employees Employee[] // 👈 ADD THIS
   @@index([companyId])
   @@index([name])
@@ -971,7 +973,6 @@ model Invoice {
   warehouseId     String?
   // التمييز بين البيع والشراء
   sale_type            InvoiceType @default(SALE) // SALE, PURCHASE, RETURN_SALE, RETURN_PURCHASE
-
   // الأطراف (اختياري حسب نوع الفاتورة)
   customerId      String?  @map("customer_id")
   supplierId      String?  @map("supplier_id")
@@ -982,6 +983,8 @@ model Invoice {
 
   status          String   @default("completed") // pending, completed, cancelled
   invoiceDate     DateTime @default(now()) @map("invoice_date")
+  cashier      User?     @relation("UserSales", fields: [cashierId], references: [id])
+
   branch    points_of_sale? @relation(fields: [branchId], references: [id])
   warehouse Warehouse?     @relation(fields: [warehouseId], references: [id])
   customer         Customer?       @relation(fields: [customerId], references: [id])

@@ -316,33 +316,32 @@ export async function FetchCustomerDebtReport(
   customerId: string,
   companyId: string,
 ) {
-  const sales = await prisma.sale.findMany({
+  const sales = await prisma.invoice.findMany({
     where: {
       customerId,
       companyId,
-      sale_type: { not: "return" },
-      paymentStatus: { in: ["pending", "partial"] },
+      sale_type: { not: "RETURN_SALE" },
     },
     select: {
       id: true,
-      saleNumber: true,
+      invoiceNumber: true,
       totalAmount: true,
       amountPaid: true,
       amountDue: true,
-      saleDate: true,
-      paymentStatus: true,
-      saleItems: {
+      invoiceDate: true,
+      status: true,
+      items: {
         select: {
           id: true,
           product: { select: { name: true, sku: true } },
           quantity: true,
-          sellingUnit: true,
-          unitPrice: true,
+          unit: true,
+          price: true,
           totalPrice: true,
         },
       },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: { invoiceDate: "desc" },
   });
 
   return sales.map((sale) => ({
@@ -350,10 +349,11 @@ export async function FetchCustomerDebtReport(
     totalAmount: sale.totalAmount.toString(),
     amountPaid: sale.amountPaid.toString(),
     amountDue: sale.amountDue.toString(),
-    saleDate: sale.saleDate.toISOString(),
-    saleItems: sale.saleItems.map((item) => ({
+    saleDate: sale.invoiceDate.toISOString(),
+    saleItems: sale.items.map((item) => ({
       ...item,
-      unitPrice: item.unitPrice.toString(),
+      sellingUnit: item.unit.toString(),
+      unitPrice: item.price.toString(),
       totalPrice: item.totalPrice.toString(),
     })),
   }));
@@ -626,6 +626,11 @@ export async function fetchReceipt(invoiceId: string, companyId: string) {
           name: true,
         },
       },
+      cashier: {
+        select: {
+          name: true,
+        },
+      },
       warehouse: {
         select: {
           id: true,
@@ -678,7 +683,7 @@ export async function fetchReceipt(invoiceId: string, companyId: string) {
 
     branch: invoice.branch,
 
-    cashierId: invoice.cashierId,
+    cashierName: invoice.cashier?.name || "غير معروف",
 
     totalAmount: invoice.totalAmount,
     amountPaid: invoice.amountPaid,

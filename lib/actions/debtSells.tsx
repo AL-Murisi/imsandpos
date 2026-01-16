@@ -163,19 +163,19 @@ export async function updateSalesBulk(
   });
 
   if (sales.length === 0) throw new Error("No matching sales found.");
-  const lastVoucher = await prisma.financialTransaction.findFirst({
+  const aggregate = await prisma.financialTransaction.aggregate({
     where: {
-      companyId,
-      type: "RECEIPT", // 🔥 Crucial: Filter by type to get the correct sequence
+      companyId: companyId,
+      type: "RECEIPT",
     },
-    orderBy: { voucherNumber: "desc" },
-    select: { voucherNumber: true },
+    _max: {
+      voucherNumber: true,
+    },
   });
 
-  // 2. تحديد الرقم الجديدconst nextNumber = (lastVoucher?.voucherNumber || 0) + 1;
-
-  // تحويل الرقم إلى نص مع إضافة أصفار حتى يصل الطول إلى 5 خانات
-  const nextNumber = (lastVoucher?.voucherNumber || 0) + 1;
+  // 2. حساب الرقم التالي
+  const lastNumber = aggregate._max.voucherNumber || 0;
+  const nextNumber = lastNumber + 1;
   // 2️⃣ Allocate payment
   let remaining = paymentAmount;
   const saleUpdates = [];
@@ -203,8 +203,8 @@ export async function updateSalesBulk(
 
     paymentRecords.push({
       companyId,
-      saleId: s.id,
-      invoiceId: s.invoiceNumber, // Ensure the foreign key exists
+      invoiceId: s.id,
+
       referenceNumber: paymentDetails.paymentMethod ?? "",
       customerId: s.customerId,
       userId: cashierId,
