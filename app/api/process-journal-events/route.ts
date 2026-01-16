@@ -515,7 +515,7 @@ async function createReturnJournalEntries({
       ...baseEntry,
       entry_number: entryBase(),
       account_id: inventoryAccount,
-      description: reason ?? `زيادة مخزون (إرجاع) ${returnNumber}`,
+      description: `زيادة مخزون (إرجاع) ${returnNumber}`,
       debit: returnTotalCOGS,
       credit: 0,
     },

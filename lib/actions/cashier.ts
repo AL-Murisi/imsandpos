@@ -587,7 +587,6 @@ export async function processReturn(data: any, companyId: string) {
           // اختياري: هل تريد تسلسل منفصل للقبض عن الصرف؟
           // إذا نعم، أضف: type: data.type
         },
-        orderBy: { voucherNumber: "desc" },
         select: { voucherNumber: true },
       });
 

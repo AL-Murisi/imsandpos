@@ -611,6 +611,8 @@ model FinancialTransaction {
   customerId      String?  @map("customer_id")
   supplierId      String?  @map("supplier_id")
   userId          String?  @map("user_id") // للموظفين أو المصاريف الإدارية
+    expenseId       String?  @map("expense_id") @db.Uuid
+
   branchId        String?
   // الربط بالعمليات (اختياري)
   saleId          String?  @map("sale_id")
@@ -631,6 +633,7 @@ model FinancialTransaction {
   createdAt       DateTime @default(now()) @map("created_at")
   
   // العلاقات
+  expense         expenses? @relation(fields: [expenseId], references: [id])
   company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   customer        Customer? @relation(fields: [customerId], references: [id])
   supplier        Supplier? @relation(fields: [supplierId], references: [id])
@@ -681,15 +684,15 @@ model expenses {
   updated_at         DateTime?           @default(now()) @db.Timestamp(6)
   companies          Company             @relation(fields: [company_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_expense_company")
   users              User                @relation(fields: [user_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "fk_expense_user")
-
+ transactions         FinancialTransaction[]
   
   @@index([company_id], map: "idx_expense_company")
   @@index([company_id, expense_date], map: "idx_expense_company_date")
   @@index([created_at], map: "idx_expense_created_at")
   @@index([expense_date], map: "idx_expense_date")
   @@index([status], map: "idx_expense_status")
-  @@index([status, expense_date], map: "idx_expense_status_date")
-  @@index([user_id], map: "idx_expense_user")
+    @@index([status, expense_date], map: "idx_expense_status_date")
+   @@index([user_id], map: "idx_expense_user")
 }
 
 model accounts {

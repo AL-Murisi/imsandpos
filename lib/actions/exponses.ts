@@ -255,65 +255,40 @@ export async function createMultipleExpenses(
   expensesData: ExpenseData[],
 ) {
   try {
-    // Validate required fields
+    // 1️⃣ التحقق من البيانات الأساسية
     if (!companyId || !userId) {
-      return {
-        success: false,
-        error: "معرف الشركة ومعرف المستخدم مطلوبان",
-      };
+      return { success: false, error: "معرف الشركة ومعرف المستخدم مطلوبان" };
     }
 
     if (!expensesData || expensesData.length === 0) {
-      return {
-        success: false,
-        error: "يجب إضافة مصروف واحد على الأقل",
-      };
+      return { success: false, error: "يجب إضافة مصروف واحد على الأقل" };
     }
 
-    // Validate each expense
-    for (let i = 0; i < expensesData.length; i++) {
-      const exp = expensesData[i];
-
-      if (!exp.account_id || !exp.description || !exp.amount) {
-        return {
-          success: false,
-          error: `المصروف ${i + 1}: الحقول المطلوبة مفقودة`,
-        };
-      }
-
-      if (exp.amount <= 0) {
-        return {
-          success: false,
-          error: `المصروف ${i + 1}: المبلغ يجب أن يكون أكبر من صفر`,
-        };
-      }
-
-      if (
-        exp.paymentMethod === "bank" &&
-        (!exp.bankId || !exp.referenceNumber)
-      ) {
-        return {
-          success: false,
-          error: `المصروف ${i + 1}: يرجى تحديد البنك ورقم المرجع للدفع البنكي`,
-        };
-      }
-    }
-
-    console.log(
-      `Creating ${expensesData.length} expenses for company:`,
-      companyId,
-    );
-
-    // Create all expenses in a transaction
+    // 2️⃣ تنفيذ العمليات داخل Transaction لضمان سلامة البيانات
     const result = await prisma.$transaction(async (tx) => {
       const createdExpenses = [];
       const journalEvents = [];
+      const financialTransactions = [];
+
+      // جلب آخر رقم سند صرف للشركة لمرة واحدة وزيادته تدريجياً داخل الحلقة
+      const lastVoucher = await tx.financialTransaction.findFirst({
+        where: {
+          companyId,
+          type: "PAYMENT", // المصاريف تعتبر سندات صرف
+        },
+
+        select: { voucherNumber: true },
+      });
+
+      let currentVoucherNumber = lastVoucher?.voucherNumber || 0;
 
       for (const expenseData of expensesData) {
-        // Generate unique expense number
+        currentVoucherNumber++; // زيادة الرقم لكل مصروف جديد
+
+        // توليد رقم مصروف فريد
         const expenseNumber = `EXP-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
-        // Create expense
+        // أ- إنشاء سجل المصروف (expenses)
         const expense = await tx.expenses.create({
           data: {
             company_id: companyId,
@@ -328,14 +303,29 @@ export async function createMultipleExpenses(
             notes: expenseData.notes || "",
             status: "approved",
           },
-          include: {
-            users: true,
+        });
+
+        // ب- إنشاء المعاملة المالية المرتبطة (FinancialTransaction)
+        // هذا يمثل "سند الصرف" الفعلي في الخزينة
+        const financialTx = await tx.financialTransaction.create({
+          data: {
+            companyId: companyId,
+            type: "PAYMENT", // سند صرف
+            userId: userId,
+            branchId: expenseData.branchId,
+            expenseId: expense.id, // الربط الذي أضفناه في الموديل
+            voucherNumber: currentVoucherNumber,
+            amount: expenseData.amount,
+            currencyCode: expenseData.currency_code || "YER",
+            paymentMethod: expenseData.paymentMethod,
+            referenceNumber: expenseData.referenceNumber,
+            notes: expenseData.description,
+            status: "completed",
+            date: expenseData.expense_date,
           },
         });
 
-        createdExpenses.push(expense);
-
-        // Create journal event for each expense
+        // ج- إنشاء حدث القيد المحاسبي (JournalEvent)
         const journalEvent = await tx.journalEvent.create({
           data: {
             companyId,
@@ -354,9 +344,8 @@ export async function createMultipleExpenses(
                 expenseDate: expenseData.expense_date,
                 bankId: expenseData.bankId ?? "",
                 branchId: expenseData.branchId,
-
-                refrenceNumber: expenseData.referenceNumber ?? "",
                 currency_code: expenseData.currency_code ?? "YER",
+                financialTxId: financialTx.id, // ربط القيد بالسند أيضاً
               },
               userId,
             },
@@ -364,40 +353,34 @@ export async function createMultipleExpenses(
           },
         });
 
+        createdExpenses.push(expense);
         journalEvents.push(journalEvent);
-
-        // Small delay to ensure unique timestamps
-        await new Promise((resolve) => setTimeout(resolve, 10));
+        financialTransactions.push(financialTx);
       }
 
-      // Create single activity log for all expenses
+      // 3️⃣ تسجيل النشاط (Activity Log)
       const totalAmount = expensesData.reduce(
-        (sum, exp) => sum + exp.amount,
+        (sum, exp) => sum + Number(exp.amount),
         0,
       );
       await tx.activityLogs.create({
         data: {
           userId: userId,
           companyId: companyId,
-          action: "created multiple expenses",
-          details: `Created ${expensesData.length} expenses. Total Amount: ${totalAmount}`,
+          action: "created multiple expenses with financial transactions",
+          details: `Created ${expensesData.length} expenses. Total: ${totalAmount}. Voucher range: ${lastVoucher?.voucherNumber || 0 + 1} to ${currentVoucherNumber}`,
         },
       });
 
-      return { createdExpenses, journalEvents };
+      return { createdExpenses, journalEvents, financialTransactions };
     });
-
-    console.log(
-      `✅ Successfully created ${result.createdExpenses.length} expenses`,
-    );
 
     revalidatePath("/expenses");
 
     return {
       success: true,
       count: result.createdExpenses.length,
-      expenses: result.createdExpenses,
-      message: `تمت إضافة ${result.createdExpenses.length} مصروف بنجاح`,
+      message: `تم تسجيل ${result.createdExpenses.length} مصروف مع سندات الصرف بنجاح`,
     };
   } catch (error) {
     console.error("Error creating multiple expenses:", error);
@@ -407,7 +390,6 @@ export async function createMultipleExpenses(
     };
   }
 }
-
 export async function createExpense(
   companyId: string,
   userId: string,

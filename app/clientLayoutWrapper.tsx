@@ -16,6 +16,7 @@ import { ScrollArea } from "@radix-ui/react-scroll-area";
 import { verifySession } from "@/lib/dal";
 import IMSLoader from "@/components/loadinf";
 import { BottomBar } from "@/components/bottom-bar";
+import PullToRefreshCurrentPage from "@/components/refresh";
 
 export default function ClientLayoutWrapper({
   children,
@@ -57,12 +58,14 @@ export default function ClientLayoutWrapper({
         <div className="flex flex-col">
           <ScrollArea className="group @container/main flex flex-col" dir="rtl">
             <Appheader />
-            <NuqsAdapter>
-              <Provider store={store}> {children}</Provider>{" "}
-              <div className="mt-12 md:mt-0 md:hidden">
-                <BottomBar />
-              </div>
-            </NuqsAdapter>
+            <PullToRefreshCurrentPage>
+              <NuqsAdapter>
+                <Provider store={store}> {children}</Provider>{" "}
+                <div className="mt-12 md:mt-0 md:hidden">
+                  <BottomBar />
+                </div>
+              </NuqsAdapter>
+            </PullToRefreshCurrentPage>
           </ScrollArea>
         </div>
       </SidebarInset>
