@@ -127,7 +127,7 @@ export default function Recitp({ id }: Props) {
               </h2>
 
               <span>العميل: {data.customer?.name || "بدون"}</span>
-              <span>الكاشير: {data.cashierId}</span>
+              <span>الكاشير: {data.cashierName}</span>
               <span>
                 طريقة الدفع:{" "}
                 {data.payments?.[0]?.method === "cash" ? "نقدي" : "آجل / دين"}
@@ -248,7 +248,7 @@ export default function Recitp({ id }: Props) {
               }}
               receivedAmount={Number(data.amountPaid ?? 0)}
               calculatedChange={Number(data.calculated_change ?? 0)}
-              userName={data.user_name ?? ""}
+              userName={data.cashierName ?? ""}
               customerName={data.customer_name ?? ""}
               customerDebt={Number(data.customer_debt ?? 0)}
               isCash={Boolean(data.is_cash)}
@@ -275,7 +275,7 @@ export default function Recitp({ id }: Props) {
               }}
               receivedAmount={Number(data.amountPaid ?? 0)}
               calculatedChange={Number(data.calculated_change ?? 0)}
-              userName={data.user_name ?? ""}
+              userName={data.cashierName ?? ""}
               customerName={data.customer_name ?? ""}
               customerDebt={Number(data.customer_debt ?? 0)}
               isCash={Boolean(data.is_cash)}

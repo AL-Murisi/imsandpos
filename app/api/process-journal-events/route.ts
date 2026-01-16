@@ -498,8 +498,8 @@ async function createReturnJournalEntries({
       entry_number: entryBase(),
       account_id: revenueAccount,
       description: `إرجاع بيع ${returnNumber}`,
-      debit: 0,
-      credit: returnToCustomer,
+      debit: returnToCustomer,
+      credit: 0,
     },
     // Reverse COGS (Credit)
     {
@@ -557,20 +557,44 @@ async function createReturnJournalEntries({
 
   // 6️⃣ Insert entries and update balances in transaction
   await prisma.$transaction(async (tx) => {
-    // Insert all journal entries
+    // 1. إدخال القيود
     await tx.journal_entries.createMany({ data: entries });
 
-    // Calculate account balance deltas
+    // 2. جلب أنواع الحسابات المتأثرة لمعرفة طبيعتها (مدين أم دائن)
+    const accountIds = Array.from(new Set(entries.map((e) => e.account_id)));
+    const accountsInfo = await tx.accounts.findMany({
+      where: { id: { in: accountIds } },
+      select: { id: true, account_type: true }, // افترضت أن الحقل اسمه account_type
+    });
+
+    const accountTypeMap = new Map(
+      accountsInfo.map((a) => [a.id, a.account_type.toLowerCase()]),
+    );
+
+    // 3. حساب الدلتا الصحيح
     const accountDeltas = new Map<string, number>();
+
     for (const entry of entries) {
-      const delta = (entry.debit || 0) - (entry.credit || 0);
+      const type = accountTypeMap.get(entry.account_id);
+      let delta = 0;
+
+      // الحسابات المدينة بطبيعتها (الأصول، المصاريف، التكلفة)
+      if (["asset", "expense", "cogs"].includes(type || "")) {
+        delta = (entry.debit || 0) - (entry.credit || 0);
+      }
+      // الحسابات الدائنة بطبيعتها (الإيرادات، الالتزامات، حقوق الملكية)
+      else {
+        // هنا السر: الدائن يزيدها والمدين ينقصها
+        delta = (entry.credit || 0) - (entry.debit || 0);
+      }
+
       accountDeltas.set(
         entry.account_id,
         (accountDeltas.get(entry.account_id) || 0) + delta,
       );
     }
 
-    // Update all account balances in parallel
+    // 4. تحديث الأرصدة
     await Promise.all(
       Array.from(accountDeltas.entries()).map(([accountId, delta]) =>
         tx.accounts.update({
