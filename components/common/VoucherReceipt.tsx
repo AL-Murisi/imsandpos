@@ -13,6 +13,7 @@ export interface VoucherProps {
   description: string;
   paymentMethod: string;
   userName?: string;
+  curruncy?: string;
   date?: Date | string;
   company: {
     name: string;
@@ -31,6 +32,7 @@ export const VoucherReceipt: React.FC<VoucherProps> = ({
   description,
   paymentMethod,
   userName,
+  curruncy,
   date,
   company,
 }) => {
@@ -92,8 +94,9 @@ export const VoucherReceipt: React.FC<VoucherProps> = ({
 
         <div class="info-section">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <div class="amount-box">المبلغ: ${formatCurrency(amount)}</div>
-                <div style="font-weight: bold;">التاريخ: ${new Date(date || new Date()).toLocaleDateString("ar-EG")}</div>
+<div className="amount-box">
+  المبلغ:${amount} ${curruncy === "USD" ? "$" : curruncy === "YER" ? "ر.ي " : "ر.س"}
+</div>                <div style="font-weight: bold;">التاريخ: ${new Date(date || new Date()).toLocaleDateString("ar-EG")}</div>
             </div>
 
             <div class="info-row">

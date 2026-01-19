@@ -176,6 +176,7 @@ export async function processSale(data: any, companyId: string) {
     currency,
     totalAfterDiscount,
     cashierId,
+    baseCurrency,
     branchId,
     customer,
     saleNumber,
@@ -187,6 +188,27 @@ export async function processSale(data: any, companyId: string) {
       // ==========================================
       // 1️⃣ Create Sale
       // ==========================================
+      let exchangeRateValue = 1;
+      if (currency !== baseCurrency) {
+        const latestRate = await tx.exchange_rates.findFirst({
+          where: {
+            company_id: companyId,
+            from_currency: currency,
+            to_currency: baseCurrency,
+          },
+          orderBy: { date: "desc" }, // جلب أحدث سعر صرف
+        });
+
+        if (!latestRate) {
+          throw new Error(
+            `لم يتم العثور على سعر صرف من ${currency} إلى ${baseCurrency}`,
+          );
+        }
+        exchangeRateValue = latestRate.rate.toNumber();
+      }
+      const baseAmount = Number(receivedAmount) * exchangeRateValue;
+      const baseTotalAmount = Number(totalAfterDiscount) * exchangeRateValue;
+      const baseAmountDue = Math.max(0, baseTotalAmount - baseAmount);
       const sale = await tx.invoice.create({
         data: {
           companyId,
@@ -197,9 +219,9 @@ export async function processSale(data: any, companyId: string) {
           sale_type: "SALE",
           status: "completed",
           totalAmount: totalAfterDiscount,
-          amountPaid: receivedAmount,
+          amountPaid: baseAmount,
           warehouseId: cart[0]?.warehouseId || cart.warehouseId,
-          amountDue: Math.max(0, totalAfterDiscount - receivedAmount),
+          amountDue: baseAmountDue,
         },
       });
       console.log(customer);
@@ -335,12 +357,12 @@ export async function processSale(data: any, companyId: string) {
           });
         }
       }
+      let status;
 
       // ==========================================
       // 6️⃣ Payment
       // ==========================================
       if (receivedAmount > 0) {
-        let status;
         if (totalAfterDiscount === receivedAmount) {
           status === "completed";
         } else if (receivedAmount > 0) {
@@ -357,7 +379,7 @@ export async function processSale(data: any, companyId: string) {
             customerId: customer?.id,
             voucherNumber: nextNumber,
             currencyCode: currency,
-
+            exchangeRate: exchangeRateValue,
             paymentMethod: "cash",
             type: "RECEIPT",
             amount: receivedAmount,
@@ -382,10 +404,17 @@ export async function processSale(data: any, companyId: string) {
               id: sale.id,
               saleNumber: sale.invoiceNumber,
               sale_type: sale.sale_type,
-              status: sale.status,
-              totalAmount: sale.totalAmount.toString(),
-              amountPaid: sale.amountPaid.toString(),
+              status: status,
+              totalAmount: sale.totalAmount,
+              amountPaid: sale.amountPaid,
+              ...(currency !== baseCurrency && {
+                foreignAmount: receivedAmount, // المبلغ بالدولار مثلاً
+                exchangeRate: exchangeRateValue,
+                foreignCurrency: currency,
+              }),
+              baseAmount: baseAmount,
               branchId: branchId,
+              baseCurrency,
               currency,
               // paymentStatus: sale.paymentStatus,
             },

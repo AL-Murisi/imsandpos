@@ -232,7 +232,7 @@ export const journalEntryColumns: ColumnDef<JournalEntryData>[] = [
           dir="ltr"
           className="flex items-center gap-1 font-mono text-lg font-semibold text-green-600"
         >
-          <span className="text-sm opacity-70">{currencyLabel}</span>
+          {/* <span className="text-sm opacity-70">{currencyLabel}</span> */}
           <span className="tabular-nums">{debit}</span>
         </div>
       );
@@ -258,7 +258,7 @@ export const journalEntryColumns: ColumnDef<JournalEntryData>[] = [
           dir="ltr"
           className="flex items-center gap-1 font-mono text-lg font-semibold text-red-600"
         >
-          <span className="text-sm opacity-70">{currencyLabel}</span>
+          {/* <span className="text-sm opacity-70">{currencyLabel}</span> */}
           <span className="tabular-nums">{credit}</span>
         </div>
       );
@@ -436,6 +436,7 @@ export const voucherColumns: ColumnDef<FinancialVoucher>[] = [
             voucherNumber={voucher.voucherNumber} // رقم السند (سيقوم المكون بعمل padding له)
             voucherType={voucher.type} // RECEIPT أو PAYMENT
             amount={voucher.amount}
+            curruncy={voucher.currencyCode}
             personName={partyName}
             description={voucher.notes || "بدون وصف"}
             paymentMethod={voucher.paymentMethod === "cash" ? "نقداً" : "بنكي"}

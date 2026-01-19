@@ -658,7 +658,7 @@ model journal_entries {
   users_journal_entries_updated_byTousers User?     @relation("journal_entries_updated_byTousers", fields: [updated_by], references: [id])
 
   @@unique([company_id, branch_id, entry_number])
-
+  @@unique([reference_id, entry_number])
   @@index([account_id])
   @@index([company_id])
   @@index([created_by])
