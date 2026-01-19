@@ -150,7 +150,7 @@ export async function updateSalesBulk(
   if (!companyId || saleIds.length === 0)
     throw new Error("Missing company ID or sale IDs.");
 
-  // 1️⃣ Get all sales
+  // 1️⃣ جلب المبيعات
   const sales = await prisma.invoice.findMany({
     where: { id: { in: saleIds }, companyId },
     select: {
@@ -158,36 +158,31 @@ export async function updateSalesBulk(
       totalAmount: true,
       amountPaid: true,
       amountDue: true,
-
       invoiceNumber: true,
       customerId: true,
     },
   });
 
   if (sales.length === 0) throw new Error("No matching sales found.");
-  const aggregate = await prisma.financialTransaction.aggregate({
-    where: {
-      companyId: companyId,
-      type: "RECEIPT",
-    },
-    _max: {
-      voucherNumber: true,
-    },
-  });
 
-  // 2. حساب الرقم التالي
-  const lastNumber = aggregate._max.voucherNumber || 0;
-  const nextNumber = lastNumber + 1;
-  // 2️⃣ Allocate payment
+  // --- وظيفة لجلب الرقم التالي لتسهيل إعادة المحاولة ---
+  const getNextVoucherNumber = async () => {
+    const aggregate = await prisma.financialTransaction.aggregate({
+      where: { companyId: companyId, type: "RECEIPT" },
+      _max: { voucherNumber: true },
+    });
+    return (aggregate._max.voucherNumber || 0) + 1;
+  };
+
+  // 2️⃣ تخصيص مبالغ الدفع
   let remaining = paymentAmount;
   const saleUpdates = [];
   const customerUpdates: Record<string, number> = {};
-  const paymentRecords = [];
+  const paymentRecordsBase = [];
 
   for (const s of sales) {
     if (remaining <= 0) break;
     const due = s.amountDue.toNumber();
-
     if (due <= 0) continue;
 
     const payNow = Math.min(remaining, due);
@@ -203,16 +198,15 @@ export async function updateSalesBulk(
       paymentStatus: newDue <= 0 ? "paid" : "partial",
     });
 
-    paymentRecords.push({
+    // نخزن البيانات الأساسية بدون رقم القسيمة الآن
+    paymentRecordsBase.push({
       companyId,
       invoiceId: s.id,
-
       referenceNumber: paymentDetails.paymentMethod ?? "",
       customerId: s.customerId,
       userId: cashierId,
       branchId,
-      currencyCode: "",
-      voucherNumber: nextNumber,
+      currencyCode: paymentDetails.currencyCode || "",
       type: TransactionType.PAYMENT,
       paymentMethod: paymentDetails.paymentMethod,
       amount: payNow,
@@ -227,15 +221,13 @@ export async function updateSalesBulk(
     }
   }
 
-  // Helper for chunking
+  // 3️⃣ تحديث الفواتير والمستحقات (خارج حلقة إعادة محاولة الرقم)
   const chunk = <T,>(arr: T[], size: number) =>
     Array.from({ length: Math.ceil(arr.length / size) }, (_, i) =>
       arr.slice(i * size, i * size + size),
     );
-
   const CHUNK = 50;
 
-  // 3️⃣ Update sales in chunks
   for (const c of chunk(saleUpdates, CHUNK)) {
     await prisma.$transaction(
       c.map((u) =>
@@ -252,20 +244,45 @@ export async function updateSalesBulk(
     );
   }
 
-  // 4️⃣ Create payments → REAL payment.id values generated
+  // 4️⃣ إنشاء السندات مع منطق إعادة المحاولة في حال تكرار الرقم
   let createdPayments: any[] = [];
-  for (const c of chunk(paymentRecords, CHUNK)) {
-    const batch = await prisma.$transaction(
-      c.map((p) =>
-        prisma.financialTransaction.create({
-          data: p,
-        }),
-      ),
-    );
-    createdPayments.push(...batch);
+  let attempts = 0;
+  const maxAttempts = 5;
+
+  while (attempts < maxAttempts) {
+    try {
+      const nextNumber = await getNextVoucherNumber();
+      const currentBatch = paymentRecordsBase.map((p) => ({
+        ...p,
+        voucherNumber: nextNumber,
+      }));
+
+      createdPayments = []; // تصغير المصفوفة في كل محاولة
+      for (const c of chunk(currentBatch, CHUNK)) {
+        const batch = await prisma.$transaction(
+          c.map((p) => prisma.financialTransaction.create({ data: p })),
+        );
+        createdPayments.push(...batch);
+      }
+      break; // إذا نجح الإدخال، اخرج من حلقة while
+    } catch (error: any) {
+      // التحقق من خطأ Prisma للقيم المكررة (Unique Constraint)
+      if (error.code === "P2002") {
+        attempts++;
+        console.warn(
+          `Voucher number conflict. Retrying... Attempt ${attempts}`,
+        );
+        if (attempts >= maxAttempts)
+          throw new Error(
+            "Failed to generate a unique voucher number after multiple attempts.",
+          );
+        continue; // أعد المحاولة برقم جديد
+      }
+      throw error; // خطأ آخر غير التكرار
+    }
   }
 
-  // 5️⃣ Update customer balances
+  // 5️⃣ تحديث أرصدة العملاء
   for (const c of chunk(Object.entries(customerUpdates), CHUNK)) {
     await prisma.$transaction(
       c.map(([custId, amt]) =>
@@ -277,9 +294,9 @@ export async function updateSalesBulk(
     );
   }
 
-  // 6️⃣ Create journal events for each payment (NON-BLOCKING)
+  // 6️⃣ إنشاء أحداث القيود المحاسبية (Journal Events)
   const journalEventsData = createdPayments.map((payment) => ({
-    companyId: companyId,
+    companyId,
     eventType: "payment",
     entityType: "outstanding_payment",
     status: "pending",
@@ -287,7 +304,7 @@ export async function updateSalesBulk(
       companyId,
       payment: {
         id: payment.id,
-        saleId: payment.saleId,
+        saleId: payment.invoiceId,
         customerId: payment.customerId,
         amount: payment.amount,
         branchId,
@@ -298,21 +315,15 @@ export async function updateSalesBulk(
     processed: false,
   }));
 
-  // Bulk create journal events in chunks
   for (const c of chunk(journalEventsData, CHUNK)) {
-    await prisma.journalEvent.createMany({
-      data: c,
-    });
+    await prisma.journalEvent.createMany({ data: c });
   }
 
-  // 7️⃣ Revalidate UI
   revalidatePath("/customer");
-
   return {
     success: true,
     updatedSales: saleUpdates.length,
     paymentsCreated: createdPayments.length,
-    customersUpdated: Object.keys(customerUpdates).length,
   };
 }
 
