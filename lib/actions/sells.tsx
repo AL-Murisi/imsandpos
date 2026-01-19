@@ -320,7 +320,7 @@ export async function FetchCustomerDebtReport(
     where: {
       customerId,
       companyId,
-      sale_type: { not: "SALE" },
+      sale_type: "SALE",
     },
     select: {
       id: true,
