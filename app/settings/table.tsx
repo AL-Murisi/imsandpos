@@ -20,7 +20,7 @@ const ExchangeRatesPage = dynamic(() => import("./clinet"), {
   ssr: false,
 });
 import SearchInput from "@/components/common/searchtest";
-import { exchangeRateColumns } from "./columns";
+import { exchangeRateColumns } from "./_components/columns";
 import TableSkeleton from "@/components/common/TableSkeleton";
 import { Calendar22 } from "@/components/common/DatePicker";
 

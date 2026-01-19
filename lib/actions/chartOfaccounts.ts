@@ -24,7 +24,7 @@ interface CreateAccountInput {
   parent_id?: string;
   opening_balance?: number;
   description?: string;
-  currency_code?: string;
+  currency_code?: string | null;
   allow_manual_entry?: boolean;
 }
 function serializeData<T>(data: T): T {
@@ -257,7 +257,7 @@ export async function createAccount(data: CreateAccountInput) {
 }
 
 // 4. UPDATE ACCOUNT
-export async function updateAccount(
+export async function updateAccounts(
   accountId: string,
   data: Partial<CreateAccountInput>,
 ) {
@@ -511,6 +511,7 @@ export async function getParentAccounts() {
         account_code: true,
         account_name_en: true,
         account_name_ar: true,
+        currency_code: true,
         level: true,
       },
       orderBy: { account_code: "asc" },

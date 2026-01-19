@@ -71,7 +71,7 @@ export async function GET() {
           await createSaleJournalEntries({
             companyId: eventData.companyId,
             sale: eventData.sale,
-            customerId: eventData.customerId,
+            customer: eventData.customer,
             saleItems: eventData.saleItems,
             cashierId: eventData.cashierId,
             returnTotalCOGS: eventData.returnTotalCOGS,
@@ -477,7 +477,7 @@ async function createReturnJournalEntries({
   const entryBase = () => {
     entryCounter++;
     const ts = Date.now();
-    return `JE-${v_year}-${returnNumber}-${ts}-${entryCounter}-RET`;
+    return `JE-${v_year}-${ts}-${entryCounter}-RET`;
   };
   // 4️⃣ Build journal entries with base template
   const baseEntry = {
@@ -627,11 +627,11 @@ async function createPaymentJournalEntries({
     // ============================================
     // 1️⃣ Fetch related sale
     // ============================================
-    const sale = await prisma.sale.findUnique({
+    const sale = await prisma.invoice.findUnique({
       where: { id: saleId, companyId: companyId },
       select: {
         id: true,
-        saleNumber: true,
+        invoiceNumber: true,
         totalAmount: true,
         amountPaid: true,
         amountDue: true,
@@ -696,7 +696,7 @@ async function createPaymentJournalEntries({
     // ============================================
     // 5️⃣ Prepare journal entries
     // ============================================
-    const desc = `تسديد دين لعملية بيع ${sale.saleNumber}`;
+    const desc = `تسديد دين لعملية بيع ${sale.invoiceNumber}`;
 
     let entries: any[] = [];
     if (paymentDetails.paymentMethod === "cash") {
@@ -1282,13 +1282,13 @@ async function createSaleJournalEntries({
   companyId,
   sale,
   saleItems,
-  customerId,
+  customer,
   cashierId,
   returnTotalCOGS,
 }: {
   companyId: string;
   sale: any;
-  customerId: string;
+  customer: any;
   saleItems: any[];
   cashierId: string;
   returnTotalCOGS: number;
@@ -1401,7 +1401,7 @@ async function createSaleJournalEntries({
           description: desc + " - فائض عميل",
           debit: 0,
           credit: change,
-          reference_id: customerId,
+          reference_id: customer.id,
           reference_type: "فاتورة مبيعات",
           entry_number: `${entryBase}-C`,
         },
@@ -1412,7 +1412,7 @@ async function createSaleJournalEntries({
           description: desc,
           debit: total,
           credit: 0,
-          reference_id: customerId,
+          reference_id: customer.id,
           reference_type: "فاتورة مبيعات",
           entry_number: `${entryBase}-D`,
         },
@@ -1438,7 +1438,7 @@ async function createSaleJournalEntries({
           description: desc,
           debit: paid,
           credit: 0,
-          reference_id: customerId,
+          reference_id: customer.id,
           reference_type: "فاتورة مبيعات نقداً",
           entry_number: `${entryBase}-D1`,
         },
@@ -1449,7 +1449,7 @@ async function createSaleJournalEntries({
           description: desc,
           debit: 0,
           credit: total,
-          reference_id: customerId,
+          reference_id: customer.id,
           reference_type: "دفع نقداً",
           entry_number: `${entryBase}-C1`,
         },
@@ -1465,7 +1465,7 @@ async function createSaleJournalEntries({
         description: desc + " فاتورة بيع اجل",
         debit: total,
         credit: 0,
-        reference_id: customerId,
+        reference_id: customer.id,
         reference_type: "فاتورة مبيعات",
         entry_number: `${entryBase}-PS-DR`,
       },
@@ -1502,7 +1502,7 @@ async function createSaleJournalEntries({
           description: desc + " المدفوع من المبلغ",
           debit: 0,
           credit: paid,
-          reference_id: customerId,
+          reference_id: customer.id,
           reference_type: "دفعة من عميل",
           entry_number: `${entryBase}-PP-CR`,
         },
@@ -1518,7 +1518,7 @@ async function createSaleJournalEntries({
         description: desc + " غير مدفوع",
         debit: total,
         credit: 0,
-        reference_id: customerId,
+        reference_id: customer.id,
         reference_type: "فاتورة مبيعات اجل",
         entry_number: `${entryBase}-U1`,
       },

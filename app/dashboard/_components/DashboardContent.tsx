@@ -9,6 +9,7 @@ import UserActivityTable from "./userActivityTable";
 import dynamic from "next/dynamic";
 import React from "react";
 import { useTranslations } from "next-intl";
+import { Decimal } from "@prisma/client/runtime/library";
 // Lazy load heavy chart components
 const ChartPieLegend = dynamic(
   () => import("@/components/common/PieChart").then((m) => m.ChartPieLegend),
@@ -50,7 +51,7 @@ const TableSkeleton = () => (
 
 interface DashboardContentClientProps {
   result: {
-    topProducts: Array<{ name: string; quantity: number }>;
+    topProducts: Array<{ name: string; quantity: number | Decimal }>;
     recentSales: any[];
     activityLogs: any[];
     revenue: Array<{ date: string; value: number }>; // This should match your revenue chart data

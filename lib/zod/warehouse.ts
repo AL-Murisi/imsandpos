@@ -23,6 +23,7 @@ export const CreateWarehouseSchema = z.object({
   city: z.string().optional(),
   state: z.string().optional(),
   country: z.string().optional(),
+  branchId: z.string().min(1, "الفرع مطلوب"),
   postalCode: z.string().optional(),
   phoneNumber: z.string().optional(),
   email: z.string().email().optional(),

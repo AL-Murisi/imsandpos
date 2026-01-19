@@ -54,10 +54,10 @@ export async function fetchBanks() {
         createdAt: "desc",
       },
     });
-
+    const bank = serializeData(banks);
     return {
       success: true,
-      data: banks,
+      data: bank,
     };
   } catch (error) {
     console.error("Fetch banks error:", error);

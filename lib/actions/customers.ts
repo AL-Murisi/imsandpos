@@ -1,7 +1,7 @@
 "use server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/session";
-import { createCusomer, CreateCustomerSchema } from "@/lib/zod";
+import { CreateCustomer, CreateCustomerSchema } from "@/lib/zod";
 import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 // app/actions/customers.ts
@@ -115,6 +115,8 @@ export async function Fetchcustomerbyname(searchQuery?: string) {
       outstandingBalance: true,
       address: true,
       city: true,
+
+      preferred_currency: true,
       balance: true,
     },
     take: 10, // Limit to 10 results
@@ -185,7 +187,7 @@ export async function deleteCustomer(customerId: string, companyId: string) {
   }
 }
 
-export async function createCutomer(form: createCusomer, companyId: string) {
+export async function createCutomer(form: CreateCustomer, companyId: string) {
   const pared = CreateCustomerSchema.safeParse(form);
   if (!pared.success) {
     throw new Error("Invalid customer data");
@@ -395,7 +397,7 @@ export async function createCustomerJournalEnteries({
 }
 
 export async function updatedCustomer(
-  form: createCusomer,
+  form: CreateCustomer,
   id: string,
   companyId: string,
 ) {
@@ -423,16 +425,8 @@ export async function updatedCustomer(
     // Assuming 'companyIdValue' is the variable holding the company's ID
 
     // Assume companyIdValue and email are non-null strings
-    const existingUser = await prisma.customer.findUnique({
-      where: {
-        // 💡 FIX: Use the compound unique key defined by @@unique([companyId, email])
-        companyId_email: {
-          companyId, // <-- Provide the company ID
-          email: email ?? "", // <-- Provide the email to search for
-        },
-      },
-    });
-    if (existingUser) {
+
+    if (!id) {
       return { error: "هذا البريد الإلكتروني مستخدم بالفعل" };
     }
 
@@ -448,6 +442,7 @@ export async function updatedCustomer(
         state,
         country,
         customerType,
+        ...(preferred_currency ? { preferred_currency } : {}),
         creditLimit,
         taxId,
       },
@@ -455,7 +450,6 @@ export async function updatedCustomer(
     revalidatePath("/customer");
     return { success: true, customer };
   } catch (error) {
-    console.error("Failed to create customer:", error);
     throw error;
   }
 }

@@ -126,7 +126,7 @@ export default function Recitp({ id }: Props) {
                 فاتورة رقم: {data.invoiceNumber}
               </h2>
 
-              <span>العميل: {data.customer?.name || "بدون"}</span>
+              <span>العميل: {data.customer.name || "بدون"}</span>
               <span>الكاشير: {data.cashierName}</span>
               <span>
                 طريقة الدفع:{" "}
@@ -249,7 +249,7 @@ export default function Recitp({ id }: Props) {
               receivedAmount={Number(data.amountPaid ?? 0)}
               calculatedChange={Number(data.calculated_change ?? 0)}
               userName={data.cashierName ?? ""}
-              customerName={data.customer_name ?? ""}
+              customerName={data.customer.name ?? ""}
               customerDebt={Number(data.customer_debt ?? 0)}
               isCash={Boolean(data.is_cash)}
               t={t}
@@ -276,7 +276,7 @@ export default function Recitp({ id }: Props) {
               receivedAmount={Number(data.amountPaid ?? 0)}
               calculatedChange={Number(data.calculated_change ?? 0)}
               userName={data.cashierName ?? ""}
-              customerName={data.customer_name ?? ""}
+              customerName={data.customer.name ?? ""}
               customerDebt={Number(data.customer_debt ?? 0)}
               isCash={Boolean(data.is_cash)}
               t={t}

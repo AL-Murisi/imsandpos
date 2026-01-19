@@ -76,7 +76,7 @@ export async function updateSupplier(
         state: string;
         country: string;
         postalCode: string;
-        preferred_currency: string;
+        preferred_currency: any;
         taxId?: string;
         paymentTerms?: string;
         isActive?: boolean;
@@ -89,46 +89,37 @@ export async function updateSupplier(
     const { companyId } = await getUserCompany();
 
     // 🔹 Verify supplier belongs to the same company
-    const existingSupplier = await prisma.supplier.findUnique({
-      where: { id: supplierId },
-    });
-
-    if (!existingSupplier || existingSupplier.companyId !== companyId) {
-      return { success: false, error: "المورد غير موجود أو غير مصرح له" };
-    }
 
     // 🔹 Check if email already exists for another supplier
-    if (data.email) {
-      const emailExists = await prisma.supplier.findFirst({
-        where: {
-          email: data.email,
-          companyId: companyId,
-          NOT: { id: supplierId },
-        },
-      });
+    if (!supplierId) {
+      // const emailExists = await prisma.supplier.findFirst({
+      //   where: {
+      //     email: data.email,
+      //     companyId: companyId,
+      //     NOT: { id: supplierId },
+      //   },
+      // });
 
-      if (emailExists) {
-        return { success: false, error: "البريد الإلكتروني مستخدم بالفعل" };
-      }
+      // if (emailExists) {
+      return { success: false, error: "البريد الإلكتروني مستخدم بالفعل" };
+      // }
     }
 
     // 🔹 Update supplier
     const updatedSupplier = await prisma.supplier.update({
       where: { id: supplierId },
       data: {
-        name: data.name ?? existingSupplier.name,
-        contactPerson: data.contactPerson ?? existingSupplier.contactPerson,
-        email: data.email ?? existingSupplier.email,
-        phoneNumber: data.phoneNumber ?? existingSupplier.phoneNumber,
-        address: data.address ?? existingSupplier.address,
-        city: data.city ?? existingSupplier.city,
-        state: data.state ?? existingSupplier.state,
+        name: data.name,
+        contactPerson: data.contactPerson,
+        email: data.email,
+        phoneNumber: data.phoneNumber,
+        address: data.address,
+        city: data.city,
+        state: data.state,
         preferred_currency: data.preferred_currency,
-        country: data.country ?? existingSupplier.country,
-        postalCode: data.postalCode ?? existingSupplier.postalCode,
-        taxId: data.taxId ?? existingSupplier.taxId,
-        paymentTerms: data.paymentTerms ?? existingSupplier.paymentTerms,
-        isActive: data.isActive ?? existingSupplier.isActive,
+        country: data.country,
+
+        paymentTerms: data.paymentTerms,
       },
     });
 
@@ -204,9 +195,6 @@ export async function createSupplier(
     postalCode,
     taxId,
     paymentTerms,
-    totalPaid,
-    totalPurchased,
-    outstandingBalance,
   } = parsed.data;
   try {
     const user = await prisma.supplier.create({
@@ -223,9 +211,9 @@ export async function createSupplier(
         postalCode,
         taxId,
         paymentTerms,
-        totalPaid: totalPaid ?? 0,
-        totalPurchased: totalPurchased ?? 0,
-        outstandingBalance: outstandingBalance ?? 0,
+        // totalPaid: totalPaid ?? 0,
+        // totalPurchased: totalPurchased ?? 0,
+        // outstandingBalance: outstandingBalance ?? 0,
       },
     });
     revalidatePath("/suppliers");
@@ -239,9 +227,9 @@ export async function createSupplier(
         payload: {
           supplierId: user.id,
           supplierName: user.name,
-          outstandingBalance: outstandingBalance,
-          totalPaid: totalPaid,
-          totalPurchased: totalPurchased,
+          // outstandingBalance: outstandingBalance,
+          // totalPaid: totalPaid,
+          // totalPurchased: totalPurchased,
           createdBy: session.userId,
         },
 
@@ -444,21 +432,20 @@ export const getPurchasesByCompany = cache(
 
       // Product name/SKU filter
       if (productQuery) {
-        const items = await prisma.purchaseItem.findMany({
+        const items = await prisma.invoice.findMany({
           where: {
             companyId,
-            product: {
-              OR: [
-                { name: { contains: productQuery, mode: "insensitive" } },
-                { sku: { contains: productQuery, mode: "insensitive" } },
-              ],
-            },
+            // product: {
+            //   OR: [
+            //     { name: { contains: productQuery, mode: "insensitive" } },
+            //     { sku: { contains: productQuery, mode: "insensitive" } },
+            //   ],
+            // },
           },
-          select: { purchaseId: true },
-          distinct: ["purchaseId"],
+          select: { invoiceNumber: true },
         });
 
-        const purchaseIds = items.map((i) => i.purchaseId);
+        const purchaseIds = items.map((i) => i.invoiceNumber);
         if (purchaseIds.length === 0) return { data: [], total: 0 };
         filters.id = { in: purchaseIds };
       }
@@ -545,7 +532,7 @@ export const getSupplierPaymentsByCompany = cache(
     } = {},
   ) => {
     try {
-      const filters: any = { companyId };
+      const filters: any = { companyId, sale_type: "RETURN_PURCHASE" };
 
       // Date range
       if (from || to) {
@@ -555,14 +542,14 @@ export const getSupplierPaymentsByCompany = cache(
       }
 
       // Count total
-      const total = await prisma.supplierPayment.count({ where: filters });
+      const total = await prisma.invoice.count({ where: filters });
 
       // Sort
 
       // Fetch
 
       await slow(1000);
-      const payments = await prisma.supplierPayment.findMany({
+      const payments = await prisma.invoice.findMany({
         where: filters,
         include: {
           supplier: { select: { id: true, name: true } },
@@ -571,7 +558,7 @@ export const getSupplierPaymentsByCompany = cache(
 
         skip: pageIndex * pageSize,
         take: pageSize,
-        orderBy: { createdAt: "desc" },
+        orderBy: { invoiceDate: "desc" },
       });
       const serialized = serializeData(payments);
       return { data: serialized, total };
@@ -596,7 +583,7 @@ export async function updateSupplierPayment(
   try {
     return await prisma.$transaction(async (tx) => {
       // 1. Fetch current payment
-      const currentPayment = await tx.supplierPayment.findUnique({
+      const currentPayment = await tx.financialTransaction.findUnique({
         where: { id: paymentId },
         include: { supplier: true },
       });
@@ -612,7 +599,7 @@ export async function updateSupplierPayment(
       if (data.amount && data.amount !== Number(currentPayment.amount)) {
         amountDifference = data.amount - Number(currentPayment.amount);
 
-        const purchases = await tx.purchase.findMany({
+        const purchases = await tx.invoice.findMany({
           where: {
             companyId,
             supplierId: currentPayment.supplierId,
@@ -629,7 +616,7 @@ export async function updateSupplierPayment(
             Number(latestPurchase.totalAmount) - newAmountPaid,
           );
 
-          purchaseUpdate = await tx.purchase.update({
+          purchaseUpdate = await tx.invoice.update({
             where: { id: latestPurchase.id },
             data: {
               amountPaid: Math.max(0, newAmountPaid),
@@ -646,12 +633,12 @@ export async function updateSupplierPayment(
 
         // --- 3. UPDATE SUPPLIER TOTALS ---
         await tx.supplier.update({
-          where: { id: currentPayment.supplierId, companyId },
+          where: { id: currentPayment?.supplierId ?? "", companyId },
           data: {
             totalPaid: {
               set: Math.max(
                 0,
-                Number(currentPayment.supplier.totalPaid) + amountDifference,
+                Number(currentPayment.supplier?.totalPaid) + amountDifference,
               ),
             },
             outstandingBalance: {
@@ -662,7 +649,7 @@ export async function updateSupplierPayment(
       }
 
       // 4. Update payment
-      const updatedPayment = await tx.supplierPayment.update({
+      const updatedPayment = await tx.financialTransaction.update({
         where: { id: paymentId },
         data: {
           ...(data.amount && { amount: data.amount }),
@@ -679,7 +666,7 @@ export async function updateSupplierPayment(
           userId,
           companyId,
           action: "updated supplier payment",
-          details: `Payment updated for ${currentPayment.supplier.name}: ${updatedPayment.amount}`,
+          details: `Payment updated for ${currentPayment.supplier?.name}: ${updatedPayment.amount}`,
         },
       });
 
@@ -745,12 +732,11 @@ export async function createSupplierPaymentFromPurchases(
     });
     if (!supplier) throw new Error("Supplier not found");
 
-    // Get specific purchase with current payment status
-    const purchase = await prisma.purchase.findUnique({
+    const purchase = await prisma.invoice.findUnique({
       where: { id: purchaseId },
       include: {
-        supplierPayments: {
-          orderBy: { paymentDate: "desc" },
+        transactions: {
+          orderBy: { date: "desc" },
         },
       },
     });
@@ -804,6 +790,7 @@ export async function createSupplierPaymentFromPurchases(
           data: {
             companyId,
             supplierId,
+            currencyCode: "",
             purchaseId, // ✅ Link to purchase
             amount,
             type: "PAYMENT",
@@ -815,18 +802,18 @@ export async function createSupplierPaymentFromPurchases(
           },
           include: {
             supplier: true,
-            purchase: true,
+            invoice: true,
           },
         });
 
         // 2. Update purchase with new amounts
-        const updatedPurchase = await tx.purchase.update({
+        const updatedPurchase = await tx.invoice.update({
           where: { id: purchaseId },
           data: {
             amountPaid: newAmountPaid,
             amountDue: newAmountDue,
             status: newStatus,
-            purchaseType: "outstandingpayment", // ✅ Trigger the database trigger
+            sale_type: "PURCHASE", // ✅ Trigger the database trigger
           },
         });
 
@@ -1048,129 +1035,129 @@ export async function createSupplierPaymentJournalEntries({
   await updateAccountBalance(paymentAccount, payment.amount, 0);
 }
 
-export async function getPurchasePaymentHistory(
-  purchaseId: string,
-  companyId: string,
-) {
-  try {
-    const purchase = await prisma.purchase.findUnique({
-      where: { id: purchaseId, companyId },
-      include: {
-        supplierPayments: {
-          orderBy: { paymentDate: "desc" },
-          include: {
-            supplier: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-          },
-        },
-        supplier: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-    });
+// export async function getPurchasePaymentHistory(
+//   purchaseId: string,
+//   companyId: string,
+// ) {
+//   try {
+//     const purchase = await prisma.purchase.findUnique({
+//       where: { id: purchaseId, companyId },
+//       include: {
+//         supplierPayments: {
+//           orderBy: { paymentDate: "desc" },
+//           include: {
+//             supplier: {
+//               select: {
+//                 id: true,
+//                 name: true,
+//               },
+//             },
+//           },
+//         },
+//         supplier: {
+//           select: {
+//             id: true,
+//             name: true,
+//           },
+//         },
+//       },
+//     });
 
-    if (!purchase) {
-      throw new Error("Purchase not found");
-    }
+//     if (!purchase) {
+//       throw new Error("Purchase not found");
+//     }
 
-    // Calculate cumulative totals
-    let runningPaid = 0;
-    const paymentsWithRunningTotal = purchase.supplierPayments
-      .map((payment) => {
-        runningPaid += Number(payment.amount);
-        return {
-          ...payment,
-          cumulativePaid: runningPaid,
-          remainingDue: Number(purchase.totalAmount) - runningPaid,
-        };
-      })
-      .reverse(); // Reverse to show oldest first with running total
+//     // Calculate cumulative totals
+//     let runningPaid = 0;
+//     const paymentsWithRunningTotal = purchase.supplierPayments
+//       .map((payment) => {
+//         runningPaid += Number(payment.amount);
+//         return {
+//           ...payment,
+//           cumulativePaid: runningPaid,
+//           remainingDue: Number(purchase.totalAmount) - runningPaid,
+//         };
+//       })
+//       .reverse(); // Reverse to show oldest first with running total
 
-    return {
-      success: true,
-      purchase: {
-        id: purchase.id,
-        totalAmount: Number(purchase.totalAmount),
-        amountPaid: Number(purchase.amountPaid),
-        amountDue: Number(purchase.amountDue),
-        status: purchase.status,
-        supplier: purchase.supplier,
-      },
-      payments: serializeData(paymentsWithRunningTotal),
-    };
-  } catch (error) {
-    console.error("❌ Error getting payment history:", error);
-    return {
-      success: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : "Failed to get payment history",
-    };
-  }
-}
+//     return {
+//       success: true,
+//       purchase: {
+//         id: purchase.id,
+//         totalAmount: Number(purchase.totalAmount),
+//         amountPaid: Number(purchase.amountPaid),
+//         amountDue: Number(purchase.amountDue),
+//         status: purchase.status,
+//         supplier: purchase.supplier,
+//       },
+//       payments: serializeData(paymentsWithRunningTotal),
+//     };
+//   } catch (error) {
+//     console.error("❌ Error getting payment history:", error);
+//     return {
+//       success: false,
+//       error:
+//         error instanceof Error
+//           ? error.message
+//           : "Failed to get payment history",
+//     };
+//   }
+// }
 
-export async function getSupplierSummary(
-  supplierId: string,
-  companyId: string,
-) {
-  try {
-    const [purchases, payments, totalPurchases] = await Promise.all([
-      prisma.purchase.findMany({
-        where: { companyId, supplierId },
-        select: {
-          totalAmount: true,
-          amountPaid: true,
-          amountDue: true,
-          status: true,
-        },
-      }),
-      prisma.supplierPayment.findMany({
-        where: { companyId, supplierId },
-        select: { amount: true },
-      }),
-      prisma.purchase.count({
-        where: { companyId, supplierId },
-      }),
-    ]);
+// export async function getSupplierSummary(
+//   supplierId: string,
+//   companyId: string,
+// ) {
+//   try {
+//     const [purchases, payments, totalPurchases] = await Promise.all([
+//       prisma.purchase.findMany({
+//         where: { companyId, supplierId },
+//         select: {
+//           totalAmount: true,
+//           amountPaid: true,
+//           amountDue: true,
+//           status: true,
+//         },
+//       }),
+//       prisma.supplierPayment.findMany({
+//         where: { companyId, supplierId },
+//         select: { amount: true },
+//       }),
+//       prisma.purchase.count({
+//         where: { companyId, supplierId },
+//       }),
+//     ]);
 
-    const totalAmount = purchases.reduce(
-      (sum, p) => sum + Number(p.totalAmount),
-      0,
-    );
-    const totalPaid = purchases.reduce(
-      (sum, p) => sum + Number(p.amountPaid),
-      0,
-    );
-    const totalDue = purchases.reduce((sum, p) => sum + Number(p.amountDue), 0);
+//     const totalAmount = purchases.reduce(
+//       (sum, p) => sum + Number(p.totalAmount),
+//       0,
+//     );
+//     const totalPaid = purchases.reduce(
+//       (sum, p) => sum + Number(p.amountPaid),
+//       0,
+//     );
+//     const totalDue = purchases.reduce((sum, p) => sum + Number(p.amountDue), 0);
 
-    return {
-      totalPurchases,
-      totalAmount,
-      totalPaid,
-      totalDue,
-      balance: totalDue,
-      purchaseCount: purchases.length,
-      paymentCount: payments.length,
-      statusBreakdown: {
-        pending: purchases.filter((p) => p.status === "pending").length,
-        partial: purchases.filter((p) => p.status === "partial").length,
-        paid: purchases.filter((p) => p.status === "paid").length,
-        received: purchases.filter((p) => p.status === "received").length,
-      },
-    };
-  } catch (error) {
-    console.error("Error fetching supplier summary:", error);
-    throw error;
-  }
-}
+//     return {
+//       totalPurchases,
+//       totalAmount,
+//       totalPaid,
+//       totalDue,
+//       balance: totalDue,
+//       purchaseCount: purchases.length,
+//       paymentCount: payments.length,
+//       statusBreakdown: {
+//         pending: purchases.filter((p) => p.status === "pending").length,
+//         partial: purchases.filter((p) => p.status === "partial").length,
+//         paid: purchases.filter((p) => p.status === "paid").length,
+//         received: purchases.filter((p) => p.status === "received").length,
+//       },
+//     };
+//   } catch (error) {
+//     console.error("Error fetching supplier summary:", error);
+//     throw error;
+//   }
+// }
 export async function FetchSupplierbyname(searchQuery?: string) {
   const combinedWhere: any = {
     companyId: (await getSession())?.companyId,

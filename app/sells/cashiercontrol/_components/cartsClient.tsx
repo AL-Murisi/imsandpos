@@ -85,6 +85,7 @@ interface UserOption {
   name?: string;
   phoneNumber?: string | null;
   outstandingBalance?: number;
+  preferred_currency?: string[];
   creditLimit?: number;
 }
 
@@ -328,7 +329,7 @@ export default function CartDisplay({
       totalAfterDiscount: totals.totalAfter,
       cashierId: user.userId ?? "",
       branchId: company?.branches[0].id,
-      customerId: selectedUser?.id,
+      customer: selectedUser,
       saleNumber: nextnumber,
       receivedAmount,
       change: calculatedChange,

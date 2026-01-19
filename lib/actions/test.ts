@@ -222,216 +222,216 @@ export async function exportStatementToPDF(
 // ===============================
 // 6. جلب ملخص حساب العميل
 // ===============================
-export async function getCustomerAccountSummary(
-  customerId: string,
-  companyId: string,
-) {
-  try {
-    // إجمالي المبيعات
-    const totalSalesResult = await prisma.sale.aggregate({
-      where: {
-        customerId,
-        companyId,
-        status: { not: "cancelled" },
-      },
-      _sum: {
-        totalAmount: true,
-        amountPaid: true,
-        amountDue: true,
-      },
-      _count: true,
-    });
+// export async function getCustomerAccountSummary(
+//   customerId: string,
+//   companyId: string,
+// ) {
+//   try {
+//     // إجمالي المبيعات
+//     const totalSalesResult = await prisma.sale.aggregate({
+//       where: {
+//         customerId,
+//         companyId,
+//         status: { not: "cancelled" },
+//       },
+//       _sum: {
+//         totalAmount: true,
+//         amountPaid: true,
+//         amountDue: true,
+//       },
+//       _count: true,
+//     });
 
-    // إجمالي الدفعات
-    const totalPaymentsResult = await prisma.payment.aggregate({
-      where: {
-        customerId,
-        companyId,
-        status: "completed",
-      },
-      _sum: {
-        amount: true,
-      },
-      _count: true,
-    });
+//     // إجمالي الدفعات
+//     const totalPaymentsResult = await prisma.payment.aggregate({
+//       where: {
+//         customerId,
+//         companyId,
+//         status: "completed",
+//       },
+//       _sum: {
+//         amount: true,
+//       },
+//       _count: true,
+//     });
 
-    // آخر عملية
-    const lastSale = await prisma.sale.findFirst({
-      where: {
-        customerId,
-        companyId,
-        status: { not: "cancelled" },
-      },
-      orderBy: { saleDate: "desc" },
-      select: {
-        saleNumber: true,
-        saleDate: true,
-        totalAmount: true,
-      },
-    });
+//     // آخر عملية
+//     const lastSale = await prisma.sale.findFirst({
+//       where: {
+//         customerId,
+//         companyId,
+//         status: { not: "cancelled" },
+//       },
+//       orderBy: { saleDate: "desc" },
+//       select: {
+//         saleNumber: true,
+//         saleDate: true,
+//         totalAmount: true,
+//       },
+//     });
 
-    const lastPayment = await prisma.payment.findFirst({
-      where: {
-        customerId,
-        companyId,
-        status: "completed",
-      },
-      orderBy: { createdAt: "desc" },
-      select: {
-        amount: true,
-        createdAt: true,
-        paymentMethod: true,
-      },
-    });
+//     const lastPayment = await prisma.payment.findFirst({
+//       where: {
+//         customerId,
+//         companyId,
+//         status: "completed",
+//       },
+//       orderBy: { createdAt: "desc" },
+//       select: {
+//         amount: true,
+//         createdAt: true,
+//         paymentMethod: true,
+//       },
+//     });
 
-    return {
-      success: true,
-      data: {
-        totalSales: Number(totalSalesResult._sum.totalAmount || 0),
-        totalPaid: Number(totalPaymentsResult._sum.amount || 0),
-        totalDue: Number(totalSalesResult._sum.amountDue || 0),
-        salesCount: totalSalesResult._count,
-        paymentsCount: totalPaymentsResult._count,
-        lastSale,
-        lastPayment,
-        currentBalance:
-          Number(totalSalesResult._sum.totalAmount || 0) -
-          Number(totalPaymentsResult._sum.amount || 0),
-      },
-    };
-  } catch (error) {
-    console.error("Error fetching account summary:", error);
-    return { success: false, error: "فشل في جلب ملخص الحساب" };
-  }
-}
+//     return {
+//       success: true,
+//       data: {
+//         totalSales: Number(totalSalesResult._sum.totalAmount || 0),
+//         totalPaid: Number(totalPaymentsResult._sum.amount || 0),
+//         totalDue: Number(totalSalesResult._sum.amountDue || 0),
+//         salesCount: totalSalesResult._count,
+//         paymentsCount: totalPaymentsResult._count,
+//         lastSale,
+//         lastPayment,
+//         currentBalance:
+//           Number(totalSalesResult._sum.totalAmount || 0) -
+//           Number(totalPaymentsResult._sum.amount || 0),
+//       },
+//     };
+//   } catch (error) {
+//     console.error("Error fetching account summary:", error);
+//     return { success: false, error: "فشل في جلب ملخص الحساب" };
+//   }
+// }
 
 // ===============================
 // 7. جلب أفضل العملاء (Top Customers)
 // ===============================
-export async function getTopCustomers(
-  companyId: string,
-  limit: number = 10,
-  dateFrom?: string,
-  dateTo?: string,
-) {
-  try {
-    const whereClause: any = {
-      companyId,
-      status: { not: "cancelled" },
-    };
+// export async function getTopCustomers(
+//   companyId: string,
+//   limit: number = 10,
+//   dateFrom?: string,
+//   dateTo?: string,
+// ) {
+//   try {
+//     const whereClause: any = {
+//       companyId,
+//       status: { not: "cancelled" },
+//     };
 
-    if (dateFrom && dateTo) {
-      whereClause.saleDate = {
-        gte: new Date(dateFrom),
-        lte: new Date(dateTo),
-      };
-    }
+//     if (dateFrom && dateTo) {
+//       whereClause.saleDate = {
+//         gte: new Date(dateFrom),
+//         lte: new Date(dateTo),
+//       };
+//     }
 
-    const topCustomers = await prisma.sale.groupBy({
-      by: ["customerId"],
-      where: whereClause,
-      _sum: {
-        totalAmount: true,
-      },
-      _count: true,
-      orderBy: {
-        _sum: {
-          totalAmount: "desc",
-        },
-      },
-      take: limit,
-    });
+//     const topCustomers = await prisma.sale.groupBy({
+//       by: ["customerId"],
+//       where: whereClause,
+//       _sum: {
+//         totalAmount: true,
+//       },
+//       _count: true,
+//       orderBy: {
+//         _sum: {
+//           totalAmount: "desc",
+//         },
+//       },
+//       take: limit,
+//     });
 
-    // جلب بيانات العملاء
-    const customerIds = topCustomers
-      .map((c) => c.customerId)
-      .filter((id): id is string => id !== null);
+//     // جلب بيانات العملاء
+//     const customerIds = topCustomers
+//       .map((c) => c.customerId)
+//       .filter((id): id is string => id !== null);
 
-    const customers = await prisma.customer.findMany({
-      where: {
-        id: { in: customerIds },
-        companyId,
-      },
-      select: {
-        id: true,
-        name: true,
-        phoneNumber: true,
-        email: true,
-        outstandingBalance: true,
-      },
-    });
+//     const customers = await prisma.customer.findMany({
+//       where: {
+//         id: { in: customerIds },
+//         companyId,
+//       },
+//       select: {
+//         id: true,
+//         name: true,
+//         phoneNumber: true,
+//         email: true,
+//         outstandingBalance: true,
+//       },
+//     });
 
-    const result = topCustomers.map((tc) => {
-      const customer = customers.find((c) => c.id === tc.customerId);
-      return {
-        customer,
-        totalSales: Number(tc._sum.totalAmount || 0),
-        salesCount: tc._count,
-      };
-    });
+//     const result = topCustomers.map((tc) => {
+//       const customer = customers.find((c) => c.id === tc.customerId);
+//       return {
+//         customer,
+//         totalSales: Number(tc._sum.totalAmount || 0),
+//         salesCount: tc._count,
+//       };
+//     });
 
-    return { success: true, data: result };
-  } catch (error) {
-    console.error("Error fetching top customers:", error);
-    return { success: false, error: "فشل في جلب أفضل العملاء" };
-  }
-}
+//     return { success: true, data: result };
+//   } catch (error) {
+//     console.error("Error fetching top customers:", error);
+//     return { success: false, error: "فشل في جلب أفضل العملاء" };
+//   }
+// }
 
 // Helper: Calculate opening balance for supplier
-async function calculateSupplierOpeningBalance(
-  supplierId: string,
-  companyId: string,
-  dateFrom: Date,
-) {
-  try {
-    // Get all purchases before the start date
-    const purchasesBeforeDate = await prisma.purchase.findMany({
-      where: {
-        supplierId,
-        companyId,
-        createdAt: { lt: dateFrom },
-        status: { not: "cancelled" },
-      },
-      select: {
-        totalAmount: true,
-        amountPaid: true,
-        amountDue: true,
-        purchaseType: true,
-      },
-    });
+// async function calculateSupplierOpeningBalance(
+//   supplierId: string,
+//   companyId: string,
+//   dateFrom: Date,
+// ) {
+//   try {
+//     // Get all purchases before the start date
+//     const purchasesBeforeDate = await prisma.purchase.findMany({
+//       where: {
+//         supplierId,
+//         companyId,
+//         createdAt: { lt: dateFrom },
+//         status: { not: "cancelled" },
+//       },
+//       select: {
+//         totalAmount: true,
+//         amountPaid: true,
+//         amountDue: true,
+//         purchaseType: true,
+//       },
+//     });
 
-    // Get all supplier payments before the start date
-    const paymentsBeforeDate = await prisma.supplierPayment.findMany({
-      where: {
-        supplierId,
-        companyId,
-        createdAt: { lt: dateFrom },
-      },
-      select: {
-        amount: true,
-      },
-    });
+//     // Get all supplier payments before the start date
+//     const paymentsBeforeDate = await prisma.supplierPayment.findMany({
+//       where: {
+//         supplierId,
+//         companyId,
+//         createdAt: { lt: dateFrom },
+//       },
+//       select: {
+//         amount: true,
+//       },
+//     });
 
-    // Calculate total purchases (subtract returns)
-    const totalPurchases = purchasesBeforeDate.reduce((sum, purchase) => {
-      const amount = Number(purchase.totalAmount);
-      return purchase.purchaseType === "return" ? sum - amount : sum + amount;
-    }, 0);
+//     // Calculate total purchases (subtract returns)
+//     const totalPurchases = purchasesBeforeDate.reduce((sum, purchase) => {
+//       const amount = Number(purchase.totalAmount);
+//       return purchase.purchaseType === "return" ? sum - amount : sum + amount;
+//     }, 0);
 
-    // Calculate total payments
-    const totalPayments = paymentsBeforeDate.reduce(
-      (sum, payment) => sum + Number(payment.amount),
-      0,
-    );
-    console.log(totalPayments, totalPurchases);
+//     // Calculate total payments
+//     const totalPayments = paymentsBeforeDate.reduce(
+//       (sum, payment) => sum + Number(payment.amount),
+//       0,
+//     );
+//     console.log(totalPayments, totalPurchases);
 
-    // Opening balance = Purchases - Payments (what we owe the supplier)
-    return totalPurchases - totalPayments;
-  } catch (error) {
-    console.error("Error calculating supplier opening balance:", error);
-    return 0;
-  }
-}
+//     // Opening balance = Purchases - Payments (what we owe the supplier)
+//     return totalPurchases - totalPayments;
+//   } catch (error) {
+//     console.error("Error calculating supplier opening balance:", error);
+//     return 0;
+//   }
+// }
 
 // Main function: Get supplier statement
 export async function getSupplierStatement(

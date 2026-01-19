@@ -13,7 +13,6 @@ import {
   InventoryUpdateWithTrackingSchema,
   WarehouseInput,
 } from "@/lib/zod";
-import { recordSupplierPaymentWithJournalEntries } from "./Journal Entry";
 import { getActiveFiscalYears } from "./fiscalYear";
 import { PaymentState } from "@/components/common/ReusablePayment";
 function serializeData<T>(data: T): T {
@@ -228,27 +227,30 @@ export async function updateInventory(
           const paid = paymentAmount ?? 0;
           const due = totalCost - paid;
 
-          purchase = await tx.purchase.create({
+          purchase = await tx.invoice.create({
             data: {
               companyId,
+              invoiceNumber: "",
               supplierId: supplierId!,
               totalAmount: totalCost,
               amountPaid: paid,
-              purchaseType: "purchases",
+              cashierId: userId,
+              sale_type: "PURCHASE",
               amountDue: due,
               status:
                 paid >= totalCost ? "paid" : paid > 0 ? "partial" : "pending",
             },
           });
 
-          const purchaseItem = await tx.purchaseItem.create({
+          const purchaseItem = await tx.invoiceItem.create({
             data: {
               companyId,
-              purchaseId: purchase.id,
+              invoiceId: purchase.id,
               productId: product.id,
               quantity: inputCartons,
-              unitCost,
-              totalCost,
+              price: unitCost,
+              totalPrice: totalCost,
+              unit: "",
             },
           });
 
@@ -261,15 +263,17 @@ export async function updateInventory(
           // Create supplier payment if applicable
           if (paymentMethod && paymentAmount && paymentAmount > 0) {
             operations.push(
-              tx.supplierPayment.create({
+              tx.financialTransaction.create({
                 data: {
                   companyId,
                   supplierId: supplierId!,
-                  createdBy: userId,
+                  userId: userId,
+                  currencyCode: "",
+                  voucherNumber: 0,
                   purchaseId: purchase.id,
                   amount: paymentAmount,
                   paymentMethod,
-                  note: notes || "دفعة مشتريات",
+                  notes: notes || "دفعة مشتريات",
                 },
               }),
             );
@@ -855,6 +859,7 @@ export async function processPurchaseReturn(
             data: {
               companyId,
               supplierId,
+              currencyCode: "",
               invoiceId: originalPurchase.id,
               branchId,
               type: "PAYMENT",
@@ -1994,6 +1999,8 @@ export async function updateMultipleInventories(
               const supplierPayment = await tx.financialTransaction.create({
                 data: {
                   companyId,
+                  currencyCode: "",
+                  voucherNumber: 0,
                   supplierId: updateData.supplierId,
                   userId,
                   branchId: updateData.branchId,

@@ -145,7 +145,7 @@ export async function FetchDebtSales(
     take: pageSize,
     orderBy,
   });
-  const total = await prisma.sale.count({ where: { companyId } });
+  const total = await prisma.invoice.count({ where: { companyId } });
 
   // await prisma.payment
   const serializedDebts = debts.map((sale) => ({
@@ -176,141 +176,141 @@ export async function FetchDebtSales(
   return { serilaz, total }; // Return the transformed data
 }
 
-export async function FetchDebtSale(
-  companyId: string,
-  where?: Prisma.SaleWhereInput,
-  searchQuery: string = "",
-  from?: string,
-  to?: string,
-  page: number = 1,
-  pageSize: number = 7,
-  sort?: SortingState,
-) {
-  const combinedWhere: Prisma.SaleWhereInput = {
-    ...where,
-    companyId,
-  };
+// export async function FetchDebtSale(
+//   companyId: string,
+//   where?: Prisma.SaleWhereInput,
+//   searchQuery: string = "",
+//   from?: string,
+//   to?: string,
+//   page: number = 1,
+//   pageSize: number = 7,
+//   sort?: SortingState,
+// ) {
+//   const combinedWhere: Prisma.SaleWhereInput = {
+//     ...where,
+//     companyId,
+//   };
 
-  // 🔍 Search
-  if (searchQuery) {
-    combinedWhere.OR = [
-      { customer: { name: { contains: searchQuery, mode: "insensitive" } } },
-      {
-        customer: {
-          phoneNumber: { contains: searchQuery, mode: "insensitive" },
-        },
-      },
-    ];
-  }
+//   // 🔍 Search
+//   if (searchQuery) {
+//     combinedWhere.OR = [
+//       { customer: { name: { contains: searchQuery, mode: "insensitive" } } },
+//       {
+//         customer: {
+//           phoneNumber: { contains: searchQuery, mode: "insensitive" },
+//         },
+//       },
+//     ];
+//   }
 
-  // 📅 Date filter
-  const fromDate = from ? new Date(from) : undefined;
-  const toDate = to ? new Date(to) : undefined;
-  if (fromDate || toDate) {
-    combinedWhere.createdAt = {
-      ...(fromDate && { gte: fromDate }),
-      ...(toDate && { lte: toDate }),
-    };
-  }
+//   // 📅 Date filter
+//   const fromDate = from ? new Date(from) : undefined;
+//   const toDate = to ? new Date(to) : undefined;
+//   if (fromDate || toDate) {
+//     combinedWhere.createdAt = {
+//       ...(fromDate && { gte: fromDate }),
+//       ...(toDate && { lte: toDate }),
+//     };
+//   }
 
-  // 🧮 Group by customer and sum totals
-  const groupedSales = await prisma.sale.groupBy({
-    by: ["customerId"],
-    where: combinedWhere,
-    _sum: {
-      totalAmount: true,
-      amountPaid: true,
-      amountDue: true,
-    },
-    orderBy: {
-      _sum: { totalAmount: "desc" }, // sort by biggest total
-    },
-    skip: page * pageSize,
-    take: pageSize,
-  });
+//   // 🧮 Group by customer and sum totals
+//   const groupedSales = await prisma.sale.groupBy({
+//     by: ["customerId"],
+//     where: combinedWhere,
+//     _sum: {
+//       totalAmount: true,
+//       amountPaid: true,
+//       amountDue: true,
+//     },
+//     orderBy: {
+//       _sum: { totalAmount: "desc" }, // sort by biggest total
+//     },
+//     skip: page * pageSize,
+//     take: pageSize,
+//   });
 
-  // 🧾 Fetch customer details for each group
-  const customerIds = groupedSales.map((g) => g.customerId).filter(Boolean);
+//   // 🧾 Fetch customer details for each group
+//   const customerIds = groupedSales.map((g) => g.customerId).filter(Boolean);
 
-  const customers = await prisma.customer.findMany({
-    where: {
-      id: { in: customerIds as string[] },
-      companyId,
-    },
-    select: {
-      id: true,
-      name: true,
-      phoneNumber: true,
-      customerType: true,
-      outstandingBalance: true,
-    },
-  });
-  const total = await prisma.sale.count({ where: { companyId } });
+//   const customers = await prisma.customer.findMany({
+//     where: {
+//       id: { in: customerIds as string[] },
+//       companyId,
+//     },
+//     select: {
+//       id: true,
+//       name: true,
+//       phoneNumber: true,
+//       customerType: true,
+//       outstandingBalance: true,
+//     },
+//   });
+//   const total = await prisma.sale.count({ where: { companyId } });
 
-  // 🔗 Combine sales + customer info
-  const result = groupedSales.map((group) => {
-    const customer = customers.find((c) => c.id === group.customerId);
-    return {
-      customerId: group.customerId,
-      name: customer?.name || "غير معروف",
+//   // 🔗 Combine sales + customer info
+//   const result = groupedSales.map((group) => {
+//     const customer = customers.find((c) => c.id === group.customerId);
+//     return {
+//       customerId: group.customerId,
+//       name: customer?.name || "غير معروف",
 
-      phoneNumber: customer?.phoneNumber || "-",
-      customerType: customer?.customerType || "-",
-      totalAmount: Number(group._sum.totalAmount || 0),
-      amountPaid: Number(group._sum.amountPaid || 0),
-      amountDue: Number(group._sum.amountDue || 0),
-      outstandingBalance: Number(customer?.outstandingBalance || 0),
-    };
-  });
+//       phoneNumber: customer?.phoneNumber || "-",
+//       customerType: customer?.customerType || "-",
+//       totalAmount: Number(group._sum.totalAmount || 0),
+//       amountPaid: Number(group._sum.amountPaid || 0),
+//       amountDue: Number(group._sum.amountDue || 0),
+//       outstandingBalance: Number(customer?.outstandingBalance || 0),
+//     };
+//   });
 
-  return { result, total };
-}
-export async function fetchAllReturnItems(companyId: string) {
-  // Fetch all sales of type "return" for this company
-  const returnSales = await prisma.sale.findMany({
-    where: {
-      companyId,
-      sale_type: "sale", // only returns
-    },
-    select: {
-      sale_type: true,
-      saleDate: true,
-      // originalSaleId: true,
-      saleItems: {
-        select: {
-          productId: true,
-          quantity: true,
-          sellingUnit: true,
-          unitPrice: true,
-          product: { select: { name: true } },
-        },
-      },
+//   return { result, total };
+// }
+// export async function fetchAllReturnItems(companyId: string) {
+//   // Fetch all sales of type "return" for this company
+//   const returnSales = await prisma.sale.findMany({
+//     where: {
+//       companyId,
+//       sale_type: "sale", // only returns
+//     },
+//     select: {
+//       sale_type: true,
+//       saleDate: true,
+//       // originalSaleId: true,
+//       saleItems: {
+//         select: {
+//           productId: true,
+//           quantity: true,
+//           sellingUnit: true,
+//           unitPrice: true,
+//           product: { select: { name: true } },
+//         },
+//       },
 
-      customer: {
-        select: { id: true, name: true },
-      },
-    },
-    orderBy: { saleDate: "desc" },
-  });
+//       customer: {
+//         select: { id: true, name: true },
+//       },
+//     },
+//     orderBy: { saleDate: "desc" },
+//   });
 
-  // Flatten all items into a single array
-  const returnItems = returnSales.flatMap((sale) =>
-    sale.saleItems.map((item) => ({
-      // returnSaleId: sale.originalSaleId,
-      sale_type: sale.sale_type,
-      customerId: sale.customer?.id,
-      customerName: sale.customer?.name || "غير معروف",
-      productId: item.productId,
-      name: item.product.name,
-      sellingUnit: item.sellingUnit,
-      quantityReturned: Number(item.quantity),
-      unitPrice: Number(item.unitPrice),
-      saleDate: sale.saleDate,
-    })),
-  );
+//   // Flatten all items into a single array
+//   const returnItems = returnSales.flatMap((sale) =>
+//     sale.saleItems.map((item) => ({
+//       // returnSaleId: sale.originalSaleId,
+//       sale_type: sale.sale_type,
+//       customerId: sale.customer?.id,
+//       customerName: sale.customer?.name || "غير معروف",
+//       productId: item.productId,
+//       name: item.product.name,
+//       sellingUnit: item.sellingUnit,
+//       quantityReturned: Number(item.quantity),
+//       unitPrice: Number(item.unitPrice),
+//       saleDate: sale.saleDate,
+//     })),
+//   );
 
-  return returnItems;
-}
+//   return returnItems;
+// }
 
 export async function FetchCustomerDebtReport(
   customerId: string,

@@ -19,14 +19,14 @@ export async function updateSales(
   let pay: any;
   const updatedSale = await prisma.$transaction(async (tx) => {
     // 1️⃣ Fetch current sale
-    const sale = await tx.sale.findUnique({
+    const sale = await tx.invoice.findUnique({
       where: { id: saleId, cashierId, companyId },
       select: {
         id: true,
         totalAmount: true,
         amountPaid: true,
         amountDue: true,
-        paymentStatus: true,
+        status: true,
         customerId: true,
       },
     });
@@ -54,23 +54,25 @@ export async function updateSales(
     }
 
     // 3️⃣ Update Sale
-    const updatedSaleRecord = await tx.sale.update({
+    const updatedSaleRecord = await tx.invoice.update({
       where: { id: saleId, companyId: companyId },
       data: {
         amountPaid: newAmountPaid,
         amountDue: newAmountDue,
-        paymentStatus: newPaymentStatus,
-        updatedAt: new Date(),
+        status: newPaymentStatus,
+        invoiceDate: new Date(),
       },
     });
 
     // 4️⃣ Log Payment
-    pay = await tx.payment.create({
+    pay = await tx.financialTransaction.create({
       data: {
         companyId,
         saleId,
-        cashierId: cashierId ?? "",
-        payment_type: "outstanding_payment",
+        userId: cashierId ?? "",
+        voucherNumber: 8,
+        currencyCode: "",
+        type: "RECEIPT",
         paymentMethod: "cash",
         amount: paymentAmount,
         status: "completed",
@@ -117,8 +119,8 @@ export async function updateSales(
       totalAmount: updatedSaleRecord.totalAmount.toString(),
       amountPaid: updatedSaleRecord.amountPaid.toString(),
       amountDue: updatedSaleRecord.amountDue.toString(),
-      createdAt: updatedSaleRecord.createdAt.toISOString(),
-      updatedAt: updatedSaleRecord.updatedAt.toISOString(),
+      createdAt: updatedSaleRecord.invoiceDate.toISOString(),
+      updatedAt: updatedSaleRecord.invoiceDate.toISOString(),
     };
   });
 
@@ -209,6 +211,7 @@ export async function updateSalesBulk(
       customerId: s.customerId,
       userId: cashierId,
       branchId,
+      currencyCode: "",
       voucherNumber: nextNumber,
       type: TransactionType.PAYMENT,
       paymentMethod: paymentDetails.paymentMethod,
@@ -337,13 +340,15 @@ export async function payOutstandingOnly(
     throw new Error("Payment amount must be greater than zero.");
 
   // 1️⃣ Create payment (NO saleId)
-  const payment = await prisma.payment.create({
+  const payment = await prisma.financialTransaction.create({
     data: {
       companyId,
       customerId,
       saleId: null,
-      cashierId,
-      payment_type: "outstanding_payment",
+      userId: cashierId,
+      voucherNumber: 34,
+      type: "RECEIPT",
+      currencyCode: "",
       paymentMethod: paymentDetails.paymentMethod,
       amount: paymentAmount,
       status: "completed",

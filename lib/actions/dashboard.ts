@@ -188,15 +188,17 @@ export async function getTopSellingProducts(
   { startDate, endDate }: DateRange,
   limit: number = 10,
 ) {
-  const items = await prisma.saleItem
+  const items = await prisma.invoiceItem
     .groupBy({
       by: ["productId"],
       _sum: { quantity: true },
       where: {
         companyId,
-        createdAt: {
-          gte: startDate,
-          lte: endDate,
+        invoice: {
+          invoiceDate: {
+            gte: startDate,
+            lte: endDate,
+          },
         },
       },
       orderBy: { _sum: { quantity: "desc" } },
@@ -334,7 +336,7 @@ export async function getDashboardData(
   { startDate, endDate }: DateRange,
   topItems: number = 10,
 ) {
-  const sales = await prisma.saleItem.count({
+  const sales = await prisma.invoiceItem.count({
     where: { companyId: companyId },
   });
 
@@ -533,7 +535,7 @@ export async function getUserCount(companyId: string) {
   return { users: count };
 }
 export interface DashboardParams {
-  filter?: Prisma.SaleWhereInput;
+  filter?: Prisma.InvoiceWhereInput;
   query?: string;
   from?: string;
   to?: string;

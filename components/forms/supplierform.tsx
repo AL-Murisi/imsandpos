@@ -17,10 +17,12 @@ import { Button } from "@/components/ui/button";
 import { CreateSupplierSchema, CreateSupplierInput } from "@/lib/zod";
 import { createSupplier } from "@/lib/actions/suppliers";
 import { useAuth } from "@/lib/context/AuthContext";
-import { useState } from "react";
-import { Plus } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Check, Plus } from "lucide-react";
 import Dailogreuse from "../common/dailogreuse";
 import { ScrollArea } from "../ui/scroll-area";
+import { currencyOptions } from "@/lib/actions/currnciesOptions";
+import { useCompany } from "@/hooks/useCompany";
 
 export default function SupplierForm() {
   const {
@@ -44,14 +46,21 @@ export default function SupplierForm() {
       postalCode: "",
       taxId: "",
       paymentTerms: "",
-      totalPaid: 0,
-      totalPurchased: 0,
-      outstandingBalance: 0,
+
+      // totalPaid: 0,
+      // totalPurchased: 0,
+      // outstandingBalance: 0,
     },
   });
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
+  const { company } = useCompany();
+  const basCurrncy = company?.base_currency;
+  useEffect(() => {
+    if (basCurrncy) {
+      setValue("preferred_currency", [basCurrncy]);
+    }
+  }, [basCurrncy, setValue]);
   const { user } = useAuth();
   if (!user) return;
   // Load roles on mount
@@ -203,7 +212,7 @@ export default function SupplierForm() {
                   </p>
                 )}
               </div>
-              <div className="grid gap-2">
+              {/* <div className="grid gap-2">
                 <Label htmlFor="totalPurchased">
                   إجمالي المشتريات الافتتاحي
                 </Label>
@@ -230,7 +239,57 @@ export default function SupplierForm() {
                   id="outstandingBalance"
                   {...register("outstandingBalance", { valueAsNumber: true })}
                 />
+              </div> */}
+            </div>
+
+            <div className="grid gap-3">
+              <Label className="text-right">العملات المسموحة</Label>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
+                {currencyOptions.map((option) => {
+                  // Check if this currency is currently in the array
+                  const isSelected = watch("preferred_currency")?.includes(
+                    option.id,
+                  );
+
+                  return (
+                    <div
+                      key={option.id}
+                      onClick={() => {
+                        const currentValues = watch("preferred_currency") || [];
+                        const newValues = isSelected
+                          ? currentValues.filter((v: string) => v !== option.id) // Remove if already there
+                          : [...currentValues, option.id]; // Add if not there
+
+                        setValue("preferred_currency", newValues, {
+                          shouldValidate: true,
+                        });
+                      }}
+                      className={`flex cursor-pointer items-center gap-2 rounded-md border px-4 py-2 transition-all ${
+                        isSelected
+                          ? "border-primary bg-primary/10 text-primary shadow-sm"
+                          : "bg-gray border-gray-200 hover:border-gray-300"
+                      } `}
+                    >
+                      {/* The "Tick" Icon */}
+                      <div
+                        className={`flex h-4 w-4 items-center justify-center rounded-sm border ${isSelected ? "bg-primary border-primary" : "border-gray-300"} `}
+                      >
+                        {isSelected && <Check className="h-3 w-3 text-white" />}
+                      </div>
+
+                      <span className="font-medium">{option.name}</span>
+                      {/* <span className="text-muted-foreground text-xs">
+                                   ({option.name})
+                                 </span> */}
+                    </div>
+                  );
+                })}
               </div>
+              {errors.preferred_currency && (
+                <p className="text-xs text-red-500">
+                  {errors.preferred_currency.message}
+                </p>
+              )}
             </div>
           </div>
           <div className="flex justify-end">

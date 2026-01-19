@@ -16,6 +16,7 @@ import { getLatestExchangeRate } from "./currency";
 import { SellingUnit } from "../zod";
 import { console } from "inspector";
 import { stat } from "fs";
+import { io } from "socket.io-client";
 
 type CartItem = {
   id: string;
@@ -100,37 +101,37 @@ export async function generateSaleNumber(companyId: string): Promise<string> {
  * Alternative: Simpler format without year
  * Format: SALE-000001
  */
-export async function generateSimpleSaleNumber(
-  companyId: string,
-): Promise<string> {
-  const prefix = "SALE-";
+// export async function generateSimpleSaleNumber(
+//   companyId: string,
+// ): Promise<string> {
+//   const prefix = "SALE-";
 
-  const lastSale = await prisma.sale.findFirst({
-    where: {
-      companyId,
-      saleNumber: {
-        startsWith: prefix,
-      },
-    },
-    orderBy: {
-      saleNumber: "desc",
-    },
-    select: {
-      saleNumber: true,
-    },
-  });
+//   const lastSale = await prisma.sale.findFirst({
+//     where: {
+//       companyId,
+//       saleNumber: {
+//         startsWith: prefix,
+//       },
+//     },
+//     orderBy: {
+//       saleNumber: "desc",
+//     },
+//     select: {
+//       saleNumber: true,
+//     },
+//   });
 
-  let nextNumber = 1;
+//   let nextNumber = 1;
 
-  if (lastSale) {
-    const lastNumberStr = lastSale.saleNumber.split("-").pop();
-    const lastNumber = parseInt(lastNumberStr || "0", 10);
-    nextNumber = lastNumber + 1;
-  }
+//   if (lastSale) {
+//     const lastNumberStr = lastSale.saleNumber.split("-").pop();
+//     const lastNumber = parseInt(lastNumberStr || "0", 10);
+//     nextNumber = lastNumber + 1;
+//   }
 
-  const formattedNumber = nextNumber.toString().padStart(6, "0");
-  return `${prefix}${formattedNumber}`;
-}
+//   const formattedNumber = nextNumber.toString().padStart(6, "0");
+//   return `${prefix}${formattedNumber}`;
+// }
 
 /**
  * Transaction-safe version: Uses database sequence to prevent duplicates
@@ -176,11 +177,11 @@ export async function processSale(data: any, companyId: string) {
     totalAfterDiscount,
     cashierId,
     branchId,
-    customerId,
+    customer,
     saleNumber,
     receivedAmount,
   } = data;
-  console.log(branchId);
+  console.log(customer);
   return await prisma.$transaction(
     async (tx) => {
       // ==========================================
@@ -190,7 +191,7 @@ export async function processSale(data: any, companyId: string) {
         data: {
           companyId,
           invoiceNumber: saleNumber,
-          customerId,
+          customerId: customer.id,
           cashierId,
           branchId: branchId,
           sale_type: "SALE",
@@ -201,7 +202,7 @@ export async function processSale(data: any, companyId: string) {
           amountDue: Math.max(0, totalAfterDiscount - receivedAmount),
         },
       });
-
+      console.log(customer);
       // ==========================================
       // 2️⃣ Fetch inventory per PRODUCT + UNIT
       // ==========================================
@@ -258,6 +259,7 @@ export async function processSale(data: any, companyId: string) {
         // 3. حساب إجمالي التكلفة لهذا السطر باستخدام baseQty
         // (مثلاً: 880 حبة * 1 حبة تكلفة)
         const lineCOGS = baseQty * costPerBaseUnit;
+        // io.emit("refresh");
 
         // 4. إضافة الناتج للإجمالي الكلي للمبيعات
         returnTotalCOGS += lineCOGS;
@@ -320,12 +322,12 @@ export async function processSale(data: any, companyId: string) {
       // ==========================================
       // 5️⃣ Customer balance update
       // ==========================================
-      if (customerId) {
+      if (customer.id) {
         const delta = totalAfterDiscount - receivedAmount;
 
         if (delta !== 0) {
           await tx.customer.update({
-            where: { id: customerId, companyId },
+            where: { id: customer.id, companyId },
             data:
               delta > 0
                 ? { outstandingBalance: { increment: delta } }
@@ -352,13 +354,14 @@ export async function processSale(data: any, companyId: string) {
             invoiceId: sale.id,
             userId: cashierId,
             branchId,
-            customerId,
+            customerId: customer.id,
             voucherNumber: nextNumber,
+            currencyCode: "",
 
             paymentMethod: "cash",
             type: "RECEIPT",
             amount: receivedAmount,
-            status: "completed",
+            status: status,
             notes: ` فاتوره شراء:${sale.invoiceNumber}`,
           },
         });
@@ -385,7 +388,7 @@ export async function processSale(data: any, companyId: string) {
               branchId: branchId,
               // paymentStatus: sale.paymentStatus,
             },
-            customerId,
+            customer,
             returnTotalCOGS,
             saleItems: cart,
             cashierId,
@@ -839,6 +842,7 @@ export async function processReturn(data: any, companyId: string) {
             data: {
               companyId,
               branchId,
+              currencyCode: "",
               invoiceId: returnSale.id,
               userId: cashierId,
               voucherNumber: nextNumber,

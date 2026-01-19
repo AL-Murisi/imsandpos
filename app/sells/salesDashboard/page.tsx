@@ -1,8 +1,4 @@
-import {
-  fetchAllReturnItems,
-  FetchDebtSales,
-  fetchSalesSummary,
-} from "@/lib/actions/sells";
+import { FetchDebtSales, fetchSalesSummary } from "@/lib/actions/sells";
 import { verifySession } from "@/lib/dal";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";

@@ -10,7 +10,9 @@ export const CreateSupplierSchema = z.object({
     .email("البريد الإلكتروني غير صالح")
     .optional()
     .or(z.literal("")),
-
+  preferred_currency: z
+    .array(z.string())
+    .min(1, "يجب إضافة وحدة بيع واحدة على الأقل"),
   phoneNumber: z.string().optional(),
   address: z.string().optional(),
   city: z.string().optional(),
@@ -19,10 +21,6 @@ export const CreateSupplierSchema = z.object({
   postalCode: z.string().optional(),
   taxId: z.string().optional(),
   paymentTerms: z.string().optional(),
-  totalPurchased: z.number().default(0).optional(),
-  totalPaid: z.number().default(0).optional(),
-
-  outstandingBalance: z.number().default(0).optional(),
 });
 export type CreateSupplierInput = z.infer<typeof CreateSupplierSchema>;
 export const SupplierSchema = z.object({

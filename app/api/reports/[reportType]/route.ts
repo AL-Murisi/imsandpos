@@ -93,12 +93,11 @@ export async function POST(req: NextRequest, context: RouteContext) {
     switch (reportType) {
       case "sales": {
         templateFile = "sales-report.html";
-        const sales = await prisma.saleItem.findMany({
+        const sales = await prisma.invoiceItem.findMany({
           where: {
             companyId: user.companyId,
-            createdAt: createDateFilter(fromDate, toDate),
           },
-          include: { product: true, sale: true },
+          include: { product: true, invoice: true },
         });
 
         data = {
@@ -107,7 +106,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
             product: s.product.name,
             quantity: s.quantity,
             total: Number(s.totalPrice),
-            sellingUnit: s.sellingUnit,
+            sellingUnit: s.unit,
           })),
           totalSales: sales.reduce((sum, s) => sum + Number(s.totalPrice), 0),
         };
@@ -116,11 +115,10 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
       case "sales-by-product": {
         templateFile = "sales-by-product-report.html";
-        const salesByProduct = await prisma.saleItem.groupBy({
+        const salesByProduct = await prisma.invoiceItem.groupBy({
           by: ["productId"],
           where: {
             companyId: user.companyId,
-            createdAt: createDateFilter(fromDate, toDate),
           },
           _sum: {
             quantity: true,
@@ -154,11 +152,11 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
       case "sales-by-user": {
         templateFile = "sales-by-user-report.html";
-        const salesByUser = await prisma.sale.groupBy({
+        const salesByUser = await prisma.invoice.groupBy({
           by: ["cashierId"],
           where: {
             companyId: user.companyId,
-            createdAt: createDateFilter(fromDate, toDate),
+            invoiceDate: createDateFilter(fromDate, toDate),
           },
 
           _sum: { totalAmount: true },
@@ -189,13 +187,13 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
       case "daily-sales": {
         templateFile = "daily-sales-report.html";
-        const sales = await prisma.sale.findMany({
+        const sales = await prisma.invoice.findMany({
           where: {
             companyId: user.companyId,
-            createdAt: createDateFilter(fromDate, toDate),
+            invoiceDate: createDateFilter(fromDate, toDate),
           },
           select: {
-            createdAt: true,
+            invoiceDate: true,
             totalAmount: true,
           },
         });
@@ -206,7 +204,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
         >();
 
         sales.forEach((s) => {
-          const date = s.createdAt.toLocaleDateString("ar-EG");
+          const date = s.invoiceDate.toLocaleDateString("ar-EG");
           const existing = dailyMap.get(date) || { date, total: 0, count: 0 };
           dailyMap.set(date, {
             date,
@@ -225,17 +223,16 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
       case "profit-by-product": {
         templateFile = "profit-by-product-report.html";
-        const salesItems = await prisma.saleItem.findMany({
+        const salesItems = await prisma.invoiceItem.findMany({
           where: {
             companyId: user.companyId,
-            createdAt: createDateFilter(fromDate, toDate),
           },
           include: { product: true },
         });
 
         const profitByProduct = salesItems.reduce(
           (acc, item) => {
-            const cost = Number(item.product.costPrice) * item.quantity;
+            const cost = Number(item.product.costPrice) * Number(item.quantity);
             const revenue = Number(item.totalPrice);
             const profit = revenue - cost;
 
@@ -538,34 +535,34 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
       case "purchases": {
         templateFile = "purchases-report.html";
-        const purchases = await prisma.purchase.findMany({
+        const purchases = await prisma.invoice.findMany({
           where: {
             companyId: user.companyId,
-            createdAt: createDateFilter(fromDate, toDate),
+            invoiceDate: createDateFilter(fromDate, toDate),
           },
           include: {
             supplier: true,
-            purchaseItems: { include: { product: true } },
+            items: { include: { product: true } },
           },
         });
 
         data = {
           ...baseData,
           purchases: purchases.flatMap((p) =>
-            p.purchaseItems.map((item) => ({
+            p.items.map((item) => ({
               id: p.id,
-              date: p.createdAt.toLocaleDateString("ar-EG"),
-              supplier: p.supplier.name,
+              date: p.invoiceDate.toLocaleDateString("ar-EG"),
+              supplier: p.supplier?.name,
               product: item.product.name,
               quantity: item.quantity,
-              unitPrice: Number(item.unitCost),
-              total: Number(item.totalCost),
+              unitPrice: Number(item.price),
+              total: Number(item.totalPrice),
               status: p.status,
             })),
           ),
           totalPurchases: purchases.reduce((sum, p) => {
-            const purchaseTotal = p.purchaseItems.reduce(
-              (itemSum, item) => itemSum + Number(item.totalCost || 0),
+            const purchaseTotal = p.items.reduce(
+              (itemSum, item) => itemSum + Number(item.totalPrice || 0),
               0,
             );
             return sum + purchaseTotal;
@@ -576,14 +573,14 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
       case "purchase-returns": {
         templateFile = "purchase-returns-report.html";
-        const returns = await prisma.purchase.findMany({
+        const returns = await prisma.invoice.findMany({
           where: {
             companyId: user.companyId,
-            createdAt: createDateFilter(fromDate, toDate),
-            purchaseType: "return",
+            invoiceDate: createDateFilter(fromDate, toDate),
+            sale_type: "RETURN_PURCHASE",
           },
           include: {
-            purchaseItems: {
+            items: {
               include: {
                 product: {
                   select: {
@@ -600,14 +597,14 @@ export async function POST(req: NextRequest, context: RouteContext) {
         data = {
           ...baseData,
           returns: returns.flatMap((r) =>
-            r.purchaseItems.map((item) => ({
+            r.items.map((item) => ({
               id: r.id,
-              date: r.createdAt.toLocaleDateString("ar-EG"),
-              supplier: r.supplier.name,
+              date: r.invoiceDate.toLocaleDateString("ar-EG"),
+              supplier: r.supplier?.name,
               product: item.product.name,
               quantity: item.quantity,
               reason: item.product.stockMovements.find((p) => p.reason),
-              total: Number(item.totalCost),
+              total: Number(item.totalPrice),
             })),
           ),
           totalReturns: returns.reduce(
@@ -625,7 +622,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
             companyId: user.companyId,
           },
           include: {
-            _count: { select: { purchases: true } },
+            _count: { select: { invoice: true } },
           },
         });
         console.log("suppliers", suppliers);
@@ -635,7 +632,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
             name: s.name,
             phone: s.phoneNumber,
             email: s.email,
-            purchaseCount: s._count.purchases,
+            purchaseCount: s._count.invoice,
             balance: Number(s.outstandingBalance || 0),
           })),
         };
@@ -668,7 +665,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
       case "payments": {
         templateFile = "payments-report.html";
-        const payments = await prisma.payment.findMany({
+        const payments = await prisma.financialTransaction.findMany({
           where: {
             companyId: user.companyId,
             createdAt: createDateFilter(fromDate, toDate),
@@ -677,7 +674,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
             customer: true,
             createdAt: true,
             amount: true,
-            payment_type: true,
+            type: true,
             paymentMethod: true,
           },
         });
@@ -685,7 +682,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
         data = {
           ...baseData,
           payments: payments.map((p) => ({
-            payee: p.payment_type,
+            payee: p.type,
             name: p.customer?.name ?? "",
             amount: p.amount,
             method: p.paymentMethod,
@@ -747,28 +744,28 @@ export async function POST(req: NextRequest, context: RouteContext) {
       //   break;
       // }
 
-      case "tax": {
-        templateFile = "tax-report.html";
-        const sales = await prisma.sale.findMany({
-          where: {
-            companyId: user.companyId,
-            createdAt: createDateFilter(fromDate, toDate),
-          },
-        });
+      // case "tax": {
+      //   templateFile = "tax-report.html";
+      //   const sales = await prisma.sale.findMany({
+      //     where: {
+      //       companyId: user.companyId,
+      //       createdAt: createDateFilter(fromDate, toDate),
+      //     },
+      //   });
 
-        data = {
-          ...baseData,
-          sales: sales.map((s) => ({
-            date: s.createdAt.toLocaleDateString("ar-EG"),
-            total: Number(s.totalAmount),
-            tax: Number(s.taxAmount || 0),
-            netAmount: Number(s.totalAmount) - Number(s.taxAmount || 0),
-          })),
-          totalSales: sales.reduce((sum, s) => sum + Number(s.totalAmount), 0),
-          totalTax: sales.reduce((sum, s) => sum + Number(s.taxAmount || 0), 0),
-        };
-        break;
-      }
+      //   data = {
+      //     ...baseData,
+      //     sales: sales.map((s) => ({
+      //       date: s.createdAt.toLocaleDateString("ar-EG"),
+      //       total: Number(s.totalAmount),
+      //       tax: Number(s.taxAmount || 0),
+      //       netAmount: Number(s.totalAmount) - Number(s.taxAmount || 0),
+      //     })),
+      //     totalSales: sales.reduce((sum, s) => sum + Number(s.totalAmount), 0),
+      //     totalTax: sales.reduce((sum, s) => sum + Number(s.taxAmount || 0), 0),
+      //   };
+      //   break;
+      // }
 
       case "customers": {
         templateFile = "customers-report.html";
@@ -1257,10 +1254,10 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
       case "customer-payments": {
         templateFile = "customer-payments-report.html";
-        const payments = await prisma.payment.findMany({
+        const payments = await prisma.financialTransaction.findMany({
           where: {
             companyId: user.companyId,
-            payment_type: "CUSTOMER_PAYMENT",
+            type: "PAYMENT",
             createdAt: createDateFilter(fromDate, toDate),
             ...(customerId && { id: customerId }),
           },

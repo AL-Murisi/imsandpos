@@ -7,7 +7,10 @@ export const CreateCustomerSchema = z.object({
     .email("البريد الإلكتروني غير صالح")
     .optional()
     .or(z.literal("")),
-  preferred_currency: z.string().optional(),
+  preferred_currency: z
+    .array(z.string())
+    .min(1, "يجب إضافة وحدة بيع واحدة على الأقل"),
+
   phoneNumber: z.string().optional(),
   address: z.string().optional(),
   city: z.string().optional(),
@@ -20,4 +23,4 @@ export const CreateCustomerSchema = z.object({
   balance: z.number().default(0).optional(),
   creditLimit: z.number().positive().optional(),
 });
-export type createCusomer = z.infer<typeof CreateCustomerSchema>;
+export type CreateCustomer = z.infer<typeof CreateCustomerSchema>;
