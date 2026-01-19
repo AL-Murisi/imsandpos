@@ -1770,7 +1770,7 @@ async function createSaleJournalEntries({
       createEntry(
         ar,
         desc + " - مديونية",
-        dueBase,
+        totalBase,
         0,
         "ARP",
         customer.id,
