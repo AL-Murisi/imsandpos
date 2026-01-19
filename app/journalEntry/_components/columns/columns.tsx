@@ -120,6 +120,17 @@ export const journalEntryColumns: ColumnDef<JournalEntryData>[] = [
     ),
   },
   {
+    accessorKey: "currency_code",
+    header: ({ column }) => (
+      <SortableHeader column={column} label="currency_code القيد" />
+    ),
+    cell: ({ row }) => (
+      <span className="font-mono font-semibold">
+        {row.getValue("currency_code")}
+      </span>
+    ),
+  },
+  {
     accessorKey: "entry_date",
     header: ({ column }) => <SortableHeader column={column} label="التاريخ" />,
     cell: ({ row }) => {

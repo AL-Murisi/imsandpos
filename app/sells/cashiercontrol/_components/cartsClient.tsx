@@ -55,6 +55,7 @@ import {
   CartItem,
   updateProductStockOptimistic,
 } from "@/lib/slices/productsSlice";
+import { currencyOptions } from "@/lib/actions/currnciesOptions";
 
 const PrintButton = dynamic(
   () => import("./test").then((mod) => mod.PrintButton),
@@ -142,7 +143,7 @@ export default function CartDisplay({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserOption | null>(null);
   const [isLoadingSaleNumber, setIsLoadingSaleNumber] = useState(false);
-  // const [saleNumber, setSaleNumber] = useState("");
+  const [currency, setCurrency] = useState<UserOption | null>(null);
   // useEffect(() => {
   //   async function loadSaleNumber() {
   //     if (!user?.companyId) return;
@@ -324,6 +325,7 @@ export default function CartDisplay({
       cart: items,
       discountValue,
       discountType,
+      currency: currency?.id ?? company?.base_currency,
       totalBeforeDiscount: totals.totalBefore,
       totalDiscount: totals.discount,
       totalAfterDiscount: totals.totalAfter,
@@ -373,7 +375,21 @@ export default function CartDisplay({
   const [isLoading2, setIsLoading2] = useState(false);
 
   if (!user) return null;
-
+  useEffect(() => {
+    if (company?.base_currency && !currency) {
+      // Find the currency object from your options that matches the base currency code
+      const base = currencyOptions.find((c) => c.id === company?.base_currency);
+      if (base) {
+        setCurrency(base);
+      } else {
+        // Fallback: create a temporary object if not found in options
+        setCurrency({
+          id: company?.base_currency,
+          name: company?.base_currency,
+        });
+      }
+    }
+  }, [company, currency]);
   const calculatedChange =
     receivedAmount >= totals.totalAfter
       ? receivedAmount - totals.totalAfter
@@ -389,8 +405,19 @@ export default function CartDisplay({
       <div className="flex items-center justify-center">
         <Label className="">فرع: {company?.branches[0].location}</Label>
       </div>
+
       <div className="flex flex-wrap-reverse justify-between">
         <div className="flex justify-between gap-1">
+          {" "}
+          <SearchInput
+            placeholder={"عمله البيع"}
+            paramKey="users"
+            value={currency?.id}
+            options={currencyOptions ?? []}
+            action={(user) => {
+              setCurrency(user); // now `user` is single UserOption
+            }}
+          />
           <Button
             className="rounded-[5px] bg-green-500 px-3 py-1 text-white"
             onClick={() => {

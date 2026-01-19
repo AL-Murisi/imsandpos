@@ -1385,6 +1385,7 @@ async function createSaleJournalEntries({
     entry_date: new Date(),
     fiscal_period: fy?.period_name,
     created_by: cashierId,
+
     is_automated: true,
   };
 
@@ -1435,6 +1436,7 @@ async function createSaleJournalEntries({
           ...baseEntry,
           branch_id: sale.branchId,
           account_id: cash,
+          currency_code: sale.currency,
           description: desc,
           debit: paid,
           credit: 0,
@@ -1448,6 +1450,7 @@ async function createSaleJournalEntries({
           branch_id: sale.branchId,
           description: desc,
           debit: 0,
+          currency_code: sale.currency,
           credit: total,
           reference_id: customer.id,
           reference_type: "دفع نقداً",
@@ -1465,6 +1468,7 @@ async function createSaleJournalEntries({
         description: desc + " فاتورة بيع اجل",
         debit: total,
         credit: 0,
+        currency_code: sale.currency,
         reference_id: customer.id,
         reference_type: "فاتورة مبيعات",
         entry_number: `${entryBase}-PS-DR`,
@@ -1487,6 +1491,7 @@ async function createSaleJournalEntries({
         {
           ...baseEntry,
           account_id: cash,
+          currency_code: sale.currency,
           branch_id: sale.branchId,
           description: desc + " - دفعة فورية",
           debit: paid,
@@ -1498,6 +1503,7 @@ async function createSaleJournalEntries({
         {
           ...baseEntry,
           account_id: ar,
+          currency_code: sale.currency,
           branch_id: sale.branchId,
           description: desc + " المدفوع من المبلغ",
           debit: 0,
@@ -1517,6 +1523,7 @@ async function createSaleJournalEntries({
         branch_id: sale.branchId,
         description: desc + " غير مدفوع",
         debit: total,
+        currency_code: sale.currency,
         credit: 0,
         reference_id: customer.id,
         reference_type: "فاتورة مبيعات اجل",
@@ -1526,6 +1533,7 @@ async function createSaleJournalEntries({
         ...baseEntry,
         account_id: revenue,
         branch_id: sale.branchId,
+        currency_code: sale.currency,
         description: desc + " غير مدفوع",
         debit: 0,
         credit: total,

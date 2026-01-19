@@ -173,7 +173,7 @@ export async function processSale(data: any, companyId: string) {
     cart,
     totalBeforeDiscount,
     totalDiscount,
-
+    currency,
     totalAfterDiscount,
     cashierId,
     branchId,
@@ -191,7 +191,7 @@ export async function processSale(data: any, companyId: string) {
         data: {
           companyId,
           invoiceNumber: saleNumber,
-          customerId: customer.id,
+          customerId: customer?.id,
           cashierId,
           branchId: branchId,
           sale_type: "SALE",
@@ -322,12 +322,12 @@ export async function processSale(data: any, companyId: string) {
       // ==========================================
       // 5️⃣ Customer balance update
       // ==========================================
-      if (customer.id) {
+      if (customer?.id) {
         const delta = totalAfterDiscount - receivedAmount;
 
         if (delta !== 0) {
           await tx.customer.update({
-            where: { id: customer.id, companyId },
+            where: { id: customer?.id, companyId },
             data:
               delta > 0
                 ? { outstandingBalance: { increment: delta } }
@@ -354,9 +354,9 @@ export async function processSale(data: any, companyId: string) {
             invoiceId: sale.id,
             userId: cashierId,
             branchId,
-            customerId: customer.id,
+            customerId: customer?.id,
             voucherNumber: nextNumber,
-            currencyCode: "",
+            currencyCode: currency,
 
             paymentMethod: "cash",
             type: "RECEIPT",
@@ -386,6 +386,7 @@ export async function processSale(data: any, companyId: string) {
               totalAmount: sale.totalAmount.toString(),
               amountPaid: sale.amountPaid.toString(),
               branchId: branchId,
+              currency,
               // paymentStatus: sale.paymentStatus,
             },
             customer,
