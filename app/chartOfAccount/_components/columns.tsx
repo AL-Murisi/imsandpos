@@ -183,30 +183,49 @@ export const accountColumns: ColumnDef<any>[] = [
       );
     },
   },
+  // استبدل خلية الـ balance في مصفوفة accountColumns بهذا الكود:
   {
-    accessorKey: "balance",
-    header: ({ column }) => <SortableHeader column={column} label="الرصيد" />,
+    accessorKey: "currencyBalances",
+    header: ({ column }) => (
+      <SortableHeader column={column} label="الأرصدة حسب العملة" />
+    ),
     cell: ({ row }) => {
-      const currency = row.original.currency_code;
-      const balance = row.getValue("balance") as number;
+      const balances = row.original.currencyBalances as Record<string, number>;
       const { formatCurrency } = useFormatter();
 
-      const color =
-        balance > 0
-          ? "text-green-600"
-          : balance < 0
-            ? "text-red-600"
-            : "text-gray-600";
-
-      const currencyLabel =
-        currency === "USD" ? "$" : currency === "YER" ? "ر.ي" : "ر.س";
+      if (!balances || Object.keys(balances).length === 0) {
+        return <span className="font-mono text-gray-400">0.00</span>;
+      }
 
       return (
-        <div
-          dir="ltr"
-          className={`flex items-center gap-1 font-mono text-lg font-semibold ${color}`}
-        >
-          <span>{formatCurrency(balance)}</span>
+        <div className="flex flex-col gap-1">
+          {Object.entries(balances).map(([code, amount]) => {
+            const color =
+              amount > 0
+                ? "text-green-600"
+                : amount < 0
+                  ? "text-red-600"
+                  : "text-gray-600";
+            const symbol =
+              code === "USD" ? "$" : code === "YER" ? "ر.ي" : "ر.س";
+
+            return (
+              <div
+                key={code}
+                dir="ltr"
+                className={`flex items-center justify-end gap-2 border-b border-gray-100 pb-1 last:border-0`}
+              >
+                <Badge variant="secondary" className="h-4 px-1 text-[10px]">
+                  {code}
+                </Badge>
+                <span className={`font-mono font-bold ${color}`}>
+                  {amount.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                  })}
+                </span>
+              </div>
+            );
+          })}
         </div>
       );
     },

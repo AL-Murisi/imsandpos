@@ -57,13 +57,23 @@ export function useFormatter() {
 }
 
 export function FormatPrice(price: number): string {
-  if (price >= 1000) {
-    const formattedPrice = (price / 1000).toFixed(1).replace(/\.0$/, "");
-    return `${formattedPrice}الف`;
-  } else {
-    return price.toFixed(2);
+  // 1. التعامل مع الملايين أولاً
+  if (price >= 1000000) {
+    const formattedPrice = (price / 1000000).toFixed(6).replace(/\.00$/, "");
+    return `${formattedPrice} مليون`;
   }
-  return price.toString();
+
+  // 2. التعامل مع الآلاف ثانياً
+  if (price >= 1000) {
+    const formattedPrice = (price / 1000).toFixed(3).replace(/\.0$/, "");
+    return `${formattedPrice} ألف`;
+  }
+
+  // 3. المبالغ الصغيرة
+  return price.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 export function FormatQty(price: number): string {
   if (price >= 1000) {

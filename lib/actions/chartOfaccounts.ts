@@ -73,84 +73,223 @@ export async function getUserCompany() {
  * Retrieves the Chart of Accounts and calculates summary financial totals.
  * * @returns {Promise<{success: boolean, data?: object, totals?: object, error?: string}>}
  */
+// export async function getChartOfAccounts() {
+//   try {
+//     const { companyId } = await getUserCompany();
+
+//     const accounts = await prisma.accounts.findMany({
+//       where: { company_id: companyId },
+//       include: {
+//         accounts: true, // parent
+//         other_accounts: true, // children
+//         _count: {
+//           select: { journal_entries: true },
+//         },
+//       },
+//       orderBy: [{ account_code: "asc" }],
+//     });
+
+//     // 1. Calculate Financial Category Totals
+//     const initialTotals = {
+//       totalAssets: 0, // إجمالي الأصول
+//       totalLiabilities: 0, // إجمالي الخصوم
+//       totalRevenue: 0, // إجمالي الإيرادات
+//       totalExpenses: 0, // إجمالي المصروفات
+//       activeAccountsCount: accounts.length, // الحسابات النشطة
+//       netIncome: 0,
+//     };
+
+//     const financialTotals = accounts.reduce((acc, account) => {
+//       // Assuming 'balance' is the field for the account's current balance
+//       // and 'account_type' contains the category in Arabic (e.g., 'أصول', 'خصوم').
+//       // Adjust field names (e.g., 'balance', 'account_type') as needed for your schema.
+//       const balance = parseFloat(account.balance?.toString() || "0");
+
+//       switch (account.account_type) {
+//         case "ASSET":
+//           acc.totalAssets += balance;
+//           break;
+//         case "LIABILITY":
+//           acc.totalLiabilities += balance;
+//           break;
+//         case "REVENUE":
+//           acc.totalRevenue += balance;
+//           break;
+//         case "EXPENSE":
+//           acc.totalExpenses += balance;
+//           break;
+//         default:
+//           break;
+//       }
+//       return acc;
+//     }, initialTotals);
+
+//     // Calculate Net Income (صافي الربح)
+//     financialTotals.netIncome = Math.abs(
+//       financialTotals.totalRevenue - financialTotals.totalExpenses,
+//     );
+
+//     // 2. Prepare Detailed Accounts Data
+//     const accountsWithChildren = accounts.map((acc) => ({
+//       ...acc,
+//       hasChildren: acc.other_accounts.length > 0,
+//     }));
+
+//     // Assuming 'serializeData' prepares the data for client-side consumption
+//     const data = serializeData(accountsWithChildren);
+//     const totals = serializeData(financialTotals);
+//     // 3. Return both the detailed data and the financial totals
+//     return {
+//       success: true,
+//       data: data,
+//       totals: totals, // New object containing all summary figures
+//     };
+//   } catch (error) {
+//     console.error("Get accounts error:", error);
+//     return { success: false, error: "فشل في جلب الحسابات" };
+//   }
+// }
+
+// 2. GET SINGLE ACCOUNT
 export async function getChartOfAccounts() {
   try {
     const { companyId } = await getUserCompany();
 
+    const company = await prisma.company.findUnique({
+      where: { id: companyId },
+      select: { base_currency: true },
+    });
+
+    const baseCurrency = company?.base_currency || "YER";
+
     const accounts = await prisma.accounts.findMany({
       where: { company_id: companyId },
       include: {
-        accounts: true, // parent
-        other_accounts: true, // children
-        _count: {
-          select: { journal_entries: true },
+        journal_entries: {
+          where: { is_posted: true },
+          select: {
+            debit: true,
+            credit: true,
+            currency_code: true,
+            base_amount: true,
+            foreign_amount: true,
+            exchange_rate: true,
+          },
         },
+        other_accounts: true,
       },
       orderBy: [{ account_code: "asc" }],
     });
 
-    // 1. Calculate Financial Category Totals
-    const initialTotals = {
-      totalAssets: 0, // إجمالي الأصول
-      totalLiabilities: 0, // إجمالي الخصوم
-      totalRevenue: 0, // إجمالي الإيرادات
-      totalExpenses: 0, // إجمالي المصروفات
-      activeAccountsCount: accounts.length, // الحسابات النشطة
+    const currencyTotals: Record<
+      string,
+      { assets: number; liabilities: number; revenue: number; expenses: number }
+    > = {};
+
+    const baseTotals = {
+      totalAssets: 0,
+      totalLiabilities: 0,
+      totalRevenue: 0,
+      totalExpenses: 0,
       netIncome: 0,
+      activeAccountsCount: accounts.length,
     };
 
-    const financialTotals = accounts.reduce((acc, account) => {
-      // Assuming 'balance' is the field for the account's current balance
-      // and 'account_type' contains the category in Arabic (e.g., 'أصول', 'خصوم').
-      // Adjust field names (e.g., 'balance', 'account_type') as needed for your schema.
-      const balance = parseFloat(account.balance?.toString() || "0");
+    const processedAccounts = accounts.map((account) => {
+      const currencyBalances: Record<string, number> = {};
+      let baseBalance = 0;
 
-      switch (account.account_type) {
-        case "ASSET":
-          acc.totalAssets += balance;
-          break;
-        case "LIABILITY":
-          acc.totalLiabilities += balance;
-          break;
-        case "REVENUE":
-          acc.totalRevenue += balance;
-          break;
-        case "EXPENSE":
-          acc.totalExpenses += balance;
-          break;
-        default:
-          break;
-      }
-      return acc;
-    }, initialTotals);
+      const isDebitNature =
+        account.account_type === "ASSET" || account.account_type === "EXPENSE";
 
-    // Calculate Net Income (صافي الربح)
-    financialTotals.netIncome = Math.abs(
-      financialTotals.totalRevenue - financialTotals.totalExpenses,
-    );
+      account.journal_entries.forEach((entry) => {
+        const currency = entry.currency_code || baseCurrency;
 
-    // 2. Prepare Detailed Accounts Data
-    const accountsWithChildren = accounts.map((acc) => ({
-      ...acc,
-      hasChildren: acc.other_accounts.length > 0,
-    }));
+        /* =========================
+           1️⃣ FOREIGN BALANCE
+        ========================= */
+        const foreign =
+          entry.foreign_amount !== null && entry.foreign_amount !== undefined
+            ? Number(entry.debit) - Number(entry.credit) >= 0
+              ? Number(entry.foreign_amount)
+              : -Number(entry.foreign_amount)
+            : Number(entry.debit) - Number(entry.credit);
 
-    // Assuming 'serializeData' prepares the data for client-side consumption
-    const data = serializeData(accountsWithChildren);
-    const totals = serializeData(financialTotals);
-    // 3. Return both the detailed data and the financial totals
+        const foreignChange = isDebitNature ? foreign : -foreign;
+        currencyBalances[currency] =
+          (currencyBalances[currency] || 0) + foreignChange;
+
+        let baseChange = 0;
+
+        if (entry.base_amount !== null && entry.base_amount !== undefined) {
+          baseChange =
+            Number(entry.debit) - Number(entry.credit) >= 0
+              ? Number(entry.base_amount)
+              : -Number(entry.base_amount);
+        } else if (currency === baseCurrency) {
+          baseChange = Number(entry.debit) - Number(entry.credit);
+        } else {
+          const rate = Number(entry.exchange_rate || 1);
+          baseChange = (Number(entry.debit) - Number(entry.credit)) * rate;
+        }
+
+        baseBalance += isDebitNature ? baseChange : -baseChange;
+
+        /* =========================
+           3️⃣ TOTALS BY CURRENCY
+        ========================= */
+        if (!currencyTotals[currency]) {
+          currencyTotals[currency] = {
+            assets: 0,
+            liabilities: 0,
+            revenue: 0,
+            expenses: 0,
+          };
+        }
+
+        if (account.account_type === "ASSET")
+          currencyTotals[currency].assets += foreignChange;
+        if (account.account_type === "LIABILITY")
+          currencyTotals[currency].liabilities += foreignChange;
+        if (account.account_type === "REVENUE")
+          currencyTotals[currency].revenue += foreignChange;
+        if (account.account_type === "EXPENSE")
+          currencyTotals[currency].expenses += foreignChange;
+      });
+
+      if (account.account_type === "ASSET")
+        baseTotals.totalAssets += baseBalance;
+      if (account.account_type === "LIABILITY")
+        baseTotals.totalLiabilities += baseBalance;
+      if (account.account_type === "REVENUE")
+        baseTotals.totalRevenue += baseBalance;
+      if (account.account_type === "EXPENSE")
+        baseTotals.totalExpenses += baseBalance;
+
+      return {
+        ...account,
+        currencyBalances, // 🔹 foreign balances (USD, YER, etc.)
+        calculatedBalance: baseBalance, // 🔹 base currency balance
+        hasChildren: account.other_accounts.length > 0,
+      };
+    });
+
+    baseTotals.netIncome = baseTotals.totalRevenue - baseTotals.totalExpenses;
+
     return {
       success: true,
-      data: data,
-      totals: totals, // New object containing all summary figures
+      data: serializeData(processedAccounts),
+      totals: serializeData({
+        base: baseTotals,
+        byCurrency: currencyTotals,
+      }),
     };
   } catch (error) {
-    console.error("Get accounts error:", error);
-    return { success: false, error: "فشل في جلب الحسابات" };
+    console.error(error);
+    return { success: false, error: "فشل في جلب البيانات" };
   }
 }
 
-// 2. GET SINGLE ACCOUNT
 export async function getAccount(accountId: string) {
   try {
     const { companyId } = await getUserCompany();

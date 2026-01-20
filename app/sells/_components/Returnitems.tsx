@@ -159,7 +159,7 @@ export function ReturnForm({ sale }: { sale: any }) {
       return {
         productId: item.productId,
         warehouseId: item.warehouseId,
-        name: item.name,
+        name: item?.name,
         selectedUnitId: item.selectedUnitId, // 🆕
         selectedUnitName: selectedUnit?.name || "", // 🆕
         quantity: item.quantity,

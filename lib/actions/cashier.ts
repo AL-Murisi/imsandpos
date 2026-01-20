@@ -180,35 +180,22 @@ export async function processSale(data: any, companyId: string) {
     branchId,
     customer,
     saleNumber,
+    exchangeRate,
+    baseAmount,
     receivedAmount,
   } = data;
   console.log(customer);
   return await prisma.$transaction(
     async (tx) => {
-      // ==========================================
-      // 1️⃣ Create Sale
-      // ==========================================
-      let exchangeRateValue = 1;
-      if (currency !== baseCurrency) {
-        const latestRate = await tx.exchange_rates.findFirst({
-          where: {
-            company_id: companyId,
-            from_currency: currency,
-            to_currency: baseCurrency,
-          },
-          orderBy: { date: "desc" }, // جلب أحدث سعر صرف
-        });
-
-        if (!latestRate) {
-          throw new Error(
-            `لم يتم العثور على سعر صرف من ${currency} إلى ${baseCurrency}`,
-          );
-        }
-        exchangeRateValue = latestRate.rate.toNumber();
+      let status;
+      if (totalAfterDiscount === baseAmount) {
+        status === "completed";
+      } else if (baseAmount > 0 && totalAfterDiscount > baseAmount) {
+        status = "partial";
+      } else {
+        status = "unpaid";
       }
-      const baseAmount = Number(receivedAmount) * exchangeRateValue;
-      const baseTotalAmount = Number(totalAfterDiscount) * exchangeRateValue;
-      const baseAmountDue = Math.max(0, baseTotalAmount - baseAmount);
+      const baseAmountDue = Math.max(0, totalAfterDiscount - baseAmount);
       const sale = await tx.invoice.create({
         data: {
           companyId,
@@ -357,15 +344,14 @@ export async function processSale(data: any, companyId: string) {
           });
         }
       }
-      let status;
 
       // ==========================================
       // 6️⃣ Payment
       // ==========================================
-      if (receivedAmount > 0) {
-        if (totalAfterDiscount === receivedAmount) {
+      if (baseAmount > 0) {
+        if (totalAfterDiscount === baseAmount) {
           status === "completed";
-        } else if (receivedAmount > 0) {
+        } else if (baseAmount > 0 && totalAfterDiscount > baseAmount) {
           status = "partial";
         } else {
           status = "unpaid";
@@ -379,7 +365,7 @@ export async function processSale(data: any, companyId: string) {
             customerId: customer?.id,
             voucherNumber: nextNumber,
             currencyCode: currency,
-            exchangeRate: exchangeRateValue,
+            exchangeRate: exchangeRate,
             paymentMethod: "cash",
             type: "RECEIPT",
             amount: receivedAmount,
@@ -405,11 +391,11 @@ export async function processSale(data: any, companyId: string) {
               saleNumber: sale.invoiceNumber,
               sale_type: sale.sale_type,
               status: status,
-              totalAmount: sale.totalAmount,
-              amountPaid: sale.amountPaid,
+              totalAmount: totalAfterDiscount,
+              amountPaid: baseAmount,
               ...(currency !== baseCurrency && {
                 foreignAmount: receivedAmount, // المبلغ بالدولار مثلاً
-                exchangeRate: exchangeRateValue,
+                exchangeRate: exchangeRate,
                 foreignCurrency: currency,
               }),
               baseAmount: baseAmount,

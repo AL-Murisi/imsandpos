@@ -321,6 +321,7 @@ export async function FetchCustomerDebtReport(
       customerId,
       companyId,
       sale_type: "SALE",
+      status: { in: ["partial", "unpaid"] },
     },
     select: {
       id: true,

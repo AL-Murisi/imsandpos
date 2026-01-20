@@ -1402,7 +1402,7 @@ async function createExpenseJournalEntries({
 //           description: desc + " - فائض عميل",
 //           debit: 0,
 //           credit: change,
-//           reference_id: customer.id,
+//           reference_id: customer?.id,
 //           reference_type: "فاتورة مبيعات",
 //           entry_number: `${entryBase}-C`,
 //         },
@@ -1413,7 +1413,7 @@ async function createExpenseJournalEntries({
 //           description: desc,
 //           debit: total,
 //           credit: 0,
-//           reference_id: customer.id,
+//           reference_id: customer?.id,
 //           reference_type: "فاتورة مبيعات",
 //           entry_number: `${entryBase}-D`,
 //         },
@@ -1440,7 +1440,7 @@ async function createExpenseJournalEntries({
 //           description: desc,
 //           debit: paid,
 //           credit: 0,
-//           reference_id: customer.id,
+//           reference_id: customer?.id,
 //           reference_type: "فاتورة مبيعات نقداً",
 //           entry_number: `${entryBase}-D1`,
 //         },
@@ -1452,7 +1452,7 @@ async function createExpenseJournalEntries({
 //           debit: 0,
 //           currency_code: sale.currency,
 //           credit: total,
-//           reference_id: customer.id,
+//           reference_id: customer?.id,
 //           reference_type: "دفع نقداً",
 //           entry_number: `${entryBase}-C1`,
 //         },
@@ -1469,7 +1469,7 @@ async function createExpenseJournalEntries({
 //         debit: total,
 //         credit: 0,
 //         currency_code: sale.currency,
-//         reference_id: customer.id,
+//         reference_id: customer?.id,
 //         reference_type: "فاتورة مبيعات",
 //         entry_number: `${entryBase}-PS-DR`,
 //       },
@@ -1508,7 +1508,7 @@ async function createExpenseJournalEntries({
 //           description: desc + " المدفوع من المبلغ",
 //           debit: 0,
 //           credit: paid,
-//           reference_id: customer.id,
+//           reference_id: customer?.id,
 //           reference_type: "دفعة من عميل",
 //           entry_number: `${entryBase}-PP-CR`,
 //         },
@@ -1525,7 +1525,7 @@ async function createExpenseJournalEntries({
 //         debit: total,
 //         currency_code: sale.currency,
 //         credit: 0,
-//         reference_id: customer.id,
+//         reference_id: customer?.id,
 //         reference_type: "فاتورة مبيعات اجل",
 //         entry_number: `${entryBase}-U1`,
 //       },
@@ -1632,7 +1632,8 @@ async function createSaleJournalEntries({
   returnTotalCOGS: number;
 }) {
   // 1️⃣ استخراج بيانات العملة من الـ sale (الـ payload)
-  const { currency, exchangeRate, foreignAmount, baseAmount } = sale;
+  const { currency, exchangeRate, foreignAmount, baseAmount, baseCurrency } =
+    sale;
   const isForeign = currency && exchangeRate && exchangeRate !== 1;
 
   // 2️⃣ التأكد من عدم التكرار وجلب السنة المالية
@@ -1699,6 +1700,7 @@ async function createSaleJournalEntries({
     refType: string, // سيتم تمرير المسمى العربي هنا
     isCogsRelated: boolean = false,
   ) => {
+    const useForeign = isForeign && !isCogsRelated;
     return {
       company_id: companyId,
       entry_date: new Date(),
@@ -1716,13 +1718,17 @@ async function createSaleJournalEntries({
       debit: debitBase,
       credit: creditBase,
 
-      ...(isForeign &&
-        !isCogsRelated && {
-          currency_code: currency,
-          exchange_rate: exchangeRate,
-          foreign_amount: foreignAmount,
-          base_amount: debitBase > 0 ? baseAmount : creditBase,
-        }),
+      ...(useForeign
+        ? {
+            // حالة الحسابات المالية في فاتورة أجنبية
+            currency_code: currency,
+            exchange_rate: exchangeRate,
+            foreign_amount: foreignAmount,
+          }
+        : {
+            // حالة حسابات التكلفة/المخزن أو الفواتير المحلية
+            currency_code: baseCurrency, // العملة الأساسية للنظام
+          }),
     };
   };
   // 5️⃣ منطق القيد المحاسبي
@@ -1740,11 +1746,19 @@ async function createSaleJournalEntries({
         0,
         totalBase,
         "REV",
-        customer.id,
+        customer?.id,
         "فاتورة مبيعات",
       ),
 
-      createEntry(cash, desc, 0, paidBase, "CSH", customer.id, " دفع من عميل "),
+      createEntry(
+        cash,
+        desc,
+        0,
+        paidBase,
+        "CSH",
+        customer?.id,
+        " دفع من عميل ",
+      ),
     );
   } else if (sale.status === "partial") {
     if (paidBase > 0) {
@@ -1773,7 +1787,7 @@ async function createSaleJournalEntries({
         totalBase,
         0,
         "ARP",
-        customer.id,
+        customer?.id,
         "عميل",
       ),
       createEntry(
@@ -1783,7 +1797,7 @@ async function createSaleJournalEntries({
         paidBase,
 
         "AR",
-        customer.id,
+        customer?.id,
         "مدفوع جزءي من الفاتوره",
       ),
     );
@@ -1793,13 +1807,13 @@ async function createSaleJournalEntries({
       createEntry(revenue, desc, 0, totalBase, "REV", sale.id, "فاتورة مبيعات"),
 
       createEntry(
-        ar,
+        cash,
         desc,
         totalBase,
         0,
         "AR",
-        customer.id,
-        "فاتورة مبيعات اجل",
+        customer?.id,
+        "  دفع فاتورة مبيعات  ",
       ),
     );
   }
@@ -2381,7 +2395,7 @@ async function processFiscalYearOpen({
           credit: 0,
           entry_date: openingDate,
           reference_type: "opening_customer_balance",
-          reference_id: customer.id,
+          reference_id: customer?.id,
           entry_number: `${entryBase}-CUST-D-${customer.id.slice(0, 6)}`,
           created_by: userId,
           is_automated: true,
@@ -2399,7 +2413,7 @@ async function processFiscalYearOpen({
           credit: balance,
           entry_date: openingDate,
           reference_type: "opening_customer_balance",
-          reference_id: customer.id,
+          reference_id: customer?.id,
           entry_number: `${entryBase}-CUST-C-${customer.id.slice(0, 6)}`,
           created_by: userId,
           is_automated: true,
