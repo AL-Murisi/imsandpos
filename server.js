@@ -16,7 +16,7 @@ app.prepare().then(() => {
     cors: {
       origin:
         process.env.NODE_ENV === "production"
-          ? "https://yourdomain.com"
+          ? "https://imsandpos.vercel.app"
           : "http://localhost:3000",
       methods: ["GET", "POST"],
     },
