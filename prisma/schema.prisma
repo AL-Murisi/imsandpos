@@ -819,7 +819,8 @@ model Invoice {
   amountPaid      Decimal  @default(0) @db.Decimal(12, 2)
   amountDue       Decimal  @default(0) @db.Decimal(12, 2)
 
-  status          String     invoiceDate     DateTime @default(now()) @map("invoice_date")
+  status          String    
+   invoiceDate     DateTime @default(now()) @map("invoice_date")
   cashier      User?     @relation("UserSales", fields: [cashierId], references: [id])
 
   branch    points_of_sale? @relation(fields: [branchId], references: [id])
