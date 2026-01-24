@@ -806,7 +806,7 @@ async function createPaymentJournalEntries({
           "تسديد دين",
         ),
 
-        createEntry(arAcc, desc, 0, amount, customerId, "سند قبض", " -C"),
+        createEntry(arAcc, desc, 0, amount, " -C", customerId, "سند قبض"),
       );
     } else if (paymentDetails.paymentMethod === "bank") {
       entries.push(

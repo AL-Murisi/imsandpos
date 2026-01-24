@@ -5,6 +5,23 @@ import { fetchProductStats } from "./Product";
 import { success } from "zod";
 import { getActiveFiscalYears } from "@/lib/actions/fiscalYear";
 import { TransactionType } from "@prisma/client";
+async function getNextVoucherNumber(
+  companyId: string,
+  type: TransactionType,
+  tx: any,
+): Promise<number> {
+  // Use raw SQL with FOR UPDATE to lock the row
+  const result = await tx.$queryRaw<Array<{ max_voucher: number | null }>>`
+    SELECT COALESCE(MAX(voucher_number), 0) as max_voucher
+    FROM financial_transactions
+    WHERE company_id = ${companyId}
+      AND type = ${type}::"TransactionType"
+    FOR UPDATE
+  `;
+
+  const maxVoucher = result[0]?.max_voucher ?? 0;
+  return maxVoucher + 1;
+}
 
 export async function updateSales(
   companyId: string,
@@ -16,7 +33,7 @@ export async function updateSales(
     throw new Error("Payment amount must be greater than zero.");
   }
   if (!companyId) return;
-  let pay: any;
+
   const updatedSale = await prisma.$transaction(async (tx) => {
     // 1️⃣ Fetch current sale
     const sale = await tx.invoice.findUnique({
@@ -64,13 +81,16 @@ export async function updateSales(
       },
     });
 
-    // 4️⃣ Log Payment
-    pay = await tx.financialTransaction.create({
+    // 4️⃣ Get next voucher number with locking
+    const voucherNumber = await getNextVoucherNumber(companyId, "RECEIPT", tx);
+
+    // 5️⃣ Log Payment
+    const payment = await tx.financialTransaction.create({
       data: {
         companyId,
         saleId,
         userId: cashierId ?? "",
-        voucherNumber: 8,
+        voucherNumber,
         currencyCode: "",
         type: "RECEIPT",
         paymentMethod: "cash",
@@ -80,7 +100,8 @@ export async function updateSales(
         createdAt: new Date(),
       },
     });
-    // 🆕 CREATE JOURNAL EVENT (instead of direct creation)
+
+    // 6️⃣ CREATE JOURNAL EVENT
     await tx.journalEvent.create({
       data: {
         companyId: companyId,
@@ -90,30 +111,31 @@ export async function updateSales(
         payload: {
           companyId,
           payment: {
-            id: pay.id,
+            id: payment.id,
             saleId: saleId,
             customerId: customerId,
-            amount: pay.amount,
-            paymentMethod: pay.paymentMethod,
+            amount: payment.amount,
+            paymentMethod: payment.paymentMethod,
           },
           cashierId,
         },
         processed: false,
       },
     });
-    // 5️⃣ Update Customer balance (reduce what company owes)
+
+    // 7️⃣ Update Customer balance
     if (customerId) {
       await tx.customer.update({
         where: { id: customerId },
         data: {
           outstandingBalance: {
-            decrement: paymentAmount, // reduce customer's debt
+            decrement: paymentAmount,
           },
         },
       });
     }
 
-    // 6️⃣ Return clean serialized sale
+    // 8️⃣ Return clean serialized sale
     return {
       ...updatedSaleRecord,
       totalAmount: updatedSaleRecord.totalAmount.toString(),
@@ -125,7 +147,6 @@ export async function updateSales(
   });
 
   revalidatePath("/sells");
-
   return updatedSale;
 }
 
@@ -151,89 +172,63 @@ export async function updateSalesBulk(
   if (!companyId || saleIds.length === 0)
     throw new Error("Missing company ID or sale IDs.");
 
-  // 1️⃣ جلب المبيعات
-  const sales = await prisma.invoice.findMany({
-    where: { id: { in: saleIds }, companyId },
-    select: {
-      id: true,
-      totalAmount: true,
-      amountPaid: true,
-      amountDue: true,
-      invoiceNumber: true,
-      customerId: true,
-    },
-  });
+  const result = await prisma.$transaction(
+    async (tx) => {
+      // 1️⃣ Fetch sales
+      const sales = await tx.invoice.findMany({
+        where: { id: { in: saleIds }, companyId },
+        select: {
+          id: true,
+          totalAmount: true,
+          amountPaid: true,
+          amountDue: true,
+          invoiceNumber: true,
+          customerId: true,
+        },
+      });
 
-  if (sales.length === 0) throw new Error("No matching sales found.");
+      if (sales.length === 0) throw new Error("No matching sales found.");
 
-  // --- وظيفة لجلب الرقم التالي لتسهيل إعادة المحاولة ---
-  const getNextVoucherNumber = async () => {
-    const aggregate = await prisma.financialTransaction.aggregate({
-      where: { companyId: companyId, type: "RECEIPT" },
-      _max: { voucherNumber: true },
-    });
-    return (aggregate._max.voucherNumber || 0) + 1;
-  };
+      // 2️⃣ Allocate payments
+      let remaining = paymentAmount;
+      const saleUpdates = [];
+      const customerUpdates: Record<string, number> = {};
+      const paymentsToCreate = [];
 
-  // 2️⃣ تخصيص مبالغ الدفع
-  let remaining = paymentAmount;
-  const saleUpdates = [];
-  const customerUpdates: Record<string, number> = {};
-  const paymentRecordsBase = [];
+      for (const s of sales) {
+        if (remaining <= 0) break;
+        const due = s.amountDue.toNumber();
+        if (due <= 0) continue;
 
-  for (const s of sales) {
-    if (remaining <= 0) break;
-    const due = s.amountDue.toNumber();
-    if (due <= 0) continue;
+        const payNow = Math.min(remaining, due);
+        remaining -= payNow;
 
-    const payNow = Math.min(remaining, due);
-    remaining -= payNow;
+        const newPaid = s.amountPaid.toNumber() + payNow;
+        const newDue = s.totalAmount.toNumber() - newPaid;
 
-    const newPaid = s.amountPaid.toNumber() + payNow;
-    const newDue = s.totalAmount.toNumber() - newPaid;
+        saleUpdates.push({
+          id: s.id,
+          amountPaid: newPaid,
+          amountDue: Math.max(newDue, 0),
+          paymentStatus: newDue <= 0 ? "paid" : "partial",
+        });
 
-    saleUpdates.push({
-      id: s.id,
-      amountPaid: newPaid,
-      amountDue: Math.max(newDue, 0),
-      paymentStatus: newDue <= 0 ? "paid" : "partial",
-    });
+        paymentsToCreate.push({
+          saleId: s.id,
+          invoiceNumber: s.invoiceNumber,
+          customerId: s.customerId,
+          amount: payNow,
+        });
 
-    // نخزن البيانات الأساسية بدون رقم القسيمة الآن
-    paymentRecordsBase.push({
-      companyId,
-      invoiceId: s.id,
-      referenceNumber: paymentDetails.paymentMethod ?? "",
-      customerId: s.customerId,
-      userId: cashierId,
-      branchId,
-      exchangeRate: paymentDetails.exchange_rate,
-      currencyCode: paymentDetails.currencyCode || "",
-      type: TransactionType.PAYMENT,
-      paymentMethod: paymentDetails.paymentMethod,
-      amount: paymentAmount,
-      status: "completed",
-      notes: `تسديد الدين للفاتورة رقم ${s.invoiceNumber}`,
-      createdAt: new Date(),
-    });
+        if (s.customerId) {
+          customerUpdates[s.customerId] =
+            (customerUpdates[s.customerId] || 0) + payNow;
+        }
+      }
 
-    if (s.customerId) {
-      customerUpdates[s.customerId] =
-        (customerUpdates[s.customerId] || 0) + payNow;
-    }
-  }
-
-  // 3️⃣ تحديث الفواتير والمستحقات (خارج حلقة إعادة محاولة الرقم)
-  const chunk = <T,>(arr: T[], size: number) =>
-    Array.from({ length: Math.ceil(arr.length / size) }, (_, i) =>
-      arr.slice(i * size, i * size + size),
-    );
-  const CHUNK = 50;
-
-  for (const c of chunk(saleUpdates, CHUNK)) {
-    await prisma.$transaction(
-      c.map((u) =>
-        prisma.invoice.update({
+      // 3️⃣ Update invoices
+      for (const u of saleUpdates) {
+        await tx.invoice.update({
           where: { id: u.id },
           data: {
             amountPaid: u.amountPaid,
@@ -241,96 +236,87 @@ export async function updateSalesBulk(
             status: u.paymentStatus,
             invoiceDate: new Date(),
           },
-        }),
-      ),
-    );
-  }
-
-  // 4️⃣ إنشاء السندات مع منطق إعادة المحاولة في حال تكرار الرقم
-  let createdPayments: any[] = [];
-  let attempts = 0;
-  const maxAttempts = 5;
-
-  while (attempts < maxAttempts) {
-    try {
-      let nextVoucherNumber = await getNextVoucherNumber();
-      const currentBatch = paymentRecordsBase.map((p) => {
-        const voucher = nextVoucherNumber;
-        nextVoucherNumber++; // 🔥 increment
-        return {
-          ...p,
-          voucherNumber: voucher,
-        };
-      });
-
-      createdPayments = []; // تصغير المصفوفة في كل محاولة
-      for (const c of chunk(currentBatch, CHUNK)) {
-        const batch = await prisma.$transaction(
-          c.map((p) => prisma.financialTransaction.create({ data: p })),
-        );
-        createdPayments.push(...batch);
+        });
       }
-      break; // إذا نجح الإدخال، اخرج من حلقة while
-    } catch (error: any) {
-      // التحقق من خطأ Prisma للقيم المكررة (Unique Constraint)
-      if (error.code === "P2002") {
-        attempts++;
-        console.warn(
-          `Voucher number conflict. Retrying... Attempt ${attempts}`,
-        );
-        if (attempts >= maxAttempts)
-          throw new Error(
-            "Failed to generate a unique voucher number after multiple attempts.",
-          );
-        continue; // أعد المحاولة برقم جديد
-      }
-      throw error; // خطأ آخر غير التكرار
-    }
-  }
 
-  // 5️⃣ تحديث أرصدة العملاء
-  for (const c of chunk(Object.entries(customerUpdates), CHUNK)) {
-    await prisma.$transaction(
-      c.map(([custId, amt]) =>
-        prisma.customer.update({
+      // 4️⃣ Create payments with sequential voucher numbers
+      const createdPayments = [];
+      for (const p of paymentsToCreate) {
+        // Get voucher number with locking for EACH payment
+        const voucherNumber = await getNextVoucherNumber(
+          companyId,
+          TransactionType.RECEIPT,
+          tx,
+        );
+
+        const payment = await tx.financialTransaction.create({
+          data: {
+            companyId,
+            invoiceId: p.saleId,
+            referenceNumber: paymentDetails.paymentMethod ?? "",
+            customerId: p.customerId,
+            userId: cashierId,
+            branchId,
+            voucherNumber,
+            exchangeRate: paymentDetails.exchange_rate,
+            currencyCode: paymentDetails.currencyCode || "",
+            type: TransactionType.RECEIPT,
+            paymentMethod: paymentDetails.paymentMethod,
+            amount: p.amount,
+            status: "completed",
+            notes: `تسديد الدين للفاتورة رقم ${p.invoiceNumber}`,
+            createdAt: new Date(),
+          },
+        });
+
+        createdPayments.push(payment);
+
+        // Create journal event
+        await tx.journalEvent.create({
+          data: {
+            companyId,
+            eventType: "payment",
+            entityType: "outstanding_payment",
+            status: "pending",
+            payload: {
+              companyId,
+              payment: {
+                id: payment.id,
+                saleId: p.saleId,
+                customerId: p.customerId,
+                amount: paymentDetails.baseAmount,
+                branchId,
+                paymentDetails: paymentDetails || {},
+              },
+              cashierId,
+            },
+            processed: false,
+          },
+        });
+      }
+
+      // 5️⃣ Update customer balances
+      for (const [custId, amt] of Object.entries(customerUpdates)) {
+        await tx.customer.update({
           where: { id: custId },
           data: { outstandingBalance: { decrement: amt } },
-        }),
-      ),
-    );
-  }
+        });
+      }
 
-  // 6️⃣ إنشاء أحداث القيود المحاسبية (Journal Events)
-  const journalEventsData = createdPayments.map((payment) => ({
-    companyId,
-    eventType: "payment",
-    entityType: "outstanding_payment",
-    status: "pending",
-    payload: {
-      companyId,
-      payment: {
-        id: payment.id,
-        saleId: payment.invoiceId,
-        customerId: payment.customerId,
-        amount: paymentDetails.baseAmount,
-        branchId,
-        paymentDetails: paymentDetails || {},
-      },
-      cashierId,
+      return {
+        success: true,
+        updatedSales: saleUpdates.length,
+        paymentsCreated: createdPayments.length,
+      };
     },
-    processed: false,
-  }));
-
-  for (const c of chunk(journalEventsData, CHUNK)) {
-    await prisma.journalEvent.createMany({ data: c });
-  }
+    {
+      maxWait: 10000, // 10 seconds max wait for lock
+      timeout: 30000, // 30 seconds total timeout
+    },
+  );
 
   revalidatePath("/customer");
-  return {
-    success: true,
-    updatedSales: saleUpdates.length,
-    paymentsCreated: createdPayments.length,
-  };
+  return result;
 }
 
 export async function payOutstandingOnly(
@@ -341,12 +327,10 @@ export async function payOutstandingOnly(
   branchId: string,
   paymentDetails: {
     basCurrncy: string;
-
     paymentMethod: string;
     currencyCode: string;
     bankId: string;
     transferNumber?: string;
-
     exchangeRate?: number;
     baseAmount?: number;
     amountFC?: number;
@@ -358,60 +342,72 @@ export async function payOutstandingOnly(
   if (paymentAmount <= 0)
     throw new Error("Payment amount must be greater than zero.");
 
-  // 1️⃣ Create payment (NO saleId)
-  const payment = await prisma.financialTransaction.create({
-    data: {
+  const result = await prisma.$transaction(async (tx) => {
+    // 1️⃣ Get next voucher number with locking
+    const voucherNumber = await getNextVoucherNumber(
       companyId,
-      customerId,
-      saleId: null,
-      userId: cashierId,
-      voucherNumber: 34,
-      type: "RECEIPT",
-      currencyCode: "",
-      paymentMethod: paymentDetails.paymentMethod,
-      amount: paymentAmount,
-      status: "completed",
-      notes: "تسديد رصيد مستحق غير مرتبط بفاتورة",
-      createdAt: new Date(),
-    },
-  });
+      TransactionType.RECEIPT,
+      tx,
+    );
 
-  // 2️⃣ Update customer outstanding balance
-  await prisma.customer.update({
-    where: { id: customerId },
-    data: {
-      outstandingBalance: {
-        decrement: paymentAmount,
-      },
-    },
-  });
-
-  // 3️⃣ Create journal event
-  await prisma.journalEvent.create({
-    data: {
-      companyId,
-      eventType: "payment-outstanding",
-      entityType: "outstanding",
-      status: "pending",
-      processed: false,
-      payload: {
+    // 2️⃣ Create payment
+    const payment = await tx.financialTransaction.create({
+      data: {
         companyId,
-        payment: {
-          id: payment.id,
-          saleId: null,
-          customerId,
-          amount: paymentDetails.baseAmount,
-          branchId,
-          paymentDetails: paymentDetails || {},
-        },
-        cashierId,
+        customerId,
+        saleId: null,
+        userId: cashierId,
+        voucherNumber,
+        type: "RECEIPT",
+        currencyCode: paymentDetails.currencyCode || "",
+        paymentMethod: paymentDetails.paymentMethod,
+        amount: paymentAmount,
+        status: "completed",
+        notes: "تسديد رصيد مستحق غير مرتبط بفاتورة",
+        createdAt: new Date(),
       },
-    },
+    });
+
+    // 3️⃣ Update customer outstanding balance
+    await tx.customer.update({
+      where: { id: customerId },
+      data: {
+        outstandingBalance: {
+          decrement: paymentAmount,
+        },
+      },
+    });
+
+    // 4️⃣ Create journal event
+    await tx.journalEvent.create({
+      data: {
+        companyId,
+        eventType: "payment-outstanding",
+        entityType: "outstanding",
+        status: "pending",
+        processed: false,
+        payload: {
+          companyId,
+          payment: {
+            id: payment.id,
+            saleId: null,
+            customerId,
+            amount: paymentDetails.baseAmount,
+            branchId,
+            paymentDetails: paymentDetails || {},
+          },
+          cashierId,
+        },
+      },
+    });
+
+    return {
+      success: true,
+      paymentId: payment.id,
+      amountPaid: payment.amount,
+    };
   });
+
   revalidatePath("/customer");
-  return {
-    success: true,
-    paymentId: payment.id,
-    amountPaid: payment.amount,
-  };
+  return result;
 }

@@ -9,7 +9,7 @@ import {
   unstable_noStore,
 } from "next/cache";
 import { logActivity } from "./activitylogs";
-import { Prisma } from "@prisma/client";
+import { Prisma, TransactionType } from "@prisma/client";
 import { getActiveFiscalYears } from "./fiscalYear";
 import { serialize } from "v8";
 import { getLatestExchangeRate } from "./currency";
@@ -167,6 +167,23 @@ export async function generateSaleNumberSafe(
 export async function getNextSaleNumber(companyId: string): Promise<string> {
   return generateSaleNumberSafe(companyId);
 }
+async function getNextVoucherNumber(
+  companyId: string,
+  type: TransactionType,
+  tx: any,
+): Promise<number> {
+  // Use raw SQL with FOR UPDATE to lock the row
+  const result = await tx.$queryRaw<Array<{ max_voucher: number | null }>>`
+    SELECT COALESCE(MAX(voucher_number), 0) as max_voucher
+    FROM financial_transactions
+    WHERE company_id = ${companyId}
+      AND type = ${type}::"TransactionType"
+    FOR UPDATE
+  `;
+
+  const maxVoucher = result[0]?.max_voucher ?? 0;
+  return maxVoucher + 1;
+}
 
 export async function processSale(data: any, companyId: string) {
   const {
@@ -214,20 +231,6 @@ export async function processSale(data: any, companyId: string) {
       console.log(customer);
       // ==========================================
       // 2️⃣ Fetch inventory per PRODUCT + UNIT
-      // ==========================================
-      const aggregate = await tx.financialTransaction.aggregate({
-        where: {
-          companyId: companyId,
-          type: "PAYMENT",
-        },
-        _max: {
-          voucherNumber: true,
-        },
-      });
-
-      // 2. حساب الرقم التالي
-      const lastNumber = aggregate._max.voucherNumber || 0;
-      const nextNumber = lastNumber + 1;
 
       const inventoryUnits = await tx.inventory.findMany({
         where: {
@@ -356,6 +359,12 @@ export async function processSale(data: any, companyId: string) {
         } else {
           status = "unpaid";
         }
+        const voucherNumber = await getNextVoucherNumber(
+          companyId,
+          "RECEIPT",
+          tx,
+        );
+
         await tx.financialTransaction.create({
           data: {
             companyId,
@@ -363,16 +372,33 @@ export async function processSale(data: any, companyId: string) {
             userId: cashierId,
             branchId,
             customerId: customer?.id,
-            voucherNumber: nextNumber,
+            voucherNumber, // ✅ Use locked voucher number
             currencyCode: currency,
             exchangeRate: exchangeRate,
             paymentMethod: "cash",
             type: "RECEIPT",
             amount: receivedAmount,
             status: status,
-            notes: ` فاتوره شراء:${sale.invoiceNumber}`,
+            notes: `فاتوره شراء: ${sale.invoiceNumber}`,
           },
         });
+        // await tx.financialTransaction.create({
+        //   data: {
+        //     companyId,
+        //     invoiceId: sale.id,
+        //     userId: cashierId,
+        //     branchId,
+        //     customerId: customer?.id,
+        //     voucherNumber: nextNumber,
+        //     currencyCode: currency,
+        //     exchangeRate: exchangeRate,
+        //     paymentMethod: "cash",
+        //     type: "RECEIPT",
+        //     amount: receivedAmount,
+        //     status: status,
+        //     notes: ` فاتوره شراء:${sale.invoiceNumber}`,
+        //   },
+        // });
       }
       revalidatePath("/cashiercontrol");
       // ==========================================
@@ -603,18 +629,7 @@ export async function processReturn(data: any, companyId: string) {
       if (!originalSale) {
         throw new Error("عملية البيع غير موجودة");
       }
-      const aggregate = await tx.financialTransaction.aggregate({
-        where: {
-          companyId: companyId,
-          type: "PAYMENT",
-        },
-        _max: {
-          voucherNumber: true,
-        },
-      });
 
-      const lastNumber = aggregate._max.voucherNumber || 0;
-      const nextNumber = lastNumber + 1;
       // const nextNumber = String(formattedNumber).padStart(5, "0");
       const originalNumber = returnNumber;
       const randomNumber = Math.floor(Math.random() * 90 + 10); // يولد رقماً بين 10 و 99
@@ -802,6 +817,12 @@ export async function processReturn(data: any, companyId: string) {
 
       // 8. Create payment record
       if (returnToCustomer > 0) {
+        const voucherNumber = await getNextVoucherNumber(
+          companyId,
+          "PAYMENT",
+          tx,
+        );
+
         customerUpdatePromises.push(
           tx.financialTransaction.create({
             data: {
@@ -810,7 +831,7 @@ export async function processReturn(data: any, companyId: string) {
               currencyCode: currency,
               invoiceId: returnSale.id,
               userId: cashierId,
-              voucherNumber: nextNumber,
+              voucherNumber,
               customerId: originalSale.customerId,
               paymentMethod: paymentMethod || "cash",
               type: "PAYMENT",
