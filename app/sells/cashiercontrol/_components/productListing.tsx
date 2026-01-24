@@ -4,13 +4,14 @@ import { addItem } from "@/lib/slices/cartSlice";
 import { updateProductStockOptimistic } from "@/lib/slices/productsSlice";
 import { useAppDispatch, useAppSelector } from "@/lib/store";
 import { ProductForSale, SellingUnit } from "@/lib/zod";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 import { useFormatter } from "@/hooks/usePrice";
 import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
 
 import { ProductCard } from "./CartClient";
+import { socket } from "@/app/socket";
 
 const ScrollArea = dynamic(
   () => import("@/components/ui/scroll-area").then((m) => m.ScrollArea),
@@ -27,7 +28,6 @@ type Forsale = ProductForSale & {
 type Props = {
   product: Forsale[];
 };
-
 export default function List({ product }: Props) {
   const t = useTranslations("cashier");
   const dispatch = useAppDispatch();
@@ -38,27 +38,64 @@ export default function List({ product }: Props) {
       (s) => s.cart.carts.find((c) => c.id === s.cart.activeCartId)?.items,
     ) ?? [];
 
-  const getAvailableStock = (
-    product: Forsale,
-    unitId: string,
-    cartItems: any[],
-  ) => {
-    const baseStock = product.availableStock?.[unitId] ?? 0;
+  // 🔥 Listen for stock updates from other users
+  useEffect(() => {
+    const handleStockUpdate = (data: {
+      productId: string;
+      sellingUnit: string;
+      quantity: number;
+      mode: "consume" | "restore";
+    }) => {
+      console.log("📦 Stock updated by another user:", data);
 
-    const inCartQty = cartItems
-      .filter((i) => i.id === product.id && i.selectedUnitId === unitId)
-      .reduce((sum, i) => sum + i.selectedQty, 0);
+      // Update local stock immediately
+      dispatch(updateProductStockOptimistic(data));
+    };
 
-    return baseStock - inCartQty;
-  };
+    const handleSaleRefresh = (data: {
+      items: Array<{
+        id: string;
+        selectedUnitId: string;
+        selectedQty: number;
+      }>;
+    }) => {
+      console.log("🛒 Sale completed by another user:", data);
 
-  /**
-   * ✅ ADD TO CART (single source)
-   */
-  // داخل مكون List
+      // Update all affected products
+      data.items.forEach((item) => {
+        dispatch(
+          updateProductStockOptimistic({
+            productId: item.id,
+            sellingUnit: item.selectedUnitId,
+            quantity: item.selectedQty,
+            mode: "consume",
+          }),
+        );
+      });
+    };
+
+    socket.on("stock:updated", handleStockUpdate);
+    socket.on("sale:refresh", handleSaleRefresh);
+
+    return () => {
+      socket.off("stock:updated", handleStockUpdate);
+      socket.off("sale:refresh", handleSaleRefresh);
+    };
+  }, [dispatch]);
+  const getAvailableStock = useCallback(
+    (product: Forsale, unitId: string, cartItems: any[]) => {
+      const baseStock = product.availableStock?.[unitId] ?? 0;
+
+      const inCartQty = cartItems
+        .filter((i) => i.id === product.id && i.selectedUnitId === unitId)
+        .reduce((sum, i) => sum + i.selectedQty, 0);
+
+      return baseStock - inCartQty;
+    },
+    [],
+  );
   const handleAdd = useCallback(
     (p: Forsale, selectedUnit?: SellingUnit) => {
-      // تحديد الوحدة: إما المختارة من الزر أو الافتراضية
       const targetUnit =
         selectedUnit ||
         p.sellingUnits.find((u) => u.isbase) ||
@@ -66,8 +103,6 @@ export default function List({ product }: Props) {
 
       if (!targetUnit) return;
 
-      // فحص المخزون بناءً على الوحدة المستهدفة
-      // ملحوظة: نستخدم cartItems من الـ scope الخارجي كما أصلحناها سابقاً
       const availableQty = getAvailableStock(p, targetUnit.id, cartItems);
 
       if (availableQty <= 0) {
@@ -84,10 +119,7 @@ export default function List({ product }: Props) {
           warehouseId: p.warehouseId,
           originalStockQuantity: p.availableStock?.[targetUnit.id] || 0,
           sellingMode: p.sellingMode,
-          // unitsPerPacket: p.unitsPerPacket,
-          // packetsPerCarton: p.packetsPerCarton,
           sellingUnits: p.sellingUnits,
-          // ✅ نستخدم بيانات الوحدة المستهدفة
           selectedUnitId: targetUnit.id,
           selectedUnitName: targetUnit.name,
           selectedUnitPrice: targetUnit.price,
@@ -105,8 +137,16 @@ export default function List({ product }: Props) {
           mode: "consume",
         }),
       );
+
+      // 🔥 Emit stock update to other users
+      socket.emit("stock:update", {
+        productId: p.id,
+        sellingUnit: targetUnit.id,
+        quantity: 1,
+        mode: "consume",
+      });
     },
-    [dispatch, cartItems], // مهم جداً تحديث التبعيات
+    [dispatch, cartItems],
   );
 
   /**

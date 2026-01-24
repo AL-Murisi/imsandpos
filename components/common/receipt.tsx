@@ -417,7 +417,7 @@ export const Receipt: React.FC<ReceiptProps> = ({
       }}
     >
       {isLoading2 && <Clock className="h-4 w-4 animate-spin" />}
-      {isLoading2 ? "جاري الطباعة..." : t("print")}
+      {isLoading2 ? "طباعة.." : t("print")}
     </Button>
   );
 };

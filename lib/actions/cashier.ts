@@ -189,7 +189,7 @@ export async function processSale(data: any, companyId: string) {
     async (tx) => {
       let status;
       if (totalAfterDiscount === baseAmount) {
-        status === "completed";
+        status === "paid";
       } else if (baseAmount > 0 && totalAfterDiscount > baseAmount) {
         status = "partial";
       } else {
@@ -204,7 +204,7 @@ export async function processSale(data: any, companyId: string) {
           cashierId,
           branchId: branchId,
           sale_type: "SALE",
-          status: "completed",
+          status: status,
           totalAmount: totalAfterDiscount,
           amountPaid: baseAmount,
           warehouseId: cart[0]?.warehouseId || cart.warehouseId,
@@ -218,7 +218,7 @@ export async function processSale(data: any, companyId: string) {
       const aggregate = await tx.financialTransaction.aggregate({
         where: {
           companyId: companyId,
-          type: "RECEIPT",
+          type: "PAYMENT",
         },
         _max: {
           voucherNumber: true,
@@ -350,7 +350,7 @@ export async function processSale(data: any, companyId: string) {
       // ==========================================
       if (baseAmount > 0) {
         if (totalAfterDiscount === baseAmount) {
-          status === "completed";
+          status === "paid";
         } else if (baseAmount > 0 && totalAfterDiscount > baseAmount) {
           status = "partial";
         } else {
@@ -555,8 +555,13 @@ export async function processReturn(data: any, companyId: string) {
     branchId,
     returnNumber,
     reason,
+
     items,
     returnToCustomer,
+    baseCurrency,
+    exchangeRate,
+    currency,
+    foreignAmount,
     paymentMethod,
   } = data;
 
@@ -598,21 +603,18 @@ export async function processReturn(data: any, companyId: string) {
       if (!originalSale) {
         throw new Error("عملية البيع غير موجودة");
       }
-      const lastVoucher = await tx.financialTransaction.findFirst({
+      const aggregate = await tx.financialTransaction.aggregate({
         where: {
-          companyId,
-          type: "RECEIPT", // 🔥 Crucial: Filter by type to get the correct sequence
-
-          // اختياري: هل تريد تسلسل منفصل للقبض عن الصرف؟
-          // إذا نعم، أضف: type: data.type
+          companyId: companyId,
+          type: "PAYMENT",
         },
-        select: { voucherNumber: true },
+        _max: {
+          voucherNumber: true,
+        },
       });
 
-      // 2. تحديد الرقم الجديدconst nextNumber = (lastVoucher?.voucherNumber || 0) + 1;
-
-      // تحويل الرقم إلى نص مع إضافة أصفار حتى يصل الطول إلى 5 خانات
-      const nextNumber = (lastVoucher?.voucherNumber || 0) + 1;
+      const lastNumber = aggregate._max.voucherNumber || 0;
+      const nextNumber = lastNumber + 1;
       // const nextNumber = String(formattedNumber).padStart(5, "0");
       const originalNumber = returnNumber;
       const randomNumber = Math.floor(Math.random() * 90 + 10); // يولد رقماً بين 10 و 99
@@ -625,61 +627,8 @@ export async function processReturn(data: any, companyId: string) {
         originalSale.items.map((item) => [item.productId, item]),
       );
 
-      // 🆕 Helper: Convert to base units using selling units structure
-      // const convertToBaseUnits = (
-      //   qty: number,
-      //   selectedUnitId: string,
-      //   sellingUnits: any[],
-      // ): number => {
-      //   const unitIndex = sellingUnits.findIndex(
-      //     (u) => u.id === selectedUnitId,
-      //   );
-
-      //   if (unitIndex === 0) {
-      //     return qty; // Already in base units
-      //   }
-
-      //   let multiplier = 1;
-      //   for (let i = 1; i <= unitIndex; i++) {
-      //     multiplier *= sellingUnits[i].unitsPerParent;
-      //   }
-
-      //   return qty * multiplier;
-      // };
-
-      // 🆕 Calculate cost per unit using selling units
-
-      // 3. Validate and calculate totals
       let returnSubtotal = 0;
       let returnTotalCOGS = 0;
-
-      // for (const returnItem of returnItems) {
-      //   const saleItem = saleItemsMap.get(returnItem.productId);
-      //   if (!saleItem) {
-      //     throw new Error(
-      //       `المنتج ${returnItem.name} غير موجود في البيع الأصلي`,
-      //     );
-      //   }
-
-      //   if (returnItem.quantity > saleItem.quantity) {
-      //     throw new Error(
-      //       `كمية الإرجاع للمنتج ${returnItem.name} أكبر من الكمية المباعة`,
-      //     );
-      //   }
-
-      //   // Calculate return value
-      //   const itemReturnValue =
-      //     saleItem.unitPrice.toNumber() * returnItem.quantity;
-      //   returnSubtotal += itemReturnValue;
-
-      //   // 🆕 Calculate COGS using selling units
-      //   const sellingUnits = (saleItem.product.sellingUnits as any[]) || [];
-      //   const costPerUnit = calculateCostPerUnit(
-      //     saleItem.product,
-      //     returnItem.selectedUnitId,
-      //   );
-      //   returnTotalCOGS += returnItem.quantity * costPerUnit;
-      // }
 
       // 4. Fetch all inventories in one query
       const warehouseIds = returnItems.map((item: any) => item.warehouseId);
@@ -858,7 +807,7 @@ export async function processReturn(data: any, companyId: string) {
             data: {
               companyId,
               branchId,
-              currencyCode: "",
+              currencyCode: currency,
               invoiceId: returnSale.id,
               userId: cashierId,
               voucherNumber: nextNumber,
@@ -902,6 +851,12 @@ export async function processReturn(data: any, companyId: string) {
             returnSaleId: returnSale.id,
             paymentMethod: paymentMethod || "cash",
             branchId,
+            ...(currency !== baseCurrency && {
+              foreignAmount: foreignAmount, // المبلغ بالدولار مثلاً
+              exchangeRate: exchangeRate,
+              foreignCurrency: currency,
+            }),
+            baseCurrency,
             reason,
           },
           processed: false,
@@ -927,31 +882,3 @@ export async function processReturn(data: any, companyId: string) {
   revalidatePath("/sells");
   return result;
 }
-// export const createVoucher = async (data: any) => {
-//   return await prisma.$transaction(async (tx) => {
-
-//     // 1. البحث عن آخر رقم سند لهذه الشركة
-//     const lastVoucher = await tx.financialTransaction.findFirst({
-//       where: {
-//         companyId: data.companyId,
-//         // اختياري: هل تريد تسلسل منفصل للقبض عن الصرف؟
-//         // إذا نعم، أضف: type: data.type
-//       },
-//       orderBy: { voucherNumber: 'desc' },
-//       select: { voucherNumber: true }
-//     });
-
-//     // 2. تحديد الرقم الجديد
-//     const nextNumber = (lastVoucher?.voucherNumber || 0) + 1;
-
-//     // 3. إنشاء السند بالرقم الجديد
-//     const newVoucher = await tx.financialTransaction.create({
-//       data: {
-//         ...data,
-//         voucherNumber: nextNumber
-//       }
-//     });
-
-//     return newVoucher;
-//   });
-// };

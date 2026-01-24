@@ -244,8 +244,14 @@ interface ExpenseData {
   currency_code: string;
   branchId: string;
   referenceNumber?: string;
+  basCurrncy: string;
 
   bankId?: string;
+  exchangeRate?: number;
+
+  baseAmount?: number;
+  amountFC?: number;
+
   notes?: string;
 }
 
@@ -263,7 +269,39 @@ export async function createMultipleExpenses(
     if (!expensesData || expensesData.length === 0) {
       return { success: false, error: "يجب إضافة مصروف واحد على الأقل" };
     }
+    const isForeign =
+      expensesData[0].currency_code &&
+      expensesData[0].currency_code !== expensesData[0].basCurrncy &&
+      expensesData[0].exchangeRate &&
+      expensesData[0].exchangeRate !== 1;
+    const aggregate = await prisma.financialTransaction.aggregate({
+      where: {
+        companyId,
+        type: "PAYMENT", // المصاريف تعتبر سندات صرف
+      },
 
+      _max: {
+        voucherNumber: true,
+      },
+    });
+    const aggregateexp = await prisma.expenses.aggregate({
+      where: {
+        company_id: companyId,
+      },
+
+      _max: {
+        expense_number: true,
+      },
+    });
+    const lastNumber = aggregate._max.voucherNumber || 0;
+    let currentVoucherNumber = lastNumber || 0;
+    let nextExpenseNumber = 1;
+
+    if (aggregateexp._max.expense_number) {
+      const last = aggregateexp._max.expense_number; // EXP-00012
+      const lastNum = Number(last.split("-")[1]);
+      nextExpenseNumber = lastNum + 1;
+    }
     // 2️⃣ تنفيذ العمليات داخل Transaction لضمان سلامة البيانات
     const result = await prisma.$transaction(async (tx) => {
       const createdExpenses = [];
@@ -271,32 +309,23 @@ export async function createMultipleExpenses(
       const financialTransactions = [];
 
       // جلب آخر رقم سند صرف للشركة لمرة واحدة وزيادته تدريجياً داخل الحلقة
-      const lastVoucher = await tx.financialTransaction.findFirst({
-        where: {
-          companyId,
-          type: "PAYMENT", // المصاريف تعتبر سندات صرف
-        },
-
-        select: { voucherNumber: true },
-      });
-
-      let currentVoucherNumber = lastVoucher?.voucherNumber || 0;
 
       for (const expenseData of expensesData) {
         currentVoucherNumber++; // زيادة الرقم لكل مصروف جديد
-
+        const expenseNumber = `EXP-${String(nextExpenseNumber).padStart(5, "0")}`;
+        nextExpenseNumber++; // زيادة الرقم للمصروف التالي
         // توليد رقم مصروف فريد
-        const expenseNumber = `EXP-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-
-        // أ- إنشاء سجل المصروف (expenses)
+        const amount = expenseData.amountFC;
+        //        أ - إنشاء سجل المصروف(expenses)
         const expense = await tx.expenses.create({
           data: {
             company_id: companyId,
             user_id: userId,
+            branchId: expenseData.branchId,
             account_id: expenseData.account_id,
             description: expenseData.description,
             expense_number: expenseNumber,
-            amount: expenseData.amount,
+            amount: amount ?? expenseData.amount,
             expense_date: expenseData.expense_date,
             payment_method: expenseData.paymentMethod,
             reference_number: expenseData.referenceNumber,
@@ -315,7 +344,7 @@ export async function createMultipleExpenses(
             branchId: expenseData.branchId,
             expenseId: expense.id, // الربط الذي أضفناه في الموديل
             voucherNumber: currentVoucherNumber,
-            amount: expenseData.amount,
+            amount: amount ?? expenseData.amount,
             currencyCode: expenseData.currency_code || "YER",
             paymentMethod: expenseData.paymentMethod,
             referenceNumber: expenseData.referenceNumber,
@@ -344,6 +373,10 @@ export async function createMultipleExpenses(
                 expenseDate: expenseData.expense_date,
                 bankId: expenseData.bankId ?? "",
                 branchId: expenseData.branchId,
+                basCurrncy: expenseData.basCurrncy,
+                exchangeRate: expenseData.exchangeRate,
+                amountFC: expenseData.amountFC,
+                baseAmount: expenseData.baseAmount,
                 currency_code: expenseData.currency_code ?? "YER",
                 financialTxId: financialTx.id, // ربط القيد بالسند أيضاً
               },
@@ -368,7 +401,7 @@ export async function createMultipleExpenses(
           userId: userId,
           companyId: companyId,
           action: "created multiple expenses with financial transactions",
-          details: `Created ${expensesData.length} expenses. Total: ${totalAmount}. Voucher range: ${lastVoucher?.voucherNumber || 0 + 1} to ${currentVoucherNumber}`,
+          details: `Created ${expensesData.length} expenses. Total: ${totalAmount}. Voucher range: ${lastNumber || 0 + 1} to ${currentVoucherNumber}`,
         },
       });
 

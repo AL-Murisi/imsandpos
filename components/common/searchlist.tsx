@@ -70,6 +70,7 @@ export default function SearchInput({
         <div className="relative w-full">
           <Button
             variant={"outline"}
+            type="button"
             className={cn(
               "border-primary flex w-full cursor-pointer items-center justify-between rounded-md border px-3 py-2 text-sm shadow-sm",
             )}

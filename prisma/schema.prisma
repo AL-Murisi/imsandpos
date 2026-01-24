@@ -466,9 +466,9 @@ model FinancialTransaction {
   supplier        Supplier? @relation(fields: [supplierId], references: [id])
   user        User? @relation(fields: [userId], references: [id])
   points_of_sale points_of_sale? @relation(fields: [branchId], references: [id])
+  invoice   Invoice? @relation(fields: [invoiceId], references: [id]) // <--- Add this line
 
   @@unique([companyId, type, voucherNumber])
-  invoice   Invoice? @relation(fields: [invoiceId], references: [id]) // <--- Add this line
   @@index([companyId, type])
   @@map("financial_transactions")
 }
@@ -496,9 +496,10 @@ model expenses {
   id                 String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   company_id         String
   user_id            String
- account_id        String?             @db.Uuid
+  account_id         String?             @db.Uuid
   expense_number     String              @unique @db.VarChar(255)
   description        String?
+  branchId           String?
   amount             Decimal             @db.Decimal(12, 2)
   expense_date       DateTime            @db.Date
   payment_method     String?             @db.VarChar(50)
@@ -509,6 +510,8 @@ model expenses {
   is_active          Boolean?            @default(true)
   created_at         DateTime?           @default(now()) @db.Timestamp(6)
   updated_at         DateTime?           @default(now()) @db.Timestamp(6)
+  branch                          points_of_sale? @relation(fields: [branchId], references: [id])                 
+
   companies          Company             @relation(fields: [company_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_expense_company")
   users              User                @relation(fields: [user_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "fk_expense_user")
  transactions         FinancialTransaction[]
@@ -714,7 +717,7 @@ model points_of_sale {
   manager User? @relation("BranchManager", fields: [managerId], references: [id])
    // 👈 all users with branchId = this.id
 
-
+  expense           expenses[]
   products       Product[]
   customers      Customer[]
   transactions   FinancialTransaction[]

@@ -11,6 +11,7 @@ import {
   CreateProductInputs,
   CreateProductSchema,
   CreateProductSchemas,
+  UpdateProductFormValues,
 } from "@/lib/zod";
 import { success } from "zod";
 
@@ -376,7 +377,7 @@ export async function fetchProductStats(role: string, companyId: string) {
 }
 
 export async function UpdateProduct(
-  data: CreateProductInputs,
+  data: UpdateProductFormValues,
   companyId: string,
   userId: string,
 ) {
@@ -385,7 +386,6 @@ export async function UpdateProduct(
     console.error(parsed.error.format());
     throw new Error("Invalid product data");
   }
-  const date = new Date(data.expiredAt).toISOString() as any;
 
   const {
     sku,
@@ -396,7 +396,7 @@ export async function UpdateProduct(
     // type,
     // unitsPerPacket,
     // packetsPerCarton,
-    // costPrice,
+    costPrice,
     // pricePerUnit,
     expiredAt,
     sellingUnits,
@@ -410,6 +410,7 @@ export async function UpdateProduct(
   } = parsed.data;
 
   try {
+    console.log(expiredAt);
     // ✅ Find product with inventory array
     const existing = await prisma.product.findUnique({
       where: {
@@ -446,12 +447,13 @@ export async function UpdateProduct(
         // type,
         // unitsPerPacket,
         // packetsPerCarton,
-        // costPrice,
+        costPrice,
         // pricePerUnit,
         sellingUnits,
-        expiredAt: date,
+        expiredAt: new Date(expiredAt).toISOString() as any,
         // pricePerPacket,
         // pricePerCarton,
+
         wholesalePrice,
         minWholesaleQty,
         dimensions,

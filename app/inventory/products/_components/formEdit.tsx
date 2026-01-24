@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/lib/context/AuthContext";
-import { CreateProductInputs, CreateProductSchemas } from "@/lib/zod";
+import { UpdateProductFormValues, UpdateProducts } from "@/lib/zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
@@ -68,8 +68,8 @@ export default function ProductEditForm({
     watch,
     control,
     formState: { errors },
-  } = useForm<CreateProductInputs>({
-    resolver: zodResolver(CreateProductSchemas),
+  } = useForm<UpdateProductFormValues>({
+    resolver: zodResolver(UpdateProducts),
   });
 
   const watchedWarehouseId = watch("warehouseId");
@@ -162,10 +162,18 @@ export default function ProductEditForm({
 
   // ✅ Auto-calculate prices for cartonUnit mode - FIXED
 
-  const onSubmit = async (data: CreateProductInputs) => {
+  const onSubmit = async (data: UpdateProductFormValues) => {
     try {
       setIsSubmitting(true);
-      await UpdateProduct(data, user.companyId, user.userId);
+
+      const payload: UpdateProductFormValues = {
+        ...data,
+        expiredAt:
+          data.expiredAt !== undefined
+            ? data.expiredAt
+            : toDateTimeLocal(product.expiredAt), // ✅ fallback
+      };
+      await UpdateProduct(payload, user.companyId, user.userId);
       toast.success("✅ تم تحديث المنتج بنجاح!");
       setOpen(false);
       if (onSuccess) onSuccess();
@@ -215,6 +223,12 @@ export default function ProductEditForm({
       },
     );
   };
+  function toDateTimeLocal(value?: string | Date) {
+    if (!value) return "";
+    const date = typeof value === "string" ? new Date(value) : value;
+    return date.toISOString().slice(0, 16);
+  }
+
   return (
     <Dailogreuse
       open={open}
@@ -253,6 +267,7 @@ export default function ProductEditForm({
                 <Label>سعر التكلفة (للوحدة الأساسية)</Label>
                 <Input
                   type="number"
+                  value={product.costPrice}
                   step="0.01"
                   {...register("costPrice", { valueAsNumber: true })}
                   placeholder="0.00"
@@ -280,6 +295,7 @@ export default function ProductEditForm({
                 <Label>تاريخ الانتهاء</Label>
                 <Input
                   type="datetime-local"
+                  value={toDateTimeLocal(product.expiredAt)}
                   className="text-end"
                   {...register("expiredAt")}
                 />

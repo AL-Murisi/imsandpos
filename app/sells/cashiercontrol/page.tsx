@@ -7,10 +7,9 @@ import { Fetchcustomerbyname } from "@/lib/actions/customers";
 import { fetchAllFormData } from "@/lib/actions/roles";
 import { Prisma } from "@prisma/client";
 
-import { getSession } from "@/lib/session";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { getSession } from "@/lib/session";
 import Clientwraper from "./_components/clientwraper";
-import AutoRefresh from "../_components/refresh";
 
 type Props = {
   searchParams: Promise<{
@@ -70,7 +69,6 @@ export default async function Cart({ searchParams }: Props) {
 
   return (
     <ScrollArea className="grid" dir="rtl">
-      <AutoRefresh />
       <Clientwraper
         users={users}
         product={products}

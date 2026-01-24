@@ -136,6 +136,7 @@ export async function updateSalesBulk(
   cashierId: string,
   branchId: string,
   paymentDetails: {
+    basCurrncy: string;
     paymentMethod: string;
     currencyCode: string;
     bankId: string;
@@ -206,10 +207,11 @@ export async function updateSalesBulk(
       customerId: s.customerId,
       userId: cashierId,
       branchId,
+      exchangeRate: paymentDetails.exchange_rate,
       currencyCode: paymentDetails.currencyCode || "",
       type: TransactionType.PAYMENT,
       paymentMethod: paymentDetails.paymentMethod,
-      amount: payNow,
+      amount: paymentAmount,
       status: "completed",
       notes: `تسديد الدين للفاتورة رقم ${s.invoiceNumber}`,
       createdAt: new Date(),
@@ -251,11 +253,15 @@ export async function updateSalesBulk(
 
   while (attempts < maxAttempts) {
     try {
-      const nextNumber = await getNextVoucherNumber();
-      const currentBatch = paymentRecordsBase.map((p) => ({
-        ...p,
-        voucherNumber: nextNumber,
-      }));
+      let nextVoucherNumber = await getNextVoucherNumber();
+      const currentBatch = paymentRecordsBase.map((p) => {
+        const voucher = nextVoucherNumber;
+        nextVoucherNumber++; // 🔥 increment
+        return {
+          ...p,
+          voucherNumber: voucher,
+        };
+      });
 
       createdPayments = []; // تصغير المصفوفة في كل محاولة
       for (const c of chunk(currentBatch, CHUNK)) {
@@ -306,7 +312,7 @@ export async function updateSalesBulk(
         id: payment.id,
         saleId: payment.invoiceId,
         customerId: payment.customerId,
-        amount: payment.amount,
+        amount: paymentDetails.baseAmount,
         branchId,
         paymentDetails: paymentDetails || {},
       },
@@ -334,6 +340,8 @@ export async function payOutstandingOnly(
   cashierId: string,
   branchId: string,
   paymentDetails: {
+    basCurrncy: string;
+
     paymentMethod: string;
     currencyCode: string;
     bankId: string;
@@ -392,8 +400,8 @@ export async function payOutstandingOnly(
           id: payment.id,
           saleId: null,
           customerId,
-          amount: payment.amount,
-
+          amount: paymentDetails.baseAmount,
+          branchId,
           paymentDetails: paymentDetails || {},
         },
         cashierId,

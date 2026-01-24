@@ -83,15 +83,6 @@ export default function ManualJournalEntryForm({
       customerId: "",
       supplierId: "",
     },
-    {
-      id: crypto.randomUUID(),
-      accountId: "",
-      description: "",
-      debit: 0,
-      credit: 0,
-      customerId: "",
-      supplierId: "",
-    },
   ]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { company } = useCompany();
@@ -130,7 +121,10 @@ export default function ManualJournalEntryForm({
   // Calculate totals
   const totalDebit = lines.reduce((sum, line) => sum + (line.debit || 0), 0);
   const totalCredit = lines.reduce((sum, line) => sum + (line.credit || 0), 0);
-  const isBalanced = totalDebit === totalCredit && totalDebit > 0;
+  const isBalanced =
+    lines.length === 1
+      ? totalDebit > 0 || totalCredit > 0
+      : totalDebit === totalCredit && totalDebit > 0;
 
   // Check if account is AR or AP
   const isAccountsReceivable = (accountId: string) => {
@@ -182,10 +176,10 @@ export default function ManualJournalEntryForm({
 
   // Remove line
   const removeLine = (id: string) => {
-    if (lines.length > 2) {
+    if (lines.length > 1) {
       setLines(lines.filter((line) => line.id !== id));
     } else {
-      toast.error("يجب أن يحتوي القيد على سطرين على الأقل");
+      toast.error("يجب أن يحتوي القيد على سطر واحد على الأقل");
     }
   };
 
@@ -230,7 +224,11 @@ export default function ManualJournalEntryForm({
     }
 
     if (!isBalanced) {
-      toast.error("القيد غير متوازن! يجب أن يتساوى إجمالي المدين والدائن");
+      toast.error(
+        lines.length === 1
+          ? "القيد بسطر واحد يجب أن يحتوي على مدين أو دائن"
+          : "القيد غير متوازن! يجب تساوي المدين والدائن",
+      );
       return;
     }
 
@@ -408,11 +406,11 @@ export default function ManualJournalEntryForm({
               <div className="flex h-10 items-center">
                 {isBalanced ? (
                   <span className="text-sm font-medium text-green-600">
-                    ✓ القيد متوازن
+                    ✓ القيد صالح
                   </span>
                 ) : (
                   <span className="text-sm font-medium text-red-600">
-                    ✗ القيد غير متوازن
+                    ✗ القيد غير صالح
                   </span>
                 )}
               </div>
@@ -489,7 +487,7 @@ export default function ManualJournalEntryForm({
                     <span className="text-muted-foreground text-sm font-medium">
                       السطر {index + 1}
                     </span>
-                    {lines.length > 2 && (
+                    {lines.length > 1 && (
                       <Button
                         onClick={() => removeLine(line.id)}
                         size="sm"

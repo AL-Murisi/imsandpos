@@ -2,10 +2,11 @@
   "name": "invonterymanagment",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "next dev  --turbopack",
+    "dev": "node server.js",
     "build": "next build",
-    "start": "next start",
+    "start": "cross-env NODE_ENV=production node server.js",
     "lint": "next lint",
     "postinstall": " prisma generate && npx puppeteer browsers install"
   },
@@ -43,6 +44,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "cookie": "^1.0.2",
+    "cross-env": "^10.1.0",
     "date-fns": "^4.1.0",
     "dexie": "^4.2.1",
     "electron": "^38.2.1",

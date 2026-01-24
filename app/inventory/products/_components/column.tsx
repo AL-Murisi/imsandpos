@@ -1,6 +1,6 @@
 "use client";
 import { deleteProduct } from "@/lib/actions/Product";
-import ProductEditFormm from "@/app/products/_components/formEdit";
+import ProductEditFormm from "@/app/inventory/products/_components/formEdit";
 import Dailogreuse from "@/components/common/dailogreuse";
 import { useCurrency } from "@/components/CurrencyProvider";
 import { Badge } from "@/components/ui/badge";
@@ -412,7 +412,6 @@ export const createColumns = (
 
 export default function sortfilteringsearch() {}
 import { format } from "date-fns";
-import SellingUnitsManager from "./salesunit";
 
 type ExpiryProps = {
   expiredAt?: string | Date;

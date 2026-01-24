@@ -1,5 +1,6 @@
 "use client";
 
+import { socket } from "@/app/socket";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -85,6 +86,12 @@ export const CartItemRow = memo(
                     mode: "restore",
                   }),
                 );
+                socket.emit("stock:update", {
+                  productId: item.id,
+                  sellingUnit: item.selectedUnitId,
+                  quantity: 1,
+                  mode: "restore",
+                });
                 onUpdateQty(item.id, item.selectedUnitId, 1, "mins");
               }}
               className="bg-primary text-background rounded p-1 disabled:bg-gray-400"
@@ -107,6 +114,12 @@ export const CartItemRow = memo(
                     mode: "consume",
                   }),
                 );
+                socket.emit("stock:update", {
+                  productId: item.id,
+                  sellingUnit: item.selectedUnitId,
+                  quantity: 1,
+                  mode: "consume",
+                });
                 onUpdateQty(item.id, item.selectedUnitId, 1, "plus");
               }}
               className="bg-primary text-background rounded p-1 disabled:bg-gray-400"
@@ -173,7 +186,15 @@ export const CartItemRow = memo(
         </TableCell>
         <TableCell>
           <Button
-            onClick={() => onRemove(item.id, item.selectedUnitId)}
+            onClick={() => {
+              onRemove(item.id, item.selectedUnitId);
+              socket.emit("stock:update", {
+                productId: item.id,
+                sellingUnit: item.selectedUnitId,
+                quantity: item.selectedQty,
+                mode: "restore",
+              });
+            }}
             variant="ghost"
             size="icon"
           >

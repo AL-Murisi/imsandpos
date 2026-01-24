@@ -95,6 +95,10 @@ export async function GET() {
             paymentMethod: eventData.paymentMethod || "cash",
             reason: eventData.reason,
             branchId: eventData.branchId,
+            foreignAmount: eventData.foreignAmount,
+            exchangeRate: eventData.exchangeRate,
+            foreignCurrency: eventData.foreignCurrency,
+            baseCurrency: eventData.baseCurrency,
           });
 
           results.returns++;
@@ -124,6 +128,7 @@ export async function GET() {
             companyId: eventData.companyId,
             userId: eventData.userId,
             paymentDetails: eventData.paymentDetails,
+            branchId: eventData.branchId,
           });
           results.purchase_payment++;
         } else if (event.eventType === "createCutomer") {
@@ -415,7 +420,7 @@ async function createReturnJournalEntries({
   customerId,
   cashierId,
   returnNumber,
-  returnToCustomer,
+  returnToCustomer, // القيمة بالعملة المحلية
   returnTotalCOGS,
   refundFromAR,
   refundFromCashBank,
@@ -423,6 +428,11 @@ async function createReturnJournalEntries({
   paymentMethod = "cash",
   reason,
   branchId,
+  // العملات الممررة من الـ payload
+  foreignAmount,
+  exchangeRate,
+  foreignCurrency,
+  baseCurrency,
 }: {
   companyId: string;
   customerId: string;
@@ -436,8 +446,19 @@ async function createReturnJournalEntries({
   paymentMethod?: "cash" | "bank";
   reason?: string;
   branchId: string;
+  foreignAmount?: number;
+  exchangeRate?: number;
+  foreignCurrency?: string;
+  baseCurrency: string;
 }) {
-  // 1️⃣ Fetch mappings and fiscal year in parallel
+  // 1️⃣ استخراج بيانات العملة والتحقق من الحالة
+  const isForeign =
+    foreignCurrency &&
+    foreignCurrency !== baseCurrency &&
+    exchangeRate &&
+    exchangeRate !== 1;
+
+  // 2️⃣ جلب المخطط المحاسبي والسنة المالية
   const [mappings, fy] = await Promise.all([
     prisma.account_mappings.findMany({
       where: { company_id: companyId, is_default: true },
@@ -446,170 +467,186 @@ async function createReturnJournalEntries({
     getActiveFiscalYears(),
   ]);
 
-  if (!fy) throw new Error("No active fiscal year");
+  if (!fy) throw new Error("السنة المالية النشطة غير موجودة");
 
-  // 2️⃣ Create account map
   const accountMap = new Map(
     mappings.map((m) => [m.mapping_type, m.account_id]),
   );
+  const revenueAccount = accountMap.get("sales_revenue")!;
+  const cogsAccount = accountMap.get("cogs")!;
+  const inventoryAccount = accountMap.get("inventory")!;
+  const arAccount = accountMap.get("accounts_receivable")!;
+  const cashAccount = accountMap.get("cash")!;
+  const bankAccount = accountMap.get("bank")!;
 
-  const getAccountId = (type: string) => {
-    const id = accountMap.get(type);
-    if (!id && ["sales_revenue", "cogs", "inventory"].includes(type)) {
-      throw new Error(`Missing essential GL account mapping: ${type}`);
-    }
-    return id;
-  };
-
-  const revenueAccount = getAccountId("sales_revenue")!;
-  const cogsAccount = getAccountId("cogs")!;
-  const inventoryAccount = getAccountId("inventory")!;
-  const cashAccount = getAccountId("cash");
-  const bankAccount = getAccountId("bank");
-  const arAccount = getAccountId("accounts_receivable");
-
-  // 3️⃣ Generate entry numbers
-  // const year = new Date().getFullYear();
-  // const timestamp = Date.now();
-  // const entryBase = `JE-${year}-${returnNumber}-${timestamp}-RET`;
+  // 3️⃣ توليد رقم القيد (نفس منطق البيع)
   const v_year = new Date().getFullYear();
+  //   const aggregateexp = await prisma.journal_entries.aggregate({
+  //       where: {
+  //       company_id: companyId,
+  //         branch_id:branchId
+  //       },
+
+  //       _max: {
+  //         entry_number: true,
+  //       },
+  //   });
+  //     let nextExpenseNumber = 1;
+
+  //  if (aggregateexp._max.entry_number) {
+  //     const last = aggregateexp._max.entry_number; // EXP-00012
+  //     const lastNum = Number(last.split("-")[1]);
+  //     nextExpenseNumber = lastNum + 1;
+  // }
+  //  const expenseNumber = `EXP-${String(nextExpenseNumber).padStart(5, "0")}`;
+  //       nextExpenseNumber++; // زيادة الرقم للمصروف التالي
   let entryCounter = 0;
-  const entryBase = () => {
+  const generateEntryNumber = (suffix: string) => {
     entryCounter++;
-    const ts = Date.now();
-    return `JE-${v_year}-${ts}-${entryCounter}-RET`;
-  };
-  // 4️⃣ Build journal entries with base template
-  const baseEntry = {
-    company_id: companyId,
-    entry_date: new Date(),
-    is_automated: true,
-    fiscal_period: fy.period_name,
-    reference_type: "إرجاع بيع ",
-    reference_id: returnSaleId,
-    created_by: cashierId,
-    branch_id: branchId,
+    return `JE-RET-${v_year}-${Date.now()}-${entryCounter}-${suffix}`;
   };
 
-  const entries: any[] = [
-    // Reverse Revenue (Debit)
-    {
-      ...baseEntry,
-      entry_number: entryBase(),
-      account_id: revenueAccount,
-      description: `إرجاع بيع ${returnNumber}`,
-      debit: returnToCustomer,
-      credit: 0,
-    },
-    // Reverse COGS (Credit)
-    {
-      ...baseEntry,
-      entry_number: entryBase(),
-      account_id: cogsAccount,
-      description: `عكس تكلفة البضاعة المباعة (إرجاع) ${returnNumber}`,
-      debit: 0,
-      credit: returnTotalCOGS,
-    },
-    // Increase Inventory (Debit)
-    {
-      ...baseEntry,
-      entry_number: entryBase(),
-      account_id: inventoryAccount,
-      description: `زيادة مخزون (إرجاع) ${returnNumber}`,
-      debit: returnTotalCOGS,
-      credit: 0,
-    },
-  ];
+  // 4️⃣ الدالة المساعدة لإنشاء القيد (نفس منطق createSaleJournalEntries)
+  const createEntry = (
+    accountId: string,
+    description: string,
+    debitBase: number,
+    creditBase: number,
+    suffix: string,
+    refId: string,
+    refType: string,
+    isCogsRelated: boolean = false,
+  ) => {
+    const baseAmountValue = debitBase > 0 ? debitBase : creditBase;
+    const useForeign = isForeign && !isCogsRelated;
 
-  // 5️⃣ Add refund entries
-  if (refundFromAR > 0 && arAccount) {
-    entries.push({
-      ...baseEntry,
-      entry_number: entryBase(),
-      account_id: arAccount,
-      description: `تخفيض مديونية العميل بسبب إرجاع ${returnNumber}`,
-      debit: 0,
-      credit: refundFromAR,
-      reference_id: customerId || returnSaleId,
-      reference_type: "إرجاع",
-    });
-  }
+    return {
+      company_id: companyId,
+      entry_date: new Date(),
+      fiscal_period: fy.period_name,
+      created_by: cashierId,
+      is_automated: true,
+      branch_id: branchId,
+      account_id: accountId,
+      description,
+      entry_number: generateEntryNumber(suffix),
+      reference_id: refId,
+      reference_type: refType,
+      debit: debitBase,
+      credit: creditBase,
 
-  if (refundFromCashBank > 0) {
-    const refundAccountId =
-      paymentMethod === "bank" ? bankAccount : cashAccount;
+      ...(useForeign
+        ? {
+            currency_code: foreignCurrency,
+            exchange_rate: exchangeRate,
+            foreign_amount: foreignAmount,
+            base_amount: baseAmountValue, // القيمة المحلية دائماً للكل
+          }
+        : {
+            currency_code: baseCurrency,
+          }),
+    };
+  };
 
-    if (!refundAccountId) {
-      throw new Error(
-        `Missing GL account mapping for refund method: ${paymentMethod}`,
-      );
-    }
+  const entries: any[] = [];
+  const desc = `إرجاع فاتورة ${returnNumber}`;
 
-    entries.push({
-      ...baseEntry,
-      entry_number: entryBase(),
-      account_id: refundAccountId,
-      description: `صرف مبلغ مسترجع للعميل (إرجاع) ${returnNumber}`,
-      debit: 0,
-      credit: refundFromCashBank,
-    });
-  }
+  // 5️⃣ بناء قيود الإرجاع المالي
+  // أ- عكس الإيراد (مدين)
+  entries.push(
+    createEntry(
+      revenueAccount,
+      desc,
+      returnToCustomer,
+      0,
+      "REV",
+      returnSaleId,
+      "إرجاع مبيعات",
+    ),
+  );
 
-  // 6️⃣ Insert entries and update balances in transaction
-  await prisma.$transaction(async (tx) => {
-    // 1. إدخال القيود
-    await tx.journal_entries.createMany({ data: entries });
-
-    // 2. جلب أنواع الحسابات المتأثرة لمعرفة طبيعتها (مدين أم دائن)
-    const accountIds = Array.from(new Set(entries.map((e) => e.account_id)));
-    const accountsInfo = await tx.accounts.findMany({
-      where: { id: { in: accountIds } },
-      select: { id: true, account_type: true }, // افترضت أن الحقل اسمه account_type
-    });
-
-    const accountTypeMap = new Map(
-      accountsInfo.map((a) => [a.id, a.account_type.toLowerCase()]),
-    );
-
-    // 3. حساب الدلتا الصحيح
-    const accountDeltas = new Map<string, number>();
-
-    for (const entry of entries) {
-      const type = accountTypeMap.get(entry.account_id);
-      let delta = 0;
-
-      // الحسابات المدينة بطبيعتها (الأصول، المصاريف، التكلفة)
-      if (["asset", "expense", "cogs"].includes(type || "")) {
-        delta = (entry.debit || 0) - (entry.credit || 0);
-      }
-      // الحسابات الدائنة بطبيعتها (الإيرادات، الالتزامات، حقوق الملكية)
-      else {
-        // هنا السر: الدائن يزيدها والمدين ينقصها
-        delta = (entry.credit || 0) - (entry.debit || 0);
-      }
-
-      accountDeltas.set(
-        entry.account_id,
-        (accountDeltas.get(entry.account_id) || 0) + delta,
-      );
-    }
-
-    // 4. تحديث الأرصدة
-    await Promise.all(
-      Array.from(accountDeltas.entries()).map(([accountId, delta]) =>
-        tx.accounts.update({
-          where: { id: accountId },
-          data: { balance: { increment: delta } },
-        }),
+  // ب- تخفيض المديونية إذا وجد (دائن)
+  if (refundFromAR > 0) {
+    entries.push(
+      createEntry(
+        arAccount,
+        desc + " (تخفيض دين)",
+        0,
+        refundFromAR,
+        "ARP",
+        customerId,
+        "عميل",
       ),
     );
+  }
+
+  // ج- استرداد نقدي/بنكي إذا وجد (دائن)
+  if (refundFromCashBank > 0) {
+    const refundAcc = paymentMethod === "bank" ? bankAccount : cashAccount;
+    entries.push(
+      createEntry(
+        refundAcc,
+        desc + " (نقدي)",
+        0,
+        refundFromCashBank,
+        "CSH",
+        customerId,
+        "إرجاع نقدي",
+      ),
+    );
+  }
+
+  // 6️⃣ قيود المخزن والتكلفة (دائماً عملة محلية Base)
+  if (returnTotalCOGS > 0) {
+    entries.push(
+      createEntry(
+        inventoryAccount,
+        desc + " (إرجاع مخزن)",
+        returnTotalCOGS,
+        0,
+        "INV",
+        returnSaleId,
+        "حركة مخزنية",
+        true,
+      ),
+      createEntry(
+        cogsAccount,
+        desc + " (عكس تكلفة)",
+        0,
+        returnTotalCOGS,
+        "COGS",
+        returnSaleId,
+        "حركة مخزنية",
+        true,
+      ),
+    );
+  }
+
+  // 7️⃣ التنفيذ في Transaction وتحديث الأرصدة
+  await prisma.$transaction(async (tx) => {
+    await tx.journal_entries.createMany({ data: entries });
+
+    // تحديث الأرصدة في جدول Accounts (بالعملة المحلية Base)
+    for (const entry of entries) {
+      const isDebitNature = await tx.accounts.findUnique({
+        where: { id: entry.account_id },
+        select: { account_type: true },
+      });
+
+      const isDebit = ["ASSET", "EXPENSE", "COGS"].includes(
+        isDebitNature?.account_type || "",
+      );
+      const change = entry.debit - entry.credit;
+      const delta = isDebit ? change : -change;
+
+      await tx.accounts.update({
+        where: { id: entry.account_id },
+        data: { balance: { increment: delta } },
+      });
+    }
   });
 
-  return {
-    success: true,
-    message: "تم إنشاء قيود اليومية للإرجاع بنجاح",
-    entry_number: entries[0]?.entry_number,
-  };
+  return { success: true, message: "تمت معالجة قيود الإرجاع بنجاح" };
 }
 async function createPaymentJournalEntries({
   companyId,
@@ -621,7 +658,16 @@ async function createPaymentJournalEntries({
   cashierId: string;
 }) {
   try {
-    const { saleId, customerId, amount, paymentDetails } = payment;
+    const {
+      saleId,
+      customerId,
+      amount,
+      paymentDetails,
+
+      branchId,
+
+      exchangeRate,
+    } = payment;
     const fy = await getActiveFiscalYears();
     if (!fy) return;
     // ============================================
@@ -672,7 +718,11 @@ async function createPaymentJournalEntries({
     const seqFormatted = String(nextNumber).padStart(7, "0");
     const randomSuffix = Math.floor(Math.random() * 1000);
     const entryBase = `JE-${year}-${seqFormatted}-${randomSuffix}`;
-
+    let entryCounter = 0;
+    const generateEntryNumber = (suffix: string) => {
+      entryCounter++;
+      return `JE-RET-${year}-${Date.now()}-${entryCounter}-${suffix}`;
+    };
     // ============================================
     // 4️⃣ Fetch account mappings
     // ============================================
@@ -692,97 +742,102 @@ async function createPaymentJournalEntries({
       console.error("Missing account mappings");
       return;
     }
+    const isForeign =
+      paymentDetails.currencyCode &&
+      paymentDetails.foreignCurrency !== paymentDetails.baseCurrency &&
+      exchangeRate &&
+      exchangeRate !== 1;
 
     // ============================================
     // 5️⃣ Prepare journal entries
     // ============================================
     const desc = `تسديد دين لعملية بيع ${sale.invoiceNumber}`;
+    const createEntry = (
+      accountId: string,
+      description: string,
+      debitBase: number,
+      creditBase: number,
+      suffix: string,
+      refId: string,
+      refType: string,
+      isCogsRelated: boolean = false,
+    ) => {
+      const baseAmountValue = debitBase > 0 ? debitBase : creditBase;
+      const useForeign = isForeign && !isCogsRelated;
 
+      return {
+        company_id: companyId,
+        entry_date: new Date(),
+        fiscal_period: fy.period_name,
+        created_by: cashierId,
+        is_automated: true,
+        branch_id: branchId,
+        account_id: accountId,
+        description,
+        entry_number: generateEntryNumber(suffix),
+        reference_id: refId,
+        reference_type: refType,
+        debit: debitBase,
+        credit: creditBase,
+
+        ...(useForeign
+          ? {
+              currency_code: paymentDetails.currencyCode,
+              foreign_amount: paymentDetails.amountFC,
+              exchange_rate: paymentDetails.exchange_rate,
+              base_amount: paymentDetails.baseAmount,
+            }
+          : {
+              currency_code: paymentDetails.baseCurrency,
+            }),
+      };
+    };
     let entries: any[] = [];
+
     if (paymentDetails.paymentMethod === "cash") {
-      entries = [
-        {
-          company_id: companyId,
-          account_id: paymentDetails.bankId,
-          description: desc,
-          debit: amount,
-          branch_id: payment.branchId,
-          // currency_code: paymentDetails.currencyCode,
-          foreign_amount: paymentDetails.amountFC,
-          exchange_rate: paymentDetails.exchange_rate,
-          base_amount: paymentDetails.baseAmount,
-          credit: 0,
-          fiscal_period: fy.period_name,
-          entry_date: new Date(),
-          reference_id: payment.id,
-          reference_type: "تسديد دين",
-          entry_number: `${entryBase}-D`,
-          created_by: cashierId,
-          is_automated: true,
-        },
-        {
-          company_id: companyId,
-          account_id: arAcc,
-          description: desc,
-          branch_id: payment.branchId,
-          // currency_code: paymentDetails.currencyCode,
-          foreign_amount: paymentDetails.amountFC,
-          exchange_rate: paymentDetails.exchange_rate,
-          base_amount: paymentDetails.baseAmount,
-          debit: 0,
-          credit: amount,
-          fiscal_period: fy.period_name,
-          entry_date: new Date(),
-          reference_id: customerId,
-          reference_type: "سند قبض",
-          entry_number: `${entryBase}-C`,
-          created_by: cashierId,
-          is_automated: true,
-        },
-      ];
+      entries.push(
+        createEntry(
+          paymentDetails.bankId,
+          desc,
+          amount,
+          0,
+          "-D",
+          payment.id,
+          "تسديد دين",
+        ),
+
+        createEntry(arAcc, desc, 0, amount, customerId, "سند قبض", " -C"),
+      );
     } else if (paymentDetails.paymentMethod === "bank") {
-      entries = [
-        {
-          company_id: companyId,
-          account_id: paymentDetails.bankId,
-          description:
+      entries.push(
+        createEntry(
+          paymentDetails.bankId,
+          desc +
             "رقم التحويل : " +
             paymentDetails.transferNumber +
             "من: " +
             sale.customer?.name,
-          debit: amount,
-          credit: 0,
-          branch_id: payment.branchId,
-          foreign_amount: paymentDetails.amountFC,
-          exchange_rate: paymentDetails.exchange_rate,
-          base_amount: paymentDetails.baseAmount,
-          fiscal_period: fy.period_name,
-          entry_date: new Date(),
-          reference_id: payment.id,
-          reference_type: "تسديد دين",
-          entry_number: `${entryBase}-D`,
-          created_by: cashierId,
-          is_automated: true,
-        },
-        {
-          company_id: companyId,
-          account_id: arAcc,
-          description: desc + "رقم التحويل : " + paymentDetails.transferNumber,
-          debit: 0,
-          fiscal_period: fy.period_name,
-          credit: amount,
-          branch_id: payment.branchId,
-          foreign_amount: paymentDetails.amountFC,
-          exchange_rate: paymentDetails.exchange_rate,
-          base_amount: paymentDetails.baseAmount,
-          entry_date: new Date(),
-          reference_id: customerId,
-          reference_type: "سند قبض",
-          entry_number: `${entryBase}-C`,
-          created_by: cashierId,
-          is_automated: true,
-        },
-      ];
+          amount,
+          0,
+          "-D",
+          payment.id,
+          "تسديد دين",
+        ),
+
+        createEntry(
+          arAcc,
+          desc +
+            "رقم التحويل : " +
+            paymentDetails.transferNumber +
+            "من: " +
+            sale.customer?.name,
+          0,
+          amount,
+          customerId,
+          "سند قبض",
+          " -C",
+        ),
+      );
     }
 
     if (entries.length === 0) {
@@ -820,8 +875,17 @@ async function createOutstandingPaymentJournalEntries({
   cashierId: string;
 }) {
   try {
-    const { customerId, amount, paymentMethod, paymentDetails, currencyCode } =
-      payment;
+    const {
+      customerId,
+      branchId,
+      amount,
+      paymentMethod,
+      paymentDetails,
+      baseAmount,
+      amountFC,
+      currencyCode,
+      exchangeRate,
+    } = payment;
 
     const fy = await getActiveFiscalYears();
     if (!fy) return;
@@ -842,23 +906,61 @@ async function createOutstandingPaymentJournalEntries({
     // 2️⃣ Generate journal entry number
     // ============================================
     const year = new Date().getFullYear().toString();
-    const nextSeqRaw: { next_number: number }[] = await prisma.$queryRawUnsafe(`
-    SELECT COALESCE(
-      MAX(
-        CASE
-          WHEN SPLIT_PART(entry_number, '-', 3) ~ '^[0-9]+$'
-          THEN CAST(SPLIT_PART(entry_number, '-', 3) AS INT)
-          ELSE NULL
-        END
-      ),
-      0
-    ) + 1 AS next_number
-    FROM journal_entries
-    WHERE entry_number LIKE 'JE-${year}-%'
-  `);
 
-    const seq = String(nextSeqRaw[0]?.next_number || 1).padStart(7, "0");
-    const entryBase = `JE-${year}-${seq}-${Math.floor(Math.random() * 1000)}`;
+    const isForeign =
+      paymentDetails.currencyCode &&
+      paymentDetails.currencyCode !== paymentDetails.basCurrncy &&
+      exchangeRate &&
+      exchangeRate !== 1;
+    let entryCounter = 0;
+    const generateEntryNumber = (suffix: string) => {
+      entryCounter++;
+      return `JE-RET-${year}-${Date.now()}-${entryCounter}-${suffix}`;
+    };
+    // ============================================
+    // 5️⃣ Prepare journal entries
+    // ============================================
+    const createEntry = (
+      accountId: string,
+      description: string,
+      debitBase: number,
+      creditBase: number,
+      suffix: string,
+      refId: string,
+      refType: string,
+      isCogsRelated: boolean = false,
+    ) => {
+      const baseAmountValue = debitBase > 0 ? debitBase : creditBase;
+      const useForeign = isForeign && !isCogsRelated;
+
+      return {
+        company_id: companyId,
+        entry_date: new Date(),
+        fiscal_period: fy.period_name,
+        created_by: cashierId,
+        is_automated: true,
+        branch_id: branchId,
+        account_id: accountId,
+        description,
+        entry_number: generateEntryNumber(suffix),
+        reference_id: refId,
+        reference_type: refType,
+        debit: debitBase,
+        credit: creditBase,
+
+        ...(useForeign
+          ? {
+              currency_code: paymentDetails.basCurrncy,
+              foreign_amount: paymentDetails.amountFC,
+              exchange_rate: paymentDetails.exchangeRate,
+              base_amount: paymentDetails.baseAmount,
+            }
+          : {
+              currency_code: paymentDetails.basCurrncy,
+            }),
+      };
+    };
+    let entries: any[] = [];
 
     // ============================================
     // 3️⃣ Fetch customer
@@ -896,47 +998,32 @@ async function createOutstandingPaymentJournalEntries({
       customer?.name ? " - " + customer.name : ""
     }`;
 
-    const entries = [
-      // Debit: Cash / Bank
-      {
-        company_id: companyId,
-        account_id: debitAccount,
-        description: desc,
-        debit: amount,
-        foreign_amount: paymentDetails.amountFC,
-        exchange_rate: paymentDetails.exchangeRate,
-        base_amount: paymentDetails.bas_amount,
-        credit: 0,
-        currency_code: currencyCode,
-        fiscal_period: fy.period_name,
-        entry_date: new Date(),
-        reference_id: payment.id,
-        reference_type: "مديونية",
-        entry_number: `${entryBase}-D`,
-        created_by: cashierId,
-        is_automated: true,
-      },
+    entries.push(
+      createEntry(
+        debitAccount,
+        desc,
+        amount,
+
+        0,
+
+        payment.id,
+        "مديونية",
+        "-D",
+      ),
 
       // Credit: Accounts Receivable
-      {
-        company_id: companyId,
-        account_id: arAcc,
-        description: desc,
-        debit: 0,
-        credit: amount,
-        foreign_amount: paymentDetails.amountFC,
-        exchange_rate: paymentDetails.exchangeRate,
-        base_amount: paymentDetails.bas_amount,
-        currency_code: "YER",
-        fiscal_period: fy.period_name,
-        entry_date: new Date(),
-        reference_id: customerId,
-        reference_type: "سداد",
-        entry_number: `${entryBase}-C`,
-        created_by: cashierId,
-        is_automated: true,
-      },
-    ];
+
+      createEntry(
+        arAcc,
+        desc,
+        0,
+        amount,
+
+        customerId,
+        "سداد",
+        "-C",
+      ),
+    );
 
     // ============================================
     // 6️⃣ Insert journal entries
@@ -1071,11 +1158,13 @@ async function createSupplierPaymentJournalEntries({
   companyId,
   userId,
   paymentDetails,
+  branchId,
 }: {
   payment: any;
   companyId: string;
   userId: string;
   paymentDetails: any;
+  branchId: string;
 }) {
   // Get all default account mappings for the company
   const mappings = await prisma.account_mappings.findMany({
@@ -1103,48 +1192,81 @@ async function createSupplierPaymentJournalEntries({
     (paymentDetails.paymentMethod === "bank"
       ? `رقم  الحوالة :${paymentDetails.referenceNumber} `
       : " (نقداً)");
+  const createEntry = (
+    accountId: string,
+    description: string,
+    debitBase: number,
+    creditBase: number,
+    suffix: string,
+    refId: string,
+    refType: string,
+    isCogsRelated: boolean = false,
+  ) => {
+    const baseAmountValue = debitBase > 0 ? debitBase : creditBase;
+    const isForeign =
+      paymentDetails.currency_code &&
+      paymentDetails.currency_code !== paymentDetails.baseCurrency &&
+      paymentDetails.exchangeRate &&
+      paymentDetails.exchangeRate !== 1;
 
+    const useForeign = isForeign && !isCogsRelated;
+
+    return {
+      company_id: companyId,
+      entry_date: new Date(),
+      fiscal_period: fy.period_name,
+      created_by: userId,
+      is_automated: true,
+      branch_id: branchId,
+      account_id: accountId,
+      description,
+      entry_number: entry_number + suffix,
+      reference_id: refId,
+      reference_type: refType,
+      debit: debitBase,
+      credit: creditBase,
+
+      ...(useForeign
+        ? {
+            currency_code: paymentDetails.currency_code,
+            foreign_amount: paymentDetails.amountFC,
+            exchange_rate: paymentDetails.exchange_rate,
+            base_amount: paymentDetails.baseAmount,
+          }
+        : {
+            currency_code: paymentDetails.baseCurrency,
+          }),
+    };
+  };
+  const entries: any[] = [];
+  entries.push(
+    createEntry(
+      payableAccount,
+      description,
+      payment.amount,
+      0,
+      "سداد دين المورد",
+
+      payment.supplierId,
+      "-D",
+    ),
+    createEntry(
+      paymentDetails.bankId,
+      description,
+      0,
+
+      payment.amount,
+      "سداد دين المورد",
+      payment.id,
+      "-C",
+    ),
+  );
+  await prisma.journal_entries.createMany({
+    data: entries,
+  });
   await prisma.$transaction(async (tx) => {
     // 1️⃣ Debit Accounts Payable
-    await tx.journal_entries.create({
-      data: {
-        company_id: companyId,
-        account_id: payableAccount,
-        description,
-        exchange_rate: paymentDetails.exchangeRate,
-        foreign_amount: paymentDetails.amountFC,
-        base_amount: payment.amount,
-        debit: payment.amount,
-        credit: 0,
-        fiscal_period: fy.period_name,
-        reference_type: "سداد دين المورد",
 
-        reference_id: payment.supplierId,
-        entry_number: entry_number + "-D",
-        created_by: userId,
-        is_automated: true,
-      },
-    });
-
-    // 2️⃣ Credit Cash/Bank
-    await tx.journal_entries.create({
-      data: {
-        company_id: companyId,
-        account_id: paymentDetails.bankId,
-        description,
-        debit: 0,
-        exchange_rate: paymentDetails.exchangeRate,
-        foreign_amount: paymentDetails.amountFC,
-        base_amount: payment.amount,
-        fiscal_period: fy.period_name,
-        credit: payment.amount,
-        reference_type: "سداد دين المورد",
-        reference_id: payment.id,
-        entry_number: entry_number + "-C",
-        created_by: userId,
-        is_automated: true,
-      },
-    });
     await tx.accounts.update({
       where: { id: payableAccount },
       data: { balance: { decrement: payment.amount } }, // AP ↓
@@ -1177,7 +1299,11 @@ async function createExpenseJournalEntries({
     paymentMethod: string;
     branchId: string;
     description: string;
-
+    exchangeRate?: number;
+    basCurrncy: string;
+    baseAmount: number;
+    amountFC?: number;
+    currency_code: string;
     bankId?: string;
     referenceNumber?: string;
     expenseDate: Date;
@@ -1216,48 +1342,98 @@ async function createExpenseJournalEntries({
       creditAccountId = cash;
   }
 
-  const entryNumber = `EXP-${Date.now()}`;
+  const entry_number = `EXP-${Date.now()}`;
+  const createEntry = (
+    accountId: string,
+    description: string,
+    debitBase: number,
+    creditBase: number,
+    suffix: string,
+    refId: string,
+    refType: string,
+    isCogsRelated: boolean = false,
+  ) => {
+    const baseAmountValue = debitBase > 0 ? debitBase : creditBase;
+    const isForeign =
+      expense.currency_code &&
+      expense.currency_code !== expense.basCurrncy &&
+      expense.exchangeRate &&
+      expense.exchangeRate !== 1;
 
-  const entries = [
-    // 1️⃣ Debit Expense Account (Electricity / Salary / Rent)
-    {
+    const useForeign = isForeign && !isCogsRelated;
+
+    return {
       company_id: companyId,
-      account_id: expense.accountId,
+      entry_date: new Date(),
       fiscal_period: fy.period_name,
-      branch_id: expense.branchId,
-      description:
-        expense.description +
-        (expense.referenceNumber ? ` - ${expense.referenceNumber}` : ""),
-      debit: expense.amount,
-      credit: 0,
-      entry_date: expense.expenseDate,
-
-      reference_id: expense.id,
-      reference_type: "مصاريف",
-      entry_number: `${entryNumber}-1`,
       created_by: userId,
       is_automated: true,
-    },
-
-    // 2️⃣ Credit Cash / Bank / Payable
-    {
-      company_id: companyId,
-      account_id: creditAccountId,
       branch_id: expense.branchId,
-      description:
-        expense.description +
+      account_id: accountId,
+      description,
+      entry_number: entry_number + suffix,
+      reference_id: refId,
+      reference_type: refType,
+      debit: debitBase,
+      credit: creditBase,
+
+      ...(useForeign
+        ? {
+            currency_code: expense.currency_code,
+            foreign_amount: expense.amountFC,
+            exchange_rate: expense.exchangeRate,
+            base_amount: expense.baseAmount,
+          }
+        : {
+            currency_code: expense.basCurrncy,
+          }),
+    };
+  };
+  const entries: any[] = [];
+  entries.push(
+    createEntry(
+      expense.accountId,
+
+      expense.description +
         (expense.referenceNumber ? ` - ${expense.referenceNumber}` : ""),
-      debit: 0,
-      fiscal_period: fy.period_name,
-      credit: expense.amount,
-      entry_date: expense.expenseDate,
-      reference_id: expense.id,
-      reference_type: "مصاريف",
-      entry_number: `${entryNumber}-2`,
-      created_by: userId,
-      is_automated: true,
-    },
-  ];
+      expense.baseAmount,
+      0,
+
+      "EXPC-",
+      expense.id,
+      "مصاريف",
+    ),
+    createEntry(
+      creditAccountId,
+
+      expense.description +
+        (expense.referenceNumber ? ` - ${expense.referenceNumber}` : ""),
+      0,
+      expense.baseAmount,
+      "EXPR-",
+      expense.id,
+      "مصاريف",
+    ),
+  );
+  // const entries = [
+  //   // 1️⃣ Debit Expense Account (Electricity / Salary / Rent)
+  //   {
+  //     company_id: companyId,
+
+  //     entry_number: `${entryNumber}-1`,
+  //     created_by: userId,
+  //     is_automated: true,
+  //   },
+
+  //   // 2️⃣ Credit Cash / Bank / Payable
+  //   {
+  //     company_id: companyId,
+
+  //     entry_number: `${entryNumber}-2`,
+  //     created_by: userId,
+  //     is_automated: true,
+  //   },
+  // ];
 
   await prisma.$transaction(async (tx) => {
     await tx.journal_entries.createMany({ data: entries });
@@ -1277,345 +1453,6 @@ async function createExpenseJournalEntries({
   });
 }
 
-// Helper function to create sale journal entries
-// async function createSaleJournalEntries({
-//   companyId,
-//   sale,
-//   saleItems,
-//   customer,
-//   cashierId,
-//   returnTotalCOGS,
-// }: {
-//   companyId: string;
-//   sale: any;
-//   customer: any;
-//   saleItems: any[];
-//   cashierId: string;
-//   returnTotalCOGS: number;
-// }) {
-//   // 1️⃣ Early exits
-//   if (sale.sale_type !== "SALE") return;
-
-//   // 2️⃣ Check for duplicates and fetch fiscal year in parallel
-//   const [exists, fy] = await Promise.all([
-//     prisma.journal_entries.findFirst({
-//       where: { reference_id: sale.id, reference_type: "sale" },
-//       select: { id: true },
-//     }),
-//     getActiveFiscalYears(),
-//   ]);
-
-//   if (exists) {
-//     console.log(`🟨 Journal entries already exist for sale ${sale.id}`);
-//     return;
-//   }
-
-//   // 3️⃣ Calculate COGS
-//   const productIds = saleItems.map((item) => item.id);
-//   const products = await prisma.product.findMany({
-//     where: { id: { in: productIds } },
-//     select: {
-//       id: true,
-//       costPrice: true,
-//       unitsPerPacket: true,
-//       packetsPerCarton: true,
-//     },
-//   });
-
-//   const productMap = new Map(products.map((p) => [p.id, p]));
-
-//   // let totalCOGS = 0;
-//   // for (const item of saleItems) {
-//   //   const product = productMap.get(item.id);
-//   //   if (!product) continue;
-
-//   //   const unitsPerCarton =
-//   //     (product.unitsPerPacket || 1) * (product.packetsPerCarton || 1);
-//   //   let costPerUnit = Number(product.costPrice);
-
-//   //   if (item.sellingUnit === "packet")
-//   //     costPerUnit = costPerUnit / (product.packetsPerCarton || 1);
-//   //   else if (item.sellingUnit === "unit")
-//   //     costPerUnit = costPerUnit / unitsPerCarton;
-
-//   //   totalCOGS += item.selectedQty * costPerUnit;
-//   // }
-
-//   // 4️⃣ Generate JE number safely
-//   const year = new Date().getFullYear().toString();
-//   const nextSeqRaw: { next_number: string }[] = await prisma.$queryRawUnsafe(`
-//     SELECT COALESCE(
-//       MAX(CAST(SPLIT_PART(entry_number, '-', 3) AS INT)),
-//       0
-//     ) + 1 AS next_number
-//     FROM journal_entries
-//     WHERE entry_number LIKE 'JE-${year}-%'
-//     AND entry_number ~ '^JE-${year}-[0-9]+$'
-//   `);
-
-//   const nextNumber = Number(nextSeqRaw[0]?.next_number || 1);
-//   const seqFormatted = String(nextNumber).padStart(7, "0");
-//   const randomSuffix = Math.floor(Math.random() * 1000);
-//   const entryBase = `JE-${year}-${seqFormatted}-${randomSuffix}`;
-
-//   // 5️⃣ Fetch account mappings
-//   const mappings = await prisma.account_mappings.findMany({
-//     where: { company_id: companyId, is_default: true },
-//     select: { mapping_type: true, account_id: true },
-//   });
-
-//   const accountMap = new Map(
-//     mappings.map((m) => [m.mapping_type, m.account_id]),
-//   );
-
-//   const cash = accountMap.get("cash");
-//   const ar = accountMap.get("accounts_receivable");
-//   const revenue = accountMap.get("sales_revenue");
-//   const inventory = accountMap.get("inventory");
-//   const cogs = accountMap.get("cogs");
-//   const payable = accountMap.get("accounts_payable");
-
-//   const total = Number(sale.totalAmount);
-//   const paid = Number(sale.amountPaid);
-//   const desc = `قيد بيع رقم ${sale.saleNumber}`;
-
-//   const entries: any[] = [];
-//   const baseEntry = {
-//     company_id: companyId,
-//     entry_date: new Date(),
-//     fiscal_period: fy?.period_name,
-//     created_by: cashierId,
-
-//     is_automated: true,
-//   };
-
-//   // 6️⃣ Payment Status Logic
-//   if (sale.status === "completed") {
-//     if (paid > total) {
-//       // Overpayment
-//       const change = paid - total;
-//       entries.push(
-//         {
-//           ...baseEntry,
-//           branch_id: sale.branchId,
-//           account_id: payable,
-//           description: desc + " - فائض عميل",
-//           debit: 0,
-//           credit: change,
-//           reference_id: customer?.id,
-//           reference_type: "فاتورة مبيعات",
-//           entry_number: `${entryBase}-C`,
-//         },
-//         {
-//           ...baseEntry,
-//           branch_id: sale.branchId,
-//           account_id: cash,
-//           description: desc,
-//           debit: total,
-//           credit: 0,
-//           reference_id: customer?.id,
-//           reference_type: "فاتورة مبيعات",
-//           entry_number: `${entryBase}-D`,
-//         },
-//         {
-//           ...baseEntry,
-//           account_id: revenue,
-//           branch_id: sale.branchId,
-//           description: desc,
-//           debit: 0,
-//           credit: total,
-//           reference_id: sale.id,
-//           reference_type: "دفوعة نقداً",
-//           entry_number: `${entryBase}-R`,
-//         },
-//       );
-//     } else {
-//       // Exact payment
-//       entries.push(
-//         {
-//           ...baseEntry,
-//           branch_id: sale.branchId,
-//           account_id: cash,
-//           currency_code: sale.currency,
-//           description: desc,
-//           debit: paid,
-//           credit: 0,
-//           reference_id: customer?.id,
-//           reference_type: "فاتورة مبيعات نقداً",
-//           entry_number: `${entryBase}-D1`,
-//         },
-//         {
-//           ...baseEntry,
-//           account_id: revenue,
-//           branch_id: sale.branchId,
-//           description: desc,
-//           debit: 0,
-//           currency_code: sale.currency,
-//           credit: total,
-//           reference_id: customer?.id,
-//           reference_type: "دفع نقداً",
-//           entry_number: `${entryBase}-C1`,
-//         },
-//       );
-//     }
-//   } else if (sale.status === "partial") {
-//     // Partial payment
-//     entries.push(
-//       {
-//         ...baseEntry,
-//         branch_id: sale.branchId,
-//         account_id: ar,
-//         description: desc + " فاتورة بيع اجل",
-//         debit: total,
-//         credit: 0,
-//         currency_code: sale.currency,
-//         reference_id: customer?.id,
-//         reference_type: "فاتورة مبيعات",
-//         entry_number: `${entryBase}-PS-DR`,
-//       },
-//       {
-//         ...baseEntry,
-//         account_id: revenue,
-//         branch_id: sale.branchId,
-//         description: desc + " - فاتورة بيع",
-//         debit: 0,
-//         credit: total,
-//         reference_id: sale.id,
-//         reference_type: "فاتورة مبيعات",
-//         entry_number: `${entryBase}-PS-CR`,
-//       },
-//     );
-
-//     if (paid > 0) {
-//       entries.push(
-//         {
-//           ...baseEntry,
-//           account_id: cash,
-//           currency_code: sale.currency,
-//           branch_id: sale.branchId,
-//           description: desc + " - دفعة فورية",
-//           debit: paid,
-//           credit: 0,
-//           reference_id: sale.id,
-//           reference_type: "دفعة من عميل",
-//           entry_number: `${entryBase}-PP-DR`,
-//         },
-//         {جز
-//           ...baseEntry,
-//           account_id: ar,
-//           currency_code: sale.currency,
-//           branch_id: sale.branchId,
-//           description: desc + " المدفوع من المبلغ",
-//           debit: 0,
-//           credit: paid,
-//           reference_id: customer?.id,
-//           reference_type: "دفعة من عميل",
-//           entry_number: `${entryBase}-PP-CR`,
-//         },
-//       );
-//     }
-//   } else {
-//     // Unpaid
-//     entries.push(
-//       {
-//         ...baseEntry,
-//         account_id: ar,
-//         branch_id: sale.branchId,
-//         description: desc + " غير مدفوع",
-//         debit: total,
-//         currency_code: sale.currency,
-//         credit: 0,
-//         reference_id: customer?.id,
-//         reference_type: "فاتورة مبيعات اجل",
-//         entry_number: `${entryBase}-U1`,
-//       },
-//       {
-//         ...baseEntry,
-//         account_id: revenue,
-//         branch_id: sale.branchId,
-//         currency_code: sale.currency,
-//         description: desc + " غير مدفوع",
-//         debit: 0,
-//         credit: total,
-//         reference_id: sale.id,
-//         reference_type: "فاتورة مبيعات",
-//         entry_number: `${entryBase}-U2`,
-//       },
-//     );
-//   }
-
-//   // 7️⃣ COGS + Inventory
-//   if (returnTotalCOGS > 0 && cogs && inventory) {
-//     entries.push(
-//       {
-//         ...baseEntry,
-//         account_id: cogs,
-//         description: desc,
-//         branch_id: sale.branchId,
-//         debit: returnTotalCOGS,
-//         credit: 0,
-//         reference_id: sale.id,
-//         reference_type: "تكلفة البضاعة المباعة",
-//         entry_number: `${entryBase}-CG1`,
-//       },
-//       {
-//         ...baseEntry,
-//         account_id: inventory,
-//         branch_id: sale.branchId,
-//         description: desc,
-//         debit: 0,
-//         credit: returnTotalCOGS,
-//         reference_id: sale.id,
-//         reference_type: "خرج من المخزن",
-//         entry_number: `${entryBase}-CG2`,
-//       },
-//     );
-//   }
-
-//   // 8️⃣ Insert entries and update balances in a transaction
-//   await prisma.$transaction(async (tx) => {
-//     await tx.journal_entries.createMany({ data: entries });
-
-//     const accountIds = [...new Set(entries.map((e) => e.account_id))];
-//     const accounts = await tx.accounts.findMany({
-//       where: { id: { in: accountIds } },
-//       select: { id: true, account_type: true },
-//     });
-
-//     const accountTypeMap = new Map(accounts.map((a) => [a.id, a.account_type]));
-//     const accountDeltas = new Map();
-//     for (const e of entries) {
-//       const accountType = accountTypeMap.get(e.account_id);
-//       let delta = 0;
-
-//       // Determine delta based on account type and normal balance
-//       // Assets, Expenses, COGS: Debit increases, Credit decreases
-//       // Liabilities, Equity, Revenue: Credit increases, Debit decreases
-//       if (
-//         ["asset", "expense", "cogs"].includes(accountType?.toLowerCase() || "")
-//       ) {
-//         delta = Number(e.debit) - Number(e.credit);
-//       } else {
-//         // Revenue, liability, equity accounts
-//         delta = Number(e.credit) - Number(e.debit);
-//       }
-
-//       accountDeltas.set(
-//         e.account_id,
-//         (accountDeltas.get(e.account_id) || 0) + delta,
-//       );
-//     }
-
-//     await Promise.all(
-//       Array.from(accountDeltas.entries()).map(([accountId, delta]) =>
-//         tx.accounts.update({
-//           where: { id: accountId },
-//           data: { balance: { increment: delta } },
-//         }),
-//       ),
-//     );
-//   });
-// }
 async function createSaleJournalEntries({
   companyId,
   sale, // هذا الكائن يأتي الآن من الـ payload
@@ -1724,6 +1561,7 @@ async function createSaleJournalEntries({
             currency_code: currency,
             exchange_rate: exchangeRate,
             foreign_amount: foreignAmount,
+            base_amount: baseAmount,
           }
         : {
             // حالة حسابات التكلفة/المخزن أو الفواتير المحلية
@@ -1734,7 +1572,7 @@ async function createSaleJournalEntries({
   // 5️⃣ منطق القيد المحاسبي
   const totalBase = Number(sale.totalAmount);
   const paidBase = Number(sale.amountPaid);
-  const desc = `قيد بيع رقم ${sale.saleNumber} (${currency})`;
+  const desc = `فاتوره مبيعات: ${sale.saleNumber} العمله:(${currency})`;
   // entries.push(
   // );
 
@@ -1748,17 +1586,10 @@ async function createSaleJournalEntries({
         "REV",
         customer?.id,
         "فاتورة مبيعات",
+        true,
       ),
 
-      createEntry(
-        cash,
-        desc,
-        0,
-        paidBase,
-        "CSH",
-        customer?.id,
-        " دفع من عميل ",
-      ),
+      createEntry(cash, desc, 0, paidBase, "CSH", customer?.id, "سند قبض "),
     );
   } else if (sale.status === "partial") {
     if (paidBase > 0) {
@@ -1771,7 +1602,7 @@ async function createSaleJournalEntries({
           0,
           "CSH",
           sale.id,
-          "عميل",
+          "سند قبض ",
         ),
       );
     }
@@ -1779,42 +1610,52 @@ async function createSaleJournalEntries({
 
     // المديونية: المرجع هو العميل (يظهر في كشف حسابه)
     entries.push(
-      createEntry(revenue, desc, 0, totalBase, "REV", sale.id, "فاتورة مبيعات"),
-
       createEntry(
-        ar,
-        desc + " - مديونية",
+        revenue,
+        desc,
+        0,
         totalBase,
-        0,
-        "ARP",
-        customer?.id,
-        "عميل",
+        "REV",
+        sale.id,
+        "فاتورة مبيعات",
+        true,
       ),
+
       createEntry(
         ar,
-        desc + " - مديونية",
+        desc + " - متبقي من الفاتوره",
+        dueBase,
         0,
-        paidBase,
-
         "AR",
         customer?.id,
-        "مدفوع جزءي من الفاتوره",
+        "فاتوره مبيعات",
       ),
+      // createEntry(
+      //   ar,
+      //   desc + " - مديونية",
+      //   0,
+      //   paidBase,
+
+      //   "AR",
+      //   customer?.id,
+      //   "مدفوع جزءي من الفاتوره",
+      // ),
     );
   } else {
     // آجل بالكامل: المرجع هو العميل
     entries.push(
-      createEntry(revenue, desc, 0, totalBase, "REV", sale.id, "فاتورة مبيعات"),
-
       createEntry(
-        cash,
+        revenue,
         desc,
-        totalBase,
         0,
-        "AR",
-        customer?.id,
-        "  دفع فاتورة مبيعات  ",
+        totalBase,
+        "REV",
+        sale.id,
+        "فاتورة مبيعات",
+        true,
       ),
+
+      createEntry(ar, desc, totalBase, 0, "AR", customer?.id, "فاتوره مبيعات"),
     );
   }
 
@@ -1828,7 +1669,7 @@ async function createSaleJournalEntries({
         0,
         "CG1",
         sale.id,
-        "حركة مخزنية",
+        "حركة مخزنية بيع",
         true,
       ),
       createEntry(
@@ -1838,7 +1679,7 @@ async function createSaleJournalEntries({
         returnTotalCOGS,
         "CG2",
         sale.id,
-        "حركة مخزنية",
+        "حركة مخزنية بيع",
         true,
       ),
     );
@@ -1922,11 +1763,55 @@ async function createPurchaseJournalEntries({
     created_by: userId,
     branch_id: branchId,
   };
-
+  const isForeign =
+    paymentDetails.currency_code &&
+    paymentDetails.exchangeRate &&
+    paymentDetails.exchangeRate !== 1;
   const entries: any[] = [];
   const totalAmount = Number(purchase.totalAmount);
   const amountPaid = Number(purchase.amountPaid);
+  const createEntry = (
+    accountId: string,
+    description: string,
+    debitBase: number,
+    creditBase: number,
+    suffix: string,
+    refId: string,
+    refType: string, // سيتم تمرير المسمى العربي هنا
+    isCogsRelated: boolean = false,
+  ) => {
+    const useForeign = isForeign && !isCogsRelated;
+    return {
+      company_id: companyId,
+      entry_date: new Date(),
+      fiscal_period: fy?.period_name,
+      created_by: userId,
+      is_automated: true,
+      branch_id: branchId,
+      account_id: accountId,
+      description,
+      entry_number: `${entryBase}-${suffix}`,
 
+      reference_id: refId,
+      reference_type: refType, // القيمة العربية
+
+      debit: debitBase,
+      credit: creditBase,
+
+      ...(useForeign
+        ? {
+            // حالة الحسابات المالية في فاتورة أجنبية
+            currency_code: paymentDetails.currency_code,
+            exchange_rate: paymentDetails.exchangeRate,
+            foreign_amount: paymentDetails.amountFC,
+            base_amount: paymentDetails.amountBase,
+          }
+        : {
+            // حالة حسابات التكلفة/المخزن أو الفواتير المحلية
+            currency_code: paymentDetails.baseCurrency, // العملة الأساسية للنظام
+          }),
+    };
+  };
   if (type === "purchase") {
     // ===============================
     // PURCHASE SCENARIOS
@@ -1939,45 +1824,34 @@ async function createPurchaseJournalEntries({
 
       entries.push(
         // Debit Inventory
-        {
-          ...baseEntry,
-          exchange_rate: paymentDetails.exchangeRate,
-          foreign_amount: paymentDetails.amountFC,
-          base_amount: paymentDetails.amountBase,
+        createEntry(
+          inventoryAccount,
 
-          account_id: inventoryAccount,
-          description:
-            description +
+          description +
             " - إضافة للمخزون" +
             (purchase.referenceNumber ? ` - ${purchase.referenceNumber}` : ""),
-          debit: totalAmount,
-          credit: 0,
-          reference_type: "إضافة مخزون",
-          reference_id: purchase.id,
-          entry_number: `${entryBase}-DR1`,
-        },
+          totalAmount,
+          0,
+          "إضافة مخزون",
+          purchase.id,
+          "-DR1",
+        ),
         // Credit Cash/Bank
-        {
-          ...baseEntry,
-          account_id: paymentDetails.bankId,
-          exchange_rate: paymentDetails.exchangeRate,
-          foreign_amount: paymentDetails.amountFC,
-          base_amount: paymentDetails.amountBase,
+        createEntry(
+          paymentDetails.bankId,
 
-          description:
-            description +
+          description +
             " - مدفوع بالكامل" +
             (paymentDetails?.refrenceNumber
               ? ` - ${paymentDetails.refrenceNumber}`
               : ""),
-          debit: 0,
-          credit: totalAmount,
-          reference_type: "سداد مشتريات",
-          reference_id: purchase.id,
-          entry_number: `${entryBase}-CR1`,
-        },
+          0,
+          totalAmount,
+          "سداد مشتريات",
+          purchase.id,
+          "-CR1",
+        ),
       );
-      console.log("Fully paid purchase journal entries created.", currencyCode);
     } else if (amountPaid > 0 && amountPaid < totalAmount) {
       // 2️⃣ Partial Payment
       const due = totalAmount - amountPaid;
@@ -1986,107 +1860,85 @@ async function createPurchaseJournalEntries({
 
       entries.push(
         // Debit Inventory
-        {
-          ...baseEntry,
-          account_id: inventoryAccount,
-          description:
-            description +
+        createEntry(
+          inventoryAccount,
+
+          description +
             " - إضافة للمخزون" +
             (paymentDetails?.refrenceNumber
               ? ` - ${paymentDetails.refrenceNumber}`
               : ""),
-          exchange_rate: paymentDetails.exchangeRate,
-          foreign_amount: paymentDetails.amountFC,
-          base_amount: paymentDetails.amountBase,
-          debit: totalAmount,
-          credit: 0,
-          reference_type: "إضافة مخزون",
-          reference_id: purchase.id,
-          entry_number: `${entryBase}-DR1`,
-        },
+
+          totalAmount,
+          0,
+          "إضافة مخزون",
+          purchase.id,
+          "-DR1",
+        ),
         // Credit Cash/Bank (paid amount)
-        {
-          ...baseEntry,
-          account_id: paymentDetails.bankId,
-          exchange_rate: paymentDetails.exchangeRate,
-          foreign_amount: paymentDetails.amountFC,
-          base_amount: amountPaid,
-          description:
-            description +
+        createEntry(
+          paymentDetails.bankId,
+
+          description +
             " - دفع جزئي" +
             (paymentDetails?.refrenceNumber
               ? ` - ${paymentDetails.refrenceNumber}`
               : ""),
-          debit: 0,
-          credit: amountPaid,
-          reference_type: "دفع مشتريات",
-          reference_id: paymentDetails.id,
-          entry_number: `${entryBase}-CR1`,
-        },
+          0,
+          amountPaid,
+          "دفع مشتريات",
+          paymentDetails.id,
+          "-CR1",
+        ),
         // Credit Accounts Payable (remaining)
-        {
-          ...baseEntry,
-          account_id: payableAccount,
-          exchange_rate: paymentDetails.exchangeRate,
-          foreign_amount: paymentDetails.amountFC,
-          base_amount: paymentDetails.amountBase,
-          description:
-            description +
+        createEntry(
+          payableAccount,
+
+          description +
             " - آجل للمورد" +
             (paymentDetails?.refrenceNumber
               ? ` - ${paymentDetails.refrenceNumber}`
               : ""),
-          debit: 0,
-          credit: totalAmount,
-          reference_type: "آجل مشتريات",
-          reference_id: purchase.supplierId,
-          entry_number: `${entryBase}-CR2`,
-        },
-        {
-          ...baseEntry,
-          exchange_rate: paymentDetails.exchangeRate,
-          foreign_amount: paymentDetails.amountFC,
-          base_amount: amountPaid,
-          account_id: payableAccount,
-          description: description + " - آجل للمورد",
-          debit: amountPaid,
-          credit: 0,
-          reference_type: "آجل مشتريات",
-          reference_id: purchase.supplierId,
-          entry_number: `${entryBase}-CR5`,
-        },
+          0,
+          totalAmount,
+          "آجل مشتريات",
+          purchase.supplierId,
+          "-CR2",
+        ),
+        createEntry(
+          payableAccount,
+          description + " - آجل للمورد",
+          amountPaid,
+          0,
+          "آجل مشتريات",
+          purchase.supplierId,
+          "-CR5",
+        ),
       );
     } else {
       // 3️⃣ Fully On Credit
       entries.push(
         // Debit Inventory
-        {
-          ...baseEntry,
-          exchange_rate: paymentDetails.exchangeRate,
-          foreign_amount: paymentDetails.amountFC,
-          base_amount: totalAmount,
-          account_id: inventoryAccount,
-          description: description + " - إضافة للمخزون",
-          debit: totalAmount,
-          credit: 0,
-          reference_type: "إضافة مخزون",
-          reference_id: purchase.id,
-          entry_number: `${entryBase}-DR1`,
-        },
+        createEntry(
+          inventoryAccount,
+          description + " - إضافة للمخزون",
+          totalAmount,
+          0,
+          "إضافة مخزون",
+          purchase.id,
+          "-DR1",
+        ),
         // Credit Accounts Payable
-        {
-          ...baseEntry,
-          account_id: payableAccount,
-          description: description + " - آجل كامل",
-          debit: 0,
-          exchange_rate: paymentDetails.exchangeRate,
-          foreign_amount: paymentDetails.amountFC,
-          base_amount: totalAmount,
-          credit: totalAmount,
-          reference_type: " دين للمورد",
-          reference_id: purchase.supplierId,
-          entry_number: `${entryBase}-CR1`,
-        },
+        createEntry(
+          payableAccount,
+          description + " - آجل كامل",
+          0,
+
+          totalAmount,
+          " دين للمورد",
+          purchase.supplierId,
+          "-CR1",
+        ),
       );
     }
   } else {
@@ -2097,58 +1949,62 @@ async function createPurchaseJournalEntries({
     const remainingAmount = totalAmount - amountPaid;
 
     // Always credit inventory (reduce)
-    entries.push({
-      ...baseEntry,
-      account_id: inventoryAccount,
-      description: description + " - تخفيض المخزون",
-      debit: 0,
-      credit: totalAmount,
-      reference_type: "تخفيض مخزون بسبب مرتجع مشتريات",
-      reference_id: purchase.id,
-      entry_number: `${entryBase}-CR1`,
-    });
+    entries.push(
+      createEntry(
+        inventoryAccount,
+        description + " - تخفيض المخزون",
+        0,
+        totalAmount,
+        "تخفيض مخزون بسبب مرتجع مشتريات",
+        purchase.id,
+        "-CR1",
+      ),
+    );
 
     if (amountPaid > 0) {
       // Has payment - refund cash/bank
       const paymentAccount =
         purchase.paymentMethod === "bank" ? bankAccount : cashAccount;
 
-      entries.push({
-        ...baseEntry,
-        account_id: paymentAccount,
-        description: description + " - استرداد نقدي/بنكي",
-        debit: amountPaid,
-        credit: 0,
-        reference_type: "استرداد مدفوعات للمرتجع",
-        reference_id: purchase.id,
-        entry_number: `${entryBase}-DR1`,
-      });
+      entries.push(
+        createEntry(
+          paymentAccount,
+          description + " - استرداد نقدي/بنكي",
+          amountPaid,
+          0,
+          "استرداد مدفوعات للمرتجع",
+          purchase.id,
+          "-DR1",
+        ),
+      );
 
       // If there's remaining payable, reduce it
       if (remainingAmount > 0) {
-        entries.push({
-          ...baseEntry,
-          account_id: payableAccount,
-          description: description + " - تخفيض الذمم الدائنة",
-          debit: remainingAmount,
-          credit: 0,
-          reference_type: "تخفيض مديونية المورد بسبب مرتجع",
-          reference_id: purchase.supplierId,
-          entry_number: `${entryBase}-DR2`,
-        });
+        entries.push(
+          createEntry(
+            payableAccount,
+            description + " - تخفيض الذمم الدائنة",
+            remainingAmount,
+            0,
+            "تخفيض مديونية المورد بسبب مرتجع",
+            purchase.supplierId,
+            "-DR2",
+          ),
+        );
       }
     } else {
       // No payment - reduce payables only
-      entries.push({
-        ...baseEntry,
-        account_id: payableAccount,
-        description: description + " - تخفيض الذمم الدائنة",
-        debit: totalAmount,
-        credit: 0,
-        reference_type: "تخفيض ذمم دائنة للمرتجع",
-        reference_id: purchase.supplierId,
-        entry_number: `${entryBase}-DR1`,
-      });
+      entries.push(
+        createEntry(
+          payableAccount,
+          description + " - تخفيض الذمم الدائنة",
+          totalAmount,
+          0,
+          "تخفيض ذمم دائنة للمرتجع",
+          purchase.supplierId,
+          "-DR1",
+        ),
+      );
     }
   }
 

@@ -325,9 +325,11 @@ export type FinancialVoucher = {
   currencyCode: string;
   paymentMethod: string;
   date: string | Date;
+  invoice: { invoiceNumber: string };
   notes?: string;
   customer?: { name: string };
   supplier?: { name: string };
+  expense?: { expense_number: string };
 };
 
 export const voucherColumns: ColumnDef<FinancialVoucher>[] = [
@@ -385,10 +387,12 @@ export const voucherColumns: ColumnDef<FinancialVoucher>[] = [
     id: "party",
     header: "الطرف",
     cell: ({ row }) => {
+      const voucher = row.original;
       const name =
         row.original.customer?.name ||
         row.original.supplier?.name ||
-        "مصروفات عامة";
+        voucher.invoice?.invoiceNumber ||
+        voucher.expense?.expense_number;
       return <span>{name}</span>;
     },
   },
@@ -426,9 +430,7 @@ export const voucherColumns: ColumnDef<FinancialVoucher>[] = [
       const { company } = useCompany();
 
       // 2. تجهيز بيانات الطرف (عميل أو مورد)
-      const partyName =
-        voucher.customer?.name || voucher.supplier?.name || "مصروفات عامة";
-
+      const partyName = voucher.customer?.name || voucher.supplier?.name;
       return (
         <div className="flex items-center gap-2">
           {/* مكون الطباعة مع تمرير البيانات الحقيقية */}
@@ -437,7 +439,11 @@ export const voucherColumns: ColumnDef<FinancialVoucher>[] = [
             voucherType={voucher.type} // RECEIPT أو PAYMENT
             amount={voucher.amount}
             curruncy={voucher.currencyCode}
-            personName={partyName}
+            personName={
+              partyName ??
+              voucher.invoice?.invoiceNumber ??
+              voucher.expense?.expense_number
+            }
             description={voucher.notes || "بدون وصف"}
             paymentMethod={voucher.paymentMethod === "cash" ? "نقداً" : "بنكي"}
             date={voucher.date}

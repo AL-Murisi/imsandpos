@@ -52,9 +52,9 @@ export default function DebtReport({
   customerID,
   outstandingBalance,
 }: DebtReportProps) {
+  const { company } = useCompany();
   const t = useTranslations("debt");
   const { formatCurrency } = useFormatter();
-
   const [debts, setDebts] = useState<Debt[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [open, setOpen] = useState(false);
@@ -64,10 +64,10 @@ export default function DebtReport({
   const [payment, setPayment] = useState<PaymentState>({
     paymentMethod: "cash",
     accountId: "",
-    accountCurrency: "",
+    accountCurrency: company?.base_currency ?? "",
     amountBase: 0,
   });
-  const { company } = useCompany();
+
   const { user } = useAuth();
   if (!user) return;
   const companyid = user.companyId;
@@ -110,8 +110,12 @@ export default function DebtReport({
     );
 
   const totalRemaining = debts.reduce((s, d) => s + d.remaining, 0);
-
+  const isForeign = payment.accountCurrency !== company?.base_currency;
   /* ───────── Submit selected invoices ───────── */
+  const paymentAmount = isForeign
+    ? (payment.amountFC ?? 0)
+    : payment.amountBase;
+
   const onSubmit = async () => {
     if (!payment.paymentMethod || !payment.accountId) {
       toast.error("يرجى اختيار طريقة الدفع والحساب");
@@ -135,11 +139,12 @@ export default function DebtReport({
         user.companyId,
 
         selectedIds,
-        payment.amountBase,
+        paymentAmount,
         user.userId,
         company?.branches[0].id ?? "",
 
         {
+          basCurrncy: company?.base_currency ?? "",
           paymentMethod: payment.paymentMethod,
           currencyCode: payment.accountCurrency,
           bankId: payment.accountId,
@@ -189,11 +194,12 @@ export default function DebtReport({
       await payOutstandingOnly(
         user.companyId,
         customerID,
-        payment.amountBase,
+        paymentAmount,
         user.userId,
         company?.branches[0].id ?? "",
 
         {
+          basCurrncy: company?.base_currency ?? "",
           paymentMethod: payment.paymentMethod,
           currencyCode: payment.accountCurrency,
           bankId: payment.accountId,

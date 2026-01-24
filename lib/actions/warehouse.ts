@@ -654,7 +654,12 @@ export async function processPurchaseReturn(
     returnUnit,
     unitCost,
     branchId,
+    transferNumber,
     paymentMethod,
+    baseCurrency,
+    baseAmount,
+    currency,
+    exchangeRate,
     refundAmount = 0,
     reason,
   } = data;
@@ -909,6 +914,16 @@ export async function processPurchaseReturn(
               purchase: purchaseReturn,
               userId,
               type: "return-purchase",
+              paymentDetails: {
+                exchangeRate: exchangeRate,
+                amountFC: refundAmount,
+                amountBase: baseAmount,
+
+                paymentMethod: paymentMethod,
+                currency_code: currency,
+                refrenceNumber: transferNumber,
+                baseCurrency: baseCurrency,
+              },
             },
             processed: false,
           },
@@ -954,6 +969,11 @@ interface PurchaseReturnData {
   paymentMethod?: string;
   refundAmount?: number;
   reason?: string;
+  baseCurrency?: string;
+  transferNumber?: string;
+  baseAmount: number;
+  currency: string;
+  exchangeRate: number;
 }
 
 export async function getPurchaseReturnData(
@@ -1781,11 +1801,11 @@ export interface InventoryUpdateDatas {
   supplierId?: string;
   unitCost?: number;
   currency_code?: string;
-
+  baseCurrency: string;
   // Payment
   paymentAmount?: number;
   paymentMethod?: string;
-  payment?: any;
+  payment?: PaymentState;
 
   notes?: string;
   reason?: string;
@@ -1956,7 +1976,7 @@ export async function updateMultipleInventories(
             updateData.unitCost &&
             updateData.supplierId
           ) {
-            const paid = updateData.payment.amountBase || 0;
+            const paid = updateData.payment?.amountBase || 0;
             const due = totalCost - paid;
 
             const purchase = await tx.invoice.create({
@@ -1995,7 +2015,7 @@ export async function updateMultipleInventories(
             let supplierPaymentId: string | null = null;
 
             // Create supplier payment if applicable
-            if (updateData.payment.paymentMethod && paid > 0) {
+            if (updateData.payment?.paymentMethod && paid > 0) {
               const supplierPayment = await tx.financialTransaction.create({
                 data: {
                   companyId,
@@ -2043,11 +2063,12 @@ export async function updateMultipleInventories(
                     exchangeRate: updateData.payment?.exchangeRate,
                     amountFC: updateData.payment?.amountFC,
                     bankId: updateData.payment?.accountId,
-                    amountBase: updateData.payment.amountBase,
+                    amountBase: updateData.payment?.amountBase,
                     paymentId: supplierPaymentId,
                     paymentMethod: updateData.payment?.paymentMethod,
                     currency_code: updateData.payment?.accountCurrency || "YER",
                     refrenceNumber: updateData.payment?.transferNumber,
+                    baseCurrency: updateData.baseCurrency,
                   },
                 },
                 processed: false,

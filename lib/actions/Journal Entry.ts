@@ -102,6 +102,8 @@ export async function getVouchers(companyId: string) {
       include: {
         customer: { select: { name: true } },
         supplier: { select: { name: true } },
+        invoice: { select: { invoiceNumber: true } },
+        expense: { select: { expense_number: true } },
       },
       orderBy: {
         createdAt: "desc",

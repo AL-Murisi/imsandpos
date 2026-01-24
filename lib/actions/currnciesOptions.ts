@@ -5,3 +5,11 @@ export const currencyOptions = [
   { name: "اليورو (EUR)", id: "EUR" },
   { name: "الدينار الكويتي (KWD)", id: "KWD" },
 ];
+export interface UserOption {
+  id?: string;
+  name?: string;
+  phoneNumber?: string | null;
+  outstandingBalance?: number;
+  preferred_currency?: string[];
+  creditLimit?: number;
+}

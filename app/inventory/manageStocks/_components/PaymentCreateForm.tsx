@@ -15,6 +15,7 @@ import {
   ReusablePayment,
   PaymentState,
 } from "@/components/common/ReusablePayment";
+import { useCompany } from "@/hooks/useCompany";
 
 interface bankcash {
   id: string;
@@ -48,10 +49,12 @@ export function PaymentCreateForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   // const [banks, setBanks] = useState<bankcash[]>([]);
   // const [cash, setCash] = useState<bankcash[]>([]);
+  const { company } = useCompany();
+
   const [payment, setPayment] = useState<PaymentState>({
     paymentMethod: "",
     accountId: "",
-    accountCurrency: "",
+    accountCurrency: company?.base_currency ?? "",
     amountBase: 0,
   });
   const [accounts, setAccounts] = useState<bankcash[]>([]);
@@ -123,13 +126,14 @@ export function PaymentCreateForm({
 
           paymentMethod: payment.paymentMethod,
           bankId: payment.accountId,
-
+          branchId: company?.branches[0].id ?? "",
           amount: payment.amountBase, // دائماً بالعملة الأساسية
           exchangeRate: payment.exchangeRate ?? 0,
           referenceNumber: payment.transferNumber ?? "",
           currency_code: payment.accountCurrency || "YER",
           note: payment.transferNumber,
           amountFC: payment.amountFC ?? 0, // إن وُجد
+          baseCurrency: company?.base_currency ?? "",
 
           paymentDate: new Date(data.paymentDate),
         },

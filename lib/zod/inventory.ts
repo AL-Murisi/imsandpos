@@ -29,3 +29,16 @@ export const InventoryUpdateWithTrackingSchema = UpdateInventorySchema.extend({
   reason: z.string().optional(),
   notes: z.string().optional(),
 });
+export const PurchaseReturnSchema = z.object({
+  supplierId: z.string().min(1, "المورد مطلوب"),
+  warehouseId: z.string().min(1, "المستودع مطلوب"),
+  returnQuantity: z.number().positive("أدخل كمية صحيحة"),
+  selectedUnitId: z.string().min(1, "الوحدة مطلوبة"),
+  unitCost: z.number().positive("أدخل سعر الوحدة"),
+  paymentMethod: z.string().default("cash").optional(),
+  refundAmount: z.number().min(0),
+  transferNumber: z.string().optional(),
+  reason: z.string().optional(),
+});
+
+export type FormValue = z.infer<typeof PurchaseReturnSchema>;

@@ -9,7 +9,7 @@ export interface VoucherProps {
   voucherNumber: number | string; // استلام الرقم كـ Number
   voucherType: "RECEIPT" | "PAYMENT"; // التوافق مع Schema قاعدة البيانات
   amount: number;
-  personName: string;
+  personName?: string;
   description: string;
   paymentMethod: string;
   userName?: string;

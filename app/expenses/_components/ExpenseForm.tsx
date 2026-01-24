@@ -153,7 +153,11 @@ export default function ExpenseForm({
     (sum, exp) => sum + (exp.payment?.amountBase || 0),
     0,
   );
-
+  const isForeign = payment.accountCurrency !== company?.base_currency;
+  /* ───────── Submit selected invoices ───────── */
+  const paymentAmount = isForeign
+    ? (payment.amountFC ?? 0)
+    : payment.amountBase;
   // Validate and submit
   const handleSubmit = async () => {
     // Validation`
@@ -172,13 +176,13 @@ export default function ExpenseForm({
     }
 
     // Check amount matches
-    for (const exp of expenses) {
-      const expAmount = parseFloat(exp.amount);
-      if (exp.payment && exp.payment.amountBase !== totalAmount) {
-        toast.error("مبلغ الدفع يجب أن يطابق مبلغ المصروف");
-        return;
-      }
-    }
+    // for (const exp of expenses) {
+    //   const expAmount = parseFloat(exp.amount);
+    //   if (exp.payment && exp.payment.amountBase !== totalAmount) {
+    //     toast.error("مبلغ الدفع يجب أن يطابق مبلغ المصروف");
+    //     return;
+    //   }
+    // }
 
     setIsSubmitting(true);
 
@@ -187,7 +191,7 @@ export default function ExpenseForm({
       const expensesData = expenses.map((exp) => ({
         account_id: exp.account_id,
         description: exp.description,
-        amount: exp.payment?.amountBase ?? 0,
+        amount: Number(exp.payment?.amountBase),
         expense_date: new Date(expenseDate),
         paymentMethod: exp.payment?.paymentMethod || "",
         currency_code: exp.payment?.accountCurrency || "YER",
@@ -198,6 +202,7 @@ export default function ExpenseForm({
         amountFC: exp.payment?.amountFC || undefined,
         notes: exp.notes || undefined,
         branchId: company?.branches[0].id ?? "",
+        basCurrncy: company?.base_currency ?? "",
       }));
 
       const result = await createMultipleExpenses(

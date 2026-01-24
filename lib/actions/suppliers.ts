@@ -695,19 +695,23 @@ export async function createSupplierPaymentFromPurchases(
     paymentMethod: string;
     note?: string;
     bankId?: string;
+    branchId: string;
     currency_code: string;
     amountFC?: number;
     exchangeRate?: number;
     referenceNumber?: string;
+    baseCurrency: string;
     paymentDate?: Date;
   },
 ) {
   try {
     const {
       status,
+      baseCurrency,
       purchaseId,
       createdBy,
       amountFC,
+      branchId,
       exchangeRate,
       supplierId,
       currency_code,
@@ -775,7 +779,7 @@ export async function createSupplierPaymentFromPurchases(
         const aggregate = await tx.financialTransaction.aggregate({
           where: {
             companyId: companyId,
-            type: "RECEIPT",
+            type: "PAYMENT",
           },
           _max: {
             voucherNumber: true,
@@ -790,10 +794,12 @@ export async function createSupplierPaymentFromPurchases(
           data: {
             companyId,
             supplierId,
-            currencyCode: "",
+            exchangeRate: exchangeRate,
+            currencyCode: currency_code ?? baseCurrency,
             purchaseId, // ✅ Link to purchase
             amount,
             type: "PAYMENT",
+            branchId,
             voucherNumber: nextNumber,
             paymentMethod,
             notes: note,
@@ -812,6 +818,7 @@ export async function createSupplierPaymentFromPurchases(
           data: {
             amountPaid: newAmountPaid,
             amountDue: newAmountDue,
+
             status: newStatus,
             sale_type: "PURCHASE", // ✅ Trigger the database trigger
           },
@@ -843,6 +850,7 @@ export async function createSupplierPaymentFromPurchases(
               supplierId,
               supplierPayment: supplierPayment,
               userId,
+              branchId,
               paymentDetails: {
                 exchangeRate: exchangeRate,
                 amountFC: amountFC,
@@ -850,6 +858,7 @@ export async function createSupplierPaymentFromPurchases(
                 referenceNumber: referenceNumber,
                 paymentMethod: paymentMethod,
                 currency_code: currency_code,
+                baseCurrency: baseCurrency,
               },
             },
             processed: false,
