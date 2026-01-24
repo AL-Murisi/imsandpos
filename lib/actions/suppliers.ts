@@ -802,6 +802,7 @@ export async function createSupplierPaymentFromPurchases(
             branchId,
             voucherNumber: nextNumber,
             paymentMethod,
+            status: "paid",
             notes: note,
             userId: createdBy,
             createdAt: paymentDate ?? new Date(),

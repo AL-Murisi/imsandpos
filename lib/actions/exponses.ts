@@ -349,7 +349,7 @@ export async function createMultipleExpenses(
             paymentMethod: expenseData.paymentMethod,
             referenceNumber: expenseData.referenceNumber,
             notes: expenseData.description,
-            status: "completed",
+            status: "paid",
             date: expenseData.expense_date,
           },
         });

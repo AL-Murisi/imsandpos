@@ -1581,15 +1581,16 @@ async function createSaleJournalEntries({
       createEntry(
         revenue,
         desc,
-        0,
+
         totalBase,
+        0,
         "REV",
         customer?.id,
         "فاتورة مبيعات",
         true,
       ),
 
-      createEntry(cash, desc, 0, paidBase, "CSH", customer?.id, "سند قبض "),
+      createEntry(cash, desc, paidBase, 0, "CSH", customer?.id, "سند قبض "),
     );
   } else if (sale.status === "partial") {
     if (paidBase > 0) {
