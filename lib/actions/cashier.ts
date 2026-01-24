@@ -384,18 +384,18 @@ export async function processSale(data: any, companyId: string) {
         await tx.financialTransaction.create({
           data: {
             companyId,
-            invoiceId: sale.id,
+            //     invoiceId: sale.id,
             userId: cashierId,
             branchId,
             customerId: customer?.id,
-            voucherNumber, // ✅ Use locked voucher number
+            voucherNumber,
             currencyCode: currency,
             exchangeRate: exchangeRate,
             paymentMethod: "cash",
             type: "RECEIPT",
             amount: receivedAmount,
-            status: "paid",
-            notes: `فاتوره شراء: ${sale.invoiceNumber}`,
+            status: status,
+            notes: ` فاتوره شراء:${sale.invoiceNumber}`,
           },
         });
         // await tx.financialTransaction.create({
