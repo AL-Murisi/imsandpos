@@ -7,20 +7,36 @@ import { getActiveFiscalYears } from "@/lib/actions/fiscalYear";
 import { TransactionType } from "@prisma/client";
 async function getNextVoucherNumber(
   companyId: string,
-  type: TransactionType,
+  type: "RECEIPT" | "PAYMENT",
   tx: any,
 ): Promise<number> {
-  // Use raw SQL with FOR UPDATE to lock the row
+  // Generate a unique lock ID based on companyId and type
+  const lockId = hashToInt(companyId + type);
+
+  // Acquire advisory lock (automatically released at end of transaction)
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(${lockId})`;
+
+  // Now safely get the max voucher number
   const result = await tx.$queryRaw<Array<{ max_voucher: number | null }>>`
     SELECT COALESCE(MAX(voucher_number), 0) as max_voucher
     FROM financial_transactions
     WHERE company_id = ${companyId}
       AND type = ${type}::"TransactionType"
-    FOR UPDATE
   `;
 
   const maxVoucher = result[0]?.max_voucher ?? 0;
   return maxVoucher + 1;
+}
+
+// Helper function to convert string to integer for advisory lock
+function hashToInt(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return Math.abs(hash);
 }
 
 export async function updateSales(
