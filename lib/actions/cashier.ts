@@ -394,7 +394,7 @@ export async function processSale(data: any, companyId: string) {
             paymentMethod: "cash",
             type: "RECEIPT",
             amount: receivedAmount,
-            status: status,
+            status: "paid",
             notes: ` فاتوره شراء:${sale.invoiceNumber}`,
           },
         });
