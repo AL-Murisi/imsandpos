@@ -394,9 +394,8 @@ export async function processSale(data: any, companyId: string) {
             paymentMethod: "cash",
             type: "RECEIPT",
             amount: receivedAmount,
-
-            notes: `فاتوره شراء: ${sale.invoiceNumber}`,
             status: "paid",
+            notes: `فاتوره شراء: ${sale.invoiceNumber}`,
           },
         });
         // await tx.financialTransaction.create({
@@ -433,7 +432,7 @@ export async function processSale(data: any, companyId: string) {
               id: sale.id,
               saleNumber: sale.invoiceNumber,
               sale_type: sale.sale_type,
-              status: status,
+              status: sale.status,
               totalAmount: totalAfterDiscount,
               amountPaid: baseAmount,
               ...(currency !== baseCurrency && {
