@@ -1581,9 +1581,9 @@ async function createSaleJournalEntries({
       createEntry(
         revenue,
         desc,
-
-        totalBase,
         0,
+        totalBase,
+
         "REV",
         customer?.id,
         "فاتورة مبيعات",
