@@ -13,13 +13,11 @@ import {
   DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { CreateWarehouseSchema } from "@/lib/zod";
+import { CreateWarehouseSchema, WarehouseInput } from "@/lib/zod";
 import { createWarehouse } from "@/lib/actions/warehouse";
 import { useAuth } from "@/lib/context/AuthContext";
 import { Plus } from "lucide-react";
 import { useState } from "react";
-
-type FormValues = z.infer<typeof CreateWarehouseSchema>;
 
 export default function WarehouseForm() {
   const [open, setOpen] = useState(false);
@@ -35,7 +33,7 @@ export default function WarehouseForm() {
     reset,
     watch,
     formState: { errors },
-  } = useForm<FormValues>({
+  } = useForm<WarehouseInput>({
     resolver: zodResolver(CreateWarehouseSchema),
     defaultValues: {
       name: warehouse,
@@ -50,7 +48,7 @@ export default function WarehouseForm() {
   });
 
   // Load roles on mount
-  const onSubmit = async (data: FormValues) => {
+  const onSubmit = async (data: WarehouseInput) => {
     setIsSubmitting(true);
 
     await createWarehouse(data, user.companyId);
@@ -144,7 +142,15 @@ export default function WarehouseForm() {
                 )}
               </div>
               {/* Country */}
-
+              <div className="grid gap-2">
+                <Label htmlFor="address">العنوان</Label>
+                <Input id="address" type="text" {...register("address")} />
+                {errors.address && (
+                  <p className="text-xs text-red-500">
+                    {errors.address.message}
+                  </p>
+                )}
+              </div>
               <div className="grid gap-2">
                 <Label htmlFor="country">البلد</Label>
                 <Input id="country" type="text" {...register("country")} />

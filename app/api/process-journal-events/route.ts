@@ -1576,7 +1576,7 @@ async function createSaleJournalEntries({
   // entries.push(
   // );
 
-  if (sale.status === "completed") {
+  if (sale.status === "paid") {
     entries.push(
       createEntry(
         revenue,
