@@ -453,7 +453,7 @@ model FinancialTransaction {
   referenceNumber String?  @map("reference_number") // رقم الشيك أو رقم التحويل
   invoiceId       String?  // Ensure the foreign key exists
 
-  status          String   @default("completed")
+  status          String   
   notes           String?
   date            DateTime @default(now()) @map("transaction_date")
   createdAt       DateTime @default(now()) @map("created_at")
@@ -819,7 +819,7 @@ model Invoice {
   amountPaid      Decimal  @default(0) @db.Decimal(12, 2)
   amountDue       Decimal  @default(0) @db.Decimal(12, 2)
 
-  status          String   @default("completed") // pending, completed, cancelled
+  status          String    // pending, completed, cancelled
   invoiceDate     DateTime @default(now()) @map("invoice_date")
   cashier      User?     @relation("UserSales", fields: [cashierId], references: [id])
 

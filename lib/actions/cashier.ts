@@ -220,10 +220,10 @@ export async function processSale(data: any, companyId: string) {
   console.log(customer);
   return await prisma.$transaction(
     async (tx) => {
-      let status;
-      if (totalAfterDiscount === baseAmount) {
-        status === "paid";
-      } else if (baseAmount > 0 && totalAfterDiscount > baseAmount) {
+      let status: string;
+      if (baseAmount >= totalAfterDiscount) {
+        status = "paid"; // تم التعديل من === إلى =
+      } else if (baseAmount > 0 && baseAmount < totalAfterDiscount) {
         status = "partial";
       } else {
         status = "unpaid";
@@ -368,13 +368,6 @@ export async function processSale(data: any, companyId: string) {
       // 6️⃣ Payment
       // ==========================================
       if (baseAmount > 0) {
-        if (totalAfterDiscount === baseAmount) {
-          status === "paid";
-        } else if (baseAmount > 0 && totalAfterDiscount > baseAmount) {
-          status = "partial";
-        } else {
-          status = "unpaid";
-        }
         const voucherNumber = await getNextVoucherNumber(
           companyId,
           "RECEIPT",
