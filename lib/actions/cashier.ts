@@ -237,7 +237,7 @@ export async function processSale(data: any, companyId: string) {
           cashierId,
           branchId: branchId,
           sale_type: "SALE",
-          status: status,
+          status,
           totalAmount: totalAfterDiscount,
           amountPaid: baseAmount,
           warehouseId: cart[0]?.warehouseId || cart.warehouseId,
@@ -373,7 +373,14 @@ export async function processSale(data: any, companyId: string) {
           "RECEIPT",
           tx,
         );
-
+        let status: string;
+        if (baseAmount >= totalAfterDiscount) {
+          status = "paid"; // تم التعديل من === إلى =
+        } else if (baseAmount > 0 && baseAmount < totalAfterDiscount) {
+          status = "partial";
+        } else {
+          status = "unpaid";
+        }
         await tx.financialTransaction.create({
           data: {
             companyId,
@@ -387,8 +394,9 @@ export async function processSale(data: any, companyId: string) {
             paymentMethod: "cash",
             type: "RECEIPT",
             amount: receivedAmount,
-            status: status,
+
             notes: `فاتوره شراء: ${sale.invoiceNumber}`,
+            status: "paid",
           },
         });
         // await tx.financialTransaction.create({
