@@ -79,14 +79,61 @@ export async function getCustomerById(
       skip: page * pageSize,
       take: pageSize,
     });
+    const entries = await prisma.journal_entries.findMany({
+      where: {
+        company_id: companyId,
+        reference_id: customers[0].id,
+        entry_date: { gte: fromDate, lte: toDate },
+      },
+      orderBy: { entry_date: "asc" },
+      select: {
+        debit: true,
+        credit: true,
+      },
+    });
+    const totalDebit = entries.reduce((s, t) => s + Number(t.debit), 0);
+    const totalCredit = entries.reduce((s, t) => s + Number(t.credit), 0);
+    const result = await Promise.all(
+      customers.map(async (customer) => {
+        // جلب القيود المحاسبية الخاصة بهذا العميل تحديداً ضمن الفترة الزمنية
+        const entries = await prisma.journal_entries.findMany({
+          where: {
+            company_id: companyId,
+            reference_id: customer.id, // العميل الحالي في الحلقة
+            entry_date: {
+              ...(fromDate && { gte: fromDate }),
+              ...(toDate && { lte: toDate }),
+            },
+          },
+          select: {
+            debit: true,
+            credit: true,
+          },
+        });
 
-    // Convert Decimal fields to string for client
-    const result = customers.map((c) => ({
-      ...c,
-      creditLimit: c.creditLimit?.toString() ?? "0",
-      balance: Number(c.balance),
-      outstandingBalance: Number(c.outstandingBalance),
-    }));
+        // حساب الإجمالي من واقع القيود
+        const totalDebit = entries.reduce(
+          (s, t) => s + Number(t.debit || 0),
+          0,
+        );
+        const totalCredit = entries.reduce(
+          (s, t) => s + Number(t.credit || 0),
+          0,
+        );
+
+        return {
+          ...customer,
+          creditLimit: customer.creditLimit?.toString() ?? "0",
+          // إجمالي الديون (الجانب المدين في المحاسبة للعملاء عادة يمثل الديون المطلوبة منهم)
+          balance: totalCredit - totalDebit,
+          // إجمالي المبالغ المدفوعة أو الدائنة
+          totalPayments: totalCredit,
+          // الرصيد النهائي (الفرق بين المدين والدائن)
+          outstandingBalance: totalDebit - totalCredit,
+        };
+      }),
+    );
+
     const total = await prisma.customer.count({ where: { companyId } });
 
     return { result, total }; // ✅ this is an array now

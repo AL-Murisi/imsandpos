@@ -380,7 +380,7 @@ model Customer {
   state              String?
   country            String?
   preferred_currency Json?     @map("allowed_currencies")
-  branch_id  String?
+  branch_id           String?
   customerType       String    @default("individual") @map("customer_type")
   taxId              String?   @map("tax_id")
   creditLimit        Decimal?  @map("credit_limit") @db.Decimal(10, 2)

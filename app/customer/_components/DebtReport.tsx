@@ -112,9 +112,8 @@ export default function DebtReport({
   const totalRemaining = debts.reduce((s, d) => s + d.remaining, 0);
   const isForeign = payment.accountCurrency !== company?.base_currency;
   /* ───────── Submit selected invoices ───────── */
-  const paymentAmount = isForeign
-    ? (payment.amountFC ?? 0)
-    : payment.amountBase;
+  // ALWAYS base amount for backend logic
+  const paymentAmount = payment.amountBase;
 
   const onSubmit = async () => {
     if (!payment.paymentMethod || !payment.accountId) {
@@ -221,7 +220,7 @@ export default function DebtReport({
     <Dailogreuse
       open={open}
       setOpen={setOpen}
-      btnLabl="عرض الفاتورة"
+      btnLabl="سند قبض"
       style="max-w-90 overflow-hidden md:max-w-4xl lg:max-w-6xl"
     >
       <ScrollArea dir="rtl" className="h-[70vh] space-y-4">

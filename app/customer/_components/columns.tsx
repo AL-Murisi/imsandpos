@@ -178,13 +178,13 @@ export const customerColumns: ColumnDef<any>[] = [
     ),
   },
   {
-    accessorKey: "outstandingBalance",
-    header: " على العميل",
+    accessorKey: "balance",
+    header: "رصيد العميل",
     cell: ({ row }) => {
-      const balance = Number(row.original.outstandingBalance);
+      const balance = Number(row.original.balance);
 
-      const isDebit = balance > 0; // customer owes company
-      const isCredit = balance < 0; // company owes customer
+      const isDebit = balance < 0; // customer owes company
+      const isCredit = balance > 0; // company owes customer
       const { formatCurrency } = useFormatter();
 
       return (
@@ -202,21 +202,21 @@ export const customerColumns: ColumnDef<any>[] = [
       );
     },
   },
-  {
-    accessorKey: "balance",
-    header: "رصيد العميل",
-    cell: ({ row }) => {
-      const balance = Number(row.original.balance);
+  // {
+  //   accessorKey: "balance",
+  //   header: "رصيد العميل",
+  //   cell: ({ row }) => {
+  //     const balance = Number(row.original.balance);
 
-      const isCredit = balance < 0; // company owes customer
-      const { formatCurrency } = useFormatter();
-      return (
-        <span className={`font-bold ${"text-green-600"}`}>
-          {formatCurrency(balance)}
-        </span>
-      );
-    },
-  },
+  //     const isCredit = balance < 0; // company owes customer
+  //     const { formatCurrency } = useFormatter();
+  //     return (
+  //       <span className={`font-bold ${"text-green-600"}`}>
+  //         {formatCurrency(balance)}
+  //       </span>
+  //     );
+  //   },
+  // },
   {
     id: "actions",
     header: "الإجراءات",

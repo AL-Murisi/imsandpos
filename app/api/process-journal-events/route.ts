@@ -668,6 +668,16 @@ async function createPaymentJournalEntries({
 
       exchangeRate,
     } = payment;
+    const {
+      basCurrncy,
+      currencyCode,
+      exchange_rate,
+      amountFC,
+      baseAmount,
+      paymentMethod,
+      bankId,
+      transferNumber,
+    } = paymentDetails;
     const fy = await getActiveFiscalYears();
     if (!fy) return;
     // ============================================
@@ -721,7 +731,7 @@ async function createPaymentJournalEntries({
     let entryCounter = 0;
     const generateEntryNumber = (suffix: string) => {
       entryCounter++;
-      return `JE-RET-${year}-${Date.now()}-${entryCounter}-${suffix}`;
+      return `JE-${year}-${Date.now()}-${suffix}`;
     };
     // ============================================
     // 4️⃣ Fetch account mappings
@@ -736,22 +746,24 @@ async function createPaymentJournalEntries({
     const cashAcc = getAcc("cash");
     const arAcc = getAcc("accounts_receivable");
 
-    const bank = paymentDetails.bankId;
+    const bank = payment.paymentDetails.bankId;
 
     if (!cashAcc || !arAcc || (payment.paymentMethod === "bank" && !bank)) {
       console.error("Missing account mappings");
       return;
     }
     const isForeign =
-      paymentDetails.currencyCode &&
-      paymentDetails.foreignCurrency !== paymentDetails.baseCurrency &&
-      exchangeRate &&
-      exchangeRate !== 1;
+      currencyCode &&
+      basCurrncy &&
+      currencyCode !== basCurrncy &&
+      exchange_rate &&
+      exchange_rate > 0;
 
     // ============================================
     // 5️⃣ Prepare journal entries
     // ============================================
-    const desc = `تسديد دين لعملية بيع ${sale.invoiceNumber}`;
+    const currency = isForeign ? currencyCode : basCurrncy;
+    const desc = `تسديد دين لعملية بيع ${sale.invoiceNumber} العمله:(${currency})`;
     const createEntry = (
       accountId: string,
       description: string,
@@ -782,39 +794,31 @@ async function createPaymentJournalEntries({
 
         ...(useForeign
           ? {
-              currency_code: paymentDetails.currencyCode,
-              foreign_amount: paymentDetails.amountFC,
-              exchange_rate: paymentDetails.exchange_rate,
-              base_amount: paymentDetails.baseAmount,
+              currency_code: currencyCode,
+              foreign_amount: amountFC,
+              exchange_rate,
+              base_amount: baseAmount,
             }
           : {
-              currency_code: paymentDetails.baseCurrency,
+              currency_code: basCurrncy,
             }),
       };
     };
     let entries: any[] = [];
 
-    if (paymentDetails.paymentMethod === "cash") {
+    if (paymentMethod === "cash") {
       entries.push(
-        createEntry(
-          paymentDetails.bankId,
-          desc,
-          amount,
-          0,
-          "-D",
-          payment.id,
-          "تسديد دين",
-        ),
+        createEntry(bankId, desc, amount, 0, "-D", payment.id, "تسديد دين"),
 
-        createEntry(arAcc, desc, 0, amount, " -C", customerId, "سند قبض"),
+        createEntry(arAcc, desc, 0, amount, "-C", customerId, "سند قبض", true),
       );
-    } else if (paymentDetails.paymentMethod === "bank") {
+    } else if (paymentMethod === "bank") {
       entries.push(
         createEntry(
-          paymentDetails.bankId,
+          bankId,
           desc +
             "رقم التحويل : " +
-            paymentDetails.transferNumber +
+            transferNumber +
             "من: " +
             sale.customer?.name,
           amount,
@@ -828,20 +832,21 @@ async function createPaymentJournalEntries({
           arAcc,
           desc +
             "رقم التحويل : " +
-            paymentDetails.transferNumber +
+            transferNumber +
             "من: " +
             sale.customer?.name,
           0,
           amount,
-          customerId,
-          "سند قبض",
           " -C",
+          customerId,
+
+          "سند قبض",
         ),
       );
     }
 
     if (entries.length === 0) {
-      throw new Error("Unsupported payment method: " + payment.paymentMethod);
+      throw new Error("Unsupported payment method: " + paymentMethod);
     }
 
     // ============================================
@@ -859,7 +864,7 @@ async function createPaymentJournalEntries({
       }),
     );
     await Promise.all(balanceOps);
-
+    console.log(currencyCode, "heythere");
     console.log("Payment journal entries created for payment", payment.id);
   } catch (err) {
     console.error("Error in createPaymentJournalEntries:", err);
@@ -1005,24 +1010,14 @@ async function createOutstandingPaymentJournalEntries({
         amount,
 
         0,
-
+        "-D",
         payment.id,
         "مديونية",
-        "-D",
       ),
 
       // Credit: Accounts Receivable
 
-      createEntry(
-        arAcc,
-        desc,
-        0,
-        amount,
-
-        customerId,
-        "سداد",
-        "-C",
-      ),
+      createEntry(arAcc, desc, 0, amount, "-C", customerId, "سداد"),
     );
 
     // ============================================
@@ -1245,10 +1240,10 @@ async function createSupplierPaymentJournalEntries({
       description,
       payment.amount,
       0,
-      "سداد دين المورد",
 
-      payment.supplierId,
       "-D",
+      payment.supplierId,
+      "سداد دين المورد",
     ),
     createEntry(
       paymentDetails.bankId,
@@ -1256,9 +1251,9 @@ async function createSupplierPaymentJournalEntries({
       0,
 
       payment.amount,
-      "سداد دين المورد",
-      payment.id,
       "-C",
+      payment.id,
+      "سداد دين المورد",
     ),
   );
   await prisma.journal_entries.createMany({
@@ -1833,9 +1828,10 @@ async function createPurchaseJournalEntries({
             (purchase.referenceNumber ? ` - ${purchase.referenceNumber}` : ""),
           totalAmount,
           0,
-          "إضافة مخزون",
-          purchase.id,
           "-DR1",
+          purchase.id,
+
+          "إضافة مخزون",
         ),
         // Credit Cash/Bank
         createEntry(
@@ -1848,9 +1844,9 @@ async function createPurchaseJournalEntries({
               : ""),
           0,
           totalAmount,
-          "سداد مشتريات",
-          purchase.id,
           "-CR1",
+          purchase.id,
+          "سداد مشتريات",
         ),
       );
     } else if (amountPaid > 0 && amountPaid < totalAmount) {
@@ -1872,9 +1868,9 @@ async function createPurchaseJournalEntries({
 
           totalAmount,
           0,
-          "إضافة مخزون",
-          purchase.id,
           "-DR1",
+          purchase.id,
+          "إضافة مخزون",
         ),
         // Credit Cash/Bank (paid amount)
         createEntry(
@@ -1887,9 +1883,9 @@ async function createPurchaseJournalEntries({
               : ""),
           0,
           amountPaid,
-          "دفع مشتريات",
-          paymentDetails.id,
           "-CR1",
+          paymentDetails.id,
+          "دفع مشتريات",
         ),
         // Credit Accounts Payable (remaining)
         createEntry(
@@ -1902,18 +1898,18 @@ async function createPurchaseJournalEntries({
               : ""),
           0,
           totalAmount,
-          "آجل مشتريات",
-          purchase.supplierId,
           "-CR2",
+          purchase.supplierId,
+          "آجل مشتريات",
         ),
         createEntry(
           payableAccount,
           description + " - آجل للمورد",
           amountPaid,
           0,
-          "آجل مشتريات",
-          purchase.supplierId,
           "-CR5",
+          purchase.supplierId,
+          "آجل مشتريات",
         ),
       );
     } else {
@@ -1925,9 +1921,9 @@ async function createPurchaseJournalEntries({
           description + " - إضافة للمخزون",
           totalAmount,
           0,
-          "إضافة مخزون",
-          purchase.id,
           "-DR1",
+          purchase.id,
+          "إضافة مخزون",
         ),
         // Credit Accounts Payable
         createEntry(
@@ -1936,9 +1932,9 @@ async function createPurchaseJournalEntries({
           0,
 
           totalAmount,
-          " دين للمورد",
-          purchase.supplierId,
           "-CR1",
+          purchase.supplierId,
+          " دين للمورد",
         ),
       );
     }
@@ -1956,9 +1952,9 @@ async function createPurchaseJournalEntries({
         description + " - تخفيض المخزون",
         0,
         totalAmount,
-        "تخفيض مخزون بسبب مرتجع مشتريات",
-        purchase.id,
         "-CR1",
+        purchase.id,
+        " مرتجع مشتريات",
       ),
     );
 
@@ -1973,9 +1969,9 @@ async function createPurchaseJournalEntries({
           description + " - استرداد نقدي/بنكي",
           amountPaid,
           0,
-          "استرداد مدفوعات للمرتجع",
-          purchase.id,
           "-DR1",
+          purchase.id,
+          " مدفوعات للمرتجع",
         ),
       );
 
@@ -1987,9 +1983,9 @@ async function createPurchaseJournalEntries({
             description + " - تخفيض الذمم الدائنة",
             remainingAmount,
             0,
-            "تخفيض مديونية المورد بسبب مرتجع",
-            purchase.supplierId,
             "-DR2",
+            purchase.supplierId,
+            " مديونية   مرتجع",
           ),
         );
       }
@@ -2001,9 +1997,9 @@ async function createPurchaseJournalEntries({
           description + " - تخفيض الذمم الدائنة",
           totalAmount,
           0,
-          "تخفيض ذمم دائنة للمرتجع",
-          purchase.supplierId,
           "-DR1",
+          purchase.supplierId,
+          " ذمم دائنة للمرتجع",
         ),
       );
     }

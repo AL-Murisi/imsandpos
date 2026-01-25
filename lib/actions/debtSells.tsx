@@ -204,7 +204,7 @@ export async function updateSalesBulk(
       });
 
       if (sales.length === 0) throw new Error("No matching sales found.");
-
+      const distributedPayments = []; // مصفوفة لتخزين تفاصيل كل فاتورة للـ Journal Event
       // 2️⃣ Allocate payments
       let remaining = paymentAmount;
       const saleUpdates = [];
@@ -240,6 +240,9 @@ export async function updateSalesBulk(
           customerUpdates[s.customerId] =
             (customerUpdates[s.customerId] || 0) + payNow;
         }
+        distributedPayments.push({
+          saleId: s.id,
+        });
       }
 
       // 3️⃣ Update invoices
@@ -274,17 +277,25 @@ export async function updateSalesBulk(
             userId: cashierId,
             branchId,
             voucherNumber,
-            exchangeRate: paymentDetails.exchange_rate,
-            currencyCode: paymentDetails.currencyCode || "",
+
             type: TransactionType.RECEIPT,
             paymentMethod: paymentDetails.paymentMethod,
-            amount: p.amount,
+            amount:
+              paymentDetails.currencyCode !== paymentDetails.basCurrncy
+                ? paymentDetails.amountFC
+                  ? (p.amount / paymentDetails.baseAmount!) *
+                    paymentDetails.amountFC
+                  : p.amount
+                : p.amount,
+
+            currencyCode: paymentDetails.currencyCode,
+            exchangeRate: paymentDetails.exchange_rate,
+
             status: "completed",
             notes: `تسديد الدين للفاتورة رقم ${p.invoiceNumber}`,
             createdAt: new Date(),
           },
         });
-
         createdPayments.push(payment);
 
         // Create journal event
