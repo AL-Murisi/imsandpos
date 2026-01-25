@@ -19,6 +19,7 @@ app.prepare().then(() => {
           ? "https://imsandpos.vercel.app"
           : "http://localhost:3000",
       methods: ["GET", "POST"],
+      addTrailingSlash: false,
     },
   });
 
