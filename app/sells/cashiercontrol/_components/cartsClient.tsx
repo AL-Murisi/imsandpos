@@ -478,7 +478,7 @@ export default function CartDisplay({
   return (
     <div className="bg-accent flex h-[45hv] flex-col rounded-2xl p-2 shadow-xl/20 shadow-gray-500 lg:col-span-1">
       <div className="flex items-center justify-center">
-        <Label className="">فرع: {company?.branches[0].location}</Label>
+        <Label className="">فرع: {company?.branches[0].location ?? ""}</Label>
       </div>
 
       <div className="flex flex-wrap-reverse justify-between gap-4">

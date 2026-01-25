@@ -5,6 +5,7 @@
 import prisma from "@/lib/prisma";
 import { account_category, Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { getNextVoucherNumber } from "./cashier";
 interface CreateCategoryData {
   name: string;
   description?: string;
@@ -274,16 +275,7 @@ export async function createMultipleExpenses(
       expensesData[0].currency_code !== expensesData[0].basCurrncy &&
       expensesData[0].exchangeRate &&
       expensesData[0].exchangeRate !== 1;
-    const aggregate = await prisma.financialTransaction.aggregate({
-      where: {
-        companyId,
-        type: "PAYMENT", // المصاريف تعتبر سندات صرف
-      },
 
-      _max: {
-        voucherNumber: true,
-      },
-    });
     const aggregateexp = await prisma.expenses.aggregate({
       where: {
         company_id: companyId,
@@ -293,20 +285,26 @@ export async function createMultipleExpenses(
         expense_number: true,
       },
     });
-    const lastNumber = aggregate._max.voucherNumber || 0;
-    let currentVoucherNumber = lastNumber || 0;
-    let nextExpenseNumber = 1;
 
-    if (aggregateexp._max.expense_number) {
-      const last = aggregateexp._max.expense_number; // EXP-00012
-      const lastNum = Number(last.split("-")[1]);
-      nextExpenseNumber = lastNum + 1;
-    }
     // 2️⃣ تنفيذ العمليات داخل Transaction لضمان سلامة البيانات
     const result = await prisma.$transaction(async (tx) => {
       const createdExpenses = [];
       const journalEvents = [];
       const financialTransactions = [];
+      const voucherNumber = await getNextVoucherNumber(
+        companyId,
+        "PAYMENT",
+        tx,
+      );
+      const lastNumber = voucherNumber || 0;
+      let currentVoucherNumber = lastNumber || 0;
+      let nextExpenseNumber = 1;
+
+      if (aggregateexp._max.expense_number) {
+        const last = aggregateexp._max.expense_number; // EXP-00012
+        const lastNum = Number(last.split("-")[1]);
+        nextExpenseNumber = lastNum + 1;
+      }
 
       // جلب آخر رقم سند صرف للشركة لمرة واحدة وزيادته تدريجياً داخل الحلقة
 

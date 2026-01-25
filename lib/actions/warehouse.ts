@@ -15,6 +15,7 @@ import {
 } from "@/lib/zod";
 import { getActiveFiscalYears } from "./fiscalYear";
 import { PaymentState } from "@/components/common/ReusablePayment";
+import { getNextVoucherNumber } from "./cashier";
 function serializeData<T>(data: T): T {
   if (data === null || data === undefined) return data;
   if (typeof data !== "object") return data;
@@ -2018,11 +2019,16 @@ export async function updateMultipleInventories(
 
             // Create supplier payment if applicable
             if (updateData.payment?.paymentMethod && paid > 0) {
+              const voucherNumber = await getNextVoucherNumber(
+                companyId,
+                "PAYMENT",
+                tx,
+              );
               const supplierPayment = await tx.financialTransaction.create({
                 data: {
                   companyId,
                   currencyCode: "",
-                  voucherNumber: 0,
+                  voucherNumber,
                   supplierId: updateData.supplierId,
                   userId,
                   branchId: updateData.branchId,

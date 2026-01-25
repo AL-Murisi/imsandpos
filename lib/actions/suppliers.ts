@@ -8,6 +8,7 @@ import { CreateSupplierInput, CreateSupplierSchema } from "@/lib/zod";
 import { cache } from "react";
 import { getSession } from "@/lib/session";
 import { getActiveFiscalYears } from "./fiscalYear";
+import { getNextVoucherNumber } from "./cashier";
 function serializeData<T>(data: T): T {
   if (data === null || data === undefined) return data;
 
@@ -776,19 +777,11 @@ export async function createSupplierPaymentFromPurchases(
     // ✅ Transaction with proper sequencing
     const result = await prisma.$transaction(
       async (tx) => {
-        const aggregate = await tx.financialTransaction.aggregate({
-          where: {
-            companyId: companyId,
-            type: "PAYMENT",
-          },
-          _max: {
-            voucherNumber: true,
-          },
-        });
-
-        // 2. حساب الرقم التالي
-        const lastNumber = aggregate._max.voucherNumber || 0;
-        const nextNumber = lastNumber + 1;
+        const voucherNumber = await getNextVoucherNumber(
+          companyId,
+          "PAYMENT",
+          tx,
+        );
         // 1. Create supplier payment record first
         const supplierPayment = await tx.financialTransaction.create({
           data: {
@@ -800,7 +793,7 @@ export async function createSupplierPaymentFromPurchases(
             amount,
             type: "PAYMENT",
             branchId,
-            voucherNumber: nextNumber,
+            voucherNumber,
             paymentMethod,
             status: "paid",
             notes: note,

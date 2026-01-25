@@ -884,14 +884,21 @@ async function createOutstandingPaymentJournalEntries({
       customerId,
       branchId,
       amount,
-      paymentMethod,
+
       paymentDetails,
-      baseAmount,
-      amountFC,
-      currencyCode,
+
       exchangeRate,
     } = payment;
-
+    const {
+      basCurrncy,
+      currencyCode,
+      exchange_rate,
+      amountFC,
+      baseAmount,
+      paymentMethod,
+      bankId,
+      transferNumber,
+    } = paymentDetails;
     const fy = await getActiveFiscalYears();
     if (!fy) return;
 
@@ -913,8 +920,8 @@ async function createOutstandingPaymentJournalEntries({
     const year = new Date().getFullYear().toString();
 
     const isForeign =
-      paymentDetails.currencyCode &&
-      paymentDetails.currencyCode !== paymentDetails.basCurrncy &&
+      currencyCode &&
+      currencyCode !== basCurrncy &&
       exchangeRate &&
       exchangeRate !== 1;
     let entryCounter = 0;
@@ -955,13 +962,13 @@ async function createOutstandingPaymentJournalEntries({
 
         ...(useForeign
           ? {
-              currency_code: paymentDetails.basCurrncy,
-              foreign_amount: paymentDetails.amountFC,
-              exchange_rate: paymentDetails.exchangeRate,
-              base_amount: paymentDetails.baseAmount,
+              currency_code: currencyCode,
+              foreign_amount: amountFC,
+              exchange_rate,
+              base_amount: baseAmount,
             }
           : {
-              currency_code: paymentDetails.basCurrncy,
+              currency_code: basCurrncy,
             }),
       };
     };
@@ -985,8 +992,8 @@ async function createOutstandingPaymentJournalEntries({
     const getAcc = (type: string) =>
       mappings.find((m) => m.mapping_type === type)?.account_id;
 
-    const cashAcc = paymentDetails.bankId || getAcc("cash");
-    const bankAcc = paymentDetails.bankId || getAcc("bank");
+    const cashAcc = bankId || getAcc("cash");
+    const bankAcc = bankId || getAcc("bank");
     const arAcc = getAcc("accounts_receivable");
 
     if (!arAcc || (!cashAcc && !bankAcc)) return;
@@ -999,9 +1006,10 @@ async function createOutstandingPaymentJournalEntries({
     // ============================================
     // 5️⃣ Build journal entries
     // ============================================
+    const currency = isForeign ? currencyCode : basCurrncy;
     const desc = `سداد مديونية عميل${
       customer?.name ? " - " + customer.name : ""
-    }`;
+    }العمله:(${currency})`;
 
     entries.push(
       createEntry(

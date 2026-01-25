@@ -167,7 +167,7 @@ export async function generateSaleNumberSafe(
 export async function getNextSaleNumber(companyId: string): Promise<string> {
   return generateSaleNumberSafe(companyId);
 }
-async function getNextVoucherNumber(
+export async function getNextVoucherNumber(
   companyId: string,
   type: "RECEIPT" | "PAYMENT",
   tx: any,
