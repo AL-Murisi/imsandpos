@@ -82,7 +82,7 @@ export async function getCustomerById(
     const entries = await prisma.journal_entries.findMany({
       where: {
         company_id: companyId,
-        reference_id: customers[0].id,
+        reference_id: customers[0]?.id,
         entry_date: { gte: fromDate, lte: toDate },
       },
       orderBy: { entry_date: "asc" },
