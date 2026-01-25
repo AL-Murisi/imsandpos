@@ -177,8 +177,18 @@ export async function getCompany() {
     if (!company) {
       return { success: false, message: "لم يتم العثور على الشركة" };
     }
+    const safeCompany = {
+      ...company,
+      branches: company.branches.map((b) => ({
+        ...b,
+        location: b.location ?? "",
+      })),
+    };
 
-    return { success: true, data: company };
+    return {
+      success: true,
+      data: safeCompany,
+    };
   } catch (error: any) {
     console.error("❌ Error fetching company:", error);
     return { success: false, message: error.message };
