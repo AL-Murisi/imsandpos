@@ -251,6 +251,7 @@ async function createManualJournalEntriesFromEvent(payload: any) {
     },
     select: { period_name: true },
   });
+  const entryBase = `JE-Men-${new Date().getFullYear()}-${Math.floor(Math.random() * 10000)}`;
 
   await prisma.$transaction(async (tx) => {
     // 1️⃣ insert journal entries
@@ -267,6 +268,7 @@ async function createManualJournalEntriesFromEvent(payload: any) {
         reference_type: e.reference_type,
         reference_id: e.reference_id,
         branch_id: e.branch_id,
+        currency_code: e.currency_code,
         created_by: e.created_by,
         is_automated: false,
       })),

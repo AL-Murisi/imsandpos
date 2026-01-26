@@ -528,7 +528,7 @@ model expenses {
 model accounts {
   id               String            @id @default(dbgenerated("gen_random_uuid()"))
   company_id       String
-  account_code     String
+  account_code     String        
   account_name_en  String
   account_name_ar  String?
   account_type     account_type
@@ -546,8 +546,8 @@ model accounts {
   updated_at       DateTime?         @default(now()) @db.Timestamptz(6)
   
   companies        Company           @relation(fields: [company_id], references: [id], onDelete: Cascade)
-  accounts         accounts?         @relation("accountsToaccounts", fields: [parent_id], references: [id])
-  other_accounts   accounts[]        @relation("accountsToaccounts")
+  accounts       accounts?  @relation("AccountHierarchy", fields: [company_id, parent_id], references: [company_id, account_code])
+  other_accounts   accounts[]        @relation("AccountHierarchy")
   journal_entries  journal_entries[]
   account_mappings account_mappings[]  // NEW: Link to business transactions
     banks     Bank[]  // 👈 ADD THIS 

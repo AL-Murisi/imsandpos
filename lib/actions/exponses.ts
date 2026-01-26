@@ -6,6 +6,7 @@ import prisma from "@/lib/prisma";
 import { account_category, Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { getNextVoucherNumber } from "./cashier";
+import { validateFiscalYear } from "./fiscalYear";
 interface CreateCategoryData {
   name: string;
   description?: string;
@@ -262,6 +263,7 @@ export async function createMultipleExpenses(
   expensesData: ExpenseData[],
 ) {
   try {
+    await validateFiscalYear(companyId);
     // 1️⃣ التحقق من البيانات الأساسية
     if (!companyId || !userId) {
       return { success: false, error: "معرف الشركة ومعرف المستخدم مطلوبان" };

@@ -157,24 +157,29 @@ export const accountColumns: ColumnDef<any>[] = [
       const categoryMap: Record<string, string> = {
         CASH: "نقد",
         BANK: "بنك",
+        OTHER_ASSETS: "الأصول",
         ACCOUNTS_RECEIVABLE: "ذمم مدينة",
         INVENTORY: "مخزون",
         FIXED_ASSETS: "أصول ثابتة",
         ACCOUNTS_PAYABLE: "ذمم دائنة",
-        SALES_TAX_PAYABLE: "ضريبة مبيعات",
-        OWNER_EQUITY: "رأس المال",
-        RETAINED_EARNINGS: "أرباح محتجزة",
         SALES_REVENUE: "إيرادات مبيعات",
         COST_OF_GOODS_SOLD: "تكلفة البضاعة المباعة",
         OPERATING_EXPENSES: "مصاريف تشغيلية",
         PAYROLL_EXPENSES: "رواتب",
         // 🆕 Added:
+        OTHER_INCOME: "إيرادات أخرى",
+        OWNER_EQUITY: "حقوق الملكية",
+        DRAWINGS: "المسحوبات",
+        LIABILITY: "الخصوم",
+        RETAINED_EARNINGS: "الأرباح",
         OTHER_CURRENT_ASSETS: "أصول متداولة أخرى",
         SERVICE_REVENUE: "إيرادات خدمات",
-        OTHER_CURRENT_LIABILITIES: "التزامات متداولة أخرى",
+        OTHER_CURRENT_LIABILITIES: "التزامات متداولة ",
         OTHER_EXPENSES: "مصاريف أخرى",
         ADMINISTRATIVE_EXPENSES: "مصاريف إدارية",
         HOUSE_EXPENSES: "مصاريف منزلية",
+        SHORT_TERM_LOANS: "قروض",
+        SALES_TAX_PAYABLE: "ضريبة",
       };
       return (
         <span className="text-lg">

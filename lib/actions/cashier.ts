@@ -10,7 +10,7 @@ import {
 } from "next/cache";
 import { logActivity } from "./activitylogs";
 import { Prisma, TransactionType } from "@prisma/client";
-import { getActiveFiscalYears } from "./fiscalYear";
+import { getActiveFiscalYears, validateFiscalYear } from "./fiscalYear";
 import { serialize } from "v8";
 import { getLatestExchangeRate } from "./currency";
 import { SellingUnit } from "../zod";
@@ -217,7 +217,7 @@ export async function processSale(data: any, companyId: string) {
     baseAmount,
     receivedAmount,
   } = data;
-  console.log(customer);
+  await validateFiscalYear(companyId);
   return await prisma.$transaction(
     async (tx) => {
       let status: string;

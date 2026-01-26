@@ -70,3 +70,20 @@ export async function getActiveFiscalYears() {
     orderBy: { start_date: "desc" },
   });
 }
+export async function validateFiscalYear(companyId: string) {
+  const activeYear = await prisma.fiscal_periods.findFirst({
+    where: {
+      company_id: companyId,
+      is_closed: false,
+      start_date: { lte: new Date() },
+      end_date: { gte: new Date() },
+    },
+  });
+
+  if (!activeYear) {
+    throw new Error(
+      "لا يمكن إجراء هذه العملية: لا توجد سنة مالية مفتوحة حالياً لهذا التاريخ.",
+    );
+  }
+  return activeYear;
+}

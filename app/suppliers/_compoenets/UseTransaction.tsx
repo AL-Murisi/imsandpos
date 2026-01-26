@@ -61,13 +61,13 @@ export function TabsController({
           ),
         },
 
-        {
-          value: "payments",
-          label: "الدفعات",
-          content: (
-            <PaymentsTable data={payments.data} total={payments.total} />
-          ),
-        },
+        // {
+        //   value: "payments",
+        //   label: "الدفعات",
+        //   content: (
+        //     <PaymentsTable data={payments.data} total={payments.total} />
+        //   ),
+        // },
       ]}
     />
   );

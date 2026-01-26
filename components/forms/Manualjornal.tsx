@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { createManualJournalEntry } from "@/lib/actions/manualJournalEntry";
-import { Plus, Save, Trash2, Info } from "lucide-react";
+import { Plus, Save, Trash2, Info, Currency } from "lucide-react";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { SelectField } from "../common/selectproduct";
@@ -311,6 +311,7 @@ export default function ManualJournalEntryForm({
           reference_id: referenceId,
           created_by: userId,
           is_automated: false,
+          currency_code: company?.base_currency,
           branch_id: company?.branches[0].id,
           customer_id: line.customerId,
           supplier_id: line.supplierId,

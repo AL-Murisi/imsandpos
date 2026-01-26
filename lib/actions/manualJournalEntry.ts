@@ -4,6 +4,7 @@
 import prisma from "@/lib/prisma"; // Adjust import path
 import { revalidatePath } from "next/cache";
 import { getSession } from "../session";
+import { validateFiscalYear } from "./fiscalYear";
 
 interface JournalEntryLine {
   company_id: string;
@@ -18,6 +19,7 @@ interface JournalEntryLine {
   created_by: string;
   is_automated: boolean;
   branch_id?: string;
+  currency_code?: string | null;
   fiscal_period?: string | null;
   customer_id?: string;
   supplier_id?: string;
@@ -44,6 +46,7 @@ export async function createManualJournalEntry({
   paymentDetails?: SupplierPaymentDetails;
 }) {
   try {
+    await validateFiscalYear(companyId);
     if (!entries || entries.length < 2) {
       return {
         success: false,
@@ -93,6 +96,8 @@ export async function createManualJournalEntry({
       reference_type: entry.reference_type,
       reference_id: entry.reference_id,
       created_by: entry.created_by,
+      branch_id: entry.branch_id,
+      currency_code: entry.currency_code,
       is_automated: false,
     }));
 

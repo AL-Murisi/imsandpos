@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/session";
 import { Prisma } from "@prisma/client";
+import { validateFiscalYear } from "./fiscalYear";
 
 // Types
 type AccountType =
@@ -26,6 +27,9 @@ interface CreateAccountInput {
   description?: string;
   currency_code?: string | null;
   allow_manual_entry?: boolean;
+  level: number;
+  branchId?: string;
+  currency?: string;
 }
 function serializeData<T>(data: T): T {
   if (data === null || data === undefined) return data;
@@ -322,79 +326,196 @@ export async function getAccount(accountId: string) {
 }
 
 // 3. CREATE ACCOUNT
-export async function createAccount(data: CreateAccountInput) {
+// export async function createAccount(data: CreateAccountInput) {
+//   try {
+//     const { companyId, userId } = await getUserCompany();
+//     await validateFiscalYear(companyId);
+//     // Check if account code already exists
+//     const existing = await prisma.accounts.findFirst({
+//       where: {
+//         company_id: companyId,
+//         account_code: data.account_code,
+//       },
+//     });
+
+//     if (existing) {
+//       return { success: false, error: "رمز الحساب موجود مسبقاً" };
+//     }
+
+//     // Calculate level based on parent
+//     let level = 1;
+//     if (data.parent_id) {
+//       const parent = await prisma.accounts.findUnique({
+//         where: { id: data.parent_id },
+//         select: { level: true },
+//       });
+//       level = (parent?.level || 0) + 1;
+//     }
+
+//     const account = await prisma.accounts.create({
+//       data: {
+//         company_id: companyId,
+//         account_code: data.account_code,
+//         account_name_en: data.account_name_en,
+//         account_name_ar: data.account_name_ar,
+//         account_type: data.account_type as any,
+//         account_category: data.account_category as any,
+//         parent_id: data.parent_id || null,
+//         level,
+//         opening_balance: data.opening_balance || 0,
+//         balance: data.opening_balance || 0,
+//         description: data.description,
+//         allow_manual_entry: data.allow_manual_entry ?? true,
+//         is_active: true,
+//       },
+//     });
+
+//     // Create opening balance journal entry if applicable
+//     if (data.opening_balance && data.opening_balance !== 0) {
+//       const entryNumber = `JE-${new Date().getFullYear()}-OPENING-${Date.now()}`;
+
+//       await prisma.journal_entries.create({
+//         data: {
+//           company_id: companyId,
+//           entry_number: entryNumber,
+//           account_id: account.id,
+//           description: `الرصيد الافتتاحي لحساب ${data.account_name_ar || data.account_name_en}`,
+//           entry_date: new Date(),
+//           debit: data.opening_balance > 0 ? data.opening_balance : 0,
+//           credit: data.opening_balance < 0 ? Math.abs(data.opening_balance) : 0,
+//           is_posted: true,
+//           is_automated: true,
+//           reference_type: "opening_balance",
+//           created_by: userId,
+//         },
+//       });
+//     }
+
+//     revalidatePath("/chartOfAccount");
+//     return { success: true, data: account, message: "تم إنشاء الحساب بنجاح" };
+//   } catch (error) {
+//     console.error("Create account error:", error);
+//     return { success: false, error: "فشل في إنشاء الحساب" };
+//   }
+// }
+export async function createAccount(
+  data: CreateAccountInput | CreateAccountInput[],
+) {
   try {
     const { companyId, userId } = await getUserCompany();
+    const items = Array.isArray(data) ? data : [data];
 
-    // Check if account code already exists
-    const existing = await prisma.accounts.findFirst({
-      where: {
-        company_id: companyId,
-        account_code: data.account_code,
-      },
+    // 1. Pre-validation: Check for active fiscal year
+    const activeFiscalYear = await prisma.fiscal_periods.findFirst({
+      where: { company_id: companyId, is_closed: false },
     });
 
-    if (existing) {
-      return { success: false, error: "رمز الحساب موجود مسبقاً" };
+    if (!activeFiscalYear) {
+      return { success: false, error: "لا توجد سنة مالية نشطة" };
     }
 
-    // Calculate level based on parent
-    let level = 1;
-    if (data.parent_id) {
-      const parent = await prisma.accounts.findUnique({
-        where: { id: data.parent_id },
-        select: { level: true },
-      });
-      level = (parent?.level || 0) + 1;
-    }
+    // 2. Execute everything in a transaction
+    const results = await prisma.$transaction(async (tx) => {
+      const createdAccounts = [];
 
-    const account = await prisma.accounts.create({
-      data: {
-        company_id: companyId,
-        account_code: data.account_code,
-        account_name_en: data.account_name_en,
-        account_name_ar: data.account_name_ar,
-        account_type: data.account_type as any,
-        account_category: data.account_category as any,
-        parent_id: data.parent_id || null,
-        level,
-        opening_balance: data.opening_balance || 0,
-        balance: data.opening_balance || 0,
-        description: data.description,
-        allow_manual_entry: data.allow_manual_entry ?? true,
-        is_active: true,
-      },
+      for (const accountData of items) {
+        // Check if account code already exists within this company
+        const existing = await tx.accounts.findFirst({
+          where: {
+            company_id: companyId,
+            account_code: accountData.account_code,
+          },
+        });
+
+        if (existing) {
+          throw new Error(
+            `رمز الحساب ${accountData.account_code} موجود مسبقاً`,
+          );
+        }
+
+        // Calculate hierarchy level
+        let level = 1;
+        if (accountData.parent_id) {
+          const parent = await tx.accounts.findUnique({
+            where: { id: accountData.parent_id },
+          });
+          if (!parent)
+            throw new Error(
+              `الحساب الأب لـ ${accountData.account_code} غير موجود`,
+            );
+          level = (parent.level || 0) + 1;
+        }
+
+        // Create the account
+        const account = await tx.accounts.create({
+          data: {
+            company_id: companyId,
+            account_code: accountData.account_code,
+            account_name_en: accountData.account_name_en,
+            account_name_ar: accountData.account_name_ar,
+            account_type: accountData.account_type as any,
+            account_category: accountData.account_category as any,
+            parent_id: accountData.parent_id || null,
+            level: accountData.level,
+            currency_code: accountData.currency_code || null,
+            opening_balance: accountData.opening_balance || 0,
+            balance: accountData.opening_balance || 0,
+            description: accountData.description,
+            allow_manual_entry: accountData.allow_manual_entry ?? true,
+
+            is_system: false,
+          },
+        });
+
+        // Create Journal Entry for opening balance
+        if (accountData.opening_balance && accountData.opening_balance !== 0) {
+          await tx.journal_entries.create({
+            data: {
+              company_id: companyId,
+              entry_number: `JE-OPEN-${account.account_code}-${Date.now()}`,
+              account_id: account.id,
+              branch_id: accountData.branchId,
+              currency_code: accountData.currency,
+              description: `رصيد افتتاحي: ${account.account_name_ar || account.account_name_en}`,
+              entry_date: new Date(),
+              debit:
+                accountData.opening_balance > 0
+                  ? accountData.opening_balance
+                  : 0,
+              credit:
+                accountData.opening_balance < 0
+                  ? Math.abs(accountData.opening_balance)
+                  : 0,
+              is_posted: true,
+              is_automated: true,
+              reference_type: "رصيد افتتاحي",
+              created_by: userId,
+            },
+          });
+        }
+        createdAccounts.push(account);
+      }
+      return createdAccounts;
     });
 
-    // Create opening balance journal entry if applicable
-    if (data.opening_balance && data.opening_balance !== 0) {
-      const entryNumber = `JE-${new Date().getFullYear()}-OPENING-${Date.now()}`;
+    revalidatePath("/chartOfAccount");
 
-      await prisma.journal_entries.create({
-        data: {
-          company_id: companyId,
-          entry_number: entryNumber,
-          account_id: account.id,
-          description: `الرصيد الافتتاحي لحساب ${data.account_name_ar || data.account_name_en}`,
-          entry_date: new Date(),
-          debit: data.opening_balance > 0 ? data.opening_balance : 0,
-          credit: data.opening_balance < 0 ? Math.abs(data.opening_balance) : 0,
-          is_posted: true,
-          is_automated: true,
-          reference_type: "opening_balance",
-          created_by: userId,
-        },
-      });
-    }
-
-    revalidatePath("/accounting/chartOfAccount");
-    return { success: true, data: account, message: "تم إنشاء الحساب بنجاح" };
-  } catch (error) {
+    return {
+      success: true,
+      data: results,
+      message:
+        items.length > 1
+          ? `تم إنشاء ${items.length} حسابات بنجاح`
+          : "تم إنشاء الحساب بنجاح",
+    };
+  } catch (error: any) {
     console.error("Create account error:", error);
-    return { success: false, error: "فشل في إنشاء الحساب" };
+    return {
+      success: false,
+      error: error.message || "حدث خطأ أثناء إنشاء الحسابات",
+    };
   }
 }
-
 // 4. UPDATE ACCOUNT
 export async function updateAccounts(
   accountId: string,
