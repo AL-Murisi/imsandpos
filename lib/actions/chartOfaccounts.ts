@@ -772,6 +772,7 @@ export async function getParentAccounts() {
         account_name_en: true,
         account_name_ar: true,
         currency_code: true,
+        account_type: true,
         level: true,
       },
       orderBy: { account_code: "asc" },

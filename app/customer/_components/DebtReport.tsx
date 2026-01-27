@@ -64,7 +64,7 @@ export default function DebtReport({
   const [payment, setPayment] = useState<PaymentState>({
     paymentMethod: "cash",
     accountId: "",
-    accountCurrency: company?.base_currency ?? "",
+    selectedCurrency: company?.base_currency ?? "",
     amountBase: 0,
   });
 
@@ -110,7 +110,7 @@ export default function DebtReport({
     );
 
   const totalRemaining = debts.reduce((s, d) => s + d.remaining, 0);
-  const isForeign = payment.accountCurrency !== company?.base_currency;
+  const isForeign = payment.selectedCurrency !== company?.base_currency;
   /* ───────── Submit selected invoices ───────── */
   // ALWAYS base amount for backend logic
   const paymentAmount = payment.amountBase;
@@ -145,7 +145,7 @@ export default function DebtReport({
         {
           basCurrncy: company?.base_currency ?? "",
           paymentMethod: payment.paymentMethod,
-          currencyCode: payment.accountCurrency,
+          currencyCode: payment.selectedCurrency,
           bankId: payment.accountId,
           transferNumber: payment.transferNumber,
           exchange_rate: payment.exchangeRate,
@@ -160,7 +160,7 @@ export default function DebtReport({
       setPayment({
         paymentMethod: "",
         accountId: "",
-        accountCurrency: "YER",
+        selectedCurrency: company?.base_currency ?? "",
         amountBase: 0,
       });
     } finally {
@@ -200,7 +200,7 @@ export default function DebtReport({
         {
           basCurrncy: company?.base_currency ?? "",
           paymentMethod: payment.paymentMethod,
-          currencyCode: payment.accountCurrency,
+          currencyCode: payment.selectedCurrency,
           bankId: payment.accountId,
           transferNumber: payment.transferNumber,
           exchangeRate: payment.exchangeRate,
@@ -226,7 +226,7 @@ export default function DebtReport({
       <ScrollArea dir="rtl" className="h-[70vh] space-y-4">
         {/* Header */}
         <h2 className="text-center text-xl font-bold">{t("debtReport")}</h2>
-        {payment.accountCurrency}
+        {payment.selectedCurrency}
         {/* Table */}
         <div className="w-80 p-3 sm:w-[480px] md:w-3xl lg:w-full">
           <ScrollArea className="h-[30vh] w-full rounded-2xl border border-amber-300 p-2">

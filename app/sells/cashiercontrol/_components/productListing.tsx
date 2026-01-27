@@ -1,7 +1,10 @@
 "use client";
 
 import { addItem } from "@/lib/slices/cartSlice";
-import { updateProductStockOptimistic } from "@/lib/slices/productsSlice";
+import {
+  syncProductStock,
+  updateProductStockOptimistic,
+} from "@/lib/slices/productsSlice";
 import { useAppDispatch, useAppSelector } from "@/lib/store";
 import { ProductForSale, SellingUnit } from "@/lib/zod";
 import { useCallback, useEffect, useMemo } from "react";
@@ -12,6 +15,7 @@ import dynamic from "next/dynamic";
 
 import { ProductCard } from "./CartClient";
 import { socket } from "@/app/socket";
+import { supabase } from "@/lib/supabaseClient";
 
 const ScrollArea = dynamic(
   () => import("@/components/ui/scroll-area").then((m) => m.ScrollArea),
@@ -37,7 +41,46 @@ export default function List({ product }: Props) {
     useAppSelector(
       (s) => s.cart.carts.find((c) => c.id === s.cart.activeCartId)?.items,
     ) ?? [];
+  useEffect(() => {
+    /**
+     * 🔥 Supabase Realtime Subscription
+     * This listens for any UPDATE on the inventory table
+     */
+    const channel = supabase
+      .channel("inventory-updates")
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "inventory", // Change this to your actual stock table name
+        },
+        (payload) => {
+          console.log("📦 Realtime change received:", payload);
 
+          // Assuming your table has productId and current stock
+          // ✅ Correct: Matching the exact keys from your log
+          console.log(payload.new);
+          const { product_id, available_quantity } = payload.new;
+
+          console.log("Product ID:", product_id);
+          console.log("Available Qty:", available_quantity);
+
+          dispatch(
+            syncProductStock({
+              productId: product_id, // Map the snake_case DB key to your camelCase Redux key
+              baseQty: available_quantity,
+            }),
+          );
+          // We use the new stock frtom DB to sync everyone's UI
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [dispatch, supabase]);
   // 🔥 Listen for stock updates from other users
   useEffect(() => {
     const handleStockUpdate = (data: {

@@ -13,6 +13,7 @@ interface CreateCompanyInput {
   adminName: string;
   adminEmail: string;
   adminPassword: string;
+  base_currency: string;
 }
 
 export async function createCompany(data: CreateCompanyInput) {
@@ -26,6 +27,7 @@ export async function createCompany(data: CreateCompanyInput) {
     adminName,
     adminEmail,
     adminPassword,
+    base_currency,
   } = data;
 
   try {
@@ -44,6 +46,7 @@ export async function createCompany(data: CreateCompanyInput) {
           city,
           country,
           isActive: true,
+          base_currency,
         },
       });
     }

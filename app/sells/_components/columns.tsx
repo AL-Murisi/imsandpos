@@ -224,9 +224,9 @@ export const debtSaleColumns: ColumnDef<any>[] = [
 
       return (
         <div className="flex flex-row gap-2">
-          {amountDue > 0 && debt.sale_type !== "RETURN" && (
+          {/* {amountDue > 0 && debt.sale_type !== "RETURN" && (
             <Debtupdate debt={debt} />
-          )}
+          )} */}
           {isMobileUA ? (
             <PrintButton
               saleNumber={debt.invoiceNumber ?? ""}

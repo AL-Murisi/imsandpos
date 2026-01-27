@@ -52,6 +52,7 @@ const initialState: ProductsState = {
 //     return result as ProductForSale[];
 //   }
 // );
+
 function convertFromBaseUnit(product: any, availableUnits: number) {
   const unitsPerPacket = product.unitsPerPacket || 1;
   const packetsPerCarton = product.packetsPerCarton || 1;
@@ -93,7 +94,29 @@ const productsSlice = createSlice({
         c.value === action.payload ? { ...c, checked: false } : c,
       );
     },
+    // productsSlice.ts
+    syncProductStock: (
+      state,
+      action: PayloadAction<{ productId: string; baseQty: number }>,
+    ) => {
+      const { productId, baseQty } = action.payload;
+      const product = state.products.find((p) => p.id === productId);
 
+      if (product) {
+        // Recalculate availableStock for all units (Carton, Packet, etc.)
+        const updatedStock: Record<string, number> = {};
+
+        product.sellingUnits.forEach((unit) => {
+          if (unit.unitsPerParent > 0) {
+            updatedStock[unit.id] = Math.floor(baseQty / unit.unitsPerParent);
+          } else {
+            updatedStock[unit.id] = unit.isbase ? baseQty : 0;
+          }
+        });
+
+        product.availableStock = updatedStock;
+      }
+    },
     // updateProductSock: (
     //   state,
     //   action: PayloadAction<{
@@ -220,6 +243,7 @@ export const {
   setProductsLocal,
   // updateProductSock,
   // updateProductStockLocal,
+  syncProductStock,
   updateProductStockOptimistic,
 } = productsSlice.actions;
 export default productsSlice.reducer;

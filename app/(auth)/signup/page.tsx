@@ -21,6 +21,8 @@ import {
 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 import Link from "next/link";
+import { SelectField } from "@/components/common/selectproduct";
+import { currencyOptions } from "@/lib/actions/currnciesOptions";
 // import { createClient } from "@supabase/supabase-js";
 
 // Initialize Supabase client
@@ -43,6 +45,7 @@ const CompanySignupSchema = z
       .string()
       .min(6, "كلمة المرور يجب أن تكون على الأقل 6 أحرف"),
     confirmPassword: z.string(),
+    base_currency: z.string(),
   })
   .refine((data) => data.adminPassword === data.confirmPassword, {
     message: "كلمات المرور غير متطابقة",
@@ -64,6 +67,8 @@ export default function CompanySignup() {
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(CompanySignupSchema),
@@ -78,9 +83,10 @@ export default function CompanySignup() {
       adminEmail: "",
       adminPassword: "",
       confirmPassword: "",
+      base_currency: "YER",
     },
   });
-
+  const currency = watch("base_currency");
   // Handle logo file selection
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -136,6 +142,7 @@ export default function CompanySignup() {
         adminName: data.adminName,
         adminEmail: data.adminEmail,
         adminPassword: data.adminPassword,
+        base_currency: data.base_currency,
       });
 
       if (result.success) {
@@ -301,7 +308,7 @@ export default function CompanySignup() {
                   )}
                 </div> */}
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 {/* Company Name and Email */}
                 <div className="grid gap-2">
                   <Label
@@ -328,7 +335,6 @@ export default function CompanySignup() {
                     </p>
                   )}
                 </div>
-
                 <div className="grid gap-2">
                   <Label
                     htmlFor="email"
@@ -353,6 +359,21 @@ export default function CompanySignup() {
                   {errors.email && (
                     <p className="text-right text-xs text-red-500">
                       {errors.email.message}
+                    </p>
+                  )}
+                </div>{" "}
+                <div className="grid gap-2">
+                  <Label htmlFor="customerType">نوع العمله للنظام</Label>
+                  <SelectField
+                    options={currencyOptions}
+                    action={(value) => setValue("base_currency", value)}
+                    value={currency}
+                    placeholder="اختر النوع"
+                  />
+
+                  {errors.base_currency && (
+                    <p className="text-xs text-red-500">
+                      {errors.base_currency.message}
                     </p>
                   )}
                 </div>

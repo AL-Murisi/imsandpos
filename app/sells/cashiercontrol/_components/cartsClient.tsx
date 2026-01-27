@@ -233,72 +233,7 @@ export default function CartDisplay({
     [dispatch, items], // Add items to dependency array
   );
   const isForeign = currency?.id !== company?.base_currency;
-  // const handlePayment = async () => {
-  //   if (!user) return;
-  //   if (selectedUser?.creditLimit !== undefined) {
-  //     if (debtLimit > selectedUser.creditLimit && receivedAmount == 0) {
-  //       toast.error("⚠️ تجاوز العميل الحد الائتماني المسموح به");
-  //       return;
-  //     }
-  //   }
-  //   const calculatedChange =
-  //     receivedAmount >= totals.totalAfter
-  //       ? receivedAmount - totals.totalAfter
-  //       : 0;
 
-  //   const payment = {
-  //     cart: items,
-  //     discountValue,
-  //     discountType,
-  //     baseCurrency: company?.base_currency,
-  //     currency: currency?.id ?? company?.base_currency,
-  //     totalBeforeDiscount: totals.totalBefore,
-  //     totalDiscount: totals.discount,
-  //     totalAfterDiscount: totals.totalAfter,
-  //     cashierId: user.userId ?? "",
-  //     branchId: company?.branches[0].id,
-  //     customer: selectedUser,
-  //     saleNumber: nextnumber,
-  //     receivedAmount,
-  //     baseAmount:isForeign?,
-  //     change: calculatedChange,
-  //     paidAt: new Date(),
-  //   };
-
-  //   setIsSubmitting(true);
-  //   if (totals.totalAfter > receivedAmount && !selectedUser?.id) {
-  //     toast("يرجى اختيار العميل");
-  //     setIsSubmitting(false);
-  //     return;
-  //   }
-  //   try {
-  //     await processSale(payment, user.companyId);
-  //     toast("✅ تم الدفع بنجاح!");
-
-  //     // Reset state
-  //     dispatch(clearCart());
-  //     setReceivedAmount(0);
-  //     dispatch(setDiscount({ type: "fixed", value: 0 }));
-  //     setDiscountsValue(0);
-
-  //     // // Generate new sale number
-  //     // const newSaleNumber = `SALE-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-  //     // setSaleNumber(newSaleNumber);
-
-  //     dispatch(removeCart(activeCartId ?? ""));
-
-  //     // Create new cart
-  //     const newCartId = Date.now().toString();
-  //     dispatch(
-  //       addCart({ id: newCartId, name: `Chart-${newCartId.slice(-3)}` }),
-  //     );
-  //     dispatch(setActiveCart(newCartId));
-  //   } catch (err: any) {
-  //     toast.error(`❌ حدث خطأ: ${err.message}`);
-  //   } finally {
-  //     setIsSubmitting(false);
-  //   }
-  // };
   const handlePayment = async () => {
     if (!user) return;
 
@@ -441,21 +376,34 @@ export default function CartDisplay({
     user?.companyId,
     company?.base_currency,
   ]);
+  // Update currency based on selected customer's profile (JSON array)
   useEffect(() => {
-    if (company?.base_currency && !currency) {
-      // Find the currency object from your options that matches the base currency code
-      const base = currencyOptions.find((c) => c.id === company?.base_currency);
-      if (base) {
-        setCurrency(base);
+    if (
+      selectedUser &&
+      selectedUser.preferred_currency &&
+      selectedUser.preferred_currency.length > 0
+    ) {
+      // Take the first currency from the user's JSON array
+      const userPrefSymbol = selectedUser.preferred_currency[0];
+
+      // Find the full object from your currencyOptions list
+      const preferred = currencyOptions.find((c) => c.id === userPrefSymbol);
+
+      if (preferred) {
+        setCurrency(preferred);
       } else {
-        // Fallback: create a temporary object if not found in options
+        // Fallback: Create the object manually if not found in options
         setCurrency({
-          id: company?.base_currency,
-          name: company?.base_currency,
+          id: userPrefSymbol,
+          name: userPrefSymbol,
         });
       }
+    } else if (company?.base_currency) {
+      // If no customer or no preference, revert to company base
+      const base = currencyOptions.find((c) => c.id === company.base_currency);
+      if (base) setCurrency(base);
     }
-  }, [company, currency]);
+  }, [selectedUser, company?.base_currency, currencyOptions]);
   const calculatedChange =
     receivedAmount >= totals.totalAfter
       ? receivedAmount - totals.totalAfter
@@ -470,7 +418,15 @@ export default function CartDisplay({
       ? receivedAmount * exchangeRate
       : receivedAmount / exchangeRate
     : receivedAmount;
-
+  // Filter the available currencies based on the selected user's preferences
+  const filteredCurrencyOptions =
+    selectedUser &&
+    selectedUser.preferred_currency &&
+    selectedUser.preferred_currency.length > 0
+      ? currencyOptions.filter((option) =>
+          selectedUser?.preferred_currency?.includes(option.id),
+        )
+      : currencyOptions; // If no user, show all or default to company base options
   const canPay =
     (receivedAmount > 0 &&
       receivedInBaseCurrency >= totals.totalAfter - 0.01) ||
@@ -488,7 +444,7 @@ export default function CartDisplay({
             placeholder={"عمله البيع"}
             paramKey="users"
             value={currency?.id}
-            options={currencyOptions ?? []}
+            options={filteredCurrencyOptions ?? []}
             action={(user) => {
               setCurrency(user); // now `user` is single UserOption
             }}

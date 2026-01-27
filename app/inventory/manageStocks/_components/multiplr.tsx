@@ -501,7 +501,7 @@ export default function MultiInventoryUpdateForm({
                         inventory.payment || {
                           paymentMethod: "",
                           accountId: "",
-                          accountCurrency: "",
+                          selectedCurrency: "",
                           amountBase: 0,
                         }
                       }

@@ -1864,7 +1864,7 @@ export async function updateMultipleInventories(
                     amountBase: updateData.payment?.amountBase,
                     paymentId: supplierPaymentId,
                     paymentMethod: updateData.payment?.paymentMethod,
-                    currency_code: updateData.payment?.accountCurrency || "YER",
+                    currency_code: updateData.payment?.selectedCurrency || "",
                     refrenceNumber: updateData.payment?.transferNumber,
                     baseCurrency: updateData.baseCurrency,
                   },

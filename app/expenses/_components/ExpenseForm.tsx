@@ -71,7 +71,7 @@ export default function ExpenseForm({
       payment: {
         paymentMethod: "",
         accountId: "",
-        accountCurrency: "",
+        selectedCurrency: "",
         amountBase: 0,
       },
     },
@@ -125,7 +125,7 @@ export default function ExpenseForm({
         payment: {
           paymentMethod: "",
           accountId: "",
-          accountCurrency: "",
+          selectedCurrency: "",
           amountBase: 0,
         },
       },
@@ -194,7 +194,7 @@ export default function ExpenseForm({
         amount: Number(exp.payment?.amountBase),
         expense_date: new Date(expenseDate),
         paymentMethod: exp.payment?.paymentMethod || "",
-        currency_code: exp.payment?.accountCurrency || "YER",
+        currency_code: exp.payment?.selectedCurrency || "YER",
         referenceNumber: exp.payment?.transferNumber || undefined,
         bankId: exp.payment?.accountId || undefined,
         baseAmount: exp.payment?.amountBase || 0,
@@ -227,7 +227,7 @@ export default function ExpenseForm({
             payment: {
               paymentMethod: "",
               accountId: "",
-              accountCurrency: "",
+              selectedCurrency: "",
               amountBase: 0,
             },
           },
@@ -391,7 +391,7 @@ export default function ExpenseForm({
                       expense.payment || {
                         paymentMethod: "",
                         accountId: "",
-                        accountCurrency: "",
+                        selectedCurrency: "",
                         amountBase: parseFloat(expense.amount) || 0,
                       }
                     }
@@ -405,7 +405,7 @@ export default function ExpenseForm({
                   <span className="text-muted-foreground">المبلغ:</span>
                   <span className="text-primary font-bold">
                     {expense.payment?.amountBase.toFixed(2)}
-                    {expense.payment?.accountCurrency || ""}
+                    {expense.payment?.selectedCurrency || ""}
                   </span>
                 </div>
               </div>

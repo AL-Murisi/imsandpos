@@ -80,29 +80,34 @@ export function ReturnForm({ sale }: { sale: any }) {
     useForm<ReturnFormValues>({
       resolver: zodResolver(returnSchema),
       defaultValues: {
-        saleId: sale.id,
-        cashierId: user?.userId,
-        customerId: sale.customerId || null,
-        returnNumber: sale.invoiceNumber || "",
+        saleId: sale?.id || "",
+        cashierId: user?.userId || "",
+        customerId: sale?.customerId || null,
+        returnNumber: sale?.invoiceNumber || "",
         reason: "",
         paymentMethod:
-          sale.payments.find((p: any) => p.paymentMethod)?.paymentMethod || "",
-        items: sale.saleItems.map((item: any) => {
-          // 🆕 Parse selling units from product
+          sale?.payments?.find((p: any) => p.paymentMethod)?.paymentMethod ||
+          "",
+        items: sale?.saleItems?.map((item: any) => {
+          // 1. Parse selling units
           const sellingUnits =
-            (item.product.sellingUnits as SellingUnit[]) || [];
+            (item.product?.sellingUnits as SellingUnit[]) || [];
 
-          // 🆕 Find the unit that was used in the sale
-          const soldUnit =
-            sellingUnits.find((u) => u.name === item.sellingUnit) ||
-            sellingUnits[0];
-
+          /** * 2. FIND SOLD UNIT BY NAME
+           * item.sellingUnit contains the string name (e.g., "كرتون")
+           * we find the object in sellingUnits that matches that name to get its ID
+           */
+          const matchedUnit = sellingUnits.find(
+            (u) => u.name === item.unit, // item.sellingUnit is "كرتون" etc.
+          );
           return {
             productId: item.productId,
-            warehouseId: item.product.warehouseId,
-            name: item.product.name,
-            sellingUnits, // 🆕
-            selectedUnitId: soldUnit?.id || "", // 🆕
+            // Safe access to warehouseId to prevent Zod "undefined" error
+            warehouseId: item.product?.warehouseId ?? sale?.warehouseId ?? "",
+            name: item.product?.name ?? "Unknown",
+            sellingUnits,
+            // Default selection is now the ID of the unit name that was sold
+            selectedUnitId: matchedUnit?.id || sellingUnits[0]?.id || "",
             unitPrice: item.unitPrice,
             quantitySold: item.quantity,
             quantity: 0,
@@ -133,87 +138,6 @@ export function ReturnForm({ sale }: { sale: any }) {
         return 0;
     }
   };
-
-  // const onSubmit = async (values: ReturnFormValues) => {
-  //   const selectedItems = values.items.filter((i) => i.quantity > 0);
-
-  //   if (selectedItems.length === 0) {
-  //     toast.error("يرجى تحديد كمية للإرجاع");
-  //     return;
-  //   }
-
-  //   // Check if any return quantity exceeds sold quantity
-  //   const invalidItem = selectedItems.find(
-  //     (item) => item.quantity > item.quantitySold,
-  //   );
-  //   if (invalidItem) {
-  //     toast.error(
-  //       `كمية الإرجاع للمنتج "${invalidItem.name}" أكبر من الكمية المباعة`,
-  //     );
-  //     return;
-  //   }
-
-  //   // Calculate total return
-  //   const totalReturn = selectedItems.reduce(
-  //     (acc, item) => acc + item.quantity * item.unitPrice,
-  //     0,
-  //   );
-
-  //   const returnToCustomer = getReturnAmountForCustomer(sale, totalReturn);
-
-  //   // 🆕 Map items to include unit information
-  //   const mappedItems = selectedItems.map((item) => {
-  //     const selectedUnit = item.sellingUnits.find(
-  //       (u: SellingUnit) => u.id === item.selectedUnitId,
-  //     );
-  //     return {
-  //       productId: item.productId,
-  //       warehouseId: item.warehouseId,
-  //       name: item?.name,
-  //       selectedUnitId: item.selectedUnitId, // 🆕
-  //       selectedUnitName: selectedUnit?.name || "", // 🆕
-  //       quantity: item.quantity,
-  //       unitPrice: item.unitPrice,
-  //     };
-  //   });
-
-  //   const payload = {
-  //     ...values,
-  //     cashierId: user.userId,
-  //     branchId: company?.branches[0].id,
-  //     items: mappedItems,
-  //     paymentMethod: paymentMethod,
-  //     totalReturn,
-  //     returnToCustomer,
-  //   };
-
-  //   setIsSubmitting(true);
-  //   try {
-  //     const result = await processReturn(payload, user.companyId);
-
-  //     if (result.success) {
-  //       try {
-  //         router.refresh();
-  //       } catch (err) {
-  //         console.warn("router.refresh() failed:", err);
-  //         window.location.reload();
-  //       }
-
-  //       toast.success(result.message, {
-  //         description: `مبلغ الإرجاع: ${returnToCustomer.toFixed(2)} ر.س`,
-  //       });
-
-  //       setOpen(false);
-  //     } else {
-  //       toast.error(result.message || "فشل في معالجة الإرجاع");
-  //     }
-  //   } catch (error: any) {
-  //     console.error("خطأ في معالجة الإرجاع:", error);
-  //     toast.error(error.message || "حدث خطأ أثناء الإرجاع");
-  //   } finally {
-  //     setIsSubmitting(false);
-  //   }
-  // };
   const onSubmit = async (values: ReturnFormValues) => {
     const selectedItems = values.items.filter((i) => i.quantity > 0);
 
@@ -389,7 +313,12 @@ export function ReturnForm({ sale }: { sale: any }) {
       style="sm:max-w-5xl"
       description="تفاصيل الإرجاع"
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="grid gap-3">
+      <form
+        onSubmit={handleSubmit(onSubmit, (errors) =>
+          console.log("Validation Errors:", errors),
+        )}
+        className="grid gap-3"
+      >
         {/* Sale Info (كما هو) */}
 
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">

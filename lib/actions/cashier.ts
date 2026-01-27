@@ -669,7 +669,7 @@ export async function processReturn(data: any, companyId: string) {
         where: {
           companyId,
           productId: { in: productIds },
-          warehouseId: { in: warehouseIds },
+          // warehouseId: { in: warehouseIds },
         },
       });
 

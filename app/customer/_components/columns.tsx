@@ -286,7 +286,7 @@ export const customerColumns: ColumnDef<any>[] = [
             className="flex items-center gap-2"
           >
             {isLoading && <Clock className="h-3 w-3 animate-spin" />}
-            {isLoading ? "جاري الفتح..." : "كشف حساب"}
+            {isLoading ? "جاري الفتح" : "كشف حساب"}
           </Button>
         </div>
       );
