@@ -17,7 +17,7 @@
 // export type PaymentState = {
 //   paymentMethod: "cash" | "bank" | "";
 //   accountId: string;
-//   accountCurrency: string;
+//   selectedCurrency: string;
 //   amountBase: number;
 //   amountFC?: number;
 //   exchangeRate?: number;
@@ -40,8 +40,8 @@
 //   }
 //   const baseCurrency = company.base_currency ?? "YER";
 //   const selectedAccount = accounts.find((a) => a.id === value.accountId);
-//   const accountCurrency = selectedAccount?.currency ?? "";
-//   const isForeign = accountCurrency !== baseCurrency;
+//   const selectedCurrency = selectedAccount?.currency ?? "";
+//   const isForeign = selectedCurrency !== baseCurrency;
 
 //   /* ───────── Fetch accounts ───────── */
 //   //   useEffect(() => {
@@ -63,14 +63,14 @@
 //   useEffect(() => {
 //     if (!companyId) return;
 //     if (!value.accountId) return;
-//     if (!accountCurrency) return;
-//     if (accountCurrency === baseCurrency) return;
+//     if (!selectedCurrency) return;
+//     if (selectedCurrency === baseCurrency) return;
 
 //     async function loadRate() {
 //       try {
 //         const rateRow = await getLatestExchangeRate({
 //           companyId,
-//           fromCurrency: accountCurrency,
+//           fromCurrency: selectedCurrency,
 //           toCurrency: baseCurrency,
 //         });
 
@@ -82,7 +82,7 @@
 //         action({
 //           ...value,
 //           exchangeRate: Number(rateRow.rate),
-//           accountCurrency,
+//           selectedCurrency,
 //         });
 //       } catch {
 //         toast.error("فشل تحميل سعر الصرف");
@@ -90,13 +90,13 @@
 //     }
 
 //     loadRate();
-//   }, [value.accountId, accountCurrency]);
+//   }, [value.accountId, selectedCurrency]);
 
 //   useEffect(() => {
 //     if (!isForeign || !value.exchangeRate) return;
 //     action({
 //       ...value,
-//       accountCurrency,
+//       selectedCurrency,
 //       amountBase: value.amountFC! * value.exchangeRate,
 //     });
 //   }, [value.amountFC, value.exchangeRate]);
@@ -105,7 +105,7 @@
 //     if (!isForeign || !value.exchangeRate) return;
 //     action({
 //       ...value,
-//       accountCurrency,
+//       selectedCurrency,
 //       amountFC: value.amountBase / value.exchangeRate,
 //     });
 //   }, [value.amountBase]);
@@ -123,7 +123,7 @@
 //   };
 
 //   const baseCurrencyAr = getCurrencyNameAr(baseCurrency);
-//   const accountCurrencyAr = getCurrencyNameAr(accountCurrency);
+//   const selectedCurrencyAr = getCurrencyNameAr(selectedCurrency);
 //   /* ───────── UI ───────── */
 //   return (
 //     <div className="mt-6 grid grid-cols-1 gap-4 sm:items-center sm:justify-between md:grid-cols-2">
@@ -141,7 +141,7 @@
 //             action({
 //               paymentMethod: v as any,
 //               accountId: "",
-//               accountCurrency: baseCurrency,
+//               selectedCurrency: baseCurrency,
 //               amountBase: 0,
 //             })
 //           }
@@ -160,7 +160,7 @@
 //               action({
 //                 ...value,
 //                 accountId: id,
-//                 accountCurrency:
+//                 selectedCurrency:
 //                   accounts.find((a) => a.id === id)?.currency ?? baseCurrency,
 //               })
 //             }
@@ -198,7 +198,7 @@
 //         <>
 //           <div className="grid gap-4">
 //             <Label>
-//               سعر الصرف ({accountCurrencyAr} ← {baseCurrencyAr})
+//               سعر الصرف ({selectedCurrencyAr} ← {baseCurrencyAr})
 //             </Label>
 //             <Input
 //               type="number"
@@ -213,7 +213,7 @@
 //           </div>
 
 //           <div className="grid gap-4">
-//             <Label>المبلغ المستلم بـ ({accountCurrencyAr})</Label>
+//             <Label>المبلغ المستلم بـ ({selectedCurrencyAr})</Label>
 //             <Input
 //               type="number"
 //               value={value.amountFC || ""}

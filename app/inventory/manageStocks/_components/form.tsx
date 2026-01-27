@@ -62,7 +62,7 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
   const [payment, setPayment] = useState<PaymentState>({
     paymentMethod: "",
     accountId: "",
-    accountCurrency: "",
+    selectedCurrency: "",
     amountBase: 0,
   });
 
@@ -122,7 +122,7 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
       setPayment({
         paymentMethod: "",
         accountId: "",
-        accountCurrency: "",
+        selectedCurrency: "",
         amountBase: 0,
       });
       return;
@@ -217,7 +217,7 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
         transferNumber:
           updateType === "supplier" ? payment.transferNumber : undefined,
         currency_code:
-          updateType === "supplier" ? payment.accountCurrency : undefined,
+          updateType === "supplier" ? payment.selectedCurrency : undefined,
         exchangeRate:
           updateType === "supplier" ? payment.exchangeRate : undefined,
         amountFC: updateType === "supplier" ? payment.amountFC : undefined,
@@ -237,7 +237,7 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
       setPayment({
         paymentMethod: "",
         accountId: "",
-        accountCurrency: "",
+        selectedCurrency: "",
         amountBase: 0,
       });
     } catch (error) {
@@ -343,7 +343,7 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
                   <p className="text-sm font-medium">
                     الإجمالي:{" "}
                     <span className="text-lg font-bold text-blue-700">
-                      {totalCost.toFixed(2)} {payment.accountCurrency || ""}
+                      {totalCost.toFixed(2)} {payment.selectedCurrency || ""}
                     </span>
                   </p>
                 </div>
@@ -448,7 +448,7 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
                 setPayment({
                   paymentMethod: "",
                   accountId: "",
-                  accountCurrency: "",
+                  selectedCurrency: "",
                   amountBase: 0,
                 });
               }}

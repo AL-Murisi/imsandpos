@@ -27,7 +27,7 @@ interface JournalEntryLine {
 interface SupplierPaymentDetails {
   paymentMethod: string;
   accountId: string;
-  accountCurrency: string;
+  selectedCurrency: string;
   amountBase: number;
   transferNumber?: number;
   exchangeRate?: number;

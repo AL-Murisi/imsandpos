@@ -91,7 +91,7 @@ export default function ManualJournalEntryForm({
   const [payment, setPayment] = useState<PaymentState>({
     paymentMethod: "",
     accountId: "",
-    accountCurrency: "",
+    selectedCurrency: "",
     amountBase: 0,
   });
   const [accountsForPayment, setAccountsForPayment] = useState<bankcash[]>([]);
@@ -328,7 +328,7 @@ export default function ManualJournalEntryForm({
           ? {
               paymentMethod: payment.paymentMethod ?? "",
               accountId: payment.accountId ?? "",
-              accountCurrency: payment.accountCurrency ?? "",
+              selectedCurrency: payment.selectedCurrency ?? "",
               amountBase: payment.amountBase ?? 0,
               transferNumber:
                 typeof payment.transferNumber === "string"
@@ -349,7 +349,7 @@ export default function ManualJournalEntryForm({
         setPayment({
           paymentMethod: "",
           accountId: "",
-          accountCurrency: "",
+          selectedCurrency: "",
           amountBase: 0,
         });
         setLines([
