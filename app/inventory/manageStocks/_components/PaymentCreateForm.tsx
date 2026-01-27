@@ -54,7 +54,7 @@ export function PaymentCreateForm({
   const [payment, setPayment] = useState<PaymentState>({
     paymentMethod: "",
     accountId: "",
-    accountCurrency: company?.base_currency ?? "",
+    selectedCurrency: company?.base_currency ?? "",
     amountBase: 0,
   });
   const [accounts, setAccounts] = useState<bankcash[]>([]);
@@ -130,7 +130,7 @@ export function PaymentCreateForm({
           amount: payment.amountBase, // دائماً بالعملة الأساسية
           exchangeRate: payment.exchangeRate ?? 0,
           referenceNumber: payment.transferNumber ?? "",
-          currency_code: payment.accountCurrency || "YER",
+          currency_code: payment.selectedCurrency || "",
           note: payment.transferNumber,
           amountFC: payment.amountFC ?? 0, // إن وُجد
           baseCurrency: company?.base_currency ?? "",
