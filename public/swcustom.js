@@ -186,6 +186,14 @@
 //   console.log("Web push delivered.");
 // };
 // public/sw.js
+self.addEventListener("install", (event) => {
+  self.skipWaiting();
+});
+
+// 2. Ensure that the new Service Worker takes control of all pages immediately
+self.addEventListener("activate", (event) => {
+  event.waitUntil(clients.claim());
+});
 self.addEventListener("push", (event) => {
   if (!event.data) return;
 
