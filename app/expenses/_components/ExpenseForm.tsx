@@ -153,7 +153,7 @@ export default function ExpenseForm({
     (sum, exp) => sum + (exp.payment?.amountBase || 0),
     0,
   );
-  const isForeign = payment.accountCurrency !== company?.base_currency;
+  const isForeign = payment.selectedCurrency !== company?.base_currency;
   /* ───────── Submit selected invoices ───────── */
   const paymentAmount = isForeign
     ? (payment.amountFC ?? 0)

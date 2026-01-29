@@ -16,6 +16,7 @@ import dynamic from "next/dynamic";
 import { ProductCard } from "./CartClient";
 import { socket } from "@/app/socket";
 import { supabase } from "@/lib/supabaseClient";
+import { useCompany } from "@/hooks/useCompany";
 
 const ScrollArea = dynamic(
   () => import("@/components/ui/scroll-area").then((m) => m.ScrollArea),
@@ -33,6 +34,7 @@ type Props = {
   product: Forsale[];
 };
 export default function List({ product }: Props) {
+  const { company } = useCompany();
   const t = useTranslations("cashier");
   const dispatch = useAppDispatch();
   const products = useAppSelector((s) => s.products.products);
@@ -54,6 +56,7 @@ export default function List({ product }: Props) {
           event: "UPDATE",
           schema: "public",
           table: "inventory", // Change this to your actual stock table name
+          filter: `company_id=eq.${company?.id}`,
         },
         (payload) => {
           console.log("📦 Realtime change received:", payload);

@@ -94,7 +94,7 @@ export default async function SellsDashboard({ searchParams }: DashboardProps) {
   // console.log("Sales Dashboard data:", data.serilaz[0].transactions);
   return (
     <ScrollArea className="flex h-[95vh] flex-col space-y-8 p-6" dir="rtl">
-      {/* <PushNotificationManager /> */}
+      <PushNotificationManager />
       <SellsDashboardClient
         debtSales={data.serilaz}
         recentSales={data.serilaz}

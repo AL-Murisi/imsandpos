@@ -13,7 +13,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation"; // For refreshing data or navigation
 import dynamic from "next/dynamic";
 import TableSkeleton from "@/components/common/TableSkeleton";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { notificationUnsupported } from "@/hooks/Push";
 
 const DebtSells = dynamic(() => import("./table"), {
   ssr: false,
@@ -37,7 +38,17 @@ export default function SellsDashboardClient({
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isLoading2, setIsLoading2] = useState(false);
+  const [unsupported, setUnsupported] = useState<boolean>(false);
 
+  useEffect(() => {
+    const isUnsupported = notificationUnsupported();
+    setUnsupported(isUnsupported);
+    if (isUnsupported) {
+      return;
+    }
+
+    // allowing push logic ...
+  }, []);
   return (
     <section className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

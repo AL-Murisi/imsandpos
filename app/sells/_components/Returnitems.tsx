@@ -103,7 +103,7 @@ export function ReturnForm({ sale }: { sale: any }) {
           return {
             productId: item.productId,
             // Safe access to warehouseId to prevent Zod "undefined" error
-            warehouseId: item.product?.warehouseId ?? sale?.warehouseId ?? "",
+            warehouseId: item.product?.warehouse?.id ?? sale?.warehouseId ?? "",
             name: item.product?.name ?? "Unknown",
             sellingUnits,
             // Default selection is now the ID of the unit name that was sold
@@ -320,6 +320,7 @@ export function ReturnForm({ sale }: { sale: any }) {
         className="grid gap-3"
       >
         {/* Sale Info (كما هو) */}
+        {watchedItems[0].warehouseId}
 
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <div className="grid gap-2">

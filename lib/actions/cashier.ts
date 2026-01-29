@@ -228,6 +228,72 @@ export async function processSale(data: any, companyId: string) {
       } else {
         status = "unpaid";
       }
+      const inventoryUnits = await tx.inventory.findMany({
+        where: {
+          companyId,
+          OR: cart.map((item: any) => ({
+            productId: item.id,
+            warehouseId: item.warehouseId,
+          })),
+        },
+        include: { product: true },
+      });
+      for (const item of cart) {
+        const inventory = inventoryUnits.find(
+          (i) => i.productId === item.id && i.warehouseId === item.warehouseId,
+        );
+
+        if (!inventory) {
+          throw new Error(`المنتج ${item.name} غير متوفر في هذا المستودع`);
+        }
+
+        // Convert requested qty to base unit (e.g., 1 Box -> 12 Pieces)
+        const requestedBaseQty = toBaseQty(
+          item.selectedQty,
+          item.selectedUnitId,
+          item.sellingUnits,
+        );
+
+        // Check if requested quantity exceeds available quantity
+        if (requestedBaseQty > inventory.availableQuantity) {
+          throw new Error(
+            `كمية غير كافية للمنتج: ${item.name}. المتوفر: ${inventory.availableQuantity}, المطلوب (بالوحدة الأساسية): ${requestedBaseQty}`,
+          );
+        }
+      }
+      const invoiceItemsData = cart.map((item: any) => ({
+        companyId,
+        productId: item.id,
+        unit: item.selectedUnitName,
+        quantity: item.selectedQty,
+        price: item.selectedUnitPrice,
+        discountAmount: totalDiscount || 0,
+        totalPrice: item.selectedQty * item.selectedUnitPrice,
+        // If you need warehouse info at the item level:
+        // warehouseId: item.warehouseId
+      }));
+
+      const paymentData =
+        baseAmount > 0
+          ? {
+              companyId,
+              userId: cashierId,
+              branchId,
+              customerId: customer?.id,
+              voucherNumber: await getNextVoucherNumber(
+                companyId,
+                "RECEIPT",
+                tx,
+              ),
+              currencyCode: currency,
+              exchangeRate: exchangeRate,
+              paymentMethod: "cash",
+              type: TransactionType.RECEIPT,
+              amount: receivedAmount,
+              status: "paid",
+              notes: `دفعة فاتورة مبيعات رقم: ${saleNumber}`,
+            }
+          : undefined;
       const baseAmountDue = Math.max(0, totalAfterDiscount - baseAmount);
       const sale = await tx.invoice.create({
         data: {
@@ -242,22 +308,16 @@ export async function processSale(data: any, companyId: string) {
           amountPaid: baseAmount,
           warehouseId: cart[0]?.warehouseId || cart.warehouseId,
           amountDue: baseAmountDue,
+          items: {
+            // This must match the relation name in your schema.prisma
+            create: invoiceItemsData,
+          },
+          transactions: { create: paymentData },
         },
       });
       console.log(customer);
       // ==========================================
       // 2️⃣ Fetch inventory per PRODUCT + UNIT
-
-      const inventoryUnits = await tx.inventory.findMany({
-        where: {
-          companyId,
-          OR: cart.map((item: any) => ({
-            productId: item.id,
-            warehouseId: item.warehouseId,
-          })),
-        },
-        include: { product: true },
-      });
 
       const invMap = new Map(
         inventoryUnits.map((i) => [`${i.productId}-${i.warehouseId}`, i]),
@@ -331,7 +391,7 @@ export async function processSale(data: any, companyId: string) {
       // 4️⃣ Execute DB Operations
       // ==========================================
       await Promise.all([
-        tx.invoiceItem.createMany({ data: saleItems }),
+        // tx.invoiceItem.createMany({ data: saleItems }),
         tx.stockMovement.createMany({ data: stockMovements }),
       ]);
 
@@ -367,55 +427,55 @@ export async function processSale(data: any, companyId: string) {
       // ==========================================
       // 6️⃣ Payment
       // ==========================================
-      if (baseAmount > 0) {
-        const voucherNumber = await getNextVoucherNumber(
-          companyId,
-          "RECEIPT",
-          tx,
-        );
-        let status: string;
-        if (baseAmount >= totalAfterDiscount) {
-          status = "paid"; // تم التعديل من === إلى =
-        } else if (baseAmount > 0 && baseAmount < totalAfterDiscount) {
-          status = "partial";
-        } else {
-          status = "unpaid";
-        }
-        await tx.financialTransaction.create({
-          data: {
-            companyId,
-            //     invoiceId: sale.id,
-            userId: cashierId,
-            branchId,
-            customerId: customer?.id,
-            voucherNumber,
-            currencyCode: currency,
-            exchangeRate: exchangeRate,
-            paymentMethod: "cash",
-            type: "RECEIPT",
-            amount: receivedAmount,
-            status: "paid",
-            notes: ` فاتوره شراء:${sale.invoiceNumber}`,
-          },
-        });
-        // await tx.financialTransaction.create({
-        //   data: {
-        //     companyId,
-        //     invoiceId: sale.id,
-        //     userId: cashierId,
-        //     branchId,
-        //     customerId: customer?.id,
-        //     voucherNumber: nextNumber,
-        //     currencyCode: currency,
-        //     exchangeRate: exchangeRate,
-        //     paymentMethod: "cash",
-        //     type: "RECEIPT",
-        //     amount: receivedAmount,
-        //     status: status,
-        //     notes: ` فاتوره شراء:${sale.invoiceNumber}`,
-        //   },
-        // });
-      }
+      // if (baseAmount > 0) {
+      //   const voucherNumber = await getNextVoucherNumber(
+      //     companyId,
+      //     "RECEIPT",
+      //     tx,
+      //   );
+      //   let status: string;
+      //   if (baseAmount >= totalAfterDiscount) {
+      //     status = "paid"; // تم التعديل من === إلى =
+      //   } else if (baseAmount > 0 && baseAmount < totalAfterDiscount) {
+      //     status = "partial";
+      //   } else {
+      //     status = "unpaid";
+      //   }
+      //   await tx.financialTransaction.create({
+      //     data: {
+      //       companyId,
+      //       //     invoiceId: sale.id,
+      //       userId: cashierId,
+      //       branchId,
+      //       customerId: customer?.id,
+      //       voucherNumber,
+      //       currencyCode: currency,
+      //       exchangeRate: exchangeRate,
+      //       paymentMethod: "cash",
+      //       type: "RECEIPT",
+      //       amount: receivedAmount,
+      //       status: "paid",
+      //       notes: ` فاتوره شراء:${sale.invoiceNumber}`,
+      //     },
+      //   });
+      //   // await tx.financialTransaction.create({
+      //   //   data: {
+      //   //     companyId,
+      //   //     invoiceId: sale.id,
+      //   //     userId: cashierId,
+      //   //     branchId,
+      //   //     customerId: customer?.id,
+      //   //     voucherNumber: nextNumber,
+      //   //     currencyCode: currency,
+      //   //     exchangeRate: exchangeRate,
+      //   //     paymentMethod: "cash",
+      //   //     type: "RECEIPT",
+      //   //     amount: receivedAmount,
+      //   //     status: status,
+      //   //     notes: ` فاتوره شراء:${sale.invoiceNumber}`,
+      //   //   },
+      //   // });
+      // }
       revalidatePath("/cashiercontrol");
       // ==========================================
       // 7️⃣ Journal Event (async later)

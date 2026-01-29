@@ -380,7 +380,7 @@ export async function getBalanceSheet(asOfDate: Date) {
 
     const totalAssets = assets.reduce((s, a) => s + a.balance, 0);
     const totalLiabilities = liabilities.reduce((s, a) => s + a.balance, 0);
-    const totalEquity = equity.reduce((s, a) => s + a.balance, 0);
+    const totalEquity = totalAssets - totalLiabilities;
 
     return {
       success: true,

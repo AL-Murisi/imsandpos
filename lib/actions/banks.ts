@@ -7,6 +7,37 @@ import { getUserCompany } from "./chartOfaccounts";
 import { revalidatePath } from "next/cache";
 import { Currency } from "lucide-react";
 import { date } from "zod";
+import webpush from "web-push";
+
+export async function sendTestNotifications({
+  title,
+  body,
+}: {
+  title: string;
+  body: string;
+}) {
+  const subscriptions = await prisma.pushSubscription.findMany();
+
+  const payload = JSON.stringify({
+    title,
+    body,
+  });
+
+  await Promise.all(
+    subscriptions.map((sub) =>
+      webpush.sendNotification(
+        {
+          endpoint: sub.endpoint,
+          keys: {
+            p256dh: sub.p256dh,
+            auth: sub.auth,
+          },
+        },
+        payload,
+      ),
+    ),
+  );
+}
 function serializeData<T>(data: T): T {
   if (data === null || data === undefined) return data;
   if (typeof data !== "object") return data;

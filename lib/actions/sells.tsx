@@ -134,7 +134,7 @@ export async function FetchDebtSales(
           product: {
             select: {
               name: true,
-              warehouse: { select: { name: true } },
+              warehouse: { select: { id: true, name: true } },
               sellingUnits: true,
             },
           },

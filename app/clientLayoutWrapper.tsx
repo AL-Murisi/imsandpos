@@ -17,6 +17,7 @@ import { verifySession } from "@/lib/dal";
 import IMSLoader from "@/components/loadinf";
 import { BottomBar } from "@/components/bottom-bar";
 import PullToRefreshCurrentPage from "@/components/refresh";
+import { PushNotificationManager } from "@/components/manangeNotifications";
 
 export default function ClientLayoutWrapper({
   children,
