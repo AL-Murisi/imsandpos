@@ -19,6 +19,8 @@ const DataTable = dynamic(
 const ExchangeRatesPage = dynamic(() => import("./clinet"), {
   ssr: false,
 });
+import { PushNotificationManager } from "@/components/manangeNotifications";
+
 import SearchInput from "@/components/common/searchtest";
 import { exchangeRateColumns } from "./_components/columns";
 import TableSkeleton from "@/components/common/TableSkeleton";
@@ -46,6 +48,7 @@ export default function Exchange({ exchangeRate }: Props) {
   return (
     <div className="bg-accent flex flex-col rounded-2xl p-3" dir="rtl">
       {/* Add dir="rtl" for proper RTL layout */}
+      <PushNotificationManager />
 
       <DataTable
         search={

@@ -23,7 +23,10 @@ import SearchInput from "@/components/common/searchtest";
 import { customerColumns } from "./columns";
 import TableSkeleton from "@/components/common/TableSkeleton";
 import { Calendar22 } from "@/components/common/DatePicker";
-import { use, useState } from "react";
+import { use, useEffect, useState } from "react";
+import { useAuth } from "@/lib/context/AuthContext";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
 
 type Props = {
   users: any[];
@@ -45,11 +48,75 @@ export default function CustomerClinet({ users, total, role }: Props) {
     roles,
     setParam,
   } = useTablePrams();
+  const { user } = useAuth();
+  const router = useRouter();
+  useEffect(() => {
+    if (!user?.companyId || !users?.length) return;
 
+    // ✅ extract customer IDs shown in table
+    const customerIds = new Set(users.map((c) => c.id));
+
+    const channel = supabase
+      .channel("journal-entries-updates")
+      .on(
+        "postgres_changes",
+        {
+          event: "*", // INSERT | UPDATE | DELETE
+          schema: "public",
+          table: "journal_entries",
+          filter: `company_id=eq.${user.companyId}`,
+        },
+        (payload) => {
+          console.log("📦 Realtime change received:", payload);
+          const newRow = payload.new as {
+            reference_id?: string;
+          };
+
+          if (!newRow?.reference_id) return;
+
+          if (customerIds.has(newRow.reference_id)) {
+            router.refresh();
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.companyId, users]);
+
+  const [message, setMessage] = useState<string | null>(null);
+  async function sendWebPush(message: string) {
+    if (!message) return alert("Message is empty");
+    if (!user) return alert("No subscription");
+
+    try {
+      await fetch("/api/web-push/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          companyId: user.companyId,
+          title: "Test Notification",
+          body: message,
+        }),
+      });
+      // alert("Push sent 🚀");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to send push");
+    }
+  }
   return (
     <div className="bg-accent flex flex-col p-3" dir="rtl">
       {/* Add dir="rtl" for proper RTL layout */}
-
+      <input
+        placeholder={"Type push message ..."}
+        value={message ?? ""}
+        onChange={(e) => setMessage(e.target.value)}
+      />
+      <button onClick={() => sendWebPush(message ?? "")}>Test Web Push</button>
+      {message}
       <DataTable
         search={
           <div className="mb-2 flex flex-wrap gap-2">

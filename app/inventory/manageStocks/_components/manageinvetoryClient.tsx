@@ -13,6 +13,10 @@ import { Calendar22 } from "@/components/common/DatePicker";
 import { DataTable } from "@/components/common/ReusbleTable";
 import MultiInventoryUpdateForm from "./multiplr";
 import { Prisma } from "@prisma/client";
+import { supabase } from "@/lib/supabaseClient";
+import { useCompany } from "@/hooks/useCompany";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 type ProductClientProps = {
   products: any[];
@@ -86,6 +90,36 @@ export default function ManageStocksClient({
     categoryId,
     setParam,
   } = useTablePrams();
+  const { company } = useCompany();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!company?.id) return;
+
+    const channel = supabase
+      .channel("inventory-updates")
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "inventory",
+          filter: `company_id=eq.${company.id}`,
+        },
+        (payload) => {
+          console.log("📦 Inventory updated:", payload.new);
+
+          // ✅ REFRESH SERVER DATA
+          router.refresh();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [company?.id]);
+
   const t = useTranslations("productColumns");
   return (
     <div className="bg-accent w-full rounded-2xl border border-amber-500 p-2">

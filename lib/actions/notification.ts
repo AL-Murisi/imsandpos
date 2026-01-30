@@ -2,6 +2,7 @@
 
 import prisma from "../prisma";
 import { getSession } from "../session";
+import { getUserCompany } from "./chartOfaccounts";
 const webpush = require("web-push");
 // ✅ Initialize VAPID details
 webpush.setVapidDetails(
@@ -10,80 +11,80 @@ webpush.setVapidDetails(
   process.env.VAPID_PRIVATE_KEY!,
 );
 
-export async function subscribeUser(sub: PushSubscriptionJSON) {
-  try {
-    const company = await getSession();
-    if (!company) {
-      console.error("❌ No session found");
-      return { success: false, error: "Not authenticated" };
-    }
+// export async function subscribeUser(sub: PushSubscriptionJSON) {
+//   try {
+//     const company = await getSession();
+//     if (!company) {
+//       console.error("❌ No session found");
+//       return { success: false, error: "Not authenticated" };
+//     }
 
-    // Validate subscription data
-    if (!sub.endpoint || !sub.keys?.p256dh || !sub.keys?.auth) {
-      console.error("❌ Invalid subscription payload:", sub);
-      return { success: false, error: "Invalid subscription data" };
-    }
+//     // Validate subscription data
+//     if (!sub.endpoint || !sub.keys?.p256dh || !sub.keys?.auth) {
+//       console.error("❌ Invalid subscription payload:", sub);
+//       return { success: false, error: "Invalid subscription data" };
+//     }
 
-    const endpoint = sub.endpoint;
-    const p256dh = sub.keys.p256dh;
-    const auth = sub.keys.auth;
+//     const endpoint = sub.endpoint;
+//     const p256dh = sub.keys.p256dh;
+//     const auth = sub.keys.auth;
 
-    // Upsert subscription in database
-    await prisma.pushSubscription.upsert({
-      where: { endpoint },
-      update: {
-        userId: company.userId,
-        role: company.userRole,
-        company_id: company.companyId,
-        p256dh,
-        auth,
-      },
-      create: {
-        endpoint,
-        p256dh,
-        auth,
-        userId: company.userId,
-        role: company.userRole,
-        company_id: company.companyId,
-      },
-    });
+//     // Upsert subscription in database
+//     await prisma.pushSubscription.upsert({
+//       where: { endpoint },
+//       update: {
+//         userId: company.userId,
+//         role: company.userRole,
+//         company_id: company.companyId,
+//         p256dh,
+//         auth,
+//       },
+//       create: {
+//         endpoint,
+//         p256dh,
+//         auth,
+//         userId: company.userId,
+//         role: company.userRole,
+//         company_id: company.companyId,
+//       },
+//     });
 
-    console.log("✅ Subscription saved for user:", company.userId);
-    return { success: true };
-  } catch (error) {
-    console.error("❌ Error subscribing user:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
-  }
-}
+//     console.log("✅ Subscription saved for user:", company.userId);
+//     return { success: true };
+//   } catch (error) {
+//     console.error("❌ Error subscribing user:", error);
+//     return {
+//       success: false,
+//       error: error instanceof Error ? error.message : "Unknown error",
+//     };
+//   }
+// }
 
-export async function unsubscribeUser() {
-  try {
-    const company = await getSession();
-    if (!company) {
-      return { success: false, error: "Not authenticated" };
-    }
+// export async function unsubscribeUser() {
+//   try {
+//     const company = await getSession();
+//     if (!company) {
+//       return { success: false, error: "Not authenticated" };
+//     }
 
-    // Delete user's subscriptions
-    await prisma.pushSubscription.deleteMany({
-      where: {
-        userId: company.userId,
-        company_id: company.companyId,
-      },
-    });
+//     // Delete user's subscriptions
+//     await prisma.pushSubscription.deleteMany({
+//       where: {
+//         userId: company.userId,
+//         company_id: company.companyId,
+//       },
+//     });
 
-    console.log("✅ Subscription removed for user:", company.userId);
-    return { success: true };
-  } catch (error) {
-    console.error("❌ Error unsubscribing user:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
-  }
-}
+//     console.log("✅ Subscription removed for user:", company.userId);
+//     return { success: true };
+//   } catch (error) {
+//     console.error("❌ Error unsubscribing user:", error);
+//     return {
+//       success: false,
+//       error: error instanceof Error ? error.message : "Unknown error",
+//     };
+//   }
+// }
 
 export async function sendTestNotifications(message: string) {
   try {
@@ -235,4 +236,35 @@ export async function sendNotificationToUser(
       error: error instanceof Error ? error.message : "Unknown error",
     };
   }
+}
+
+export async function subscribeUser(sub: PushSubscriptionJSON) {
+  const company = await getSession();
+  if (!company) {
+    console.error("❌ No session found");
+    return { success: false, error: "Not authenticated" };
+  }
+  if (!sub.endpoint || !sub.keys?.p256dh || !sub.keys?.auth) {
+    console.error("❌ Invalid subscription payload:", sub);
+    return { success: false, error: "Invalid subscription data" };
+  }
+
+  await prisma.pushSubscription.upsert({
+    where: { endpoint: sub.endpoint },
+    update: {},
+    create: {
+      endpoint: sub.endpoint,
+      p256dh: sub.keys!.p256dh,
+      auth: sub.keys!.auth,
+      company_id: company.companyId,
+      userId: company.userId,
+      role: company.userRole,
+    },
+  });
+}
+
+export async function unsubscribeUser(endpoint: string) {
+  await prisma.pushSubscription.deleteMany({
+    where: { endpoint },
+  });
 }

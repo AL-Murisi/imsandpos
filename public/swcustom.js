@@ -186,37 +186,103 @@
 //   console.log("Web push delivered.");
 // };
 // public/sw.js
-self.addEventListener("install", (event) => {
-  self.skipWaiting();
-});
+// self.addEventListener("push", (event) => {
+//   if (!event.data) return;
 
-// 2. Ensure that the new Service Worker takes control of all pages immediately
-self.addEventListener("activate", (event) => {
-  event.waitUntil(clients.claim());
-});
-self.addEventListener("push", (event) => {
-  if (!event.data) return;
+//   const payload = event.data.json();
+//   const { title, body, icon, url } = payload;
 
-  const payload = event.data.json();
-  const { title, body, icon, url } = payload;
+//   const options = {
+//     body: body || "No body",
+//     icon: icon || "/icon1.png",
+//     sound: "/sound/notification.wav",
+//     data: "https://imsandpos.vercel.app/",
+//   };
 
-  const options = {
-    body: body || "No body",
-    icon: icon || "/logo.png",
-    sound: "/sound/notification.wav",
-    data: "https://imsandpos.vercel.app/",
-  };
+//   console.log("Push received:", payload);
 
-  console.log("Push received:", payload);
+//   event.waitUntil(
+//     self.registration.showNotification(title || "No title", options),
+//   );
+// });
 
-  event.waitUntil(
-    self.registration.showNotification(title || "No title", options),
-  );
-});
+// self.addEventListener("notificationclick", (event) => {
+//   event.notification.close();
+//   if (event.notification.data.url) {
+//     event.waitUntil(clients.openWindow(event.notification.data.url));
+//   }
+// });
 
-self.addEventListener("notificationclick", (event) => {
-  event.notification.close();
-  if (event.notification.data.url) {
-    event.waitUntil(clients.openWindow(event.notification.data.url));
+self.addEventListener("push", function (event) {
+  if (event.data) {
+    const data = event.data.json();
+
+    navigator.setAppBadge(12);
+
+    const options = {
+      body: data.body,
+
+      icon: "/icon.png" || "/logo.png",
+      badge: "/badge-72x72.png",
+      vibrate: [100, 50, 100],
+      data: {
+        dateOfArrival: Date.now(),
+        primaryKey: 1,
+        sound: "/sounds/notification.wav",
+
+        url: data.data?.url || "/",
+      },
+      requireInteraction: true,
+      actions: [
+        {
+          action: "explore",
+          title: "عرض التفاصيل",
+        },
+        {
+          action: "close",
+          title: "إغلاق",
+        },
+      ],
+    };
+
+    // Play sound if specified
+    if (data.data?.sound) {
+      // Note: Sound in notifications is limited in most browsers
+      // Consider using the Notification API with audio in the main thread instead
+    }
+
+    event.waitUntil(self.registration.showNotification(data.title, options));
   }
+});
+
+self.addEventListener("notificationclick", function (event) {
+  event.notification.close();
+
+  if (event.action === "explore") {
+    // Open the URL specified in the notification data
+    event.waitUntil(clients.openWindow(event.notification.data.url || "/"));
+  } else if (event.action === "close") {
+    // Just close the notification
+    event.notification.close();
+  } else {
+    // Default click action - open the app
+    event.waitUntil(clients.openWindow(event.notification.data.url || "/"));
+  }
+});
+
+self.addEventListener("pushsubscriptionchange", function (event) {
+  event.waitUntil(
+    self.registration.pushManager
+      .subscribe(event.oldSubscription.options)
+      .then(function (subscription) {
+        // Send new subscription to server
+        return fetch("/api/web-push/subscription", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ subscription }),
+        });
+      }),
+  );
 });

@@ -1,18 +1,11 @@
-import { fetchAllFormData } from "@/lib/actions/roles";
-import {
-  fetchAllFormDatas,
-  getInventoryById,
-  getStockMovements,
-} from "@/lib/actions/warehouse";
-import { TabsContent } from "@/components/ui/tabs";
 import { ParsedSort } from "@/hooks/sort";
+import { fetchAllFormData } from "@/lib/actions/roles";
+import { fetchAllFormDatas, getInventoryById } from "@/lib/actions/warehouse";
+import { getSession } from "@/lib/session";
 import { Prisma } from "@prisma/client";
 import { SortingState } from "@tanstack/react-table";
-import { getSession } from "@/lib/session";
 
-import { getPurchasesByCompany } from "@/lib/actions/suppliers";
 import { fetchPayments } from "@/lib/actions/banks";
-import ManagemovementClient from "../_components/getMovementhistry";
 import ManageStocksClient from "../_components/manageinvetoryClient";
 
 type DashboardProps = {
