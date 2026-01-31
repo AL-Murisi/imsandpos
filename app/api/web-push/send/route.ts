@@ -141,7 +141,7 @@ export async function POST(request: Request) {
     const subscriptions = await prisma.pushSubscription.findMany({
       where: {
         company_id: companyId,
-        ...(role && { role: role }),
+        // ...(role && { role: role }),
       },
     });
 
