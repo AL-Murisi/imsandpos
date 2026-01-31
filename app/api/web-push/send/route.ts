@@ -174,7 +174,7 @@ export async function POST(request: Request) {
             auth: sub.auth,
           },
         };
-
+        console.log("rrr", payload);
         await webpush.sendNotification(pushSubscription, payload);
         return { success: true, endpoint: sub.endpoint };
       } catch (error: any) {

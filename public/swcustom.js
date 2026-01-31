@@ -212,8 +212,9 @@
 //     event.waitUntil(clients.openWindow(event.notification.data.url));
 //   }
 // });
-
-self.addEventListener("install", () => self.skipWaiting());
+self.addEventListener("install", () => {
+  self.skipWaiting();
+});
 
 self.addEventListener("activate", () => {
   self.clients.matchAll({ type: "window" }).then((windowClients) => {
@@ -296,4 +297,170 @@ self.addEventListener("pushsubscriptionchange", function (event) {
         });
       }),
   );
+});
+// Import Workbox if using next-pwa (it will inject this)
+// importScripts() will be added by the PWA plugin
+
+// self.addEventListener("install", (event) => {
+//   console.log("[SW] Installing service worker...");
+//   self.skipWaiting();
+// });
+
+// self.addEventListener("activate", (event) => {
+//   console.log("[SW] Activating service worker...");
+//   event.waitUntil(
+//     Promise.all([
+//       self.clients.claim(),
+//       // Clean up old caches if needed
+//       caches.keys().then((cacheNames) => {
+//         return Promise.all(
+//           cacheNames
+//             .filter((cacheName) => {
+//               // Add logic to remove old caches
+//               return false;
+//             })
+//             .map((cacheName) => caches.delete(cacheName)),
+//         );
+//       }),
+//     ]),
+//   );
+// });
+
+// // Push notification handler
+// self.addEventListener("push", function (event) {
+//   console.log("[SW] Push received:", event);
+
+//   if (!event.data) {
+//     console.log("[SW] Push event but no data");
+//     return;
+//   }
+
+//   try {
+//     const data = event.data.json();
+//     console.log("[SW] Push data:", data);
+
+//     // Update badge count (iOS 16.4+)
+//     if (navigator.setAppBadge) {
+//       navigator.setAppBadge(1).catch((err) => {
+//         console.log("[SW] Badge update failed:", err);
+//       });
+//     }
+
+//     const options = {
+//       body: data.body,
+//       icon: data.icon || "/icon.png",
+//       badge: data.badge || "/badge-72x72.png",
+//       // iOS requires specific vibration pattern format
+//       vibrate: [200, 100, 200],
+//       data: {
+//         dateOfArrival: Date.now(),
+//         url: data.data?.url || "/",
+//       },
+//       // Important for iOS - must be true
+//       requireInteraction: false, // Changed to false for better iOS compatibility
+//       // iOS supports limited actions
+//       actions: [
+//         {
+//           action: "open",
+//           title: "عرض",
+//         },
+//         {
+//           action: "close",
+//           title: "إغلاق",
+//         },
+//       ],
+//       // iOS-specific options
+//       tag: data.tag || "default",
+//       renotify: true,
+//     };
+
+//     event.waitUntil(
+//       self.registration
+//         .showNotification(data.title || "إشعار جديد", options)
+//         .then(() => {
+//           console.log("[SW] Notification shown successfully");
+//         })
+//         .catch((err) => {
+//           console.error("[SW] Failed to show notification:", err);
+//         }),
+//     );
+//   } catch (error) {
+//     console.error("[SW] Error processing push:", error);
+//   }
+// });
+
+// // Notification click handler
+// self.addEventListener("notificationclick", function (event) {
+//   console.log("[SW] Notification clicked:", event.action);
+
+//   event.notification.close();
+
+//   const urlToOpen = event.notification.data?.url || "/";
+
+//   event.waitUntil(
+//     clients
+//       .matchAll({ type: "window", includeUncontrolled: true })
+//       .then((windowClients) => {
+//         // Check if there's already a window open
+//         for (let client of windowClients) {
+//           if (client.url === urlToOpen && "focus" in client) {
+//             return client.focus();
+//           }
+//         }
+//         // If no window is open, open a new one
+//         if (clients.openWindow) {
+//           return clients.openWindow(urlToOpen);
+//         }
+//       })
+//       .catch((err) => {
+//         console.error("[SW] Error handling notification click:", err);
+//       }),
+//   );
+
+//   // Clear badge
+//   if (navigator.clearAppBadge) {
+//     navigator.clearAppBadge().catch((err) => {
+//       console.log("[SW] Badge clear failed:", err);
+//     });
+//   }
+// });
+
+// // Handle subscription changes (important for iOS)
+// self.addEventListener("pushsubscriptionchange", function (event) {
+//   console.log("[SW] Push subscription changed");
+
+//   event.waitUntil(
+//     self.registration.pushManager
+//       .subscribe({
+//         userVisibleOnly: true,
+//         applicationServerKey:
+//           self.registration.pushManager.applicationServerKey,
+//       })
+//       .then(function (newSubscription) {
+//         console.log("[SW] New subscription:", newSubscription);
+//         // Send new subscription to server
+//         return fetch("/api/web-push/subscription", {
+//           method: "POST",
+//           headers: {
+//             "Content-Type": "application/json",
+//           },
+//           body: JSON.stringify({ subscription: newSubscription }),
+//         });
+//       })
+//       .catch(function (error) {
+//         console.error("[SW] Failed to resubscribe:", error);
+//       }),
+//   );
+// });
+
+// // Handle notification close
+self.addEventListener("notificationclose", function (event) {
+  console.log("[SW] Notification closed:", event);
+
+  // Clear badge when notification is dismissed
+  if (navigator.clearAppBadge) {
+    navigator.clearAppBadge().catch((err) => {
+      console.log("[SW] Badge clear failed:", err);
+    });
+  }
 });
