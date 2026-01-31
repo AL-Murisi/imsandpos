@@ -11,7 +11,7 @@ export function notificationUnsupported(): boolean {
 }
 
 // IMPORTANT: Must match the output file from next-pwa
-const SERVICE_WORKER_FILE_PATH = "/sw.js"; // Changed from /swcustom.js
+const SERVICE_WORKER_FILE_PATH = "/swcustom.js"; // Changed from /swcustom.js
 
 export async function registerAndSubscribe(
   onSubscribe: (subs: PushSubscription | null) => void,
