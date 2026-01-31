@@ -54,7 +54,7 @@ const withPWA = require("@ducanh2912/next-pwa").default({
   workboxOptions: {
     disableDevLogs: true,
   },
-  swSrc: "public/sw-custom.js",
+  swSrc: "public/swcustom.js",
   swDest: "public/sw.js",
 });
 const withBundleAnalyzer = require("@next/bundle-analyzer")({
