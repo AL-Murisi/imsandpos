@@ -8,29 +8,17 @@
     <meta charset="UTF-8" />
     <title>تقرير المبالغ المستحقة للموردين</title>
     <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
       body {
         font-family: "Cairo", sans-serif;
         direction: rtl;
         text-align: right;
-        margin: 40px;
+        margin: 20px;
+        margin-top: 10px;
+        margin-bottom: 10px;
+        background: #f8f9fa;
+        color: #333;
       }
 
-      .container {
-        max-width: 1000px;
-        margin: 0 auto;
-        background: white;
-        padding: 40px;
-        box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-      }
-      .header {
-        border-bottom: 1px solid black;
-        border-radius: 6px;
-      }
       .flex {
         display: flex;
       }
@@ -88,113 +76,135 @@
       .items-center {
         align-items: center;
       }
-      .section {
-        padding: 6px 8px;
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 2px solid #000;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+      }
+
+      .header-right {
+        width: 33%;
+        text-align: right;
+      }
+
+      .header-center {
+        width: 33%;
+        text-align: center;
+      }
+
+      .header-left {
+        width: 33%;
+        text-align: left;
+        font-size: 14px;
+      }
+      .col-date {
+        width: 12%;
       }
       .section-title {
         font-size: 20px;
-        border-bottom: 2px solid #444;
-        margin-top: 35px;
+        background: #1abc9c;
+        color: #fff;
+        padding: 8px 12px;
+        border-radius: 5px;
+        margin-top: 30px;
         margin-bottom: 10px;
-        padding-bottom: 5px;
-      }
-
-      .company-name {
-        font-size: 28px;
-        font-weight: bold;
-        color: #b91c1c;
-        margin-bottom: 5px;
-      }
-      .report-title {
-        font-size: 20px;
-        color: #475569;
-        margin-top: 10px;
       }
       table {
         width: 100%;
         border-collapse: collapse;
-        margin-bottom: 30px;
+        table-layout: fixed; /* Keeps columns aligned */
       }
-      thead {
-        background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-        color: white;
+      th,
+      td {
+        border: 1px solid #000;
+        padding: 8px 4px;
+        font-size: 12px;
+        text-align: center;
+        word-wrap: break-word;
       }
       th {
-        padding: 15px;
-        text-align: right;
-        font-weight: 600;
-        font-size: 14px;
+        background-color: #f2f2f2;
       }
-      td {
-        padding: 12px 15px;
-        border-bottom: 1px solid #e2e8f0;
-        font-size: 13px;
+
+      thead {
+        display: table-header-group; /* Repeats header on new pages */
       }
-      tbody tr:hover {
-        background: #fef2f2;
+
+      tr {
+        page-break-inside: avoid;
       }
       .total-row {
-        background: #fee2e2 !important;
+        background: #ecf0f1;
         font-weight: bold;
-        font-size: 16px;
+        color: #2c3e50;
       }
-      .alert-box {
-        background: #fef2f2;
-        border-right: 4px solid #dc2626;
+      .info-box {
+        display: grid;
+        /* Creates two columns of equal width */
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px 10px; /* 10px vertical gap, 20px horizontal gap */
+
         padding: 15px;
-        margin-bottom: 30px;
+        border: 1px solid #ddd; /* Lighter border for cleaner look */
         border-radius: 8px;
+        background: #f9f9f9;
+        direction: rtl; /* Ensures grid flows correctly for Arabic */
       }
-      .alert-box h3 {
-        color: #dc2626;
-        margin-bottom: 10px;
-        font-size: 18px;
-      }
-      .alert-box p {
-        color: #991b1b;
-        font-size: 24px;
-        font-weight: bold;
+      .info-box p {
+        margin: 0; /* Remove default paragraph margins to keep grid tight */
+        font-size: 14px;
+        line-height: 1.6;
       }
       .footer {
+        margin-top: 50px;
         text-align: center;
-        color: #94a3b8;
-        font-size: 12px;
-        margin-top: 30px;
-        padding-top: 20px;
-        border-top: 1px solid #e2e8f0;
+        font-size: 14px;
+        color: #777;
+      }
+      .currency {
+        font-family: "Tahoma", sans-serif;
       }
     </style>
   </head>
   <body>
     <div class="section">
-      <div class="header mb-2 flex items-center justify-between" dir="rtl">
+      <div class="header">
         <!-- Company -->
-        <div class="grid grid-rows-3 items-baseline gap-2 text-right">
-          <span class="green text-3xl font-bold"> {{company.name}} </span>
-          <span class="text-2xl">{{company.name}} </span>
+        <div class="header-right">
+          <div
+            style="
+              font-size: 18px;
+              font-weight: bold;
+              line-height: 1.2;
+              max-width: 200px;
+              word-wrap: break-word;
+            "
+            class="green text-3xl font-bold"
+          >
+            {{company.name}}
+          </div>
+          <div>تلفون: {{company.phone}}</div>
         </div>
 
         <!-- Logo -->
-        <div class="flex flex-col items-center">
+        <div class="logo-title-container">
           <img src="{{company.logoUrl}}" style="width: 100px; height: 90px" />
+          <div class="title-box">📋تقرير المبالغ المستحقة للموردين</div>
         </div>
 
-        <!-- Branch -->
-        <div class="grid grid-rows-4">
+        <div class="header-left">
           <div class="text-lg">{{company.address}}</div>
           <div class="text-lg">{{company.city}}</div>
-          <div>تلفون: {{company.phone}}</div>
         </div>
       </div>
     </div>
-    <div class="">
-      <div class="company-name">{{company.name}}</div>
-      <div class="report-title">💳 تقرير المبالغ المستحقة للموردين</div>
-    </div>
-
-    <div class="alert-box">
-      <h3>⚠️ إجمالي المبالغ المستحقة</h3>
-      <p>{{formatNumber totalBalance}} ر.س</p>
+    <div class="info-box">
+      <p><strong>من تاريخ:</strong> {{period.from}}</p>
+      <p><strong>إلى تاريخ:</strong> {{period.to}}</p>
+      <p><strong> إجمالي المبالغ</strong> {{formatNumber totalBalance}}</p>
     </div>
 
     <table>
@@ -202,33 +212,37 @@
         <tr>
           <th>اسم المورد</th>
           <th>رقم الهاتف</th>
-          <th>الرصيد المستحق (ر.س)</th>
+          <th>له (دائن)</th>
+          <th>عليه (مدين)</th>
+          <th>الرصيد المستحق ({{currency}})</th>
           <th>عدد المشتريات</th>
         </tr>
       </thead>
       <tbody>
         {{#each suppliers}}
         <tr>
-          <td><strong>{{this.name}}</strong></td>
-          <td>{{this.phone}}</td>
-          <td>
-            <strong style="color: #dc2626"
-              >{{formatNumber this.balance}}</strong
-            >
-          </td>
-          <td>{{this.purchaseCount}}</td>
+          <td>{{name}}</td>
+          <td>{{phone}}</td>
+          <td style="color: #059669">{{forHim}}</td>
+          <td style="color: #dc2626">{{onHim}}</td>
+          <td style="font-weight: bold">{{balance}} {{currency}}</td>
+          <td>{{purchaseCount}}</td>
         </tr>
         {{/each}}
+      </tbody>
+      <tfoot>
         <tr class="total-row">
-          <td colspan="2">الإجمالي الكلي</td>
-          <td><strong>{{formatNumber totalBalance}} ر.س</strong></td>
+          <td colspan="4">الإجمالي الكلي</td>
+          <td>{{grandTotal}}</td>
           <td>-</td>
         </tr>
-      </tbody>
+      </tfoot>
     </table>
 
     <div class="footer">
-      <p>تم إنشاء هذا التقرير بواسطة نظام {{company.name}} | {{createby}}</p>
+      <div>المستخدم:{{createby}}</div>
+
+      تم إنشاء هذا التقرير بواسطة نظام إدارة المخزون والمحاسبة.
     </div>
   </body>
 </html>

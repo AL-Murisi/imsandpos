@@ -7,6 +7,7 @@ import React from "react";
 import { AiFillProduct } from "react-icons/ai";
 import { Separator } from "@/components/ui/separator";
 import { useTranslations } from "next-intl";
+import PushNotificationManager from "@/components/NotificationBell";
 
 export default function Appheader() {
   const t = useTranslations("menu");
@@ -102,16 +103,7 @@ export default function Appheader() {
         />
         <h1 className="text-base font-medium">{pageTitle}</h1>
         <div className="ml-auto flex items-center gap-2">
-          <Button variant="ghost" asChild size="sm" className="hidden sm:flex">
-            {/* <a
-              href="https://github.com/shadcn-ui/ui/tree/main/apps/v4/app/(examples)/dashboard"
-              rel="noopener noreferrer"
-              target="_blank"
-              className="dark:text-foreground"
-            >
-              GitHub
-            </a> */}
-          </Button>
+          <PushNotificationManager />
         </div>
       </div>
     </header>

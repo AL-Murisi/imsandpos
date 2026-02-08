@@ -1,6 +1,6 @@
 export default function ReportsLoading() {
   return (
-    <div className="container mx-auto animate-pulse p-2">
+    <div className="container mx-auto animate-pulse overflow-hidden p-2">
       {/* Category Filter Skeleton */}
       <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
         {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -9,7 +9,7 @@ export default function ReportsLoading() {
       </div>
 
       {/* Report Grid Skeleton */}
-      <div className="h-[90vh] rounded-lg bg-gray-200 px-2 py-2">
+      <div className="h-[80vh] rounded-lg bg-gray-200 px-2 py-2">
         <div className="space-y-4 p-5">
           <div className="h-6 w-1/4 rounded bg-gray-300" />
           <div className="h-4 w-1/3 rounded bg-gray-300" />

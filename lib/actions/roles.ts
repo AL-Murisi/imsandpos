@@ -17,6 +17,7 @@ import {
 import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { getSession } from "../session";
 
 export async function createRole(input: CreateRoleInput) {
   const parsed = CreateRoleSchema.safeParse(input);
@@ -155,6 +156,39 @@ export async function fetchAllFormData(companyId: string) {
       warehouses,
       categories,
       brands,
+      suppliers,
+    };
+  } catch (error) {
+    console.error("Error fetching form data:", error);
+    throw new Error("Failed to fetch form data");
+  }
+}
+export async function filteringData() {
+  const userinf = await getSession();
+  if (!userinf) return;
+  try {
+    const [warehouses, user, suppliers] = await Promise.all([
+      prisma.warehouse.findMany({
+        select: { id: true, name: true },
+        where: { isActive: true, companyId: userinf.companyId },
+        orderBy: { name: "asc" },
+      }),
+      prisma.user.findMany({
+        select: { id: true, name: true },
+        where: { isActive: true, companyId: userinf.companyId },
+        orderBy: { name: "asc" },
+      }),
+
+      prisma.supplier.findMany({
+        select: { id: true, name: true },
+        where: { isActive: true, companyId: userinf.companyId },
+        orderBy: { name: "asc" },
+      }),
+    ]);
+
+    return {
+      warehouses,
+      user,
       suppliers,
     };
   } catch (error) {

@@ -53,28 +53,22 @@ export default function CustomerClinet({ users, total, role }: Props) {
   useEffect(() => {
     if (!user?.companyId || !users?.length) return;
 
-    // ✅ extract customer IDs shown in table
     const customerIds = new Set(users.map((c) => c.id));
 
     const channel = supabase
-      .channel("journal-entries-updates")
+      .channel(`journal-${user.companyId}`) // unique channel
       .on(
         "postgres_changes",
         {
-          event: "*", // INSERT | UPDATE | DELETE
+          event: "INSERT", // 👈 limit events
           schema: "public",
           table: "journal_entries",
           filter: `company_id=eq.${user.companyId}`,
         },
         (payload) => {
-          console.log("📦 Realtime change received:", payload);
-          const newRow = payload.new as {
-            reference_id?: string;
-          };
+          const newRow = payload.new as { reference_id?: string };
 
-          if (!newRow?.reference_id) return;
-
-          if (customerIds.has(newRow.reference_id)) {
+          if (newRow?.reference_id && customerIds.has(newRow.reference_id)) {
             router.refresh();
           }
         },
@@ -84,7 +78,7 @@ export default function CustomerClinet({ users, total, role }: Props) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user?.companyId, users]);
+  }, [user?.companyId, users]); // ✅ correct deps
 
   const [message, setMessage] = useState<string | null>(null);
   async function sendWebPush(message: string) {

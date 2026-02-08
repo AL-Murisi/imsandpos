@@ -37,13 +37,13 @@ export default function DashboardHeader({
         </div>
       </div>
 
-      {/* Right side: Profile + Notifications */}
+      {/* Right side: Profile + Notifications *
       <div className="flex items-center space-x-4" dir="ltr">
-        {/* <Button variant="ghost" size="icon">
+        <Button variant="ghost" size="icon">
           <NotificationBell />
-        </Button> */}
+        </Button>
 
-        {/* <DropdownMenu>
+        <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Avatar className="cursor-pointer">
               <AvatarImage src="" alt="User" />
@@ -63,8 +63,8 @@ export default function DashboardHeader({
               Logout
             </DropdownMenuItem>
           </DropdownMenuContent>
-        </DropdownMenu> */}
-      </div>
+        </DropdownMenu> 
+      </div>*/}
     </div>
   );
 }

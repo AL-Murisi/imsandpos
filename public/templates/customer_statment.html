@@ -85,7 +85,24 @@
         table-layout: fixed; /* Keeps columns aligned */
       }
 
-      th,
+      th,.page-container {
+    page-break-after: always;
+    clear: both;
+  }
+  
+  /* Prevent the last page from having a blank extra page */
+  .page-container:last-child {
+    page-break-after: auto;
+  }
+
+  /* Added a badge style for currency */
+  .currency-badge {
+    background: #2563eb;
+    color: white;
+    padding: 2px 10px;
+    border-radius: 4px;
+    font-size: 14px;
+  }
       td {
         border: 1px solid #000;
         padding: 8px 4px;
@@ -161,104 +178,74 @@
   </head>
 
   <body>
-    {{#each customers}}
-    <div class="page-container">
-      <div class="header">
+  {{#each statements}}
+  <div class="page-container">
+    <div class="header">
         <div class="header-right">
-          <div
-            style="
-              font-size: 18px;
-              font-weight: bold;
-              line-height: 1.2;
-              max-width: 200px;
-              word-wrap: break-word;
-            "
-          >
-            {{../company.name}}
-          </div>
-          <div dir="ltr">Tel: {{../company.phone}}</div>
+            <div style="font-size: 18px; font-weight: bold;">{{../company.name}}</div>
+            <div dir="ltr">{{../company.phone}}</div>
         </div>
 
         <div class="logo-title-container">
-          <img
-            src="{{../company.logoUrl}}"
-            width="90"
-            height="80"
-            style="width: 100px; height: 100px; object-fit: contain"
-          />
-          <div class="title-box">📋 كشف حساب عميل</div>
+            <img src="{{../company.logoUrl}}" style="width: 80px; height: 80px; object-fit: contain" />
+            <div class="title-box">📋 كشف حساب عميل</div>
         </div>
 
         <div class="header-left">
-          <div>{{../company.address}}</div>
-          <div>{{../company.city}}</div>
-        </div>
-      </div>
-
-      <div class="info-box">
-        <p><strong>اسم العميل:</strong> {{customer.name}}</p>
-        <p><strong>الهاتف:</strong> {{customer.phoneNumber}}</p>
-        <p><strong>من تاريخ:</strong> {{period.from}}</p>
-        <p><strong>إلى تاريخ:</strong> {{period.to}}</p>
-      </div>
-
-      <table>
-        <thead>
-          <tr>
-            <th class="col-date">التاريخ</th>
-            <th class="col-type">نوع السند</th>
-            <th class="col-doc">رقم المستند</th>
-            <th class="col-desc">البيان</th>
-            <th>مدين (عليه)</th>
-            <th>دائن (له)</th>
-            <th class="col-bal">الرصيد</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr class="balance-highlight">
-            <td>-</td>
-            <td>-</td>
-            <td>رصيد افتتاحي</td>
-            <td>رصيد افتتاحي للعميل</td>
-
-            <td>
-              {{#if (gt openingBalance 0)}} {{formatNumber openingBalance}}
-              {{else}} 0.00 {{/if}}
-            </td>
-
-            <td>
-              {{#if (lt openingBalance 0)}} {{formatNumber openingBalance}}
-              {{else}} 0.00 {{/if}}
-            </td>
-
-            <td><strong>{{formatNumber openingBalance}}</strong></td>
-          </tr>
-          {{#each transactions}}
-          <tr>
-            <td>{{date}}</td>
-            <td>{{typeName}}</td>
-            <td>{{docNo}}</td>
-            <td style="text-align: right">{{description}}</td>
-            <td>{{debit}}</td>
-            <td>{{credit}}</td>
-            <td>{{balance}}</td>
-          </tr>
-          {{/each}}
-
-          <tr class="total-row">
-            <td colspan="4">الإجمالي</td>
-            <td>{{totalDebit}}</td>
-            <td>{{totalCredit}}</td>
-            <td>{{closingBalance}}</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div class="footer">
-        تم إنشاء التقرير بواسطة نظام {{../company.name}} | {{../createby}} —
-        {{../date}}
-      </div>
+            <div>{{../company.address}}</div>
+            <div>{{currency}}</div> </div>
     </div>
-    {{/each}}
-  </body>
+
+    <div class="info-box">
+      <p><strong>اسم العميل:</strong> {{customerName}}</p>
+      <p><strong>العملة:</strong> <span class="currency-badge">{{currency}}</span></p>
+      <p><strong>من تاريخ:</strong> {{periodFrom}}</p>
+      <p><strong>إلى تاريخ:</strong> {{periodTo}}</p>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>التاريخ</th>
+          <th>البيان</th>
+          <th>رقم المستند</th>
+          <th>مدين ({{currency}})</th>
+          <th>دائن ({{currency}})</th>
+          <th>الرصيد</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="background: #f8fafc;">
+          <td>-</td>
+          <td colspan="2">رصيد افتتاحي ({{currency}})</td>
+          <td>{{#if (gt openingBalance 0)}}{{openingBalance}}{{else}}0.00{{/if}}</td>
+          <td>{{#if (lt openingBalance 0)}}{{abs openingBalance}}{{else}}0.00{{/if}}</td>
+          <td><strong>{{openingBalance}}</strong></td>
+        </tr>
+        {{#each transactions}}
+        <tr>
+          <td>{{date}}</td>
+          <td style="text-align: right;">{{description}}</td>
+          <td>{{docNo}}</td>
+          <td>{{debit}}</td>
+          <td>{{credit}}</td>
+          <td>{{balance}}</td>
+        </tr>
+        {{/each}}
+      </tbody>
+      <tfoot>
+        <tr class="total-row">
+          <td colspan="3">الإجمالي الحالي للعملة</td>
+          <td>{{totalDebit}}</td>
+          <td>{{totalCredit}}</td>
+          <td>{{closingBalance}}</td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <div class="footer">
+      صفحة كشف حساب عملة {{currency}} | نظام {{../company.name}}
+    </div>
+  </div>
+  {{/each}}
 </html>

@@ -27,6 +27,7 @@ import {
   DollarSignIcon,
   UsersIcon,
   AlertCircleIcon,
+  X,
 } from "lucide-react";
 import { format } from "date-fns/format";
 import { SelectField } from "@/components/common/selection";
@@ -34,6 +35,7 @@ import { Calendar22 } from "@/components/common/DatePicker";
 import SearchInput from "@/components/common/searchlist";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Decimal } from "@prisma/client/runtime/library";
+import { UserOption } from "@/lib/actions/currnciesOptions";
 
 const reports = [
   // Sales
@@ -68,14 +70,14 @@ const reports = [
   {
     name: "تقرير الأرباح حسب المنتج",
     id: "profit-by-product",
-    type: "sales",
+    type: "others",
     icon: "💰",
     description: "ربحية كل منتج",
   },
   {
     name: "تقرير الربح والخسارة",
     id: "profit-loss",
-    type: "sales",
+    type: "others",
     icon: "📈",
     description: "بيان الربح والخسارة",
   },
@@ -125,31 +127,31 @@ const reports = [
     icon: "🛒",
     description: "سجل المشتريات",
   },
-  {
-    name: "تقرير مرتجعات المشتريات",
-    id: "purchase-returns",
-    type: "inventory",
-    icon: "↩️",
-    description: "المرتجعات للموردين",
-  },
+  // {
+  //   name: "تقرير مرتجعات المشتريات",
+  //   id: "purchase-returns",
+  //   type: "suppliers",
+  //   icon: "↩️",
+  //   description: "المرتجعات للموردين",
+  // },
   {
     name: "تقرير الموردين",
     id: "suppliers",
-    type: "inventory",
+    type: "suppliers",
     icon: "🏢",
     description: "قائمة الموردين ونشاطهم",
   },
   {
     name: "تقرير المبالغ المستحقة للموردين",
     id: "supplier-balance",
-    type: "inventory",
+    type: "suppliers",
     icon: "💳",
     description: "الذمم الدائنة",
   },
   {
     name: "   كشف حساب الموردين",
     id: "supplier_statment",
-    type: "inventory",
+    type: "suppliers",
     icon: "💳",
     description: "كشف حساب الموردين",
   },
@@ -213,25 +215,25 @@ const reports = [
     icon: "🧾",
     description: "عرض وطباعة جميع سندات وفواتير العملاء في صفحة واحدة",
   },
-  {
-    name: "تقرير المدفوعات من العملاء",
-    id: "customer-payments",
-    type: "customers",
-    icon: "💰",
-    description: "مدفوعات العملاء",
-  },
-  {
-    name: "  كشف حساب بنكي ",
-    id: "bank-statment",
-    type: "payments",
-    icon: "💰",
-    description: "كشف حساب بنكي",
-  },
   ,
+  // {
+  //   name: "تقرير المدفوعات من العملاء",
+  //   id: "customer-payments",
+  //   type: "customers",
+  //   icon: "💰",
+  //   description: "مدفوعات العملاء",
+  // },
+  // {
+  //   name: "  كشف حساب بنكي ",
+  //   id: "bank-statment",
+  //   type: "payments",
+  //   icon: "💰",
+  //   description: "كشف حساب بنكي",
+  // },
   {
     name: "سندات الموردين ",
     id: "supplier-receipts",
-    type: "inventory",
+    type: "suppliers",
     icon: "🧾",
     description: "كشف حساب بنكي",
   },
@@ -242,6 +244,20 @@ const reports = [
     icon: "🧾",
     description: "كشف حساب بنكي",
   },
+  // {
+  //   name: " كشف حساب  ",
+  //   id: "cash-statement",
+  //   type: "others",
+  //   icon: "🧾",
+  //   description: "كشف حساب صناديق",
+  // },
+  // {
+  //   name: " كشف حساب  ",
+  //   id: "invontery-statement",
+  //   type: "others",
+  //   icon: "🧾",
+  //   description: "كشف حساب مخزن",
+  // },
 ];
 
 const categories = [
@@ -271,6 +287,12 @@ const categories = [
     color: "bg-yellow-500",
   },
   {
+    name: "الموردين",
+    id: "suppliers",
+    icon: <UsersIcon className="h-4 w-4" />,
+    color: "bg-blue-500",
+  },
+  {
     name: "العملاء",
     id: "customers",
     icon: <UsersIcon className="h-4 w-4" />,
@@ -285,11 +307,19 @@ const categories = [
 ];
 
 export default function ReportsPage({
+  user,
   users,
   banks,
   suppliers,
   accounts,
+  warehouse,
 }: {
+  user:
+    | {
+        id?: string;
+        name?: string;
+      }[]
+    | undefined;
   users:
     | {
         id?: string;
@@ -302,16 +332,21 @@ export default function ReportsPage({
     | {
         id?: string;
         name?: string;
-        phoneNumber?: string | null;
-        totalDebt?: number;
       }[]
-    | null;
+    | undefined;
   banks: any;
   accounts: any;
+  warehouse:
+    | {
+        id?: string;
+        name?: string;
+      }[]
+    | undefined;
 }) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [salesTypes, setSalesTypes] = useState<UserOption | null>(null);
   const [category, setCategory] = useState("all");
   const [selectedReport, setSelectedReport] = useState<
     (typeof reports)[0] | null
@@ -320,7 +355,7 @@ export default function ReportsPage({
     searchParams.get("from") || "",
   );
   const [progress, setProgress] = useState(0);
-
+  const [paymentTypes, setPaymentTypes] = useState<UserOption | null>(null);
   const [toDate, setToDate] = useState<string>(searchParams.get("to") || "");
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const [selectedSupplier, setSelectedSupplier] = useState<any>(null);
@@ -329,7 +364,8 @@ export default function ReportsPage({
   const [reportType, setReportType] = useState<string>(
     searchParams.get("reportType") || "",
   );
-
+  const [warehouses, setWarehouses] = useState<any>(null);
+  const [userr, setUser] = useState<any>(null);
   const filteredReports =
     category === "all"
       ? reports
@@ -368,8 +404,12 @@ export default function ReportsPage({
           toDate,
           customerId: selectedCustomer?.id,
           accountId: selectedbank?.id,
-          id: selectedAccountId,
+          id: selectedAccountId?.id,
           suppliersId: selectedSupplier?.id,
+          salesTypes: salesTypes?.id,
+          userId: userr?.id,
+          warehouseId: warehouses?.id,
+          paymentTypes: paymentTypes?.id,
         }),
       });
       console.log("Fetch response:", selectedAccountId?.id);
@@ -384,6 +424,15 @@ export default function ReportsPage({
       a.download = `${reportType}.pdf`;
       a.click();
       window.URL.revokeObjectURL(url);
+      setIsSubmitting(false);
+      setSalesTypes(null);
+      setPaymentTypes(null);
+      setSelectedCustomer(null);
+      setSelectedSupplier(null);
+      setSelectedAccountId(null);
+      setSelectedbanks(null);
+      setWarehouses(null);
+      setUser(null);
     } catch (e) {
       alert("حدث خطأ أثناء تحميل التقرير");
     } finally {
@@ -401,7 +450,18 @@ export default function ReportsPage({
     selectedbank,
     selectedSupplier,
   ]);
-
+  const salesType = [
+    { id: "SALE", name: "بيع" },
+    { id: "RETURN_SALE", name: "مرتجع" },
+  ];
+  const purchasesSalesTypes = [
+    { id: "PURCHASE", name: "شراء" },
+    { id: "RETURN_PURCHASE", name: "مرتجع" },
+  ];
+  const paymentType = [
+    { id: "PAYMENT", name: "مدفوعات" },
+    { id: "RECEIPT", name: "مصروفات" },
+  ];
   return (
     <div className="w-full p-2">
       {/* Header */}
@@ -416,7 +476,7 @@ export default function ReportsPage({
         </div>
       </div> */}
       {/* Category Filter */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-7">
         {categories.map((cat) => (
           <Card
             key={cat.id}
@@ -462,36 +522,92 @@ export default function ReportsPage({
                   <div className="space-y-2">
                     <label className="flex items-center gap-2 text-sm font-medium">
                       👤 اختر بنك محدد (اختياري)
-                    </label>
-                    <SearchInput
-                      placeholder="ابحث عن بنك"
-                      paramKey="customer"
-                      options={banks ?? []}
-                      value={selectedbank?.name || ""}
-                      action={(bank) => setSelectedbanks(bank)}
-                    />
+                    </label>{" "}
+                    <div className="grid grid-cols-2 gap-1">
+                      <SearchInput
+                        placeholder="ابحث عن بنك"
+                        paramKey="customer"
+                        options={banks ?? []}
+                        value={selectedbank?.name || ""}
+                        action={(bank) => setSelectedbanks(bank)}
+                      />{" "}
+                      {selectedbank?.name && (
+                        <div className="flex items-center justify-center">
+                          <button
+                            onClick={() => setSalesTypes(null)}
+                            className="text-sm text-red-500 hover:underline"
+                          >
+                            الغاء
+                          </button>
+                        </div>
+                      )}
+                    </div>{" "}
                   </div>
                 )}{" "}
                 {selectedReport.id === "accounts-statement" && (
                   <div className="space-y-2">
                     <label className="flex items-center gap-2 text-sm font-medium">
                       👤 اختر محدد (اختياري)
+                    </label>{" "}
+                    <div className="grid grid-cols-2 gap-1">
+                      <SearchInput
+                        placeholder="ابحث عن "
+                        paramKey="account"
+                        options={accounts ?? []}
+                        value={selectedAccountId?.name || ""}
+                        action={(acc) => {
+                          setSelectedAccountId(acc);
+                        }}
+                      />
+                      {}
+                      {selectedAccountId?.name && (
+                        <div className="flex items-center justify-center">
+                          <button
+                            onClick={() => setSelectedAccountId(null)}
+                            className="text-sm text-red-500 hover:underline"
+                          >
+                            الغاء
+                          </button>
+                        </div>
+                      )}{" "}
+                    </div>
+                  </div>
+                )}{" "}
+                {["daily-sales", "sales-by-user"].includes(
+                  selectedReport.id,
+                ) && (
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm font-medium">
+                      👤 اختر مستخدم (اختياري)
                     </label>
-                    <SearchInput
-                      placeholder="ابحث عن "
-                      paramKey="account"
-                      options={accounts ?? []}
-                      value={selectedAccountId?.name || ""}
-                      action={(acc) => {
-                        console.log("Received from SearchInput:", acc);
-                        setSelectedAccountId(acc);
-                      }}
-                    />
+                    <div className="grid grid-cols-2 gap-1">
+                      <SearchInput
+                        placeholder="ابحث عن مستخدم"
+                        paramKey="users"
+                        options={user ?? []}
+                        value={userr?.name || ""}
+                        action={(acc) => {
+                          setUser(acc);
+                        }}
+                      />{" "}
+                      {user && (
+                        <div className="flex items-center justify-center">
+                          <button
+                            onClick={() => setUser(null)}
+                            className="text-sm text-red-500 hover:underline"
+                          >
+                            الغاء
+                          </button>
+                        </div>
+                      )}{" "}
+                    </div>
                   </div>
                 )}
                 {/* Customer Filter for customer reports */}
                 {(selectedReport.id === "supplier_statment" ||
-                  selectedReport.id === "supplier-receipts") && (
+                  selectedReport.id === "supplier-receipts" ||
+                  selectedReport.id === "purchases" ||
+                  selectedReport.id === "payments") && (
                   <div className="space-y-2">
                     <label className="flex items-center gap-2 text-sm font-medium">
                       👤 اختر مورد محدد (اختياري)
@@ -524,8 +640,109 @@ export default function ReportsPage({
                     )}
                   </div>
                 )}{" "}
+                {[
+                  "sales",
+                  "daily-sales",
+                  "sales-by-user",
+                  "purchases",
+                ].includes(selectedReport.id) && (
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm font-medium">
+                      اختر نوع البيع (اختياري)
+                    </label>{" "}
+                    <div className="grid grid-cols-2 gap-1">
+                      <SearchInput
+                        placeholder="ابحث  "
+                        paramKey="Sales"
+                        value={
+                          selectedReport.id === "purchases"
+                            ? (purchasesSalesTypes[0].name ?? "PURCHASE")
+                            : (salesTypes?.name ?? "")
+                        }
+                        options={
+                          selectedReport.id === "purchases"
+                            ? (purchasesSalesTypes ?? [])
+                            : (salesType ?? [])
+                        }
+                        action={(type) => setSalesTypes(type)}
+                      />{" "}
+                      {warehouses && (
+                        <div className="flex items-center justify-center">
+                          <button
+                            onClick={() => setSalesTypes(null)}
+                            className="text-sm text-red-500 hover:underline"
+                          >
+                            الغاء
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}{" "}
+                {["payments"].includes(selectedReport.id) && (
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm font-medium">
+                      اختر نوع سند (اختياري)
+                    </label>{" "}
+                    <div className="grid grid-cols-2 gap-1">
+                      <SearchInput
+                        placeholder="ابحث  "
+                        paramKey="Sales"
+                        value={paymentTypes?.name ?? ""}
+                        options={paymentType ?? []}
+                        action={(type) => setPaymentTypes(type)}
+                      />{" "}
+                      {warehouses && (
+                        <div className="flex items-center justify-center">
+                          <button
+                            onClick={() => setPaymentTypes(null)}
+                            className="text-sm text-red-500 hover:underline"
+                          >
+                            الغاء
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {[
+                  " stock-take",
+                  "low-stock",
+                  "stock-movement",
+                  "expiring-products",
+                  "stock",
+                  "purchases",
+                  "inventory",
+                ].includes(selectedReport.id) && (
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm font-medium">
+                      المخزن (اختياري)
+                    </label>
+                    <div className="grid grid-cols-2 gap-1">
+                      <SearchInput
+                        placeholder="ابحث  "
+                        paramKey="warehouses"
+                        value={warehouses?.name ?? ""}
+                        options={warehouse ?? []}
+                        action={(type) => setWarehouses(type)}
+                      />
+
+                      {warehouses && (
+                        <div className="flex items-center justify-center">
+                          <button
+                            onClick={() => setWarehouses(null)}
+                            className="text-sm text-red-500 hover:underline"
+                          >
+                            الغاء
+                          </button>
+                        </div>
+                      )}
+                    </div>{" "}
+                  </div>
+                )}
                 {(selectedReport.id === "customer_statment" ||
-                  selectedReport.id === "customer-receipts") && (
+                  selectedReport.id === "customer-receipts" ||
+                  selectedReport.id === "payments") && (
                   <div className="space-y-2">
                     <label className="flex items-center gap-2 text-sm font-medium">
                       👤 اختر عميل محدد (اختياري)
@@ -592,7 +809,7 @@ export default function ReportsPage({
         )}
       </div>
       {/* Report Selection Grid */}{" "}
-      <ScrollArea className="h-[96vh] p-2 px-2 py-2" dir="rtl">
+      <ScrollArea className="max-h-[74vh] p-2 px-2 py-2" dir="rtl">
         <Card>
           {" "}
           <CardHeader>
@@ -646,21 +863,20 @@ export default function ReportsPage({
             </div>
           </CardContent>
         </Card>{" "}
-        {/* Quick Stats */}
+        {!selectedReport && (
+          <Card>
+            <CardHeader>
+              <CardTitle>نصائح سريعة</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <p>• استخدم الفترة الزمنية لتصفية البيانات حسب التاريخ</p>
+              <p>• جميع التقارير يتم تصديرها بصيغة PDF</p>
+              <p>• يمكنك طباعة التقارير مباشرة من ملف PDF</p>
+              <p>• تقارير العملاء يمكن تصفيتها حسب عميل محدد</p>
+            </CardContent>
+          </Card>
+        )}
       </ScrollArea>
-      {!selectedReport && (
-        <Card>
-          <CardHeader>
-            <CardTitle>نصائح سريعة</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <p>• استخدم الفترة الزمنية لتصفية البيانات حسب التاريخ</p>
-            <p>• جميع التقارير يتم تصديرها بصيغة PDF</p>
-            <p>• يمكنك طباعة التقارير مباشرة من ملف PDF</p>
-            <p>• تقارير العملاء يمكن تصفيتها حسب عميل محدد</p>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

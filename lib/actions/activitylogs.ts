@@ -1,6 +1,7 @@
 "use server";
 import prisma from "@/lib/prisma";
 import { SortingState } from "@tanstack/react-table";
+import { getSession } from "../session";
 
 export async function logActivity(
   userId: string,
@@ -46,4 +47,16 @@ export async function getActivityLogs(
     take: pageSize,
   });
   return { logs, total };
+}
+export async function getUsers() {
+  const user = await getSession();
+  if (!user) return;
+  const users = await prisma.user.findMany({
+    where: { companyId: user.companyId },
+    select: {
+      id: true,
+      name: true,
+    },
+  });
+  return users;
 }

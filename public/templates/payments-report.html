@@ -1,5 +1,6 @@
 <!doctype html>
-<html lang="ar" dir="rtl">  <link
+<html lang="ar" dir="rtl">
+  <link
     href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap"
     rel="stylesheet"
   />
@@ -8,16 +9,16 @@
     <title>تقرير المدفوعات</title>
     <style>
       body {
-  font-family: "Cairo", sans-serif;       direction: rtl;
+        font-family: "Cairo", sans-serif;
+        direction: rtl;
         text-align: right;
-        margin: 30px;
+        margin: 20px;
+        margin-top: 10px;
+        margin-bottom: 10px;
         background: #f8f9fa;
         color: #333;
       }
-      .header {
-        border-bottom: 1px solid black;
-        border-radius: 6px;
-      }
+
       .flex {
         display: flex;
       }
@@ -63,7 +64,7 @@
         font-weight: bold;
       }
       .text-2xl {
-          font-size: 15px;
+        font-size: 15px;
         font-weight: bold;
       }
       .justify-between {
@@ -75,23 +76,36 @@
       .items-center {
         align-items: center;
       }
-      .header h1 {
-        font-size: 28px;
-        color: #2c3e50;
-        margin-bottom: 5px;
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 2px solid #000;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
       }
-      .header h3 {
-        font-size: 18px;
-        color: #34495e;
-        margin-bottom: 3px;
+
+      .header-right {
+        width: 33%;
+        text-align: right;
       }
-      .header p {
-        font-size: 16px;
-        color: #555;
+
+      .header-center {
+        width: 33%;
+        text-align: center;
+      }
+
+      .header-left {
+        width: 33%;
+        text-align: left;
+        font-size: 14px;
+      }
+      .col-date {
+        width: 12%;
       }
       .section-title {
         font-size: 20px;
-        background: #9b59b6;
+        background: #1abc9c;
         color: #fff;
         padding: 8px 12px;
         border-radius: 5px;
@@ -101,24 +115,48 @@
       table {
         width: 100%;
         border-collapse: collapse;
-        margin-bottom: 25px;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        table-layout: fixed; /* Keeps columns aligned */
       }
-      table th,
-      table td {
-        padding: 12px;
-        border: 1px solid #ddd;
-        font-size: 15px;
+      th,
+      td {
+        border: 1px solid #000;
+        padding: 8px 4px;
+        font-size: 12px;
         text-align: center;
+        word-wrap: break-word;
       }
-      table th {
-        background: #8e44ad;
-        color: #fff;
+      th {
+        background-color: #f2f2f2;
+      }
+
+      thead {
+        display: table-header-group; /* Repeats header on new pages */
+      }
+
+      tr {
+        page-break-inside: avoid;
       }
       .total-row {
         background: #ecf0f1;
         font-weight: bold;
         color: #2c3e50;
+      }
+      .info-box {
+        display: grid;
+        /* Creates two columns of equal width */
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px 10px; /* 10px vertical gap, 20px horizontal gap */
+
+        padding: 15px;
+        border: 1px solid #ddd; /* Lighter border for cleaner look */
+        border-radius: 8px;
+        background: #f9f9f9;
+        direction: rtl; /* Ensures grid flows correctly for Arabic */
+      }
+      .info-box p {
+        margin: 0; /* Remove default paragraph margins to keep grid tight */
+        font-size: 14px;
+        line-height: 1.6;
       }
       .footer {
         margin-top: 50px;
@@ -133,58 +171,69 @@
   </head>
   <body>
     <div class="section">
-      <div class="header mb-2 flex items-center justify-between" dir="rtl">
+      <div class="header">
         <!-- Company -->
-        <div class="grid grid-rows-3 items-baseline gap-2 text-right">
-          <span class="green text-3xl font-bold"> {{company.name}} </span>
-          <span class="text-2xl">{{company.name}} </span>
+        <div class="header-right">
+          <div
+            style="
+              font-size: 18px;
+              font-weight: bold;
+              line-height: 1.2;
+              max-width: 200px;
+              word-wrap: break-word;
+            "
+            class="green text-3xl font-bold"
+          >
+            {{company.name}}
+          </div>
+          <div>تلفون: {{company.phone}}</div>
         </div>
 
         <!-- Logo -->
-        <div class="flex flex-col items-center">
+        <div class="logo-title-container">
           <img src="{{company.logoUrl}}" style="width: 100px; height: 90px" />
+          <div class="title-box">📋تقرير المدفوعات</div>
         </div>
 
-        <!-- Branch -->
-        <div class="grid grid-rows-4">
+        <div class="header-left">
           <div class="text-lg">{{company.address}}</div>
           <div class="text-lg">{{company.city}}</div>
-          <div>تلفون: {{company.phone}}</div>
         </div>
       </div>
     </div>
+    <div class="info-box">
+      <p><strong>من تاريخ:</strong> {{period.from}}</p>
+      <p><strong>إلى تاريخ:</strong> {{period.to}}</p>
+   
+    </div>
 
-    
-
-    
-
-    <div class="section-title"></div>  <p>الفترة: {{from}} إلى {{to}}</p>المدفوعات
-</div>
     <table>
       <thead>
-        <tr>
+          <tr>  <th>رقم السند</th>
           <th>المستفيد</th>
-          <th>الدافع</th>
+            <th>نوع العمليه</th>
           <th>طريقة الدفع</th>
-          <th>المبلغ</th>
+          <th>المبلغ</th><th>العمله</th>
           <th>تاريخ الدفع</th>
-        </tr>
+          </tr>
       </thead>
       <tbody>
-        {{#each payments}}
+         {{#each payments}}
         <tr>
+        <tr>
+          <td>{{this.voucherNumber}}</td>
           <td>{{this.name}}</td>
-          <td>{{this.payee}}</td>
+      <td>{{this.type}}</td>
           <td>{{this.method}}</td>
-          <td class="currency">{{this.amount}}</td>
+          <td >{{this.amount}}</td>    <td>{{this.payee}}</td>
           <td>{{this.date}}</td>
+          </tr>
         </tr>
         {{/each}}
-        <tr class="total-row">
-          <td colspan="2">إجمالي المدفوعات</td>
+       <tr class="total-row">
+          <td colspan="3">إجمالي المدفوعات</td>
           <td class="currency">{{totalPayments}}</td>
-          <td></td>
-        </tr>
+          </tr>
       </tbody>
     </table>
 

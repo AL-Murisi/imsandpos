@@ -215,21 +215,34 @@
 self.addEventListener("install", () => {
   self.skipWaiting();
 });
-
-self.addEventListener("activate", () => {
-  self.clients.matchAll({ type: "window" }).then((windowClients) => {
-    for (let windowClient of windowClients) {
-      // Force open pages to refresh, so that they have a chance to load the
-      // fresh navigation response from the local dev server.
-      windowClient.navigate(windowClient.url);
-    }
-  });
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    (async () => {
+      const clients = await self.clients.matchAll();
+      clients.forEach((c) => c.postMessage({ type: "SYNC_UNREAD" }));
+    })(),
+  );
 });
+// self.addEventListener("activate", () => {
+//   self.clients.matchAll({ type: "window" }).then((windowClients) => {
+//     for (let windowClient of windowClients) {
+//       // Force open pages to refresh, so that they have a chance to load the
+//       // fresh navigation response from the local dev server.
+//       windowClient.navigate(windowClient.url);
+//     }
+//   });
+// });
+let unreadCount = 0;
 self.addEventListener("push", function (event) {
   if (event.data) {
     const data = event.data.json();
 
-    navigator.setAppBadge(12);
+    unreadCount++;
+
+    // App badge (Chrome / Edge / Android)
+    if ("setAppBadge" in navigator) {
+      navigator.setAppBadge(unreadCount).catch(() => {});
+    }
 
     const options = {
       body: data.body,

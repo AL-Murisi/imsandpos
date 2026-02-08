@@ -202,12 +202,6 @@
     </table>
 
     <!-- Gross Profit -->
-    <table>
-      <tr class="total-row">
-        <td>الربح الإجمالي</td>
-        <td>{{grossProfit}}</td>
-      </tr>
-    </table>
 
     <!-- Expenses Section -->
     <div class="section-title">المصاريف</div>
@@ -222,6 +216,7 @@
         {{#each expenses}}
         <tr>
           <td>{{this.name}}</td>
+
           <td>{{this.amount}}</td>
         </tr>
         {{/each}}
@@ -240,7 +235,19 @@
         <td>{{netProfit}}</td>
       </tr>
     </table>
+    <table>
+      <tr class="total-row">
+        <td>الربح الإجمالي (Gross Profit)</td>
+        <td>{{grossProfit}}</td>
+      </tr>
+    </table>
 
+    <table>
+      <tr class="total-row" style="border: 2px solid #000">
+        <td style="font-size: 1.2em">صافي الربح (Net Profit)</td>
+        <td style="font-size: 1.2em">{{netProfit}}</td>
+      </tr>
+    </table>
     <div class="footer">
       <div>المستخدم:{{createby}}</div>
 
