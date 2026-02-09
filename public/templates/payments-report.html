@@ -187,7 +187,8 @@
       }
     </style>
   </head>
-  <body>{{#each currencyGroups}}
+  <body>
+  
     <div class="section">
       <div class="header">
         <!-- Company -->
@@ -219,6 +220,7 @@
         </div>
       </div>
     </div>
+      {{#each currencyGroups}}
   <div class="info-box">
       <p><strong>من تاريخ:</strong> {{../period.from}}</p>
       <p><strong>إلى تاريخ:</strong> {{../period.to}}</p>
