@@ -1592,7 +1592,6 @@ export interface InventoryUpdateDatas {
   // Supplier fields
   supplierId?: string;
   unitCost?: number;
-  unit: string;
   currency_code?: string;
   baseCurrency: string;
   // Payment
