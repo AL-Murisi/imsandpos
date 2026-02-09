@@ -918,7 +918,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
       }
       case "payments": {
         templateFile = "payments-report.html";
-        const payments = await prisma.financialTransaction.findMany({
+        const paymentsRaw = await prisma.financialTransaction.findMany({
           where: {
             supplierId: suppliersId,
             customerId: customerId,
@@ -927,7 +927,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
             createdAt: createDateFilter(fromDate, toDate),
           },
           select: {
-            customer: true,
+            customer: { select: { name: true } },
             createdAt: true,
             supplier: { select: { name: true } },
             amount: true,
@@ -938,22 +938,44 @@ export async function POST(req: NextRequest, context: RouteContext) {
           },
         });
 
-        data = {
-          ...baseData,
-          payments: payments.map((p) => ({
-            payee: p.currencyCode,
+        // Grouping logic
+        const groupedPayments = paymentsRaw.reduce((acc: any, p) => {
+          const currency = p.currencyCode || "N/A";
+          if (!acc[currency]) {
+            acc[currency] = {
+              currency: currency,
+              items: [],
+              total: 0,
+            };
+          }
+
+          acc[currency].items.push({
             name: p.customer?.name ?? p.supplier?.name ?? "N/A",
             voucherNumber: p.voucherNumber,
-            amount: p.amount,
+            amount: Number(p.amount).toFixed(2),
             type: p.type === "PAYMENT" ? "دفعة" : "استلام",
             method: p.paymentMethod,
             date: p.createdAt.toLocaleDateString("ar-EG"),
+          });
+
+          acc[currency].total += Number(p.amount);
+          return acc;
+        }, {});
+
+        data = {
+          ...baseData,
+          // Convert the object groups into an array for Handlebars
+          currencyGroups: Object.values(groupedPayments).map((group: any) => ({
+            ...group,
+            total: group.total.toFixed(2),
           })),
-          totalPayments: payments.reduce((sum, p) => sum + Number(p.amount), 0),
+          period: {
+            from: fromDate,
+            to: toDate,
+          },
         };
         break;
       }
-
       case "expenses": {
         templateFile = "expenses-report.html";
         const expenses = await prisma.expenses.findMany({

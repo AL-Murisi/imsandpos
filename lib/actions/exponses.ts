@@ -3,7 +3,7 @@
 // ============================================
 "use server";
 import prisma from "@/lib/prisma";
-import { account_category, Prisma } from "@prisma/client";
+import { account_category, Prisma, TransactionType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { getNextVoucherNumber } from "./cashier";
 import { validateFiscalYear } from "./fiscalYear";
@@ -315,6 +315,11 @@ export async function createMultipleExpenses(
         const expenseNumber = `EXP-${String(nextExpenseNumber).padStart(5, "0")}`;
         nextExpenseNumber++; // زيادة الرقم للمصروف التالي
         // توليد رقم مصروف فريد
+        const voucherNumber = await getNextVoucherNumber(
+          companyId,
+          "PAYMENT",
+          tx,
+        );
         const amount = expenseData.amountFC;
         //        أ - إنشاء سجل المصروف(expenses)
         const expense = await tx.expenses.create({
@@ -331,28 +336,27 @@ export async function createMultipleExpenses(
             reference_number: expenseData.referenceNumber,
             notes: expenseData.notes || "",
             status: "approved",
+            transactions: {
+              create: {
+                companyId: companyId,
+                type: TransactionType.PAYMENT, // سند صرف
+                userId: userId,
+                branchId: expenseData.branchId,
+                voucherNumber,
+                amount: amount ?? expenseData.amount,
+                currencyCode: expenseData.currency_code || "YER",
+                paymentMethod: expenseData.paymentMethod,
+                referenceNumber: expenseData.referenceNumber,
+                notes: expenseData.description,
+                status: "paid",
+                date: expenseData.expense_date,
+              },
+            },
           },
         });
 
         // ب- إنشاء المعاملة المالية المرتبطة (FinancialTransaction)
         // هذا يمثل "سند الصرف" الفعلي في الخزينة
-        const financialTx = await tx.financialTransaction.create({
-          data: {
-            companyId: companyId,
-            type: "PAYMENT", // سند صرف
-            userId: userId,
-            branchId: expenseData.branchId,
-            expenseId: expense.id, // الربط الذي أضفناه في الموديل
-            voucherNumber: currentVoucherNumber,
-            amount: amount ?? expenseData.amount,
-            currencyCode: expenseData.currency_code || "YER",
-            paymentMethod: expenseData.paymentMethod,
-            referenceNumber: expenseData.referenceNumber,
-            notes: expenseData.description,
-            status: "paid",
-            date: expenseData.expense_date,
-          },
-        });
 
         // ج- إنشاء حدث القيد المحاسبي (JournalEvent)
         const journalEvent = await tx.journalEvent.create({
@@ -378,7 +382,6 @@ export async function createMultipleExpenses(
                 amountFC: expenseData.amountFC,
                 baseAmount: expenseData.baseAmount,
                 currency_code: expenseData.currency_code ?? "YER",
-                financialTxId: financialTx.id, // ربط القيد بالسند أيضاً
               },
               userId,
             },
@@ -388,7 +391,6 @@ export async function createMultipleExpenses(
 
         createdExpenses.push(expense);
         journalEvents.push(journalEvent);
-        financialTransactions.push(financialTx);
       }
 
       // 3️⃣ تسجيل النشاط (Activity Log)
@@ -405,7 +407,7 @@ export async function createMultipleExpenses(
         },
       });
 
-      return { createdExpenses, journalEvents, financialTransactions };
+      return { createdExpenses, journalEvents };
     });
 
     revalidatePath("/expenses");

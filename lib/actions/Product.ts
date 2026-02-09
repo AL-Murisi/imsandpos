@@ -71,23 +71,22 @@ export async function CreateProduct(
         dimensions,
         supplierId,
         warehouseId,
+        inventory: {
+          create: {
+            companyId,
+            warehouseId,
+            stockQuantity: 0,
+            reservedQuantity: 0,
+            availableQuantity: 0,
+            reorderLevel: 10,
+            maxStockLevel: 0,
+            status: "out_of_stock",
+          },
+        },
       },
     });
 
     // ✅ Create inventory in separate call
-    const inventory = await prisma.inventory.create({
-      data: {
-        companyId,
-        productId: product.id,
-        warehouseId,
-        stockQuantity: 0,
-        reservedQuantity: 0,
-        availableQuantity: 0,
-        reorderLevel: 10,
-        maxStockLevel: 0,
-        status: "out_of_stock",
-      },
-    });
 
     // ✅ Log activity separately
     const logs = await prisma.activityLogs.create({
@@ -129,7 +128,6 @@ export async function CreateProduct(
       pricePerPacket: Number(product.pricePerPacket),
       pricePerCarton: Number(product.pricePerCarton),
       wholesalePrice: Number(product.wholesalePrice),
-      inventory,
     };
   } catch (error) {
     console.error("Failed to create product:", error);

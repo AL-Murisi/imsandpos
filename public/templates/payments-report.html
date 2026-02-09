@@ -18,7 +18,25 @@
         background: #f8f9fa;
         color: #333;
       }
+.currency-section {
+    page-break-after: always;
+    clear: both;
+  }
 
+  .currency-section:last-child {
+    page-break-after: auto;
+  }
+
+  /* Title styling for the current currency */
+  .currency-header {
+    background: #2c3e50;
+    color: white;
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 4px;
+    display: flex;
+    justify-content: space-between;
+  }
       .flex {
         display: flex;
       }
@@ -169,7 +187,7 @@
       }
     </style>
   </head>
-  <body>
+  <body>{{#each currencyGroups}}
     <div class="section">
       <div class="header">
         <!-- Company -->
@@ -201,46 +219,47 @@
         </div>
       </div>
     </div>
-    <div class="info-box">
-      <p><strong>من تاريخ:</strong> {{period.from}}</p>
-      <p><strong>إلى تاريخ:</strong> {{period.to}}</p>
-   
+  <div class="info-box">
+      <p><strong>من تاريخ:</strong> {{../period.from}}</p>
+      <p><strong>إلى تاريخ:</strong> {{../period.to}}</p>
+      <p><strong>العملة الحالية:</strong> {{currency}}</p>
     </div>
 
     <table>
       <thead>
-          <tr>  <th>رقم السند</th>
+        <tr>
+          <th>رقم السند</th>
           <th>المستفيد</th>
-            <th>نوع العمليه</th>
+          <th>نوع العمليه</th>
           <th>طريقة الدفع</th>
-          <th>المبلغ</th><th>العمله</th>
+          <th>المبلغ</th>
           <th>تاريخ الدفع</th>
-          </tr>
+        </tr>
       </thead>
       <tbody>
-         {{#each payments}}
+        {{#each items}}
         <tr>
-        <tr>
-          <td>{{this.voucherNumber}}</td>
-          <td>{{this.name}}</td>
-      <td>{{this.type}}</td>
-          <td>{{this.method}}</td>
-          <td >{{this.amount}}</td>    <td>{{this.payee}}</td>
-          <td>{{this.date}}</td>
-          </tr>
+          <td>{{voucherNumber}}</td>
+          <td>{{name}}</td>
+          <td>{{type}}</td>
+          <td>{{method}}</td>
+          <td>{{amount}}</td>
+          <td>{{date}}</td>
         </tr>
         {{/each}}
-       <tr class="total-row">
-          <td colspan="3">إجمالي المدفوعات</td>
-          <td class="currency">{{totalPayments}}</td>
-          </tr>
       </tbody>
+      <tfoot>
+        <tr class="total-row">
+          <td colspan="4">إجمالي مدفوعات عملة ({{currency}})</td>
+          <td colspan="2" class="currency">{{total}} {{currency}}</td>
+        </tr>
+      </tfoot>
     </table>
 
     <div class="footer">
-      <div>المستخدم:{{createby}}</div>
-
+      <div>المستخدم: {{../createby}} | صفحة العملة: {{currency}}</div>
       تم إنشاء هذا التقرير بواسطة نظام إدارة المخزون والمحاسبة.
     </div>
+  </div>{{/each}}
   </body>
 </html>
