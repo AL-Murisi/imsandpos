@@ -1177,7 +1177,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
         const customers = await prisma.customer.findMany({
           where: customerId
             ? { id: customerId, companyId: user.companyId }
-            : { company_id: user.companyId, outstandingBalance: { gt: 0 } },
+            : { companyId: user.companyId, outstandingBalance: { gt: 0 } },
           select: { id: true, name: true, phoneNumber: true },
         });
 

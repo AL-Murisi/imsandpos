@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import prisma from "@/lib/prisma";
 
 import { z } from "zod";
-import { Prisma } from "@prisma/client";
+import { Prisma, TransactionType } from "@prisma/client";
 import { SortingState } from "@tanstack/react-table";
 import {
   CashierSchema,
@@ -1592,6 +1592,7 @@ export interface InventoryUpdateDatas {
   // Supplier fields
   supplierId?: string;
   unitCost?: number;
+  unit: string;
   currency_code?: string;
   baseCurrency: string;
   // Payment
@@ -1770,6 +1771,35 @@ export async function updateMultipleInventories(
           ) {
             const paid = updateData.payment?.amountBase || 0;
             const due = totalCost - paid;
+            const item = {
+              companyId: companyId,
+              productId: product.id,
+              quantity: stockUnits,
+              price: updateData.unitCost,
+              unit: selectedUnit.name,
+              totalPrice: totalCost,
+            };
+            const voucherNumber = await getNextVoucherNumber(
+              companyId,
+              "PAYMENT",
+              tx,
+            );
+            const payment =
+              paid > 0
+                ? {
+                    companyId,
+                    currencyCode: "",
+                    voucherNumber,
+                    supplierId: updateData.supplierId,
+                    userId,
+                    branchId: updateData.branchId,
+                    amount: paid,
+                    type: TransactionType.PAYMENT,
+                    status: "paid",
+                    paymentMethod: updateData.payment?.paymentMethod ?? "cash",
+                    notes: updateData.notes || "دفعة مشتريات",
+                  }
+                : undefined;
 
             const purchase = await tx.invoice.create({
               data: {
@@ -1784,53 +1814,55 @@ export async function updateMultipleInventories(
                 amountDue: due,
                 status:
                   paid >= totalCost ? "paid" : paid > 0 ? "partial" : "pending",
+                items: { create: item },
+                transactions: { create: payment },
               },
             });
 
-            await tx.invoiceItem.create({
-              data: {
-                companyId,
-                invoiceId: purchase.id,
-                productId: product.id,
-                quantity: stockUnits,
-                price: updateData.unitCost,
-                totalPrice: totalCost,
-                unit: selectedUnit.name,
-                // 🆕 Store unit information
-                // unitId: selectedUnit.id,
-                // unitName: selectedUnit.name,
-              },
-            });
+            // await tx.invoiceItem.create({
+            //   data: {
+            //     companyId,
+            //     invoiceId: purchase.id,
+            //     productId: product.id,
+            //     quantity: stockUnits,
+            //     price: updateData.unitCost,
+            //     totalPrice: totalCost,
+            //     unit: selectedUnit.name,
+            //     // 🆕 Store unit information
+            //     // unitId: selectedUnit.id,
+            //     // unitName: selectedUnit.name,
+            //   },
+            // });
 
             purchaseId = purchase.id;
             createdPurchases.push(purchase);
             let supplierPaymentId: string | null = null;
 
             // Create supplier payment if applicable
-            if (updateData.payment?.paymentMethod && paid > 0) {
-              const voucherNumber = await getNextVoucherNumber(
-                companyId,
-                "PAYMENT",
-                tx,
-              );
-              const supplierPayment = await tx.financialTransaction.create({
-                data: {
-                  companyId,
-                  currencyCode: "",
-                  voucherNumber,
-                  supplierId: updateData.supplierId,
-                  userId,
-                  branchId: updateData.branchId,
-                  invoiceId: purchase.id,
-                  amount: paid,
-                  type: "PAYMENT",
-                  status: "paid",
-                  paymentMethod: updateData.payment.paymentMethod,
-                  notes: updateData.notes || "دفعة مشتريات",
-                },
-              });
-              supplierPaymentId = supplierPayment.id;
-            }
+            // if (updateData.payment?.paymentMethod && paid > 0) {
+            //   const voucherNumber = await getNextVoucherNumber(
+            //     companyId,
+            //     "PAYMENT",
+            //     tx,
+            //   );
+            //   const supplierPayment = await tx.financialTransaction.create({
+            //     data: {
+            //       companyId,
+            //       currencyCode: "",
+            //       voucherNumber,
+            //       supplierId: updateData.supplierId,
+            //       userId,
+            //       branchId: updateData.branchId,
+            //       invoiceId: purchase.id,
+            //       amount: paid,
+            //       type: "PAYMENT",
+            //       status: "paid",
+            //       paymentMethod: updateData.payment.paymentMethod,
+            //       notes: updateData.notes || "دفعة مشتريات",
+            //     },
+            //   });
+            //   supplierPaymentId = supplierPayment.id;
+            // }
 
             // Update supplier totals
             const outstanding = totalCost - paid;

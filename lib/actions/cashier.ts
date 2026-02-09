@@ -736,7 +736,18 @@ export async function processReturn(data: any, companyId: string) {
       const inventoryMap = new Map(
         inventories.map((inv) => [`${inv.productId}-${inv.warehouseId}`, inv]),
       );
+      const saleItem = saleItemsMap.get(returnItems.productId)!;
 
+      const invoiceItemsData = returnItems.map((item: any) => ({
+        companyId,
+        productId: item.id,
+        unit: item.selectedUnitName,
+        quantity: item.selectedQty,
+        price: saleItem.price,
+        totalPrice: saleItem.price.toNumber() * item.quantity,
+        // If you need warehouse info at the item level:
+        // warehouseId: item.warehouseId
+      }));
       // 5. Create return sale record
       const returnSale = await tx.invoice.update({
         where: {
@@ -755,6 +766,7 @@ export async function processReturn(data: any, companyId: string) {
           totalAmount: returnToCustomer,
           amountPaid: returnToCustomer,
           amountDue: 0,
+          items: { update: invoiceItemsData },
         },
       });
 
