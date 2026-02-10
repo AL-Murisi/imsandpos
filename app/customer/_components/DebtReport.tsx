@@ -445,26 +445,26 @@ export default function DebtReport({
   /* ───────── Submit selected invoices ───────── */
   const paymentAmount = payment.amountBase;
 
-  async function sendNotification(amount: number, type: string) {
-    if (!user) return alert("No subscription");
-    try {
-      const response = await fetch("/api/web-push/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          companyId: user.companyId,
-          title: "سداد ديون",
-          body: `تم تسديد مبلغ ${formatCurrency(amount)} من ${customerName} - ${type}`,
-        }),
-      });
+  // async function sendNotification(amount: number, type: string) {
+  //   if (!user) return alert("No subscription");
+  //   try {
+  //     const response = await fetch("/api/web-push/send", {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({
+  //         companyId: user.companyId,
+  //         title: "سداد ديون",
+  //         body: `تم تسديد مبلغ ${formatCurrency(amount)} من ${customerName} - ${type}`,
+  //       }),
+  //     });
 
-      const result = await response.json();
-      console.log("Notification result:", result);
-    } catch (err) {
-      console.error("Failed to send notification:", err);
-      // Don't show error to user - notification is optional
-    }
-  }
+  //     const result = await response.json();
+  //     console.log("Notification result:", result);
+  //   } catch (err) {
+  //     console.error("Failed to send notification:", err);
+  //     // Don't show error to user - notification is optional
+  //   }
+  // }
 
   const onSubmit = async () => {
     if (!payment.paymentMethod || !payment.accountId) {
@@ -504,7 +504,7 @@ export default function DebtReport({
       );
 
       // Send notification after successful payment
-      await sendNotification(paymentAmount, "تسديد فواتير");
+      // await sendNotification(paymentAmount, "تسديد فواتير");
 
       toast.success("تم السداد بنجاح");
       setOpen(false);
@@ -566,7 +566,7 @@ export default function DebtReport({
       );
 
       // Send notification after successful payment
-      await sendNotification(paymentAmount, "تسديد رصيد");
+      // await sendNotification(paymentAmount, "تسديد رصيد");
 
       toast.success("تم تسديد الرصيد");
       setOpen(false);

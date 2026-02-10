@@ -5,6 +5,77 @@ import { fetchProductStats } from "./Product";
 import { success } from "zod";
 import { getActiveFiscalYears } from "@/lib/actions/fiscalYear";
 import { TransactionType } from "@prisma/client";
+import webpush from "web-push";
+
+type CustomerPayments = Record<string, number>;
+
+async function sendPaymentNotifications(
+  companyId: string,
+  customerTotals: CustomerPayments,
+  label: string,
+) {
+  try {
+    const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+    const privateKey = process.env.VAPID_PRIVATE_KEY;
+    const subject = process.env.VAPID_SUBJECT;
+
+    if (!publicKey || !privateKey || !subject) {
+      console.error("VAPID keys are missing in environment variables");
+      return;
+    }
+
+    const customerIds = Object.keys(customerTotals);
+    if (customerIds.length === 0) return;
+
+    const [customers, subscriptions] = await Promise.all([
+      prisma.customer.findMany({
+        where: { companyId, id: { in: customerIds } },
+        select: { id: true, name: true },
+      }),
+      prisma.pushSubscription.findMany({
+        where: { company_id: companyId },
+      }),
+    ]);
+
+    if (subscriptions.length === 0) return;
+
+    const customerNameMap = new Map(customers.map((c) => [c.id, c.name]));
+
+    webpush.setVapidDetails(subject, publicKey, privateKey);
+
+    const payloads = customerIds.map((id) => {
+      const name = customerNameMap.get(id) || "عميل";
+      const amount = customerTotals[id] || 0;
+      return JSON.stringify({
+        title: "سداد ديون",
+        body: `تم تسديد مبلغ ${amount} من ${name} - ${label}`,
+        data: { url: "/", sound: "/sounds/notification.wav" },
+      });
+    });
+
+    await Promise.all(
+      subscriptions.flatMap((sub) =>
+        payloads.map(async (payload) => {
+          try {
+            await webpush.sendNotification(
+              {
+                endpoint: sub.endpoint,
+                keys: { p256dh: sub.p256dh, auth: sub.auth },
+              },
+              payload,
+            );
+          } catch (error: any) {
+            if (error?.statusCode === 410) {
+              await prisma.pushSubscription.delete({ where: { id: sub.id } });
+            }
+          }
+        }),
+      ),
+    );
+  } catch (err) {
+    console.error("Failed to send payment notifications:", err);
+  }
+}
 // async function getNextVoucherNumber(
 //   companyId: string,
 //   type: "RECEIPT" | "PAYMENT",
@@ -507,6 +578,7 @@ function hashToInt(str: string): number {
 // ============================================
 // FIXED: updateSalesBulk
 // ============================================
+
 export async function updateSalesBulk(
   companyId: string,
   saleIds: string[],
@@ -677,6 +749,7 @@ export async function updateSalesBulk(
         success: true,
         updatedSales: saleUpdates.length,
         paymentsCreated: createdPayments.length,
+        customerUpdates,
       };
     },
     {
@@ -684,6 +757,14 @@ export async function updateSalesBulk(
       timeout: 45000, // Increased timeout for bulk operations
     },
   );
+
+  if (result?.customerUpdates) {
+    await sendPaymentNotifications(
+      companyId,
+      result.customerUpdates,
+      "تسديد فواتير",
+    );
+  }
 
   revalidatePath("/customer");
   return result;
@@ -781,6 +862,8 @@ export async function payOutstandingOnly(
         success: true,
         paymentId: payment.id,
         amountPaid: payment.amount,
+        customerId,
+        paymentBaseAmount: paymentDetails.baseAmount || paymentAmount,
       };
     },
     {
@@ -788,6 +871,14 @@ export async function payOutstandingOnly(
       timeout: 15000,
     },
   );
+
+  if (result?.customerId && result?.paymentBaseAmount) {
+    await sendPaymentNotifications(
+      companyId,
+      { [result.customerId]: result.paymentBaseAmount },
+      "تسديد رصيد",
+    );
+  }
 
   revalidatePath("/customer");
   return result;

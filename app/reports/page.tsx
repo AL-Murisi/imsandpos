@@ -9,6 +9,7 @@ import {
 import { FetchSupplierbyname } from "@/lib/actions/suppliers";
 import { getUsers } from "@/lib/actions/activitylogs";
 import { filteringData } from "@/lib/actions/roles";
+import { fetchbranches } from "@/lib/actions/pos";
 type Props = {
   searchParams: Promise<{
     productquery?: string;
@@ -23,15 +24,21 @@ type Props = {
 
 export default async function page({ searchParams }: Props) {
   const { usersquery = "" } = await searchParams;
-  const users = await Fetchcustomerbyname(usersquery);
-  const banks = await Fetchbanks();
-  const accounts = await fetchAccountsForSelect();
+
   const filtering = await filteringData();
 
+  const [users, banks, accounts, branch] = await Promise.all([
+    Fetchcustomerbyname(usersquery),
+    Fetchbanks(),
+
+    fetchAccountsForSelect(),
+    fetchbranches(),
+  ]);
   return (
     <ScrollArea className="max-h-[95vh] p-2" dir="rtl">
       <ReportsPage
         users={users}
+        branch={branch}
         suppliers={filtering?.suppliers}
         banks={banks}
         user={filtering?.user}

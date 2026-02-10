@@ -314,8 +314,15 @@ export default function ReportsPage({
   suppliers,
   accounts,
   warehouse,
+  branch,
 }: {
   user:
+    | {
+        id?: string;
+        name?: string;
+      }[]
+    | undefined;
+  branch:
     | {
         id?: string;
         name?: string;
@@ -366,7 +373,10 @@ export default function ReportsPage({
     searchParams.get("reportType") || "",
   );
   const [warehouses, setWarehouses] = useState<any>(null);
+  const [branches, setBranch] = useState<any>(null);
   const [userr, setUser] = useState<any>(null);
+  const [isBulkSubmitting, setIsBulkSubmitting] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState(0);
   const filteredReports =
     category === "all"
       ? reports
@@ -385,6 +395,25 @@ export default function ReportsPage({
       if (report) setSelectedReport(report);
     }
   }, [searchParams]);
+  // const handleDownloadAll = async () => {
+  //   setIsBulkSubmitting(true);
+  //   setBulkProgress(0);
+
+  //   try {
+  //     // build tasks...
+  //     const total = tasks.length || 1;
+  //     let done = 0;
+
+  //     for (const task of tasks) {
+  //       await downloadReport(task.type, task.payload, task.filename);
+  //       done += 1;
+  //       setBulkProgress(Math.round((done / total) * 100));
+  //     }
+  //   } finally {
+  //     setIsBulkSubmitting(false);
+  //     setTimeout(() => setBulkProgress(0), 600);
+  //   }
+  // };
 
   const handleDownload = useCallback(async () => {
     if (!reportType) return;
@@ -411,6 +440,7 @@ export default function ReportsPage({
           userId: userr?.id,
           warehouseId: warehouses?.id,
           paymentTypes: paymentTypes?.id,
+          branchId: branches?.id,
         }),
       });
       console.log("Fetch response:", selectedAccountId?.id);
@@ -434,6 +464,7 @@ export default function ReportsPage({
       setSelectedbanks(null);
       setWarehouses(null);
       setUser(null);
+      setBranch(null);
     } catch (e) {
       alert("حدث خطأ أثناء تحميل التقرير");
     } finally {
@@ -518,6 +549,30 @@ export default function ReportsPage({
                     📅 الفترة الزمنية
                   </label>
                   <Calendar22 />
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm font-medium">
+                      👤 اختر فرع محدد (اختياري)
+                    </label>{" "}
+                    <div className="grid grid-cols-2 gap-1">
+                      <SearchInput
+                        placeholder="ابحث عن  فرع محدد"
+                        paramKey="branch"
+                        options={branch ?? []}
+                        value={branches?.name || ""}
+                        action={(bank) => setBranch(bank)}
+                      />{" "}
+                      {branches?.name && (
+                        <div className="flex items-center justify-center">
+                          <button
+                            onClick={() => setBranch(null)}
+                            className="text-sm text-red-500 hover:underline"
+                          >
+                            الغاء
+                          </button>
+                        </div>
+                      )}
+                    </div>{" "}
+                  </div>
                 </div>
                 {selectedReport.id === "bank-statment" && (
                   <div className="space-y-2">
