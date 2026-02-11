@@ -2,6 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { getSession } from "../session";
+import { revalidatePath } from "next/cache";
 
 interface CreateCompanyInput {
   name: string;
@@ -14,6 +15,7 @@ interface CreateCompanyInput {
   adminEmail: string;
   adminPassword: string;
   base_currency: string;
+  supabaseId?: string;
 }
 
 export async function createCompany(data: CreateCompanyInput) {
@@ -28,6 +30,7 @@ export async function createCompany(data: CreateCompanyInput) {
     adminEmail,
     adminPassword,
     base_currency,
+    supabaseId,
   } = data;
 
   try {
@@ -79,8 +82,14 @@ export async function createCompany(data: CreateCompanyInput) {
           name: adminName,
           phoneNumber: phone,
           password: adminPassword,
+          supabaseId,
           isActive: true,
         },
+      });
+    } else if (supabaseId && !user.supabaseId) {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { supabaseId },
       });
     }
 
@@ -129,7 +138,7 @@ export async function updateCompany(
         updatedAt: new Date(),
       },
     });
-
+    revalidatePath("/company"); // Invalidate dashboard cache to reflect changes immediately
     return { success: true, company: updatedCompany };
   } catch (error: any) {
     console.error("❌ Error updating company:", error);

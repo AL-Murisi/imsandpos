@@ -40,7 +40,6 @@ export default function EditUserForm({ users }: any) {
       name: users.name,
       phoneNumber: users.phoneNumber,
       password: users.password,
-
       roleId: users.roleId,
     },
   });
@@ -118,7 +117,7 @@ export default function EditUserForm({ users }: any) {
               <Input id="phoneNumber" type="tel" {...register("phoneNumber")} />
             </div>
 
-            {/* Password */}
+            {/* Password
             <div className="grid gap-2">
               <Label htmlFor="password">كلمة المرور</Label>
               <Input id="password" type="password" {...register("password")} />
@@ -127,7 +126,7 @@ export default function EditUserForm({ users }: any) {
                   {errors.password.message}
                 </p>
               )}
-            </div>
+            </div> */}
           </div>
 
           {/* Role select */}

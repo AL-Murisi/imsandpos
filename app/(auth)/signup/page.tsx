@@ -19,10 +19,10 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import { createClient } from "@supabase/supabase-js";
 import Link from "next/link";
 import { SelectField } from "@/components/common/selectproduct";
 import { currencyOptions } from "@/lib/actions/currnciesOptions";
+import { supabase } from "@/lib/supabaseClient";
 // import { createClient } from "@supabase/supabase-js";
 
 // Initialize Supabase client
@@ -120,17 +120,52 @@ export default function CompanySignup() {
     setLogoFile(null);
     setLogoPreview(null);
   };
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  );
-
   const onSubmit = async (data: FormValues) => {
     setLoading(true);
     setErrorMessage("");
     setSuccessMessage("");
 
     try {
+      let supabaseId: string | undefined;
+
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp(
+        {
+          email: data.adminEmail,
+          password: data.adminPassword,
+          options: {
+            data: { name: data.adminName },
+          },
+        },
+      );
+
+      if (signUpError) {
+        const alreadyRegistered =
+          signUpError.message.toLowerCase().includes("already registered") ||
+          signUpError.message.toLowerCase().includes("already been registered");
+
+        if (!alreadyRegistered) {
+          setErrorMessage(signUpError.message);
+          return;
+        }
+
+        const { data: signInData, error: signInError } =
+          await supabase.auth.signInWithPassword({
+            email: data.adminEmail,
+            password: data.adminPassword,
+          });
+
+        if (signInError || !signInData.user?.id) {
+          setErrorMessage(
+            "هذا البريد مسجل في Supabase، لكن كلمة المرور غير صحيحة.",
+          );
+          return;
+        }
+
+        supabaseId = signInData.user.id;
+      } else {
+        supabaseId = signUpData.user?.id;
+      }
+
       // First, create the company
       const result = await createCompany({
         name: data.name,
@@ -143,6 +178,7 @@ export default function CompanySignup() {
         adminEmail: data.adminEmail,
         adminPassword: data.adminPassword,
         base_currency: data.base_currency,
+        supabaseId,
       });
 
       if (result.success) {
@@ -170,6 +206,7 @@ export default function CompanySignup() {
         reset();
         setLogoFile(null);
         setLogoPreview(null);
+        await supabase.auth.signOut();
 
         setTimeout(() => {
           router.push("/login");

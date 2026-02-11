@@ -2,7 +2,8 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { deleteSession, SessionData } from "@/lib/session";
+import { SessionData } from "@/lib/session";
+import { supabase } from "@/lib/supabaseClient";
 
 import { toast } from "sonner";
 interface AuthContextType {
@@ -46,6 +47,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (!error && data.session?.access_token) {
+        const response = await fetch("/api/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ accessToken: data.session.access_token }),
+        });
+
+        if (response.ok) {
+          await checkAuth();
+          return true;
+        }
+
+        await supabase.auth.signOut();
+        return false;
+      }
+
       const response = await fetch("/api/login", {
         method: "POST",
         headers: {
@@ -54,11 +78,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ email, password }),
       });
 
-      if (response.ok) {
-        await checkAuth();
-        return true;
-      }
-      return false;
+      if (!response.ok) return false;
+
+      await checkAuth();
+      return true;
     } catch (error) {
       console.error("Login failed:", error);
       return false;
@@ -68,9 +91,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     try {
       // Call API to clear session server-side
-      await fetch("/api/auth/logout", {
-        method: "POST",
-      });
+      await supabase.auth.signOut();
+      await fetch("/api/logout", { method: "POST" });
       toast("loggedout successfully");
       setUser(null);
     } catch (error) {
@@ -100,7 +122,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Clear session
       await logout();
-      await deleteSession();
       // Force redirect to login with full page reload
       window.location.href = `/landing`;
     } catch (err) {

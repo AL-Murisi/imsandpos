@@ -11,6 +11,7 @@ export const CreateUserSchema = z.object({
 export const UpdateUserSchema = CreateUserSchema.partial().omit({
   password: true,
 });
+
 export type UserInput = z.infer<typeof CreateUserSchema>;
 
 export const userSchema = z.object({
