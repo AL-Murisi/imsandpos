@@ -666,8 +666,8 @@ export async function updateSupplierPayment(
         data: {
           userId,
           companyId,
-          action: "updated supplier payment",
-          details: `Payment updated for ${currentPayment.supplier?.name}: ${updatedPayment.amount}`,
+          action: "تحديث دفع المورد",
+          details: `تم تحديث الدفع الخاص بـ ${currentPayment.supplier?.name}: بمبلغ ${updatedPayment.amount}`,
         },
       });
 
@@ -885,8 +885,8 @@ export async function createSupplierPaymentFromPurchases(
       data: {
         userId,
         companyId,
-        action: "Created supplier payment",
-        details: `Supplier: ${supplierPayment?.supplier?.name}, Payment: ${amount}, Purchase: ${purchaseId}. Previous paid: ${previousAmountPaid}, New paid: ${newAmountPaid}. Previous due: ${previousAmountDue}, New due: ${newAmountDue}.`,
+        action: "إنشاء دفع للمورد",
+        details: `المورد: ${supplierPayment?.supplier?.name}، الدفعة: ${amount}، المشتريات: ${purchaseId}. المبلغ المدفوع سابقاً: ${previousAmountPaid}، المدفوع الجديد: ${newAmountPaid}. المستحق سابقاً: ${previousAmountDue}، المستحق الجديد: ${newAmountDue}.`,
       },
     });
 

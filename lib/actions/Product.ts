@@ -89,12 +89,12 @@ export async function CreateProduct(
     // ✅ Create inventory in separate call
 
     // ✅ Log activity separately
-    const logs = await prisma.activityLogs.create({
+    await prisma.activityLogs.create({
       data: {
         userId,
         companyId,
-        action: "created product",
-        details: `Product: ${name}, SKU: ${sku}`,
+        action: "إنشاء منتج",
+        details: `المنتج: ${name}، رمز المخزون (SKU): ${sku}`,
       },
     });
 
@@ -500,11 +500,10 @@ export async function UpdateProduct(
       data: {
         userId,
         companyId,
-        action: "updated product",
-        details: `Updated product: ${name}, SKU: ${sku}`,
+        action: "تحديث المنتج",
+        details: `تم تحديث المنتج: ${name}، رمز المخزون (SKU): ${sku}`,
       },
     });
-
     // ✅ Revalidate cache
     revalidatePath("/products/ProductClient");
 

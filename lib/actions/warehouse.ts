@@ -1962,7 +1962,7 @@ export async function updateMultipleInventories(
           data: {
             userId,
             companyId,
-            action: "تحديث_مخزون_متعدد",
+            action: "تحديث مخزون ",
             details: `تم تحديث ${updatesData.length} سجل مخزون. إجمالي الوحدات: ${totalUnits}`,
           },
         });

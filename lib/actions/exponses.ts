@@ -402,8 +402,8 @@ export async function createMultipleExpenses(
         data: {
           userId: userId,
           companyId: companyId,
-          action: "created multiple expenses with financial transactions",
-          details: `Created ${expensesData.length} expenses. Total: ${totalAmount}. Voucher range: ${lastNumber || 0 + 1} to ${currentVoucherNumber}`,
+          action: "إنشاء مصاريف متعددة مع عمليات مالية",
+          details: `تم إنشاء عدد ${expensesData.length} من المصاريف. الإجمالي: ${totalAmount}. نطاق السندات: من ${lastNumber || 0 + 1} إلى ${currentVoucherNumber}`,
         },
       });
 

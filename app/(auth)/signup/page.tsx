@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createCompany } from "@/lib/actions/createcompnayacc";
 import {
   Building2,
@@ -128,15 +128,14 @@ export default function CompanySignup() {
     try {
       let supabaseId: string | undefined;
 
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp(
-        {
+      const { data: signUpData, error: signUpError } =
+        await supabase.auth.signUp({
           email: data.adminEmail,
           password: data.adminPassword,
           options: {
             data: { name: data.adminName },
           },
-        },
-      );
+        });
 
       if (signUpError) {
         const alreadyRegistered =
