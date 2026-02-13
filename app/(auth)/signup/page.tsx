@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
+import svg from "../../../public/googleicon.svg";
 import { createCompany } from "@/lib/actions/createcompnayacc";
 import {
   Building2,
@@ -34,7 +36,7 @@ import { supabase } from "@/lib/supabaseClient";
 const CompanySignupSchema = z
   .object({
     name: z.string().min(2, "اسم الشركة يجب أن يكون على الأقل حرفين"),
-    email: z.string().email("البريد الإلكتروني غير صحيح"),
+    // email: z.string().email("البريد الإلكتروني غير صحيح"),
     phone: z.string().optional(),
     address: z.string().optional(),
     city: z.string().optional(),
@@ -74,7 +76,7 @@ export default function CompanySignup() {
     resolver: zodResolver(CompanySignupSchema),
     defaultValues: {
       name: "",
-      email: "",
+
       phone: "",
       address: "",
       city: "",
@@ -87,6 +89,7 @@ export default function CompanySignup() {
     },
   });
   const currency = watch("base_currency");
+  const email = watch("adminEmail");
   // Handle logo file selection
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -121,6 +124,8 @@ export default function CompanySignup() {
     setLogoPreview(null);
   };
   const onSubmit = async (data: FormValues) => {
+    if (loading) return;
+
     setLoading(true);
     setErrorMessage("");
     setSuccessMessage("");
@@ -132,43 +137,50 @@ export default function CompanySignup() {
         await supabase.auth.signUp({
           email: data.adminEmail,
           password: data.adminPassword,
-          options: {
-            data: { name: data.adminName },
-          },
         });
 
       if (signUpError) {
-        const alreadyRegistered =
-          signUpError.message.toLowerCase().includes("already registered") ||
-          signUpError.message.toLowerCase().includes("already been registered");
-
-        if (!alreadyRegistered) {
-          setErrorMessage(signUpError.message);
-          return;
-        }
-
-        const { data: signInData, error: signInError } =
-          await supabase.auth.signInWithPassword({
-            email: data.adminEmail,
-            password: data.adminPassword,
-          });
-
-        if (signInError || !signInData.user?.id) {
-          setErrorMessage(
-            "هذا البريد مسجل في Supabase، لكن كلمة المرور غير صحيحة.",
-          );
-          return;
-        }
-
-        supabaseId = signInData.user.id;
-      } else {
-        supabaseId = signUpData.user?.id;
+        setErrorMessage(signUpError.message);
+        return;
       }
 
+      // 🚨 Email already exists
+      if (!signUpData.user) {
+        setErrorMessage("هذا البريد الإلكتروني مسجل مسبقاً");
+        return;
+      }
+      // if (signUpError) {
+      //   const alreadyRegistered =
+      //     signUpError.message.toLowerCase().includes("already registered") ||
+      //     signUpError.message.toLowerCase().includes("already been registered");
+
+      //   if (!alreadyRegistered) {
+      //     setErrorMessage(signUpError.message);
+      //     return;
+      //   }
+
+      //   const { data: signInData, error: signInError } =
+      //     await supabase.auth.signInWithPassword({
+      //       email: data.adminEmail,
+      //       password: data.adminPassword,
+      //     });
+
+      //   if (signInError || !signInData.user?.id) {
+      //     setErrorMessage(
+      //       "هذا البريد مسجل في Supabase، لكن كلمة المرور غير صحيحة.",
+      //     );
+      //     return;
+      //   }
+
+      //   supabaseId = signInData.user.id;
+      // } else {
+      //   supabaseId = signUpData.user?.id;
+      // }
+      supabaseId = signUpData.user.id;
       // First, create the company
       const result = await createCompany({
         name: data.name,
-        email: data.email,
+        email: data.adminEmail,
         phone: data.phone || undefined,
         address: data.address || undefined,
         city: data.city || undefined,
@@ -371,15 +383,15 @@ export default function CompanySignup() {
                     </p>
                   )}
                 </div>
-                <div className="grid gap-2">
-                  <Label
+                {/*   <div className="grid gap-2">
+                 <Label
                     htmlFor="email"
                     className="text-right text-gray-700 dark:text-gray-300"
                   >
                     البريد الإلكتروني للشركة{" "}
                     <span className="text-red-500">*</span>
                   </Label>
-                  <div className="relative">
+                <div className="relative">
                     <Mail
                       className="absolute top-3 right-3 text-gray-400"
                       size={18}
@@ -391,13 +403,12 @@ export default function CompanySignup() {
                       className="pr-10 text-right"
                       {...register("email")}
                     />
-                  </div>
-                  {errors.email && (
+                  </div>  {errors.email && (
                     <p className="text-right text-xs text-red-500">
                       {errors.email.message}
                     </p>
-                  )}
-                </div>{" "}
+                  )} 
+                </div>{" "}*/}
                 <div className="grid gap-2">
                   <Label htmlFor="customerType">نوع العمله للنظام</Label>
                   <SelectField
@@ -677,7 +688,7 @@ export default function CompanySignup() {
 
               <Button
                 type="submit"
-                disabled={loading || uploadingLogo}
+                disabled={loading}
                 className="w-full rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 py-6 text-lg font-semibold text-white shadow-lg transition hover:scale-105 hover:shadow-xl disabled:opacity-50 disabled:hover:scale-100"
               >
                 {loading
@@ -712,6 +723,21 @@ export default function CompanySignup() {
                   سياسة الخصوصية
                 </a>
               </p>
+
+              {/* <div className="grid grid-cols-1">
+                <div className="flex items-center justify-center text-center">
+                  <span> انشاء باستخدام </span>
+                </div>
+                <div className="flex items-center justify-center rounded-3xl text-center">
+                  <Link
+                    type="button"
+                    className="tems-center flex w-20 justify-center gap-2 border-gray-300 py-6 hover:rounded-3xl hover:bg-gray-50 dark:hover:bg-gray-800"
+                    href="/auth/google"
+                  >
+                    <Image src={svg} alt="Google" width={30} height={30} />
+                  </Link>
+                </div>
+              </div> */}
             </div>
           </form>
         </div>

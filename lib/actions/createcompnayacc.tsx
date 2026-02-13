@@ -13,7 +13,7 @@ interface CreateCompanyInput {
   country?: string;
   adminName: string;
   adminEmail: string;
-  adminPassword: string;
+  adminPassword?: string;
   base_currency: string;
   supabaseId?: string;
 }
@@ -81,7 +81,7 @@ export async function createCompany(data: CreateCompanyInput) {
           email: adminEmail,
           name: adminName,
           phoneNumber: phone,
-          password: adminPassword,
+          password: adminPassword || null,
           supabaseId,
           isActive: true,
         },

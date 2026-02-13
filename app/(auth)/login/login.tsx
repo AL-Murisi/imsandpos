@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import Image from "next/image";
 import {
   Card,
   CardContent,
@@ -15,9 +16,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import svg from "../../../public/googleicon.svg";
+
 import { Lock, Mail, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -46,6 +50,21 @@ export default function LoginPage() {
     } catch (err) {
       setError("حدث خطأ أثناء تسجيل الدخول");
     } finally {
+      setLoading(false);
+    }
+  };
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      // options: {
+      //   redirectTo: `${window.location.origin}/api/auth/callback?next=/users/createcompanybyemail`,
+      // },
+    });
+
+    if (error) {
+      toast.error("حدث خطأ أثناء تسجيل الدخول بجوجل");
       setLoading(false);
     }
   };
@@ -171,7 +190,28 @@ export default function LoginPage() {
             >
               {loading ? "جاري تسجيل الدخول..." : "تسجيل الدخول"}
             </Button>
+            <Link
+              href="/signup"
+              className="font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+            >
+              إنشاء حساب من هنا
+            </Link>
           </CardFooter>
+          {/* <div className="grid grid-cols-1">
+            <div className="flex items-center justify-center text-center">
+              <span>تسجيل الدخول باستخدام </span>
+            </div>
+            <div className="flex items-center justify-center rounded-3xl text-center">
+              <Button
+                type="button"
+                onClick={handleGoogleLogin}
+                disabled={loading}
+                className="tems-center flex w-20 justify-center gap-2 border-gray-300 py-6 hover:rounded-3xl hover:bg-gray-50 dark:hover:bg-gray-800"
+              >
+                <Image src={svg} alt="Google" width={30} height={30} />
+              </Button>
+            </div>
+          </div> */}
         </form>
       </Card>
     </div>
