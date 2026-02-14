@@ -6,7 +6,7 @@
   />
   <head>
     <meta charset="UTF-8" />
-    <title>تقرير حركة المخزون</title>
+    <title>تقرير نشاط المستخدمين</title>
     <style>
       body {
         font-family: "Cairo", sans-serif;
@@ -193,7 +193,7 @@
         <!-- Logo -->
         <div class="logo-title-container">
           <img src="{{company.logoUrl}}" style="width: 100px; height: 90px" />
-          <div class="title-box">🔄تقرير حركة المخزون</div>
+          <div class="title-box">📋تقرير نشاط المستخدمين</div>
         </div>
 
         <div class="header-left">
@@ -204,8 +204,6 @@
       </div>
     </div>
     <div class="info-box">
-      <!-- <p>:<strong>الكاشير:</strong>{{casherNmae}}</p> -->
-      <p><strong>الفرع: </strong>{{branchName}}</p>
       <p><strong>من تاريخ:</strong> {{period.from}}</p>
       <p><strong>إلى تاريخ:</strong> {{period.to}}</p>
     </div>
@@ -213,36 +211,27 @@
     <table>
       <thead>
         <tr>
-          <th>المنتج</th>
-          <th>نوع الحركة</th>
-          <th>الكمية</th>
-          <th>المستودع</th>
           <th>المستخدم</th>
-          <th>التاريخ</th>
-          <th>ملاحظات</th>
+          <th>الاجراءات</th>
+          <th>تفاصيل</th>
+
+          <th class="col-date">التاريخ</th>
         </tr>
       </thead>
       <tbody>
+        {{#each useractivities}}
         <tr>
-          <td><strong>{{this.product}}</strong></td>
-          <td>
-            <span
-              class="badge {{#if (eq this.type 'IN')}}badge-in{{else}}badge-out{{/if}}"
-            >
-              {{this.type}}
-            </span>
-          </td>
-          <td><strong>{{this.quantity}}</strong></td>
-          <td>{{this.warehouse}}</td>
-          <td>{{this.user}}</td>
-          <td>{{this.date}}</td>
-          <td>{{this.notes}}</td>
+          <td>{{this.username}}</td>
+          <td>{{this.action}}</td>
+          <td>{{this.details}}</td>
+
+          <td>{{this.createdAt}}</td>
         </tr>
         {{/each}}
-        <tr class="total-row">
+        <!-- <tr class="total-row">
           <td colspan="2">إجمالي المبيعات</td>
           <td class="currency">{{totalSales}}</td>
-        </tr>
+        </tr> -->
       </tbody>
     </table>
 

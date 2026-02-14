@@ -112,6 +112,12 @@
         margin-top: 30px;
         margin-bottom: 10px;
       }
+      .logo-title-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+      }
       table {
         width: 100%;
         border-collapse: collapse;
@@ -187,6 +193,7 @@
             {{company.name}}
           </div>
           <div>تلفون: {{company.phone}}</div>
+          <div>فرع: {{company.branchName}}</div>
         </div>
 
         <!-- Logo -->
@@ -196,8 +203,9 @@
         </div>
 
         <div class="header-left">
-          <div class="text-lg">{{company.address}}</div>
+          <div class="text-lg">المركز الرئيسي :{{company.address}}</div>
           <div class="text-lg">{{company.city}}</div>
+          <div class="text-lg">الموقع: {{company.branchLocation}}</div>
         </div>
       </div>
     </div>

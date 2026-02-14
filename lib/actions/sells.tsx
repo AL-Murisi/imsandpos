@@ -74,9 +74,11 @@ export async function FetchDebtSales(
   const orderBy = sort?.length
     ? { [sort[0].id]: sort[0].desc ? "desc" : "asc" }
     : { invoiceDate: "desc" as const };
-
-  const fromatDate = from ? new Date(from).toISOString() : undefined;
-  const toDate = to ? new Date(to).toISOString() : undefined;
+  const today = new Date();
+  const startOfToday = new Date(today.setHours(0, 0, 0, 0));
+  const endOfToday = new Date(today.setHours(23, 59, 59, 999));
+  const fromatDate = from ? new Date(from).toISOString() : startOfToday;
+  const toDate = to ? new Date(to).toISOString() : endOfToday;
   if (searchQuery) {
     combinedWhere.OR = [
       { customer: { name: { contains: searchQuery, mode: "insensitive" } } },
@@ -242,47 +244,78 @@ export async function fetchSalesSummary(
   const startOfToday = new Date(today.setHours(0, 0, 0, 0));
   const endOfToday = new Date(today.setHours(23, 59, 59, 999));
   const cashierId = userId;
+  const startOfYesterday = new Date(startOfToday);
+  startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+  const endOfYesterday = new Date(endOfToday);
+  endOfYesterday.setDate(endOfYesterday.getDate() - 1);
   // Fetch today's sales and debt payments
-  const [todaySales, todayDebtPayments] = await Promise.all([
-    prisma.invoice.aggregate({
-      _sum: { totalAmount: true },
-      _count: { id: true },
-      where: {
-        invoiceDate: { gte: startOfToday, lte: endOfToday },
-        status: "completed",
-        cashierId,
-        companyId,
-      },
-    }),
-    prisma.financialTransaction.aggregate({
-      _sum: { amount: true },
-      _count: { id: true },
-      where: {
-        createdAt: { gte: startOfToday, lte: endOfToday },
-        type: "RECEIPT",
-        status: "completed",
-        userId: cashierId,
-        companyId,
-      },
-    }),
-  ]);
+  const [todaySales, yesterdaySales, todayDebtPayments, todayProductsCount] =
+    await Promise.all([
+      prisma.invoice.aggregate({
+        _sum: { totalAmount: true },
+        _count: { id: true },
+        where: {
+          invoiceDate: { gte: startOfToday, lte: endOfToday },
+          status: "paid",
+          cashierId,
+          companyId,
+        },
+      }),
+      prisma.invoice.aggregate({
+        _sum: { totalAmount: true },
+        where: {
+          invoiceDate: { gte: startOfYesterday, lte: endOfYesterday },
+          status: "paid",
+          cashierId,
+          companyId,
+        },
+      }),
+      prisma.financialTransaction.aggregate({
+        _sum: { amount: true },
+        _count: { id: true },
+        where: {
+          createdAt: { gte: startOfToday, lte: endOfToday },
+          type: "RECEIPT",
+          status: "paid",
+          userId: cashierId,
+          companyId,
+        },
+      }),
+      prisma.invoiceItem.aggregate({
+        _count: { productId: true },
+        where: {
+          invoice: {
+            sale_type: "SALE",
+            companyId,
+            cashierId,
+            invoiceDate: { gte: startOfToday, lte: endOfToday },
+          },
+        },
+      }),
+    ]);
 
   // Fetch product stock info
-  const productStatsAgg = await prisma.inventory.aggregate({
-    _sum: { stockQuantity: true },
-    _count: { id: true },
-    where: { companyId },
-  });
+  const salesToday = todaySales._sum.totalAmount?.toNumber() || 0;
+  const salesYesterday = yesterdaySales._sum.totalAmount?.toNumber() || 0;
 
+  // Calculate Percentage Change
+  let percentageChange = 0;
+  if (salesYesterday > 0) {
+    percentageChange = ((salesToday - salesYesterday) / salesYesterday) * 100;
+  } else if (salesToday > 0) {
+    percentageChange = 100; // If yesterday was 0 and today is > 0, it's 100% growth
+  }
   return {
     cashierSalesToday: todaySales._sum.totalAmount?.toNumber() || 0,
     cashierTransactionsToday: todaySales._count.id || 0,
+    avrageSaleValueToday:
+      todaySales._count.id > 0
+        ? todaySales._sum.totalAmount?.toNumber()! / todaySales._count.id
+        : 0,
     cashierDebtPaymentsToday: todayDebtPayments._sum.amount?.toNumber() || 0,
     cashierDebtPaymentsCountToday: todayDebtPayments._count.id || 0,
-    productStats: {
-      totalStockQuantity: productStatsAgg._sum.stockQuantity?.toString() || 0,
-      lowStockProducts: 0, // you can calculate separately if needed
-    },
+    cashierProductsCountToday: todayProductsCount._count.productId || 0,
+    percentageChange,
   };
 }
 

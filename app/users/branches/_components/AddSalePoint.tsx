@@ -14,9 +14,15 @@ import { toast } from "sonner";
 import Dailogreuse from "@/components/common/dailogreuse";
 type Option = {
   users: {
-    id: string;
-    name: string;
-  }[];
+    managers: {
+      name: string;
+      id: string;
+    }[];
+    cashiers: {
+      name: string;
+      id: string;
+    }[];
+  };
 };
 
 export default function POSForm(users: Option) {
@@ -83,7 +89,7 @@ export default function POSForm(users: Option) {
             {/* Translate placeholder */}
             <SelectField
               placeholder="مستخدم"
-              options={users.users}
+              options={users.users.managers ?? []}
               action={(val) => setValue("managerId", val)}
             />
             {errors.managerId && (

@@ -93,6 +93,8 @@ export async function CreateProduct(
       data: {
         userId,
         companyId,
+        userAgent: typeof window !== "undefined" ? navigator.userAgent : "",
+
         action: "إنشاء منتج",
         details: `المنتج: ${name}، رمز المخزون (SKU): ${sku}`,
       },

@@ -43,6 +43,9 @@ export async function getActivityLogs(
         },
       },
     },
+    orderBy: {
+      createdAt: "desc",
+    },
     skip: page * pageSize,
     take: pageSize,
   });

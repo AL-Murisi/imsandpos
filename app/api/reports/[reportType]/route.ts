@@ -66,6 +66,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
       userId,
       warehouseId,
       paymentTypes,
+      branchId,
     } = await req.json();
 
     const fromDate = rawFrom ? new Date(rawFrom).toISOString() : undefined;
@@ -76,7 +77,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
     // Auth
     const user = await getSession();
     const company = await getCompany();
-    if (!user || !company) {
+    if (!user || !company?.data) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
       });
@@ -85,8 +86,19 @@ export async function POST(req: NextRequest, context: RouteContext) {
     let data: any = {};
     let templateFile = "";
 
+    const selectedBranch =
+      company.data.branches.find((b) => b.id === branchId) ??
+      company.data.branches[0] ??
+      null;
+
+    const companyWithBranch = {
+      ...company.data,
+      branchName: selectedBranch?.name ?? "",
+      branchLocation: selectedBranch?.location ?? "",
+    };
+
     const baseData = {
-      company: company.data,
+      company: companyWithBranch,
       from: fromDisplay,
       to: toDisplay,
       createby: user.name,
@@ -125,6 +137,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
                 lte: toDate,
               },
               sale_type: salesTypes,
+              ...(branchId && { branchId }),
               // 2. Critical: Only include Sales (exclude purchases)
             },
           },
@@ -184,6 +197,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
                 lte: toDate,
               },
               sale_type: "SALE",
+              ...(branchId && { branchId }),
             },
           },
           _sum: {
@@ -251,6 +265,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
                 lte: toDate,
               },
               sale_type: salesTypes,
+              ...(branchId && { branchId }),
               // 2. Critical: Only include Sales (exclude purchases)
             },
           },
@@ -306,6 +321,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
                 lte: toDate,
               },
               sale_type: salesTypes,
+              ...(branchId && { branchId }),
             },
           },
           include: {
@@ -345,6 +361,9 @@ export async function POST(req: NextRequest, context: RouteContext) {
         const salesItems = await prisma.invoiceItem.findMany({
           where: {
             companyId: user.companyId,
+            invoice: {
+              ...(branchId && { branchId }),
+            },
           },
           include: { product: true },
         });
@@ -502,6 +521,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
           where: {
             companyId: user.companyId,
             warehouseId: warehouseId,
+            ...(branchId && { branchId }),
             updatedAt: createDateFilter(fromDate, toDate),
           },
           select: {
@@ -582,10 +602,8 @@ export async function POST(req: NextRequest, context: RouteContext) {
         console.log(lowStockRecords);
         templateFile = "out-of-stock-report.html"; // Assume you have a template
         data = {
+          ...baseData,
           lowStockRecords,
-          company: company.data,
-          date: new Date().toLocaleDateString("ar-EG"),
-          createby: user.name,
         };
         break;
       }
@@ -631,6 +649,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
           where: {
             companyId: user.companyId,
             warehouseId: warehouseId,
+            ...(branchId && { branch_id: branchId }),
             expiredAt: {
               lte: thirtyDaysFromNow,
               gte: longTimeAgo,
@@ -681,6 +700,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
           where: {
             companyId: user.companyId,
             warehouseId: warehouseId,
+            ...(branchId && { branchId }),
             lastStockTake: createDateFilter(fromDate, toDate),
           },
           include: {
@@ -710,6 +730,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
           where: {
             companyId: user.companyId,
             warehouseId: warehouseId,
+            ...(branchId && { branchId }),
             supplierId: suppliersId,
             sale_type: {
               notIn: ["SALE", "RETURN_SALE"],
@@ -753,6 +774,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
           where: {
             companyId: user.companyId,
             warehouseId: warehouseId,
+            ...(branchId && { branchId }),
             invoiceDate: createDateFilter(fromDate, toDate),
             sale_type: "RETURN_PURCHASE",
           },
@@ -843,6 +865,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
             where: {
               company_id: user.companyId,
               reference_id: s.id,
+              ...(branchId && { branch_id: branchId }),
             },
             select: {
               debit: true,
@@ -923,6 +946,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
             supplierId: suppliersId,
             customerId: customerId,
             companyId: user.companyId,
+            ...(branchId && { branchId }),
             type: paymentTypes,
             createdAt: createDateFilter(fromDate, toDate),
           },
@@ -981,6 +1005,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
         const expenses = await prisma.expenses.findMany({
           where: {
             company_id: user.companyId,
+            ...(branchId && { branchId }),
             created_at: createDateFilter(fromDate, toDate),
           },
           include: {
@@ -1062,6 +1087,8 @@ export async function POST(req: NextRequest, context: RouteContext) {
         const customers = await prisma.customer.findMany({
           where: {
             companyId: user.companyId,
+            ...(branchId && { branch_id: branchId }),
+
             updatedAt: createDateFilter(fromDate, toDate),
             ...(customerId && { id: customerId }),
           },
@@ -1087,6 +1114,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
               company_id: user.companyId,
               reference_id: c.id,
               is_posted: true,
+              ...(branchId && { branch_id: branchId }),
             },
             select: {
               debit: true,
@@ -1155,12 +1183,73 @@ export async function POST(req: NextRequest, context: RouteContext) {
         };
         break;
       }
+      case "user-activities": {
+        templateFile = "user-activities.html";
+        const where: any = {
+          companyId: user.companyId,
+          createdAt: createDateFilter(fromDate, toDate),
+        };
+
+        if (userId) {
+          where.userId = userId;
+        }
+
+        const useractivities = await prisma.activityLogs.findMany({
+          where,
+          select: {
+            details: true,
+            action: true,
+            userAgent: true,
+            user: { select: { name: true } },
+            createdAt: true,
+          },
+          orderBy: { createdAt: "desc" },
+        });
+
+        // Grouping logic
+        const date = useractivities.map((a) => a.createdAt);
+        data = {
+          ...baseData,
+          // Convert the object groups into an array for Handlebars
+          useractivities: useractivities.map((activity: any) => ({
+            username: activity.user.name,
+            details: activity.details,
+            action: activity.action,
+            userAgent: activity.userAgent,
+            createdAt: activity.createdAt.toLocaleString("ar-EG", {
+              year: "numeric",
+              month: "2-digit",
+              day: "2-digit",
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+              hour12: true, // أو false لو تريد 24 ساعة
+            }),
+          })),
+          period: {
+            from:
+              date.length > 0
+                ? new Date(
+                    Math.min(...date.map((d) => d.getTime())),
+                  ).toLocaleDateString("ar-EG")
+                : fromDate,
+            to:
+              date.length > 0
+                ? new Date(
+                    Math.max(...date.map((d) => d.getTime())),
+                  ).toLocaleDateString("ar-EG")
+                : toDate,
+          },
+        };
+        break;
+      }
       case "customer-debts": {
         templateFile = "customer-debts-report.html";
         const customers = await prisma.customer.findMany({
           where: {
             companyId: user.companyId,
             outstandingBalance: { gt: 0 },
+            ...(branchId && { branch_id: branchId }),
             ...(customerId && { id: customerId }),
           },
         });
@@ -1198,8 +1287,16 @@ export async function POST(req: NextRequest, context: RouteContext) {
         // 1️⃣ جلب العملاء (عميل واحد أو الجميع)
         const customers = await prisma.customer.findMany({
           where: customerId
-            ? { id: customerId, companyId: user.companyId }
-            : { companyId: user.companyId, outstandingBalance: { gt: 0 } },
+            ? {
+                id: customerId,
+                companyId: user.companyId,
+                ...(branchId && { branch_id: branchId }),
+              }
+            : {
+                companyId: user.companyId,
+                outstandingBalance: { gt: 0 },
+                ...(branchId && { branch_id: branchId }),
+              },
           select: { id: true, name: true, phoneNumber: true },
         });
 
@@ -1208,7 +1305,11 @@ export async function POST(req: NextRequest, context: RouteContext) {
         for (const c of customers) {
           // Find all unique currencies this customer has used
           const currencies = await prisma.journal_entries.findMany({
-            where: { reference_id: c.id, company_id: user.companyId },
+            where: {
+              reference_id: c.id,
+              company_id: user.companyId,
+              ...(branchId && { branch_id: branchId }),
+            },
             distinct: ["currency_code"],
             select: { currency_code: true },
           });
@@ -1221,6 +1322,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
               where: {
                 company_id: user.companyId,
                 reference_id: c.id,
+                ...(branchId && { branch_id: branchId }),
                 currency_code: curr.currency_code,
                 entry_date: { lt: fromDate },
               },
@@ -1238,6 +1340,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
               where: {
                 company_id: user.companyId,
                 reference_id: c.id,
+                ...(branchId && { branch_id: branchId }),
                 currency_code: curr.currency_code,
                 entry_date: { gte: fromDate, lte: toDate },
               },
@@ -1305,6 +1408,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
         const receiptsRaw = await fetchReceiptsByCustomer(
           customerId,
           user.companyId,
+          branchId,
         );
 
         if (!receiptsRaw.length) {
@@ -1382,6 +1486,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
             where: {
               company_id: user.companyId,
               reference_id: c.id,
+              ...(branchId && { branch_id: branchId }),
               entry_date: { lt: fromDate },
             },
             select: { debit: true, credit: true },
@@ -1394,6 +1499,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
           const entries = await prisma.journal_entries.findMany({
             where: {
               company_id: user.companyId,
+              ...(branchId && { branch_id: branchId }),
               reference_id: c.id,
               entry_date: { gte: fromDate, lte: toDate },
             },
@@ -1482,6 +1588,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
         const receiptsRaw = await fetchReceiptsBySupplier(
           suppliersId,
           user.companyId,
+          branchId,
         );
 
         if (!receiptsRaw.length) {
@@ -1537,6 +1644,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
           companyId: user.companyId,
           fromDate,
           toDate,
+          branchId,
         });
 
         let runningBalance = 0;
@@ -1589,9 +1697,10 @@ export async function POST(req: NextRequest, context: RouteContext) {
         const payments = await prisma.financialTransaction.findMany({
           where: {
             companyId: user.companyId,
+            ...(branchId && { branchId }),
             type: "PAYMENT",
             createdAt: createDateFilter(fromDate, toDate),
-            ...(customerId && { id: customerId }),
+            ...(customerId && { customerId }),
           },
           include: { customer: true },
         });
@@ -1640,6 +1749,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
             where: {
               company_id: user.companyId,
               account_id: bank.accountId,
+              ...(branchId && { branch_id: branchId }),
               entry_date: { gte: fromDate, lte: toDate },
             },
             orderBy: { entry_date: "asc" },
@@ -1734,11 +1844,16 @@ export async function POST(req: NextRequest, context: RouteContext) {
     );
   }
 }
-async function fetchReceiptsByCustomer(customerId: string, companyId: string) {
+async function fetchReceiptsByCustomer(
+  customerId: string,
+  companyId: string,
+  branchId?: string,
+) {
   const invoices = await prisma.invoice.findMany({
     where: {
       customerId,
       companyId,
+      ...(branchId && { branchId }),
       sale_type: { in: ["SALE", "RETURN_SALE"] },
     },
     orderBy: {
@@ -1849,11 +1964,16 @@ function prepareReceipt(receipt: any) {
   };
 }
 
-async function fetchReceiptsBySupplier(supplierId: string, companyId: string) {
+async function fetchReceiptsBySupplier(
+  supplierId: string,
+  companyId: string,
+  branchId?: string,
+) {
   const invoices = await prisma.invoice.findMany({
     where: {
       supplierId,
       companyId,
+      ...(branchId && { branchId }),
       sale_type: { in: ["PURCHASE", "RETURN_PURCHASE"] },
     },
     orderBy: {
@@ -1950,11 +2070,13 @@ async function fetchAccountStatement({
   companyId,
   fromDate,
   toDate,
+  branchId,
 }: {
   accountId: string;
   companyId: string;
   fromDate: Date;
   toDate: Date;
+  branchId?: string;
 }) {
   // 1. Safety check: Ensure strings are actual strings and not objects
   const safeCompanyId =
@@ -1962,8 +2084,8 @@ async function fetchAccountStatement({
   const safeAccountId =
     typeof accountId === "object" ? (accountId as any).id : accountId;
 
-  const rows = await prisma.$queryRawUnsafe<any[]>(
-    `
+  const branchCondition = branchId ? `AND je.branch_id::text = $5::text` : "";
+  const sql = `
     SELECT 
       je.id,
       je.entry_number,
@@ -1980,18 +2102,20 @@ async function fetchAccountStatement({
     INNER JOIN accounts a 
       ON je.account_id::text = a.id::text
 
-    WHERE je.company_id::text = $1::text    -- ✅ Explicitly cast parameter to text
-      AND je.account_id::text = $2::text    -- ✅ Explicitly cast parameter to text
+    WHERE je.company_id::text = $1::text
+      AND je.account_id::text = $2::text
       AND je.entry_date BETWEEN $3 AND $4
       AND je.is_posted = true
+      ${branchCondition}
 
     ORDER BY je.entry_date ASC, je.created_at ASC
-    `,
-    safeCompanyId,
-    safeAccountId,
-    fromDate,
-    toDate,
-  );
+  `;
+
+  const params = branchId
+    ? [safeCompanyId, safeAccountId, fromDate, toDate, branchId]
+    : [safeCompanyId, safeAccountId, fromDate, toDate];
+
+  const rows = await prisma.$queryRawUnsafe<any[]>(sql, ...params);
 
   return rows.map((r) =>
     JSON.parse(
@@ -1999,7 +2123,6 @@ async function fetchAccountStatement({
     ),
   );
 }
-
 function prepareAccountStatement(row: any, index: number) {
   return {
     index: index + 1,

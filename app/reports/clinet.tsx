@@ -245,6 +245,13 @@ const reports = [
     icon: "🧾",
     description: "كشف حساب بنكي",
   },
+  {
+    name: "انشطه المستخدمين  ",
+    id: "user-activities",
+    type: "others",
+    icon: "🧾",
+    description: "كشف حساب بنكي",
+  },
   // {
   //   name: " كشف حساب  ",
   //   id: "cash-statement",
@@ -415,7 +422,7 @@ export default function ReportsPage({
   //   }
   // };
 
-  const handleDownload = useCallback(async () => {
+  const handleDownload = async () => {
     if (!reportType) return;
 
     setIsSubmitting(true);
@@ -474,14 +481,8 @@ export default function ReportsPage({
         setProgress(0);
       }, 600);
     }
-  }, [
-    reportType,
-    fromDate,
-    toDate,
-    selectedCustomer,
-    selectedbank,
-    selectedSupplier,
-  ]);
+  };
+
   const salesType = [
     { id: "SALE", name: "بيع" },
     { id: "RETURN_SALE", name: "مرتجع" },
@@ -629,7 +630,7 @@ export default function ReportsPage({
                     </div>
                   </div>
                 )}{" "}
-                {["daily-sales", "sales-by-user"].includes(
+                {["daily-sales", "sales-by-user", "user-activities"].includes(
                   selectedReport.id,
                 ) && (
                   <div className="space-y-2">

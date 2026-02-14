@@ -132,7 +132,35 @@
         background: #e67e22;
         color: #fff;
       }
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 2px solid #000;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+      }
 
+      .header-right {
+        width: 33%;
+        text-align: right;
+      }
+      .logo-title-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+      }
+      .header-center {
+        width: 33%;
+        text-align: center;
+      }
+
+      .header-left {
+        width: 33%;
+        text-align: left;
+        font-size: 14px;
+      }
       .zero {
         background: #ffcccc;
         font-weight: bold;
@@ -155,23 +183,35 @@
 
   <body>
     <div class="section">
-      <div class="header mb-2 flex items-center justify-between" dir="rtl">
+      <div class="header">
         <!-- Company -->
-        <div class="grid grid-rows-3 items-baseline gap-2 text-right">
-          <span class="green text-3xl font-bold"> {{company.name}} </span>
-          <span class="text-2xl">{{company.name}} </span>
+        <div class="header-right">
+          <div
+            style="
+              font-size: 18px;
+              font-weight: bold;
+              line-height: 1.2;
+              max-width: 200px;
+              word-wrap: break-word;
+            "
+            class="green text-3xl font-bold"
+          >
+            {{company.name}}
+          </div>
+          <div>تلفون: {{company.phone}}</div>
+          <div>فرع: {{company.branchName}}</div>
         </div>
-
         <!-- Logo -->
-        <div class="flex flex-col items-center">
+        <div class="logo-title-container">
           <img src="{{company.logoUrl}}" style="width: 100px; height: 90px" />
+          <div class="title-box">💸تقرير المصروفات</div>
         </div>
 
         <!-- Branch -->
-        <div class="grid grid-rows-4">
-          <div class="text-lg">{{company.address}}</div>
+        <div class="header-left">
+          <div class="text-lg">المركز الرئيسي :{{company.address}}</div>
           <div class="text-lg">{{company.city}}</div>
-          <div>تلفون: {{company.phone}}</div>
+          <div class="text-lg">الموقع: {{company.branchLocation}}</div>
         </div>
       </div>
     </div>

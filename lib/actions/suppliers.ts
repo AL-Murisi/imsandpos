@@ -666,6 +666,8 @@ export async function updateSupplierPayment(
         data: {
           userId,
           companyId,
+          userAgent: typeof window !== "undefined" ? navigator.userAgent : "",
+
           action: "تحديث دفع المورد",
           details: `تم تحديث الدفع الخاص بـ ${currentPayment.supplier?.name}: بمبلغ ${updatedPayment.amount}`,
         },
@@ -885,6 +887,8 @@ export async function createSupplierPaymentFromPurchases(
       data: {
         userId,
         companyId,
+        userAgent: typeof window !== "undefined" ? navigator.userAgent : "",
+
         action: "إنشاء دفع للمورد",
         details: `المورد: ${supplierPayment?.supplier?.name}، الدفعة: ${amount}، المشتريات: ${purchaseId}. المبلغ المدفوع سابقاً: ${previousAmountPaid}، المدفوع الجديد: ${newAmountPaid}. المستحق سابقاً: ${previousAmountDue}، المستحق الجديد: ${newAmountDue}.`,
       },

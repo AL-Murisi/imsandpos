@@ -155,11 +155,7 @@
           <div style="font-size: 20px; font-weight: bold; color: green">
             {{../company.name}}
           </div>
-          {{#if ../company.branches.[0]}}
-          <div style="font-size: 14px">
-            فرع: {{../company.branches.[0].location}}
-          </div>
-          {{/if}}
+          <div>Branch: {{../company.branchName}}</div>
         </div>
 
         <div class="header-center">
@@ -170,8 +166,9 @@
         </div>
 
         <div class="header-left">
-          <div>{{../company.address}}</div>
+          <div>المركز الرئيسي :{{../company.address}}</div>
           <div>{{../company.city}}</div>
+          <div>Location: {{../company.branchLocation}}</div>
           <div dir="ltr">{{../company.phone}}</div>
         </div>
       </div>

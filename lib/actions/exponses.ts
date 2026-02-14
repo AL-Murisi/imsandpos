@@ -402,6 +402,8 @@ export async function createMultipleExpenses(
         data: {
           userId: userId,
           companyId: companyId,
+          userAgent: typeof window !== "undefined" ? navigator.userAgent : "",
+
           action: "إنشاء مصاريف متعددة مع عمليات مالية",
           details: `تم إنشاء عدد ${expensesData.length} من المصاريف. الإجمالي: ${totalAmount}. نطاق السندات: من ${lastNumber || 0 + 1} إلى ${currentVoucherNumber}`,
         },
@@ -479,6 +481,8 @@ export async function createExpense(
         userId: userId,
         companyId: companyId,
         action: "created expense",
+        userAgent: typeof window !== "undefined" ? navigator.userAgent : "",
+
         details: `Expense: ${data.description}, Amount: ${data.amount}`,
       },
     });
@@ -557,6 +561,8 @@ export async function updateExpense(
         userId,
         companyId,
         action: "updated expense",
+        userAgent: typeof window !== "undefined" ? navigator.userAgent : "",
+
         details: `Expense: ${expense.description}, Amount: ${expense.amount}`,
       },
     });
@@ -588,6 +594,8 @@ export async function deleteExpense(
       data: {
         userId,
         companyId,
+        userAgent: typeof window !== "undefined" ? navigator.userAgent : "",
+
         action: "deleted expense",
         details: `Expense: ${expense.description}, Amount: ${expense.amount}`,
       },

@@ -112,8 +112,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           body: JSON.stringify({
             companyId: user.companyId,
             userId: user.userId,
-            action: "logout",
-            details: "User logged out",
+            action: "تسجيل خروج",
+            details: "الخروج من النظام",
             ip: "55",
             userAgent: typeof window !== "undefined" ? navigator.userAgent : "",
           }),
@@ -123,7 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Clear session
       await logout();
       // Force redirect to login with full page reload
-      window.location.href = `/landing`;
+      window.location.href = `/`;
     } catch (err) {
       console.error("Logout and redirect failed:", err);
       // Fallback: force redirect anyway

@@ -32,7 +32,16 @@ import { SelectField } from "@/components/common/selectproduct";
 type Props = {
   salespoint: Promise<any[]>;
   total: number;
-  role: Promise<{ id: string; name: string }[]>;
+  role: Promise<{
+    managers: {
+      name: string;
+      id: string;
+    }[];
+    cashiers: {
+      name: string;
+      id: string;
+    }[];
+  }>;
 };
 
 export default function SalesPointTable({ salespoint, total, role }: Props) {

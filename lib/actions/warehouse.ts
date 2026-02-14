@@ -375,6 +375,8 @@ export async function updateInventory(
           data: {
             userId,
             companyId,
+            userAgent: typeof window !== "undefined" ? navigator.userAgent : "",
+
             action:
               updateType === "supplier"
                 ? "تم_استلام_مخزون_المورد"
@@ -1962,6 +1964,8 @@ export async function updateMultipleInventories(
           data: {
             userId,
             companyId,
+            userAgent: typeof window !== "undefined" ? navigator.userAgent : "",
+
             action: "تحديث مخزون ",
             details: `تم تحديث ${updatesData.length} سجل مخزون. إجمالي الوحدات: ${totalUnits}`,
           },

@@ -12,7 +12,7 @@ export async function createPOS(data: CreatePosType, company_id: string) {
     throw new Error("بيانات غير صحيحة");
   }
 
-  const { name, location, managerId } = parsed.data;
+  const { name, location, managerId, cashierIds = [] } = parsed.data;
 
   try {
     const existing = await prisma.points_of_sale.findFirst({
@@ -32,6 +32,11 @@ export async function createPOS(data: CreatePosType, company_id: string) {
         location,
         managerId,
         company_id,
+        ...(cashierIds.length > 0 && {
+          cashiers: {
+            connect: cashierIds.map((id) => ({ id })),
+          },
+        }),
       },
     });
 
@@ -52,13 +57,14 @@ export async function updateBranch(
     throw new Error("بيانات غير صحيحة");
   }
 
-  const { name, location, managerId } = parsed.data;
+  const { name, location, managerId, cashierIds = [] } = parsed.data;
 
   try {
     const existing = await prisma.points_of_sale.findFirst({
       where: {
         name: name,
         company_id,
+        NOT: { id: posId },
       },
     });
 
@@ -73,6 +79,9 @@ export async function updateBranch(
         location,
         managerId,
         company_id,
+        cashiers: {
+          set: cashierIds.map((id) => ({ id })),
+        },
       },
     });
 
@@ -176,17 +185,25 @@ export async function fetchPOSManagers(companyId: string) {
 
   // Fetch only id and name for POS manager selection
   const managers = await prisma.user.findMany({
+    where: { roles: { some: { role: { name: "admin" } } }, companyId },
     select: {
       id: true,
       name: true,
     },
-    where,
-    // skip: (page - 1) * pageSize,
-    // take: pageSize,
+  });
+  const cashiers = await prisma.user.findMany({
+    where: { roles: { some: { role: { name: "cashier" } } }, companyId },
+    select: {
+      id: true,
+      name: true,
+    },
   });
 
-  return managers;
+  return { managers, cashiers };
 }
+// skip: (page - 1) * pageSize,
+// take: pageSize,
+
 export async function fetchbranches() {
   const user = await getSession();
   if (!user) return;

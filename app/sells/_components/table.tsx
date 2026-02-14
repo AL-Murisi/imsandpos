@@ -14,6 +14,7 @@ const DataTable = dynamic(
   },
 );
 import { SelectField } from "@/components/common/selection";
+import { Calendar22 } from "@/components/common/DatePicker";
 
 type ProductClientProps = {
   data: any[];
@@ -57,11 +58,14 @@ export default function DebtSells({
     <div className="bg-accent rounded-2xl p-2 lg:col-span-1" dir="rtl">
       <DataTable
         search={
-          <SelectField
-            options={filteroption}
-            paramKey="sale_type"
-            placeholder={"نوع العملية"}
-          />
+          <>
+            <SelectField
+              options={filteroption}
+              paramKey="sale_type"
+              placeholder={"نوع العملية"}
+            />
+            <Calendar22 />
+          </>
         }
         data={data}
         columns={debtSaleColumns}
