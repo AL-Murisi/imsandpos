@@ -1,8 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import BarcodeScannerZXing from "../_components/BarcodeScannerZXing";
-
+import dynamic from "next/dynamic";
+const FastPOSScanner = dynamic(
+  () => import("../_components/BarcodeScannerZXing"),
+  {
+    ssr: false,
+  },
+);
 export default function BarcodeScanPage() {
   const [last, setLast] = useState<{ text: string; format: string } | null>(
     null,
@@ -15,9 +20,9 @@ export default function BarcodeScanPage() {
         Uses @zxing/browser to scan with the camera. Test-only page.
       </p>
 
-      <BarcodeScannerZXing
-        action={(result) => {
-          setLast(result);
+      <FastPOSScanner
+        action={(text) => {
+          setLast({ text, format: "Unknown" });
         }}
       />
 

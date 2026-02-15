@@ -142,14 +142,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           icon: <Package className="h-4 w-4 text-emerald-600" />,
           roles: ["admin", "manager_wh"],
         },
+        {
+          title: t("suppliers"),
+          url: "/suppliers",
+          icon: () => <Handshake className="h-4 w-4 text-orange-600" />,
+          roles: ["admin", "manager_wh"],
+        },
       ],
-    },
-
-    {
-      title: t("suppliers"),
-      url: "/suppliers",
-      icon: () => <Handshake className="h-4 w-4 text-orange-600" />,
-      roles: ["admin", "manager_wh"],
     },
 
     {

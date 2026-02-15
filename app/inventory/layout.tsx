@@ -29,6 +29,11 @@ export default function StocksLayout({
       roles: ["admin", "manager_wh"],
     },
     {
+      label: "الموردين",
+      href: "/inventory/manageStocks/suppliers",
+      roles: ["admin"],
+    },
+    {
       label: "حركات المخزون",
       href: "/inventory/manageStocks/movement",
       roles: ["admin"],

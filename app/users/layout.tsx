@@ -17,9 +17,10 @@ export default function StocksLayout({
 
   // Navigation items configuration
   const navItems = [
+    { label: " معلومات الشركة", href: "/users/company" },
+
     { label: "المستخدمين", href: "/users/user" },
     { label: "أنشطة المستخدم", href: "/users/userActiviteslogs" },
-    { label: " معلومات الشركة", href: "/users/company" },
     { label: " الفروع", href: "/users/branches" },
   ];
 

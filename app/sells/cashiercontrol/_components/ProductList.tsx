@@ -10,7 +10,12 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { setProductsLocal } from "@/lib/slices/productsSlice";
 import { useAppDispatch } from "@/lib/store";
-
+const FastPOSScanner = dynamic(
+  () => import("../_components/BarcodeScannerZXing"),
+  {
+    ssr: false,
+  },
+);
 type forsale = ProductForSale & {
   warehousename: string;
   sellingMode: string;
@@ -38,6 +43,9 @@ export default function ProductsList({
   searchParams,
   queryr,
 }: prop) {
+  const [last, setLast] = useState<{ text: string; format: string } | null>(
+    null,
+  );
   const t = useTranslations("cashier");
   const [selectedproduct, setSelectedproduct] = useState<UserOption | null>(
     null,
@@ -73,6 +81,17 @@ export default function ProductsList({
         product={product}
         // queryr={queryr || (selectedproduct ? selectedproduct.name || "" : "")}
       />
+      <FastPOSScanner
+        action={(text) => {
+          setLast({ text, format: "Unknown" });
+        }}
+      />
+
+      {last ? (
+        <div className="rounded border border-green-300 bg-green-50 p-3 text-sm text-green-800">
+          Last scan: {last.text} ({last.format})
+        </div>
+      ) : null}
     </div>
   );
 }

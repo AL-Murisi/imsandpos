@@ -335,6 +335,25 @@ export default function ProductForm({ formData }: ExpenseFormProps) {
                   </p>
                 )}
               </div>
+            </div>{" "}
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+              <div className="grid gap-2">
+                <Label htmlFor="barcode">الحد الأدنى</Label>
+                <Input
+                  id="barcode"
+                  type="number"
+                  {...register("barcode", {
+                    valueAsNumber: true,
+                  })}
+                  className="text-right"
+                  placeholder="0"
+                />
+                {errors.barcode && (
+                  <p className="text-right text-xs text-red-500">
+                    {errors.barcode.message}
+                  </p>
+                )}
+              </div>
             </div>
           </Card>
 

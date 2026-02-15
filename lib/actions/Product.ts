@@ -34,6 +34,7 @@ export async function CreateProduct(
     description,
     categoryId,
     brandId,
+    barcode,
     type,
     sellingUnits,
     costPrice,
@@ -58,6 +59,7 @@ export async function CreateProduct(
         categoryId,
         brandId,
         type,
+        barcode,
         unitsPerPacket: 0,
         packetsPerCarton: 0,
         costPrice,
@@ -392,6 +394,7 @@ export async function UpdateProduct(
     name,
     description,
     categoryId,
+    barcode,
     // brandId,
     // type,
     // unitsPerPacket,
@@ -443,6 +446,7 @@ export async function UpdateProduct(
         name,
         description,
         categoryId,
+        barcode,
         // brandId,
         // type,
         // unitsPerPacket,
@@ -502,12 +506,14 @@ export async function UpdateProduct(
       data: {
         userId,
         companyId,
+        userAgent: typeof window !== "undefined" ? navigator.userAgent : "",
+
         action: "تحديث المنتج",
         details: `تم تحديث المنتج: ${name}، رمز المخزون (SKU): ${sku}`,
       },
     });
     // ✅ Revalidate cache
-    revalidatePath("/products/ProductClient");
+    revalidatePath("/inventory/products");
 
     return {
       ...updatedProduct,

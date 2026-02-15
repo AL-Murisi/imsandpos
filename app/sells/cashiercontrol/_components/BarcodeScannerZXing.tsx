@@ -1,161 +1,161 @@
-"use client";
+// "use client";
 
-import { BrowserMultiFormatReader, IScannerControls } from "@zxing/browser";
-import { NotFoundException } from "@zxing/library";
-import { useEffect, useMemo, useRef, useState } from "react";
+// import { BrowserMultiFormatReader, IScannerControls } from "@zxing/browser";
+// import { NotFoundException } from "@zxing/library";
+// import { useEffect, useMemo, useRef, useState } from "react";
 
-type ScanResult = { text: string; format: string };
+// type ScanResult = { text: string; format: string };
 
-type Props = {
-  action: (result: ScanResult) => void;
-  onError?: (message: string) => void;
-};
+// type Props = {
+//   action: (result: ScanResult) => void;
+//   onError?: (message: string) => void;
+// };
 
-export default function BarcodeScannerZXing({ action, onError }: Props) {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const reader = useMemo(() => new BrowserMultiFormatReader(), []);
-  const controlsRef = useRef<IScannerControls | null>(null);
+// export default function BarcodeScannerZXing({ action, onError }: Props) {
+//   const videoRef = useRef<HTMLVideoElement | null>(null);
+//   const reader = useMemo(() => new BrowserMultiFormatReader(), []);
+//   const controlsRef = useRef<IScannerControls | null>(null);
 
-  const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
-  const [activeDeviceId, setActiveDeviceId] = useState<string>("");
-  const [isScanning, setIsScanning] = useState(false);
-  const [error, setError] = useState("");
+//   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
+//   const [activeDeviceId, setActiveDeviceId] = useState<string>("");
+//   const [isScanning, setIsScanning] = useState(false);
+//   const [error, setError] = useState("");
 
-  // NEW: State to store and display the result
-  const [lastResult, setLastResult] = useState<ScanResult | null>(null);
+//   // NEW: State to store and display the result
+//   const [lastResult, setLastResult] = useState<ScanResult | null>(null);
 
-  useEffect(() => {
-    BrowserMultiFormatReader.listVideoInputDevices()
-      .then((devices) => {
-        setCameras(devices);
-        if (devices.length > 0 && !activeDeviceId) {
-          setActiveDeviceId(devices[0].deviceId);
-        }
-      })
-      .catch((err) => {
-        setError(err?.message || "Failed to list cameras.");
-      });
+//   useEffect(() => {
+//     BrowserMultiFormatReader.listVideoInputDevices()
+//       .then((devices) => {
+//         setCameras(devices);
+//         if (devices.length > 0 && !activeDeviceId) {
+//           setActiveDeviceId(devices[0].deviceId);
+//         }
+//       })
+//       .catch((err) => {
+//         setError(err?.message || "Failed to list cameras.");
+//       });
 
-    return () => {
-      controlsRef.current?.stop();
-    };
-  }, [activeDeviceId]);
+//     return () => {
+//       controlsRef.current?.stop();
+//     };
+//   }, [activeDeviceId]);
 
-  useEffect(() => {
-    if (!isScanning || !activeDeviceId || !videoRef.current) {
-      controlsRef.current?.stop();
-      controlsRef.current = null;
-      return;
-    }
+//   useEffect(() => {
+//     if (!isScanning || !activeDeviceId || !videoRef.current) {
+//       controlsRef.current?.stop();
+//       controlsRef.current = null;
+//       return;
+//     }
 
-    async function startScanning() {
-      try {
-        const controls = await reader.decodeFromVideoDevice(
-          activeDeviceId,
-          videoRef.current!,
-          (result, err) => {
-            if (result) {
-              const scanData = {
-                text: result.getText(),
-                format: result.getBarcodeFormat().toString(),
-              };
+//     async function startScanning() {
+//       try {
+//         const controls = await reader.decodeFromVideoDevice(
+//           activeDeviceId,
+//           videoRef.current!,
+//           (result, err) => {
+//             if (result) {
+//               const scanData = {
+//                 text: result.getText(),
+//                 format: result.getBarcodeFormat().toString(),
+//               };
 
-              // 1. Update local display state
-              setLastResult(scanData);
+//               // 1. Update local display state
+//               setLastResult(scanData);
 
-              // 2. Call the parent callback
-              action(scanData);
+//               // 2. Call the parent callback
+//               action(scanData);
 
-              // OPTIONAL: Stop scanning automatically after success
-              // setIsScanning(false);
-            }
-            if (err && !(err instanceof NotFoundException)) {
-              console.error(err);
-            }
-          },
-        );
+//               // OPTIONAL: Stop scanning automatically after success
+//               // setIsScanning(false);
+//             }
+//             if (err && !(err instanceof NotFoundException)) {
+//               console.error(err);
+//             }
+//           },
+//         );
 
-        controlsRef.current = controls;
-      } catch (err: any) {
-        setError(err?.message || "Failed to start scanning.");
-        setIsScanning(false);
-      }
-    }
+//         controlsRef.current = controls;
+//       } catch (err: any) {
+//         setError(err?.message || "Failed to start scanning.");
+//         setIsScanning(false);
+//       }
+//     }
 
-    startScanning();
+//     startScanning();
 
-    return () => {
-      controlsRef.current?.stop();
-      controlsRef.current = null;
-    };
-  }, [activeDeviceId, isScanning, action, reader]);
+//     return () => {
+//       controlsRef.current?.stop();
+//       controlsRef.current = null;
+//     };
+//   }, [activeDeviceId, isScanning, action, reader]);
 
-  return (
-    <div className="mx-auto max-w-md space-y-4 rounded-xl border bg-white p-4 shadow-sm">
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <select
-          className="flex-1 rounded border bg-gray-50 p-2 text-sm text-black"
-          value={activeDeviceId}
-          onChange={(e) => setActiveDeviceId(e.target.value)}
-        >
-          {cameras.map((cam) => (
-            <option key={cam.deviceId} value={cam.deviceId}>
-              {cam.label || `Camera ${cam.deviceId.slice(0, 5)}`}
-            </option>
-          ))}
-        </select>
-        <button
-          className={`rounded px-4 py-2 font-medium transition-colors ${
-            isScanning
-              ? "bg-red-500 hover:bg-red-600"
-              : "bg-blue-600 hover:bg-blue-700"
-          } text-white`}
-          onClick={() => {
-            setIsScanning(!isScanning);
-            if (!isScanning) setLastResult(null); // Clear last result when starting new scan
-          }}
-        >
-          {isScanning ? "Stop" : "Start Scan"}
-        </button>
-      </div>
+//   return (
+//     <div className="mx-auto max-w-md space-y-4 rounded-xl border bg-white p-4 shadow-sm">
+//       <div className="flex flex-col gap-2 sm:flex-row">
+//         <select
+//           className="flex-1 rounded border bg-gray-50 p-2 text-sm text-black"
+//           value={activeDeviceId}
+//           onChange={(e) => setActiveDeviceId(e.target.value)}
+//         >
+//           {cameras.map((cam) => (
+//             <option key={cam.deviceId} value={cam.deviceId}>
+//               {cam.label || `Camera ${cam.deviceId.slice(0, 5)}`}
+//             </option>
+//           ))}
+//         </select>
+//         <button
+//           className={`rounded px-4 py-2 font-medium transition-colors ${
+//             isScanning
+//               ? "bg-red-500 hover:bg-red-600"
+//               : "bg-blue-600 hover:bg-blue-700"
+//           } text-white`}
+//           onClick={() => {
+//             setIsScanning(!isScanning);
+//             if (!isScanning) setLastResult(null); // Clear last result when starting new scan
+//           }}
+//         >
+//           {isScanning ? "Stop" : "Start Scan"}
+//         </button>
+//       </div>
 
-      {error && <p className="text-xs font-medium text-red-500">{error}</p>}
+//       {error && <p className="text-xs font-medium text-red-500">{error}</p>}
 
-      {/* Video Container */}
-      <div className="relative aspect-video overflow-hidden rounded-lg border-2 border-gray-100 bg-black">
-        <video
-          ref={videoRef}
-          className="h-full w-full object-cover"
-          muted
-          playsInline
-        />
+//       {/* Video Container */}
+//       <div className="relative aspect-video overflow-hidden rounded-lg border-2 border-gray-100 bg-black">
+//         <video
+//           ref={videoRef}
+//           className="h-full w-full object-cover"
+//           muted
+//           playsInline
+//         />
 
-        {/* Scanner Overlay UI */}
-        {isScanning && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div className="h-48 w-48 rounded-lg border-2 border-blue-400 opacity-50"></div>
-            <div className="absolute top-1/2 right-0 left-0 h-[2px] animate-pulse bg-red-500 shadow-[0_0_8px_red]"></div>
-          </div>
-        )}
-      </div>
+//         {/* Scanner Overlay UI */}
+//         {isScanning && (
+//           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+//             <div className="h-48 w-48 rounded-lg border-2 border-blue-400 opacity-50"></div>
+//             <div className="absolute top-1/2 right-0 left-0 h-[2px] animate-pulse bg-red-500 shadow-[0_0_8px_red]"></div>
+//           </div>
+//         )}
+//       </div>
 
-      {/* NEW: Result Display Area */}
-      {lastResult && (
-        <div className="animate-in fade-in slide-in-from-top-2 rounded-lg border border-green-200 bg-green-50 p-3">
-          <p className="text-xs font-bold tracking-wider text-green-800 uppercase">
-            Scanned Barcode:
-          </p>
-          <p className="font-mono text-lg break-all text-green-900">
-            {lastResult.text}
-          </p>
-          <p className="mt-1 text-[10px] text-green-600">
-            Format: {lastResult.format}
-          </p>
-        </div>
-      )}
-    </div>
-  );
-}
+//       {/* NEW: Result Display Area */}
+//       {lastResult && (
+//         <div className="animate-in fade-in slide-in-from-top-2 rounded-lg border border-green-200 bg-green-50 p-3">
+//           <p className="text-xs font-bold tracking-wider text-green-800 uppercase">
+//             Scanned Barcode:
+//           </p>
+//           <p className="font-mono text-lg break-all text-green-900">
+//             {lastResult.text}
+//           </p>
+//           <p className="mt-1 text-[10px] text-green-600">
+//             Format: {lastResult.format}
+//           </p>
+//         </div>
+//       )}
+//     </div>
+//   );
+// }
 
 // "use client";
 
@@ -404,3 +404,122 @@ export default function BarcodeScannerZXing({ action, onError }: Props) {
 //     </div>
 //   );
 // }
+"use client";
+
+import { BrowserMultiFormatReader, IScannerControls } from "@zxing/browser";
+import { NotFoundException } from "@zxing/library";
+import { useEffect, useMemo, useRef, useState } from "react";
+
+type Props = {
+  action: (text: string) => void;
+};
+
+export default function FastPOSScanner({ action }: Props) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const controlsRef = useRef<IScannerControls | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  const [isScanning, setIsScanning] = useState(false);
+
+  const reader = useMemo(
+    () =>
+      new BrowserMultiFormatReader(undefined, {
+        delayBetweenScanAttempts: 70, // ⚡ fast
+      }),
+    [],
+  );
+
+  const startScan = async () => {
+    if (!videoRef.current) return;
+
+    const devices = await BrowserMultiFormatReader.listVideoInputDevices();
+
+    const backCamera =
+      devices.find((d) => d.label.toLowerCase().includes("back")) || devices[0];
+
+    if (!backCamera) return;
+
+    // 🔥 Force HD for small barcode clarity
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        deviceId: backCamera.deviceId,
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        facingMode: "environment",
+      },
+    });
+
+    streamRef.current = stream;
+    videoRef.current.srcObject = stream;
+
+    const controls = await reader.decodeFromVideoDevice(
+      backCamera.deviceId,
+      videoRef.current,
+      (result, err) => {
+        if (result) {
+          action(result.getText());
+        }
+
+        if (err && !(err instanceof NotFoundException)) {
+          console.error(err);
+        }
+      },
+    );
+
+    controlsRef.current = controls;
+    setIsScanning(true);
+  };
+
+  const stopScan = () => {
+    // Stop ZXing
+    controlsRef.current?.stop();
+    controlsRef.current = null;
+
+    // 🔥 Stop camera stream properly
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+
+    setIsScanning(false);
+  };
+
+  useEffect(() => {
+    return () => {
+      stopScan(); // cleanup on unmount
+    };
+  }, []);
+
+  return (
+    <div className="space-y-4">
+      <button
+        onClick={() => (isScanning ? stopScan() : startScan())}
+        className={`rounded px-4 py-2 text-white ${
+          isScanning ? "bg-red-500" : "bg-blue-600"
+        }`}
+      >
+        {isScanning ? "Stop Scan" : "Start Scan"}
+      </button>
+
+      <div className="relative aspect-video overflow-hidden rounded-lg bg-black">
+        <video
+          ref={videoRef}
+          className="h-full w-full object-cover"
+          playsInline
+          muted
+        />
+
+        {/* Center focus box for small barcode */}
+        {isScanning && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div className="h-36 w-64 rounded-lg border-2 border-green-400 shadow-[0_0_12px_green]" />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
