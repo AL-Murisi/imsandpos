@@ -39,15 +39,6 @@ import dynamic from "next/dynamic";
 import SupplierForm from "@/components/forms/supplierform";
 import { EditSupplierForm } from "./editform";
 import { useRouter } from "next/navigation";
-const PaymentCreateForm = dynamic(
-  () =>
-    import("../../inventory/manageStocks/_components/PaymentCreateForm").then(
-      (m) => m.PaymentCreateForm,
-    ),
-  {
-    ssr: false,
-  },
-);
 
 const PaymentEditForm = dynamic(
   () => import("./form").then((m) => m.PaymentEditForm),

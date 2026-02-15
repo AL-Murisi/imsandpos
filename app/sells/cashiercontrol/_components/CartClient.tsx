@@ -17,8 +17,14 @@ import { updateProductStockOptimistic } from "@/lib/slices/productsSlice";
 import { useAppDispatch } from "@/lib/store";
 import { ProductForSale, SellingUnit } from "@/lib/zod";
 import { Minus, Plus, Trash2Icon } from "lucide-react";
+import dynamic from "next/dynamic";
 import { memo, useCallback } from "react";
-
+const FastPOSScanner = dynamic(
+  () => import("../_components/BarcodeScannerZXing"),
+  {
+    ssr: false,
+  },
+);
 // تم تعديل النوع ليشمل مصفوفة الوحدات الديناميكية
 type props = ProductForSale & {
   warehousename: string;
