@@ -1,5 +1,6 @@
 import { ProductForSale, SellingUnit } from "@/lib/zod";
 import dynamic from "next/dynamic";
+const BarcodeScannerZXing = dynamic(() => import("./BarcodeScannerZXing")); // 1. قم بتعريف النوع مرة واحدة فقط هنا أو استورده من ملف خارجي
 
 const CartDisplay = dynamic(() => import("./cartsClient")); // 1. قم بتعريف النوع مرة واحدة فقط هنا أو استورده من ملف خارجي
 type FullProductForSale = ProductForSale & {
@@ -30,7 +31,11 @@ export default function CartDisplayRedux({
 }: CustomDialogProps) {
   return (
     <div className="p-2">
-      {/* الآن لن يظهر خطأ لأن الأنواع متطابقة تماماً */}
+      <BarcodeScannerZXing
+        action={(result) => {
+          alert(`Scanned: ${result.text} (${result.format})`); // يمكنك استبدال هذا بأي وظيفة أخرى تريدها عند مسح الباركود
+        }}
+      />{" "}
       <CartDisplay users={users} product={product} nextnumber={nextnumber} />
     </div>
   );
