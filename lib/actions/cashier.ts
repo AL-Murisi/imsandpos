@@ -637,7 +637,7 @@ export async function getAllActiveProductsForSale(
       availableStock,
       warehouseId: product.warehouseId,
       warehousename: warehouseMap.get(product.warehouseId) ?? "",
-      barcode: product.barcode,
+      barcode: product.barcode ?? "",
       // pricePerUnit: Number(product.pricePerUnit) || 0,
       // pricePerPacket: Number(product.pricePerPacket) || 0,
       // pricePerCarton: Number(product.pricePerCarton) || 0,
