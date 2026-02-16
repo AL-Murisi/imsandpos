@@ -6,6 +6,7 @@ type forsale = ProductForSale & {
   warehousename: string;
   sellingMode: string;
   sellingUnits: SellingUnit[];
+  barcode: string;
   availableStock: Record<string, number>;
 };
 export interface CartItem extends CashierItem {

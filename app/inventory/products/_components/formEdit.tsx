@@ -19,7 +19,14 @@ import WarehouseForm from "@/components/forms/warehouseShortcut";
 import SupplierForm from "@/components/forms/suppliershortcut";
 import CategoryForm from "@/components/forms/catigresShortcut";
 import { Check, Plus, Trash2 } from "lucide-react";
+import dynamic from "next/dynamic";
 
+const BarcodeScanner = dynamic(
+  () => import("@/app/sells/cashiercontrol/_components/BarcodeScannerZXing"),
+  {
+    ssr: false,
+  },
+);
 interface Option {
   id: string;
   name: string;
@@ -49,11 +56,16 @@ export default function ProductEditForm({
   });
 
   const [open, setOpen] = useState(false);
+  const [opens, setOpens] = useState(false);
+
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pricingMode, setPricingMode] = useState<
     "full" | "cartonUnit" | "cartonOnly"
   >(product?.type ?? "full");
+  const [last, setLast] = useState<{ text: string; format: string } | null>(
+    null,
+  );
 
   const { user } = useAuth();
   const isUpdatingRef = useRef(false);
@@ -201,19 +213,15 @@ export default function ProductEditForm({
     const currentUnits = watch("sellingUnits");
     if (!currentUnits || index === 0) return;
 
-    // 1. جلب سعر الوحدة الأساسية (الحبة)
+    // 1. Get the price of the Base Unit (the very first unit at index 0)
     const basePrice = currentUnits[0]?.price || 0;
 
-    // 2. حساب إجمالي عدد الحبات في هذه الوحدة
-    // المعادلة: (عدد الحبات في الوحدة السابقة) × (معامل تحويل الوحدة الحالية)
-    let totalUnitsInThisLevel = 1;
-    for (let i = 1; i <= index; i++) {
-      const multiplier = currentUnits[i]?.unitsPerParent || 1;
-      totalUnitsInThisLevel *= multiplier;
-    }
+    // 2. Get the total base units entered for THIS specific level (e.g., 360)
+    const totalBaseUnits = currentUnits[index]?.unitsPerParent || 0;
 
-    // 3. السعر النهائي = سعر الحبة × إجمالي الحبات في هذه الوحدة
-    const calculatedPrice = basePrice * totalUnitsInThisLevel;
+    // 3. Final Price = Base Price * Total Units in this level
+    // Example: 2.5 (price) * 360 (units) = 900
+    const calculatedPrice = basePrice * totalBaseUnits;
 
     setValue(
       `sellingUnits.${index}.price`,
@@ -370,9 +378,7 @@ export default function ProductEditForm({
                 <Input
                   id="barcode"
                   type="number"
-                  {...register("barcode", {
-                    valueAsNumber: true,
-                  })}
+                  {...register("barcode", {})}
                   className="text-right"
                   placeholder="0"
                 />
@@ -382,6 +388,18 @@ export default function ProductEditForm({
                   </p>
                 )}
               </div>
+              <Dailogreuse
+                open={opens}
+                setOpen={setOpens}
+                btnLabl="تعديل"
+                style="w-full max-w-[1400px] overflow-y-auto rounded-lg p-6 xl:max-w-[1600px]"
+                titel="قم بتحديث تفاصيل المنتج"
+                description={`تعديل المنتج: ${product?.name}`}
+              >
+                <BarcodeScanner
+                  action={(result) => setValue("barcode", result.text)}
+                />
+              </Dailogreuse>{" "}
             </div>
           </Card>
 
@@ -450,19 +468,19 @@ export default function ProductEditForm({
                         disabled={index === 0}
                       />
                     </div>
-
                     {index > 0 && (
                       <div className="grid gap-3">
                         <Label>
-                          عدد {sellingUnits[index - 1]?.name || "الوحدات"} في
-                          هذه الوحدة
+                          عدد {sellingUnits[0]?.name || "الوحدات الأساسية"} في
+                          هذه الوحدة ({field.name || "الوحدة الحالية"})
                         </Label>
                         <Input
                           type="number"
                           {...register(`sellingUnits.${index}.unitsPerParent`, {
                             valueAsNumber: true,
                           })}
-                          placeholder="مثال: 12"
+                          /* Example: if Base is 'حبة', placeholder shows 'مثال: 440 حبة' */
+                          placeholder={`مثال: 12 ${sellingUnits[0]?.name || ""}`}
                           onChange={() => calculatePrice(index)}
                         />
                       </div>
@@ -521,7 +539,7 @@ export default function ProductEditForm({
                 {sellingUnits.map((unit, idx) => (
                   <div
                     key={idx}
-                    className="bg-primary rounded-lg p-3 text-center shadow-sm"
+                    className="rounded-lg p-3 text-center shadow-sm"
                   >
                     <p className="text-xs text-gray-500">{unit.name}</p>
                     <p className="text-lg font-bold">

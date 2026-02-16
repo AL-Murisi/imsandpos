@@ -7,8 +7,13 @@ import {
 } from "@/lib/slices/productsSlice";
 import { useAppDispatch, useAppSelector } from "@/lib/store";
 import { ProductForSale, SellingUnit } from "@/lib/zod";
-import { useCallback, useEffect, useMemo } from "react";
-
+import { useCallback, useEffect, useMemo, useState } from "react";
+const BarcodeScanner = dynamic(
+  () => import("@/app/sells/cashiercontrol/_components/BarcodeScannerZXing"),
+  {
+    ssr: false,
+  },
+);
 import { useFormatter } from "@/hooks/usePrice";
 import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
@@ -17,6 +22,7 @@ import { ProductCard } from "./CartClient";
 import { socket } from "@/app/socket";
 import { supabase } from "@/lib/supabaseClient";
 import { useCompany } from "@/hooks/useCompany";
+import Dailogreuse from "@/components/common/dailogreuse";
 
 const ScrollArea = dynamic(
   () => import("@/components/ui/scroll-area").then((m) => m.ScrollArea),
@@ -27,6 +33,7 @@ type Forsale = ProductForSale & {
   warehousename: string;
   sellingMode: string;
   sellingUnits: SellingUnit[];
+  barcode: string;
   availableStock: Record<string, number>;
 };
 
@@ -37,6 +44,11 @@ export default function List({ product }: Props) {
   const { company } = useCompany();
   const t = useTranslations("cashier");
   const dispatch = useAppDispatch();
+  const [opens, setOpens] = useState(false);
+  const [last, setLast] = useState<{ text: string; format: string } | null>(
+    null,
+  );
+
   const products = useAppSelector((s) => s.products.products);
   const { formatCurrency } = useFormatter();
   const cartItems =
@@ -185,12 +197,6 @@ export default function List({ product }: Props) {
       );
 
       // 🔥 Emit stock update to other users
-      socket.emit("stock:update", {
-        productId: p.id,
-        sellingUnit: targetUnit.id,
-        quantity: 1,
-        mode: "consume",
-      });
     },
     [dispatch, cartItems],
   );
@@ -222,7 +228,38 @@ export default function List({ product }: Props) {
           <p>{t("noProductFound")}</p>
         </div>
       )} */}
+      <Dailogreuse
+        open={opens}
+        setOpen={setOpens}
+        btnLabl="تعديل"
+        style="w-full max-w-[1400px] overflow-y-auto rounded-lg p-6 xl:max-w-[1600px]"
+        titel="قم بتحديث تفاصيل المنتج"
+      >
+        <BarcodeScanner
+          action={(result) => {
+            // 1. Update the visual "Last Scanned" state
+            setLast({ text: result.text, format: result.format });
 
+            // 2. Find the product that matches the scanned text (SKU or Barcode)
+            const scannedProduct = products.find(
+              (p) => p.sku === result.text || p.barcode === result.text,
+            );
+
+            if (scannedProduct) {
+              // 3. Trigger your existing add logic
+              handleAdd(scannedProduct);
+
+              // Optional: Close the dialog after a successful scan
+              // setOpens(false);
+
+              console.log(`Successfully added: ${scannedProduct.name}`);
+            } else {
+              console.warn("Product not found for code:", result.text);
+              // Optional: Add a toast notification here for "Product not found"
+            }
+          }}
+        />
+      </Dailogreuse>{" "}
       {products.length > 0 && <div className="mt-4 px-4">{productGrid}</div>}
     </ScrollArea>
   );

@@ -20,8 +20,7 @@ export default function BarcodeScanPage() {
         Uses @zxing/browser to scan with the camera. Test-only page.
       </p>
 
-      <BarcodeScanner />
-
+      <BarcodeScanner action={(result) => setLast(result)} />
       {last ? (
         <div className="rounded border border-green-300 bg-green-50 p-3 text-sm text-green-800">
           Last scan: {last.text} ({last.format})

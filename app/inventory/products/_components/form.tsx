@@ -166,19 +166,15 @@ export default function ProductForm({ formData }: ExpenseFormProps) {
     const currentUnits = watch("sellingUnits");
     if (!currentUnits || index === 0) return;
 
-    // 1. جلب سعر الوحدة الأساسية (الحبة)
+    // 1. Get the price of the Base Unit (the very first unit at index 0)
     const basePrice = currentUnits[0]?.price || 0;
 
-    // 2. حساب إجمالي عدد الحبات في هذه الوحدة
-    // المعادلة: (عدد الحبات في الوحدة السابقة) × (معامل تحويل الوحدة الحالية)
-    let totalUnitsInThisLevel = 1;
-    for (let i = 1; i <= index; i++) {
-      const multiplier = currentUnits[i]?.unitsPerParent || 1;
-      totalUnitsInThisLevel *= multiplier;
-    }
+    // 2. Get the total base units entered for THIS specific level (e.g., 360)
+    const totalBaseUnits = currentUnits[index]?.unitsPerParent || 0;
 
-    // 3. السعر النهائي = سعر الحبة × إجمالي الحبات في هذه الوحدة
-    const calculatedPrice = basePrice * totalUnitsInThisLevel;
+    // 3. Final Price = Base Price * Total Units in this level
+    // Example: 2.5 (price) * 360 (units) = 900
+    const calculatedPrice = basePrice * totalBaseUnits;
 
     setValue(
       `sellingUnits.${index}.price`,
@@ -342,9 +338,7 @@ export default function ProductForm({ formData }: ExpenseFormProps) {
                 <Input
                   id="barcode"
                   type="number"
-                  {...register("barcode", {
-                    valueAsNumber: true,
-                  })}
+                  {...register("barcode", {})}
                   className="text-right"
                   placeholder="0"
                 />
@@ -493,7 +487,7 @@ export default function ProductForm({ formData }: ExpenseFormProps) {
                 {sellingUnits.map((unit, idx) => (
                   <div
                     key={idx}
-                    className="bg-primary rounded-lg p-3 text-center shadow-sm"
+                    className="rounded-lg p-3 text-center shadow-sm"
                   >
                     <p className="text-xs text-gray-500">{unit.name}</p>
                     <p className="text-lg font-bold">

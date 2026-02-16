@@ -717,29 +717,101 @@
 //     </div>
 //   );
 // }
+// "use client";
+
+// import { useEffect } from "react";
+// import Image from "next/image";
+// import { toast } from "sonner"; // Sonner import
+// import ScanbotSDKService from "@/lib/scanbot";
+
+// export default function BarcodeScanner() {
+//   useEffect(() => {
+//     ScanbotSDKService.instance.createBarcodeScanner(
+//       "barcode-scanner",
+//       async (barcode) => {
+//         if (barcode.sourceImage) {
+//           // 1. Process the image (Fixing the ArrayBuffer type mismatch)
+//           const jpegData = await ScanbotSDKService.instance.sdk?.imageToJpeg(
+//             barcode.sourceImage,
+//           );
+
+//           const base64Image = await ScanbotSDKService.instance.sdk?.toDataUrl(
+//             jpegData as unknown as ArrayBuffer,
+//           );
+
+//           // 2. Sonner Implementation
+//           toast(`Detected: ${barcode.text}`, {
+//             description: `Format: ${barcode.format}`,
+//             icon: (
+//               <div className="relative h-6 w-6 overflow-hidden rounded-sm">
+//                 <Image
+//                   fill
+//                   src={base64Image || ""}
+//                   alt="Scan"
+//                   className="object-cover"
+//                 />
+//               </div>
+//             ),
+//           });
+//         }
+//       },
+//     );
+
+//     return () => {
+//       ScanbotSDKService.instance.disposeBarcodeScanner();
+//     };
+//   }, []);
+
+//   return (
+//     <div className="relative flex h-screen flex-col bg-black">
+//       {/* Container for the Scanbot camera view */}
+//       <div
+//         id="barcode-scanner"
+//         className="w-full flex-1"
+//         style={{ height: "calc(100vh - 50px)" }}
+//       />
+
+//       {/* Note: Just like the other toast, <Toaster />
+//         usually lives in your layout.tsx
+//       */}
+//     </div>
+//   );
+// }
+// BarcodeScanner.tsx
 "use client";
 
 import { useEffect } from "react";
 import Image from "next/image";
-import { toast } from "sonner"; // Sonner import
+import { toast } from "sonner";
 import ScanbotSDKService from "@/lib/scanbot";
 
-export default function BarcodeScanner() {
+type Props = {
+  action: (result: { text: string; format: string }) => void;
+};
+
+export default function BarcodeScanner({ action }: Props) {
   useEffect(() => {
     ScanbotSDKService.instance.createBarcodeScanner(
       "barcode-scanner",
       async (barcode) => {
+        // 1. Create the result object
+        const scanResult = {
+          text: barcode.text,
+          format: barcode.format,
+        };
+
+        // 2. Update the parent state via the prop
+        action(scanResult);
+
+        // 3. Keep your existing toast logic (Optional)
         if (barcode.sourceImage) {
-          // 1. Process the image (Fixing the ArrayBuffer type mismatch)
           const jpegData = await ScanbotSDKService.instance.sdk?.imageToJpeg(
             barcode.sourceImage,
           );
-
           const base64Image = await ScanbotSDKService.instance.sdk?.toDataUrl(
             jpegData as unknown as ArrayBuffer,
           );
 
-          // 2. Sonner Implementation
           toast(`Detected: ${barcode.text}`, {
             description: `Format: ${barcode.format}`,
             icon: (
@@ -760,20 +832,11 @@ export default function BarcodeScanner() {
     return () => {
       ScanbotSDKService.instance.disposeBarcodeScanner();
     };
-  }, []);
+  }, [action]); // Added action to dependency array
 
   return (
-    <div className="relative flex h-screen flex-col bg-black">
-      {/* Container for the Scanbot camera view */}
-      <div
-        id="barcode-scanner"
-        className="w-full flex-1"
-        style={{ height: "calc(100vh - 50px)" }}
-      />
-
-      {/* Note: Just like the other toast, <Toaster /> 
-        usually lives in your layout.tsx 
-      */}
+    <div className="relative flex h-[400px] flex-col overflow-hidden rounded-lg border bg-black">
+      <div id="barcode-scanner" className="h-full w-full" />
     </div>
   );
 }
