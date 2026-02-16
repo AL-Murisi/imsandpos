@@ -404,122 +404,316 @@
 //     </div>
 //   );
 // }
+
+// "use client";
+
+// import { BrowserMultiFormatReader, IScannerControls } from "@zxing/browser";
+// import { NotFoundException } from "@zxing/library";
+// import { useEffect, useMemo, useRef, useState } from "react";
+
+// type Props = {
+//   action: (text: string) => void;
+// };
+
+// export default function FastPOSScanner({ action }: Props) {
+//   const videoRef = useRef<HTMLVideoElement | null>(null);
+//   const controlsRef = useRef<IScannerControls | null>(null);
+//   const streamRef = useRef<MediaStream | null>(null);
+
+//   const [isScanning, setIsScanning] = useState(false);
+
+//   const reader = useMemo(
+//     () =>
+//       new BrowserMultiFormatReader(undefined, {
+//         delayBetweenScanAttempts: 70, // ⚡ fast
+//       }),
+//     [],
+//   );
+
+//   const startScan = async () => {
+//     if (!videoRef.current) return;
+
+//     const devices = await BrowserMultiFormatReader.listVideoInputDevices();
+
+//     const backCamera =
+//       devices.find((d) => d.label.toLowerCase().includes("back")) || devices[0];
+
+//     if (!backCamera) return;
+
+//     // 🔥 Force HD for small barcode clarity
+//     const stream = await navigator.mediaDevices.getUserMedia({
+//       video: {
+//         deviceId: backCamera.deviceId,
+//         width: { ideal: 1280 },
+//         height: { ideal: 720 },
+//         facingMode: "environment",
+//       },
+//     });
+
+//     streamRef.current = stream;
+//     videoRef.current.srcObject = stream;
+
+//     const controls = await reader.decodeFromVideoDevice(
+//       backCamera.deviceId,
+//       videoRef.current,
+//       (result, err) => {
+//         if (result) {
+//           action(result.getText());
+//         }
+
+//         if (err && !(err instanceof NotFoundException)) {
+//           console.error(err);
+//         }
+//       },
+//     );
+
+//     controlsRef.current = controls;
+//     setIsScanning(true);
+//   };
+
+//   const stopScan = () => {
+//     // Stop ZXing
+//     controlsRef.current?.stop();
+//     controlsRef.current = null;
+
+//     // 🔥 Stop camera stream properly
+//     if (streamRef.current) {
+//       streamRef.current.getTracks().forEach((track) => track.stop());
+//       streamRef.current = null;
+//     }
+
+//     if (videoRef.current) {
+//       videoRef.current.srcObject = null;
+//     }
+
+//     setIsScanning(false);
+//   };
+
+//   useEffect(() => {
+//     return () => {
+//       stopScan(); // cleanup on unmount
+//     };
+//   }, []);
+
+//   return (
+//     <div className="space-y-4">
+//       <button
+//         onClick={() => (isScanning ? stopScan() : startScan())}
+//         className={`rounded px-4 py-2 text-white ${
+//           isScanning ? "bg-red-500" : "bg-blue-600"
+//         }`}
+//       >
+//         {isScanning ? "Stop Scan" : "Start Scan"}
+//       </button>
+
+//       <div className="relative aspect-video overflow-hidden rounded-lg bg-black">
+//         <video
+//           ref={videoRef}
+//           className="h-full w-full object-cover"
+//           playsInline
+//           muted
+//         />
+
+//         {/* Center focus box for small barcode */}
+//         {isScanning && (
+//           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+//             <div className="h-36 w-64 rounded-lg border-2 border-green-400 shadow-[0_0_12px_green]" />
+//           </div>
+//         )}
+//       </div>
+//     </div>
+//   );
+// }
+// "use client";
+
+// import { useEffect, useRef, useState } from "react";
+
+// type Props = {
+//   action: (code: string) => void;
+// };
+
+// export default function BarcodeScanner({ action }: Props) {
+//   const videoRef = useRef<HTMLVideoElement | null>(null);
+//   const streamRef = useRef<MediaStream | null>(null);
+//   const detectorRef = useRef<any>(null);
+//   const animationRef = useRef<number | null>(null);
+//   const lastScanRef = useRef<number>(0);
+
+//   const [isActive, setIsActive] = useState(false);
+//   const [error, setError] = useState<string | null>(null);
+
+//   const startScanner = async () => {
+//     console.log("START BUTTON CLICKED");
+
+//     try {
+//       if (!videoRef.current) {
+//         console.log("Video ref missing");
+//         return;
+//       }
+
+//       if (!navigator.mediaDevices) {
+//         console.log("mediaDevices not supported");
+//         setError("Camera not supported in this browser.");
+//         return;
+//       }
+
+//       console.log("Requesting camera...");
+
+//       const stream = await navigator.mediaDevices.getUserMedia({
+//         video: true,
+//       });
+
+//       console.log("Camera stream received:", stream);
+
+//       streamRef.current = stream;
+
+//       videoRef.current.srcObject = stream;
+//       await videoRef.current.play();
+
+//       setIsActive(true);
+//     } catch (err) {
+//       console.error("Camera error:", err);
+//       setError("Camera failed to start.");
+//     }
+//   };
+
+//   const scanLoop = async () => {
+//     if (!videoRef.current || !detectorRef.current) {
+//       animationRef.current = requestAnimationFrame(scanLoop);
+//       return;
+//     }
+
+//     try {
+//       const barcodes = await detectorRef.current.detect(videoRef.current);
+
+//       if (barcodes.length > 0) {
+//         const now = Date.now();
+
+//         if (now - lastScanRef.current > 1000) {
+//           lastScanRef.current = now;
+
+//           const code = barcodes[0].rawValue;
+//           action(code);
+
+//           stopScanner();
+//           return;
+//         }
+//       }
+//     } catch {}
+
+//     animationRef.current = requestAnimationFrame(scanLoop);
+//   };
+
+//   const stopScanner = () => {
+//     if (animationRef.current) {
+//       cancelAnimationFrame(animationRef.current);
+//       animationRef.current = null;
+//     }
+
+//     if (streamRef.current) {
+//       streamRef.current.getTracks().forEach((track) => track.stop());
+//       streamRef.current = null;
+//     }
+
+//     if (videoRef.current) {
+//       videoRef.current.srcObject = null;
+//     }
+
+//     setIsActive(false);
+//   };
+
+//   useEffect(() => {
+//     return () => stopScanner();
+//   }, []);
+
+//   return (
+//     <div className="relative mx-auto w-full max-w-md overflow-hidden rounded-lg bg-black">
+//       <button
+//         onClick={isActive ? stopScanner : startScanner}
+//         className={`w-full py-3 font-semibold text-white ${
+//           isActive ? "bg-red-600" : "bg-green-600"
+//         }`}
+//       >
+//         {isActive ? "Stop Scanner" : "Start Scanner"}
+//       </button>
+
+//       <div className="relative aspect-video bg-black">
+//         <video
+//           ref={videoRef}
+//           autoPlay
+//           playsInline
+//           muted
+//           className={`h-full w-full object-cover ${
+//             isActive ? "block" : "hidden"
+//           }`}
+//         />
+
+//         {isActive && (
+//           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+//             <div className="h-36 w-64 rounded-lg border-2 border-green-400 shadow-[0_0_12px_green]" />
+//           </div>
+//         )}
+//       </div>
+
+//       {error && <div className="bg-white p-2 text-red-500">{error}</div>}
+//     </div>
+//   );
+// }
 "use client";
 
-import { BrowserMultiFormatReader, IScannerControls } from "@zxing/browser";
-import { NotFoundException } from "@zxing/library";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import type ScanbotSDK from "scanbot-web-sdk/UI";
 
-type Props = {
-  action: (text: string) => void;
-};
+export default function Home() {
+  const [scanResult, setScanResult] = useState("");
+  let ScanbotSdk: typeof ScanbotSDK;
 
-export default function FastPOSScanner({ action }: Props) {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const controlsRef = useRef<IScannerControls | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-
-  const [isScanning, setIsScanning] = useState(false);
-
-  const reader = useMemo(
-    () =>
-      new BrowserMultiFormatReader(undefined, {
-        delayBetweenScanAttempts: 70, // ⚡ fast
-      }),
-    [],
-  );
-
-  const startScan = async () => {
-    if (!videoRef.current) return;
-
-    const devices = await BrowserMultiFormatReader.listVideoInputDevices();
-
-    const backCamera =
-      devices.find((d) => d.label.toLowerCase().includes("back")) || devices[0];
-
-    if (!backCamera) return;
-
-    // 🔥 Force HD for small barcode clarity
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        deviceId: backCamera.deviceId,
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-        facingMode: "environment",
-      },
-    });
-
-    streamRef.current = stream;
-    videoRef.current.srcObject = stream;
-
-    const controls = await reader.decodeFromVideoDevice(
-      backCamera.deviceId,
-      videoRef.current,
-      (result, err) => {
-        if (result) {
-          action(result.getText());
-        }
-
-        if (err && !(err instanceof NotFoundException)) {
-          console.error(err);
-        }
-      },
-    );
-
-    controlsRef.current = controls;
-    setIsScanning(true);
-  };
-
-  const stopScan = () => {
-    // Stop ZXing
-    controlsRef.current?.stop();
-    controlsRef.current = null;
-
-    // 🔥 Stop camera stream properly
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-
-    setIsScanning(false);
-  };
-
+  // initialize the Scanbot Barcode SDK
   useEffect(() => {
-    return () => {
-      stopScan(); // cleanup on unmount
-    };
-  }, []);
+    loadSDK();
+  });
+
+  async function loadSDK() {
+    // Use dynamic inline imports to load the SDK, else Next will load it into the server bundle
+    // and attempt to load it before the 'window' object becomes available.
+    // https://nextjs.org/docs/pages/building-your-application/optimizing/lazy-loading
+    ScanbotSdk = (await import("scanbot-web-sdk/UI")).default;
+    const LICENSE_KEY =
+      "L6DckVj4pwYLMleYbfdUUyDuqxVoFT" +
+      "82y/hChawSwagld0MeN7jBk0L15bfE" +
+      "EjsBEmwQmZ6Z5cu+yicLUrCnf/1CP0" +
+      "MuBXeUtYqY/051JPtIeceurKUhhGxG" +
+      "se/ckk9wkxycOgr2DCESG6MQD8lZiR" +
+      "FXQrzapSqD7KGgY2xBhXipNPIZkiBY" +
+      "yV/GnY6Pic5wgL2LgHoVX7ZXZm/d6s" +
+      "+iPi5vBI2VzJfbsNd0RTQMF6EGaOz5" +
+      "lENnsIq2edgaelpc4ZcTfoC4OyB1ru" +
+      "Xz8JNAg9F7y2wfbE1DXmMh2iHnHLrG" +
+      "DHZfqM7ASK/qYZPhNWN+U2mJcFMjug" +
+      "fR2a0AonpYmQ==\nU2NhbmJvdFNESw" +
+      "psb2NhbGhvc3R8aW1zYW5kcG9zCjE3" +
+      "NzE4OTExOTkKODM4ODYwNwo4\n";
+    await ScanbotSdk.initialize({
+      licenseKey: LICENSE_KEY,
+
+      enginePath: "/wasm/",
+    });
+  }
+
+  async function startBarcodeScanner() {
+    const config = new ScanbotSdk.UI.Config.BarcodeScannerScreenConfiguration();
+    const result = await ScanbotSdk.UI.createBarcodeScanner(config);
+
+    if (result && result.items.length > 0) {
+      setScanResult(result.items[0].barcode.text);
+    }
+  }
 
   return (
-    <div className="space-y-4">
-      <button
-        onClick={() => (isScanning ? stopScan() : startScan())}
-        className={`rounded px-4 py-2 text-white ${
-          isScanning ? "bg-red-500" : "bg-blue-600"
-        }`}
-      >
-        {isScanning ? "Stop Scan" : "Start Scan"}
-      </button>
-
-      <div className="relative aspect-video overflow-hidden rounded-lg bg-black">
-        <video
-          ref={videoRef}
-          className="h-full w-full object-cover"
-          playsInline
-          muted
-        />
-
-        {/* Center focus box for small barcode */}
-        {isScanning && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div className="h-36 w-64 rounded-lg border-2 border-green-400 shadow-[0_0_12px_green]" />
-          </div>
-        )}
-      </div>
+    <div>
+      <p>Scanbot Next.js Example</p>
+      <button onClick={startBarcodeScanner}>Scan Barcodes</button>
+      <p>{scanResult}</p>
     </div>
   );
 }

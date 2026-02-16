@@ -144,8 +144,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         },
         {
           title: t("suppliers"),
-          url: "/suppliers",
-          icon: () => <Handshake className="h-4 w-4 text-orange-600" />,
+          url: "/inventory/suppliers",
+          icon: <Handshake className="h-4 w-4 text-orange-600" />,
           roles: ["admin", "manager_wh"],
         },
       ],

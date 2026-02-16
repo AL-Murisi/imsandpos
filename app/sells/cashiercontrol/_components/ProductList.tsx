@@ -10,12 +10,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { setProductsLocal } from "@/lib/slices/productsSlice";
 import { useAppDispatch } from "@/lib/store";
-const FastPOSScanner = dynamic(
-  () => import("../_components/BarcodeScannerZXing"),
-  {
-    ssr: false,
-  },
-);
+
 type forsale = ProductForSale & {
   warehousename: string;
   sellingMode: string;
@@ -80,11 +75,6 @@ export default function ProductsList({
       <List
         product={product}
         // queryr={queryr || (selectedproduct ? selectedproduct.name || "" : "")}
-      />
-      <FastPOSScanner
-        action={(text) => {
-          setLast({ text, format: "Unknown" });
-        }}
       />
 
       {last ? (
