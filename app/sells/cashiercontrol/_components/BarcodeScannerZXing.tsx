@@ -659,61 +659,121 @@
 //     </div>
 //   );
 // }
+// "use client";
+
+// import { useEffect, useState } from "react";
+// import type ScanbotSDK from "scanbot-web-sdk/UI";
+
+// export default function Home() {
+//   const [scanResult, setScanResult] = useState("");
+//   let ScanbotSdk: typeof ScanbotSDK;
+
+//   // initialize the Scanbot Barcode SDK
+//   useEffect(() => {
+//     loadSDK();
+//   });
+
+//   async function loadSDK() {
+//     // Use dynamic inline imports to load the SDK, else Next will load it into the server bundle
+//     // and attempt to load it before the 'window' object becomes available.
+//     // https://nextjs.org/docs/pages/building-your-application/optimizing/lazy-loading
+//     ScanbotSdk = (await import("scanbot-web-sdk/UI")).default;
+//     const LICENSE_KEY =
+//       "L6DckVj4pwYLMleYbfdUUyDuqxVoFT" +
+//       "82y/hChawSwagld0MeN7jBk0L15bfE" +
+//       "EjsBEmwQmZ6Z5cu+yicLUrCnf/1CP0" +
+//       "MuBXeUtYqY/051JPtIeceurKUhhGxG" +
+//       "se/ckk9wkxycOgr2DCESG6MQD8lZiR" +
+//       "FXQrzapSqD7KGgY2xBhXipNPIZkiBY" +
+//       "yV/GnY6Pic5wgL2LgHoVX7ZXZm/d6s" +
+//       "+iPi5vBI2VzJfbsNd0RTQMF6EGaOz5" +
+//       "lENnsIq2edgaelpc4ZcTfoC4OyB1ru" +
+//       "Xz8JNAg9F7y2wfbE1DXmMh2iHnHLrG" +
+//       "DHZfqM7ASK/qYZPhNWN+U2mJcFMjug" +
+//       "fR2a0AonpYmQ==\nU2NhbmJvdFNESw" +
+//       "psb2NhbGhvc3R8aW1zYW5kcG9zCjE3" +
+//       "NzE4OTExOTkKODM4ODYwNwo4\n";
+//     await ScanbotSdk.initialize({
+//       licenseKey: LICENSE_KEY,
+
+//       enginePath: "/wasm/",
+//     });
+//   }
+
+//   async function startBarcodeScanner() {
+//     const config = new ScanbotSdk.UI.Config.BarcodeScannerScreenConfiguration();
+//     const result = await ScanbotSdk.UI.createBarcodeScanner(config);
+
+//     if (result && result.items.length > 0) {
+//       setScanResult(result.items[0].barcode.text);
+//     }
+//   }
+
+//   return (
+//     <div>
+//       <p>Scanbot Next.js Example</p>
+//       <button onClick={startBarcodeScanner}>Scan Barcodes</button>
+//       <p>{scanResult}</p>
+//     </div>
+//   );
+// }
 "use client";
 
-import { useEffect, useState } from "react";
-import type ScanbotSDK from "scanbot-web-sdk/UI";
+import { useEffect } from "react";
+import Image from "next/image";
+import { toast } from "sonner"; // Sonner import
+import ScanbotSDKService from "@/lib/scanbot";
 
-export default function Home() {
-  const [scanResult, setScanResult] = useState("");
-  let ScanbotSdk: typeof ScanbotSDK;
-
-  // initialize the Scanbot Barcode SDK
+export default function BarcodeScanner() {
   useEffect(() => {
-    loadSDK();
-  });
+    ScanbotSDKService.instance.createBarcodeScanner(
+      "barcode-scanner",
+      async (barcode) => {
+        if (barcode.sourceImage) {
+          // 1. Process the image (Fixing the ArrayBuffer type mismatch)
+          const jpegData = await ScanbotSDKService.instance.sdk?.imageToJpeg(
+            barcode.sourceImage,
+          );
 
-  async function loadSDK() {
-    // Use dynamic inline imports to load the SDK, else Next will load it into the server bundle
-    // and attempt to load it before the 'window' object becomes available.
-    // https://nextjs.org/docs/pages/building-your-application/optimizing/lazy-loading
-    ScanbotSdk = (await import("scanbot-web-sdk/UI")).default;
-    const LICENSE_KEY =
-      "L6DckVj4pwYLMleYbfdUUyDuqxVoFT" +
-      "82y/hChawSwagld0MeN7jBk0L15bfE" +
-      "EjsBEmwQmZ6Z5cu+yicLUrCnf/1CP0" +
-      "MuBXeUtYqY/051JPtIeceurKUhhGxG" +
-      "se/ckk9wkxycOgr2DCESG6MQD8lZiR" +
-      "FXQrzapSqD7KGgY2xBhXipNPIZkiBY" +
-      "yV/GnY6Pic5wgL2LgHoVX7ZXZm/d6s" +
-      "+iPi5vBI2VzJfbsNd0RTQMF6EGaOz5" +
-      "lENnsIq2edgaelpc4ZcTfoC4OyB1ru" +
-      "Xz8JNAg9F7y2wfbE1DXmMh2iHnHLrG" +
-      "DHZfqM7ASK/qYZPhNWN+U2mJcFMjug" +
-      "fR2a0AonpYmQ==\nU2NhbmJvdFNESw" +
-      "psb2NhbGhvc3R8aW1zYW5kcG9zCjE3" +
-      "NzE4OTExOTkKODM4ODYwNwo4\n";
-    await ScanbotSdk.initialize({
-      licenseKey: LICENSE_KEY,
+          const base64Image = await ScanbotSDKService.instance.sdk?.toDataUrl(
+            jpegData as unknown as ArrayBuffer,
+          );
 
-      enginePath: "/wasm/",
-    });
-  }
+          // 2. Sonner Implementation
+          toast(`Detected: ${barcode.text}`, {
+            description: `Format: ${barcode.format}`,
+            icon: (
+              <div className="relative h-6 w-6 overflow-hidden rounded-sm">
+                <Image
+                  fill
+                  src={base64Image || ""}
+                  alt="Scan"
+                  className="object-cover"
+                />
+              </div>
+            ),
+          });
+        }
+      },
+    );
 
-  async function startBarcodeScanner() {
-    const config = new ScanbotSdk.UI.Config.BarcodeScannerScreenConfiguration();
-    const result = await ScanbotSdk.UI.createBarcodeScanner(config);
-
-    if (result && result.items.length > 0) {
-      setScanResult(result.items[0].barcode.text);
-    }
-  }
+    return () => {
+      ScanbotSDKService.instance.disposeBarcodeScanner();
+    };
+  }, []);
 
   return (
-    <div>
-      <p>Scanbot Next.js Example</p>
-      <button onClick={startBarcodeScanner}>Scan Barcodes</button>
-      <p>{scanResult}</p>
+    <div className="relative flex h-screen flex-col bg-black">
+      {/* Container for the Scanbot camera view */}
+      <div
+        id="barcode-scanner"
+        className="w-full flex-1"
+        style={{ height: "calc(100vh - 50px)" }}
+      />
+
+      {/* Note: Just like the other toast, <Toaster /> 
+        usually lives in your layout.tsx 
+      */}
     </div>
   );
 }

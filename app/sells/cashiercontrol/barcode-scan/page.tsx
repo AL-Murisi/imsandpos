@@ -2,9 +2,12 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
-const Home = dynamic(() => import("../_components/BarcodeScannerZXing"), {
-  ssr: false,
-});
+const BarcodeScanner = dynamic(
+  () => import("../_components/BarcodeScannerZXing"),
+  {
+    ssr: false,
+  },
+);
 export default function BarcodeScanPage() {
   const [last, setLast] = useState<{ text: string; format: string } | null>(
     null,
@@ -17,7 +20,7 @@ export default function BarcodeScanPage() {
         Uses @zxing/browser to scan with the camera. Test-only page.
       </p>
 
-      <Home />
+      <BarcodeScanner />
 
       {last ? (
         <div className="rounded border border-green-300 bg-green-50 p-3 text-sm text-green-800">
