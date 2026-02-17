@@ -7,7 +7,7 @@ import {
 } from "@/lib/slices/productsSlice";
 import { useAppDispatch, useAppSelector } from "@/lib/store";
 import { ProductForSale, SellingUnit } from "@/lib/zod";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 const BarcodeScanner = dynamic(
   () => import("@/app/sells/cashiercontrol/_components/BarcodeScannerZXing"),
   {
@@ -97,49 +97,49 @@ export default function List({ product }: Props) {
     };
   }, [dispatch, supabase]);
   // 🔥 Listen for stock updates from other users
-  useEffect(() => {
-    const handleStockUpdate = (data: {
-      productId: string;
-      sellingUnit: string;
-      quantity: number;
-      mode: "consume" | "restore";
-    }) => {
-      console.log("📦 Stock updated by another user:", data);
+  // useEffect(() => {
+  //   const handleStockUpdate = (data: {
+  //     productId: string;
+  //     sellingUnit: string;
+  //     quantity: number;
+  //     mode: "consume" | "restore";
+  //   }) => {
+  //     console.log("📦 Stock updated by another user:", data);
 
-      // Update local stock immediately
-      dispatch(updateProductStockOptimistic(data));
-    };
+  //     // Update local stock immediately
+  //     dispatch(updateProductStockOptimistic(data));
+  //   };
 
-    const handleSaleRefresh = (data: {
-      items: Array<{
-        id: string;
-        selectedUnitId: string;
-        selectedQty: number;
-      }>;
-    }) => {
-      console.log("🛒 Sale completed by another user:", data);
+  //   const handleSaleRefresh = (data: {
+  //     items: Array<{
+  //       id: string;
+  //       selectedUnitId: string;
+  //       selectedQty: number;
+  //     }>;
+  //   }) => {
+  //     console.log("🛒 Sale completed by another user:", data);
 
-      // Update all affected products
-      data.items.forEach((item) => {
-        dispatch(
-          updateProductStockOptimistic({
-            productId: item.id,
-            sellingUnit: item.selectedUnitId,
-            quantity: item.selectedQty,
-            mode: "consume",
-          }),
-        );
-      });
-    };
+  //     // Update all affected products
+  //     data.items.forEach((item) => {
+  //       dispatch(
+  //         updateProductStockOptimistic({
+  //           productId: item.id,
+  //           sellingUnit: item.selectedUnitId,
+  //           quantity: item.selectedQty,
+  //           mode: "consume",
+  //         }),
+  //       );
+  //     });
+  //   };
 
-    socket.on("stock:updated", handleStockUpdate);
-    socket.on("sale:refresh", handleSaleRefresh);
+  //   socket.on("stock:updated", handleStockUpdate);
+  //   socket.on("sale:refresh", handleSaleRefresh);
 
-    return () => {
-      socket.off("stock:updated", handleStockUpdate);
-      socket.off("sale:refresh", handleSaleRefresh);
-    };
-  }, [dispatch]);
+  //   return () => {
+  //     socket.off("stock:updated", handleStockUpdate);
+  //     socket.off("sale:refresh", handleSaleRefresh);
+  //   };
+  // }, [dispatch]);
   const getAvailableStock = useCallback(
     (product: Forsale, unitId: string, cartItems: any[]) => {
       const baseStock = product.availableStock?.[unitId] ?? 0;
@@ -152,6 +152,8 @@ export default function List({ product }: Props) {
     },
     [],
   );
+  const isProcessingRef = useRef(false); // Add this ref
+
   const handleAdd = useCallback(
     (p: Forsale, selectedUnit?: SellingUnit) => {
       const targetUnit =
@@ -200,7 +202,43 @@ export default function List({ product }: Props) {
     },
     [dispatch, cartItems],
   );
+  const lastCodeRef = useRef<string | null>(null);
+  const lastScanTimeRef = useRef<number>(0);
 
+  const handleBarcodeAction = useCallback(
+    (result: { text: string; format: string }) => {
+      const now = Date.now();
+
+      // 2. Logic: If it's the SAME code, wait 2 seconds before adding again.
+      // If it's a NEW code, add it immediately.
+      if (
+        result.text === lastCodeRef.current &&
+        now - lastScanTimeRef.current < 2000
+      ) {
+        return; // Ignore repetitive scans of the same item
+      }
+
+      const scannedProduct = products.find(
+        (p) => p.sku === result.text || p.barcode === result.text,
+      );
+
+      if (scannedProduct) {
+        // 3. Update refs
+        lastCodeRef.current = result.text;
+        lastScanTimeRef.current = now;
+
+        // 4. Update UI and Add to Cart
+        setLast({ text: result.text, format: result.format });
+        handleAdd(scannedProduct);
+
+        // Optional: Haptic feedback for mobile
+        if (typeof window !== "undefined" && window.navigator.vibrate) {
+          window.navigator.vibrate(50);
+        }
+      }
+    },
+    [products, handleAdd],
+  );
   /**
    * ✅ UI GRID
    */
@@ -235,30 +273,7 @@ export default function List({ product }: Props) {
         style="w-full max-w-[1400px] overflow-y-auto rounded-lg p-6 xl:max-w-[1600px]"
         titel="قم بتحديث تفاصيل المنتج"
       >
-        <BarcodeScanner
-          action={(result) => {
-            // 1. Update the visual "Last Scanned" state
-            setLast({ text: result.text, format: result.format });
-
-            // 2. Find the product that matches the scanned text (SKU or Barcode)
-            const scannedProduct = products.find(
-              (p) => p.sku === result.text || p.barcode === result.text,
-            );
-
-            if (scannedProduct) {
-              // 3. Trigger your existing add logic
-              handleAdd(scannedProduct);
-
-              // Optional: Close the dialog after a successful scan
-              // setOpens(false);
-
-              console.log(`Successfully added: ${scannedProduct.name}`);
-            } else {
-              console.warn("Product not found for code:", result.text);
-              // Optional: Add a toast notification here for "Product not found"
-            }
-          }}
-        />
+        <BarcodeScanner action={handleBarcodeAction} />
       </Dailogreuse>{" "}
       {products.length > 0 && <div className="mt-4 px-4">{productGrid}</div>}
     </ScrollArea>
