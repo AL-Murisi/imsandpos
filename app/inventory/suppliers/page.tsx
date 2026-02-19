@@ -6,7 +6,7 @@ import {
 import { getSession } from "@/lib/session";
 import { ParsedSort } from "@/hooks/sort";
 import { SortingState } from "@tanstack/react-table";
-import { TabsController } from "./_compoenets/UseTransaction";
+import SuppliersTable from "./_compoenets/table";
 
 type DashboardProps = {
   searchParams: Promise<{
@@ -52,27 +52,21 @@ export default async function Suppliers({ searchParams }: DashboardProps) {
 
   // 🧩 Don't await — pass promises to client
   const suppliersPromise = fetchSuppliers(user.companyId);
-  const purchasesPromise = getPurchasesByCompany(user.companyId, {
-    pageIndex,
-    pageSize,
-    from,
-    to,
-    parsedSort,
-  });
-  const paymentsPromise = getSupplierPaymentsByCompany(user.companyId, {
-    from,
-    to,
-    pageIndex,
-    pageSize,
-    parsedSort: parsedPaymentSort,
-  });
+  // const purchasesPromise = getPurchasesByCompany(user.companyId, {
+  //   pageIndex,
+  //   pageSize,
+  //   from,
+  //   to,
+  //   parsedSort,
+  // });
+  // const paymentsPromise = getSupplierPaymentsByCompany(user.companyId, {
+  //   from,
+  //   to,
+  //   pageIndex,
+  //   pageSize,
+  //   parsedSort: parsedPaymentSort,
+  // });
 
   // ✅ Pass promises directly (React 19 pattern)
-  return (
-    <TabsController
-      suppliersPromise={suppliersPromise}
-      purchasesPromise={purchasesPromise}
-      paymentsPromise={paymentsPromise}
-    />
-  );
+  return <SuppliersTable suppliersPromise={suppliersPromise} />;
 }

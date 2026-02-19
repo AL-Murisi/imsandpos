@@ -23,7 +23,7 @@ import { useTranslations } from "next-intl";
 
 import { supplierColumns } from "./columns";
 import TableSkeleton from "@/components/common/TableSkeleton";
-import { DataTable } from "@/components/common/ReusbleTable";
+import { use } from "react";
 const SupplierForm = dynamic(() => import("@/components/forms/supplierform"), {
   ssr: false,
 });
@@ -31,22 +31,19 @@ const ImportWarehouse = dynamic(() => import("@/components/uploadwarehouse"), {
   ssr: false,
 });
 type ProductClientProps = {
-  data: any[];
-  total: number;
-  formData: {
-    warehouses: { id: string; name: string }[];
-    categories: { id: string; name: string }[];
-    brands: { id: string; name: string }[];
-    suppliers: { id: string; name: string }[];
-  };
+  suppliersPromise: Promise<{ data: any[]; total: number }>;
 };
-
+const DataTable = dynamic(
+  () => import("@/components/common/ReusbleTable").then((m) => m.DataTable),
+  {
+    ssr: false,
+    loading: () => <TableSkeleton />,
+  },
+);
 // Loading skeleton for table
 
 export default function SuppliersTable({
-  data,
-  total,
-  formData,
+  suppliersPromise,
 }: ProductClientProps) {
   const {
     pagination,
@@ -64,7 +61,7 @@ export default function SuppliersTable({
   // Memoize expensive computations
 
   // Show skeleton during initial load or hydration
-
+  const suppliers = use(suppliersPromise);
   return (
     <div
       className="bg-accent w-full rounded-2xl p-2 shadow-xl/20 shadow-gray-500 group-data-[[state=pending]]:animate-pulse"
@@ -79,10 +76,10 @@ export default function SuppliersTable({
 
       <DataTable
         search={<ImportWarehouse />}
-        data={data}
+        data={suppliers.data}
         columns={supplierColumns}
         initialPageSize={pagination.pageSize}
-        pageCount={Math.ceil(total / pagination.pageSize)}
+        pageCount={Math.ceil(suppliers.total / pagination.pageSize)}
         pageActiom={setPagination}
         onSortingChange={setSorting}
         onGlobalFilterChange={setGlobalFilter}
@@ -90,7 +87,7 @@ export default function SuppliersTable({
         sorting={sorting}
         pagination={pagination}
         highet="h-[68vh]"
-        totalCount={total}
+        totalCount={suppliers.total}
       />
     </div>
   );

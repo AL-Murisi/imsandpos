@@ -12,7 +12,7 @@ import { getSession } from "@/lib/session";
 
 import { getPurchasesByCompany } from "@/lib/actions/suppliers";
 import { fetchPayments } from "@/lib/actions/banks";
-import PurchasesTable from "../_components/PurchasesTable";
+import Table from "./table";
 
 type DashboardProps = {
   searchParams: Promise<{
@@ -118,10 +118,5 @@ export default async function manageStocks({ searchParams }: DashboardProps) {
   //     movementParams.pageSize,
   //   );
 
-  return (
-    <PurchasesTable
-      data={purchasesPromise.data}
-      total={purchasesPromise.total}
-    />
-  );
+  return <Table data={purchasesPromise.data} total={purchasesPromise.total} />;
 }

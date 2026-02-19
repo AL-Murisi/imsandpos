@@ -202,39 +202,25 @@ export default function List({ product }: Props) {
     },
     [dispatch, cartItems],
   );
-  const lastCodeRef = useRef<string | null>(null);
-  const lastScanTimeRef = useRef<number>(0);
-
   const handleBarcodeAction = useCallback(
     (result: { text: string; format: string }) => {
-      const now = Date.now();
-
-      // 2. Logic: If it's the SAME code, wait 2 seconds before adding again.
-      // If it's a NEW code, add it immediately.
-      if (
-        result.text === lastCodeRef.current &&
-        now - lastScanTimeRef.current < 2000
-      ) {
-        return; // Ignore repetitive scans of the same item
-      }
+      // 1. Check if we are already processing a scan to prevent duplicates
+      if (isProcessingRef.current) return;
 
       const scannedProduct = products.find(
         (p) => p.sku === result.text || p.barcode === result.text,
       );
 
       if (scannedProduct) {
-        // 3. Update refs
-        lastCodeRef.current = result.text;
-        lastScanTimeRef.current = now;
+        isProcessingRef.current = true; // Lock scanning
 
-        // 4. Update UI and Add to Cart
         setLast({ text: result.text, format: result.format });
         handleAdd(scannedProduct);
 
-        // Optional: Haptic feedback for mobile
-        if (typeof window !== "undefined" && window.navigator.vibrate) {
-          window.navigator.vibrate(50);
-        }
+        // 2. Release the lock after 1.5 seconds to allow the next item
+        setTimeout(() => {
+          isProcessingRef.current = false;
+        }, 1500);
       }
     },
     [products, handleAdd],
@@ -273,7 +259,30 @@ export default function List({ product }: Props) {
         style="w-full max-w-[1400px] overflow-y-auto rounded-lg p-6 xl:max-w-[1600px]"
         titel="قم بتحديث تفاصيل المنتج"
       >
-        <BarcodeScanner action={handleBarcodeAction} />
+        <BarcodeScanner
+          action={(result) => {
+            // 1. Update the visual "Last Scanned" state
+            setLast({ text: result.text, format: result.format });
+
+            // 2. Find the product that matches the scanned text (SKU or Barcode)
+            const scannedProduct = products.find(
+              (p) => p.sku === result.text || p.barcode === result.text,
+            );
+
+            if (scannedProduct) {
+              // 3. Trigger your existing add logic
+              handleAdd(scannedProduct);
+
+              // Optional: Close the dialog after a successful scan
+              // setOpens(false);
+
+              console.log(`Successfully added: ${scannedProduct.name}`);
+            } else {
+              console.warn("Product not found for code:", result.text);
+              // Optional: Add a toast notification here for "Product not found"
+            }
+          }}
+        />
       </Dailogreuse>{" "}
       {products.length > 0 && <div className="mt-4 px-4">{productGrid}</div>}
     </ScrollArea>

@@ -154,7 +154,7 @@ export default function SupplierStatement({
                 }`}
               >
                 <span className="text-sm opacity-70">
-                  {getCurrencySymbol(suppliers.transactions[0].Currency)}
+                  {getCurrencySymbol(suppliers.transactions[0]?.Currency ?? "")}
                 </span>
                 <span className="text-2xl tabular-nums">
                   {suppliers.closingBalance.toFixed(2)}
@@ -240,7 +240,7 @@ export default function SupplierStatement({
                           className="flex items-center justify-center gap-1 font-mono text-lg font-semibold text-green-600"
                         >
                           <span className="text-sm opacity-70">
-                            {getCurrencySymbol(trans.Currency)}
+                            {getCurrencySymbol(trans?.Currency ?? "")}
                           </span>
                           <span className="tabular-nums">
                             {trans.debit.toFixed(2)}
@@ -260,7 +260,7 @@ export default function SupplierStatement({
                           className="flex items-center justify-center gap-1 font-mono text-lg font-semibold text-green-600"
                         >
                           <span className="text-sm opacity-70">
-                            {getCurrencySymbol(trans.Currency)}
+                            {getCurrencySymbol(trans?.Currency ?? "")}
                           </span>
                           <span className="tabular-nums">
                             {trans.credit.toFixed(2)}

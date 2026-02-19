@@ -30,7 +30,7 @@ export default function StocksLayout({
     },
     {
       label: "الموردين",
-      href: "/inventory/manageStocks/suppliers",
+      href: "/inventory/suppliers",
       roles: ["admin"],
     },
     {
