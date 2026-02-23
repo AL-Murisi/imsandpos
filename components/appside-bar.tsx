@@ -7,7 +7,6 @@ import {
   BarChart3,
   Building2,
   ChevronDown,
-  CreditCard,
   FolderKanban,
   Handshake,
   Home,
@@ -20,7 +19,6 @@ import {
   Settings,
   ShoppingBag,
   ShoppingCart,
-  Store,
   User,
   UserCircle,
   Users,
@@ -53,35 +51,13 @@ import { usePathname } from "next/navigation";
 import LocaleSwitcher from "./common/LocaleSwitcher";
 import { ModeToggle } from "./toggoletheme";
 
-const IMSLogoIcon = ({ className = "", size = 24, color = "currentColor" }) => {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      width={size}
-      height={size}
-      fill={color}
-      className={`inline-block align-middle ${className}`}
-      aria-hidden="true"
-    >
-      <g transform="scale(0.8) translate(2.5, 2.5)">
-        <path d="M20 6H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zM4 8h16v2H4V8zm0 4h16v2H4v-2zm0 4h16v2H4v-2z" />
-        <path d="M20 4H4c-1.1 0-2 .9-2 2v.5c0 .28.22.5.5.5h19c.28 0 .5-.22.5-.5V6c0-1.1-.9-2-2-2z" />
-      </g>
-    </svg>
-  );
-};
-
 import { cn } from "@/lib/utils";
-import { useRouter } from "next/navigation";
 import CurrencySwitcher from "./common/CurrencySwitcher";
-import { useCurrency } from "./CurrencyProvider";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user, hasAnyRole, logoutAndRedirect } = useAuth();
   const pathname = usePathname();
   const t = useTranslations("menu");
-  const { currency } = useCurrency();
 
   // Format the price according to the selected currency
 
@@ -260,7 +236,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const isCollapsed = !open;
 
-  const router = useRouter();
   // const handelLogout = async () => {
   //   if (!user) return;
 
@@ -310,6 +285,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               src={company.logoUrl}
               alt="Company Logo"
               fill
+              priority={true}
               sizes="100px"
               className="rounded-full object-cover"
             />
@@ -419,20 +395,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
                   return (
                     <SidebarMenuItem key={item.title} className="text-[20px]">
-                      <Link href={item.url ?? ""} className="block">
-                        <SidebarMenuButton
-                          className={`${
-                            pathname === item.url
-                              ? "w-52 rounded-l-lg border-r-4 border-r-orange-600 bg-orange-400 text-white"
-                              : "text-white hover:bg-orange-300/20"
-                          }`}
-                        >
-                          <>
-                            <item.icon />
-                            <span>{item.title}</span>
-                          </>
-                        </SidebarMenuButton>
-                      </Link>
+                      <SidebarMenuButton
+                        asChild
+                        className={`${
+                          pathname === item.url
+                            ? "w-52 rounded-l-lg border-r-4 border-r-orange-600 bg-orange-400 text-white"
+                            : "text-white hover:bg-orange-300/20"
+                        }`}
+                      >
+                        <Link href={item.url ?? "/"}>
+                          <item.icon />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
                     </SidebarMenuItem>
 
                     // <SidebarMenuItem key={item.title}>

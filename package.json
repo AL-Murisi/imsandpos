@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node server.js",
-    "build": "next build",
-    "start": "cross-env NODE_ENV=production node server.js",
+    "dev": "next dev --turbo",
+    "build": "next build --turbo",
+    "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate && npx puppeteer browsers install && mkdir -p public/wasm/ && cp -R node_modules/scanbot-web-sdk/bundle/bin/complete/* public/wasm/"
   },
@@ -80,8 +80,6 @@
     "react-zxing": "^2.1.0",
     "recharts": "^3.0.2",
     "scanbot-web-sdk": "^8.0.1",
-    "socket.io": "^4.8.1",
-    "socket.io-client": "^4.8.1",
     "sonner": "^2.0.7",
     "swr": "^2.3.6",
     "tailwind-merge": "^3.3.1",

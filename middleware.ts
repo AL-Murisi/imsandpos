@@ -1,8 +1,6 @@
 // middleware.ts
 import { NextRequest, NextResponse } from "next/server";
-import { decrypt } from "@/lib/session";
-import { cookies } from "next/headers";
-import createMiddleware from "next-intl/middleware";
+import { jwtVerify } from "jose";
 
 // Define role-based route access
 const routePermissions: Record<string, string[]> = {
@@ -44,17 +42,12 @@ const publicRoutes = [
   "/createcompanybyemail",
 ];
 
-// Routes that authenticated workers should be redirected from
-const authRoutes = ["/login", "/signup"];
-
 export default async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
   const isPublicRoute = publicRoutes.includes(path);
-  const isAuthRoute = authRoutes.includes(path);
 
-  const cookieStore = await cookies();
-  const cookie = cookieStore.get("session")?.value;
-  const session = await decrypt(cookie);
+  const cookie = req.cookies.get("session")?.value;
+  const session = await decryptSession(cookie);
   const userrole = (session?.roles as string[]) || [];
 
   // ➡️ NEW: Handle root (/) path redirection for authenticated users
@@ -86,6 +79,25 @@ export default async function middleware(req: NextRequest) {
   }
 
   return NextResponse.next();
+}
+
+async function decryptSession(session: string | undefined = "") {
+  if (!session || !session.includes(".")) {
+    return null;
+  }
+
+  const secretKey = process.env.ENCRYPTION_SECRET;
+  if (!secretKey) return null;
+
+  try {
+    const encodedKey = new TextEncoder().encode(secretKey);
+    const { payload } = await jwtVerify(session, encodedKey, {
+      algorithms: ["HS256"],
+    });
+    return payload as { roles?: string[] };
+  } catch {
+    return null;
+  }
 }
 
 function getDefaultRedirectForRole(roles: string[]): string {

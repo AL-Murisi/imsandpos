@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import "./global.css";
 import { ThemeProvider } from "../components/theme-provider";
 import { AuthProvider } from "@/lib/context/AuthContext";
-import ClientLayoutWrapper from "./clientLayoutWrapper";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { NextIntlClientProvider } from "next-intl";
@@ -99,10 +98,10 @@ export default async function RootLayout({
           <AuthProvider>
             <NextIntlClientProvider locale={locale} messages={messages[locale]}>
               <CurrencyProvider currency={currencyConfig[currencyKey]}>
-                <ClientLayoutWrapper>
-                  {children} <Analytics /> <SpeedInsights />
-                  <Toaster />
-                </ClientLayoutWrapper>
+                {children}
+                <Analytics />
+                <SpeedInsights />
+                <Toaster />
               </CurrencyProvider>
             </NextIntlClientProvider>
           </AuthProvider>

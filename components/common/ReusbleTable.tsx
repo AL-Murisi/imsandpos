@@ -9,7 +9,6 @@ import {
 
 import { ChevronDown } from "lucide-react";
 
-import { useTablePrams } from "@/hooks/useTableParams";
 import {
   setColumnFilters,
   setColumnVisibility,
@@ -153,15 +152,7 @@ export function DataTable<T>({
       setIsPageLoading(false);
     }
   };
-  const {
-    setPagination,
-    setSorting,
-    setGlobalFilter,
-    warehouseId,
-    supplierId,
-    categoryId,
-    setParam,
-  } = useTablePrams();
+
   return (
     <Card className="@container/card border-transparent bg-transparent px-2">
       <div className="flex flex-wrap items-center justify-between gap-2 space-x-2 px-2 py-4">

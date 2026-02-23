@@ -3,7 +3,6 @@
 
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
-import { useAuth } from "./context/AuthContext";
 
 const secretKey = process.env.ENCRYPTION_SECRET;
 const encodedKey = new TextEncoder().encode(secretKey);

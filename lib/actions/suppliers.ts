@@ -137,12 +137,7 @@ export async function updateSupplier(
     };
   }
 }
-export async function slow(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 export const fetchSuppliers = cache(async (companyId: string) => {
-  await slow(1000);
   const total = await prisma.supplier.count({
     where: { companyId: companyId },
   });
@@ -458,8 +453,6 @@ export const getPurchasesByCompany = cache(
 
       // Sorting
 
-      await slow(1000);
-
       // Fetch data
       const purchases = await prisma.invoice.findMany({
         where: filters,
@@ -549,7 +542,6 @@ export const getSupplierPaymentsByCompany = cache(
 
       // Fetch
 
-      await slow(1000);
       const payments = await prisma.invoice.findMany({
         where: filters,
         include: {

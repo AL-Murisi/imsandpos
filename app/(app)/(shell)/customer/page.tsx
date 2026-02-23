@@ -1,0 +1,65 @@
+import { getCustomerById } from "@/lib/actions/customers";
+import { getSession } from "@/lib/session";
+import CustomerClinet from "./_components/table";
+type DashboardProps = {
+  searchParams: Promise<{
+    from?: string;
+    to?: string;
+    categoryId?: string;
+    tab?: string;
+    customersquery?: string;
+    page?: string;
+    limit?: string;
+    allFrom?: string;
+    allTo?: string;
+    salesFrom?: string;
+    salesTo?: string;
+    purchasesFrom?: string;
+    purchasesTo?: string;
+    revenueFrom?: string;
+    revenueTo?: string;
+    debtFrom?: string;
+    debtTo?: string;
+    chartTo?: string;
+    chartFrom?: string;
+    sort: string;
+  }>;
+};
+export default async function DebtSell({ searchParams }: DashboardProps) {
+  const user = await getSession();
+  if (!user?.companyId) return;
+  const param = await searchParams;
+  const {
+    from,
+    to,
+
+    customersquery,
+    page = "1",
+    limit = "13",
+    salesFrom,
+    salesTo,
+    purchasesFrom,
+    purchasesTo,
+    revenueFrom,
+    revenueTo,
+    debtFrom,
+    debtTo,
+    chartTo,
+    chartFrom,
+    allFrom,
+    sort,
+    allTo,
+  } = param || {};
+
+  const pageIndex = Number(page) - 1;
+  const pageSize = Number(limit);
+  const data = await getCustomerById(
+    user.companyId,
+    pageIndex,
+    pageSize,
+    customersquery,
+    from,
+  );
+  // const data = await FetchDebtSales(filter);
+  return <CustomerClinet users={data.result} total={data.total} role={[]} />;
+}

@@ -1,9 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
 import { SessionData } from "@/lib/session";
-import { supabase } from "@/lib/supabaseClient";
 
 import { toast } from "sonner";
 interface AuthContextType {
@@ -21,8 +19,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<SessionData | null>(null);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
-  const pathname = usePathname();
 
   useEffect(() => {
     checkAuth();
@@ -47,6 +43,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
+      // Load Supabase only when needed (keeps it out of the base app layout chunk).
+      const { supabase } = await import("@/lib/supabaseClient");
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -91,6 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     try {
       // Call API to clear session server-side
+      const { supabase } = await import("@/lib/supabaseClient");
       await supabase.auth.signOut();
       await fetch("/api/logout", { method: "POST" });
       toast("loggedout successfully");

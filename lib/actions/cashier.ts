@@ -16,7 +16,6 @@ import { getLatestExchangeRate } from "./currency";
 import { SellingUnit } from "../zod";
 import { console } from "inspector";
 import { stat } from "fs";
-import { io } from "socket.io-client";
 
 type CartItem = {
   id: string;
