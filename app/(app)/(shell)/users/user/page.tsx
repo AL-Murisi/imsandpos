@@ -1,7 +1,5 @@
 import { fetechUser } from "@/lib/actions/users";
 
-import { getActivityLogs } from "@/lib/actions/activitylogs";
-
 import { fetchRoles, fetchRolesForSelect } from "@/lib/actions/roles";
 import { getSession } from "@/lib/session";
 import UserClinet from "../_compoent/Table";
@@ -38,7 +36,7 @@ export default async function User({ searchParams }: Users) {
   const pageSize = Number(limit);
   const user = await getSession();
   if (!user) return;
-  const [data, logs, roless] = await Promise.all([
+  const [data, roless] = await Promise.all([
     fetechUser(
       user.companyId,
       usersquery,
@@ -49,11 +47,9 @@ export default async function User({ searchParams }: Users) {
       pageSize,
       // parsedSort
     ),
-    getActivityLogs(user.companyId, pageIndex, pageSize),
 
     // const data = await fetechUser();
     fetchRolesForSelect(),
   ]);
-  const { logs: log, total: totals } = logs;
   return <UserClinet users={data} total={0} role={roless} />;
 }

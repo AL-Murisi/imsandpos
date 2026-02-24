@@ -153,13 +153,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       roles: ["cashier"],
     },
 
-    // {
-    //   title: t("debt"),
-    //   url: "/debt",
-    //   icon: () => <CreditCard className="h-4 w-4 text-green-600" />,
-    //   roles: ["admin", "cashier"],
-    // },
-
     {
       title: "التقرير",
       url: "/reports",
