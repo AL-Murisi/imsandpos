@@ -77,14 +77,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     },
     {
       title: t("home"),
-      url: "/inventory/dashboardUser",
+      url: "/dashboardUser",
       icon: () => <Home className="text-indigo-600" />,
       roles: ["manager_wh"],
     },
 
     {
       title: t("users"),
-      url: "/users/company",
+      url: "/company",
       icon: () => <Users className="text-blue-600" />,
       roles: ["admin"],
     },
@@ -98,31 +98,31 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       subItems: [
         {
           title: t("manageInventory"),
-          url: "/inventory/manageStocks/inventory",
+          url: "/inventory",
           icon: <PackageSearch className="h-4 w-4 text-green-600" />,
           roles: ["admin", "manager_wh"],
         },
         {
           title: t("categories"),
-          url: "/inventory/categories",
+          url: "/categories",
           icon: <FolderKanban className="h-4 w-4 text-purple-600" />,
           roles: ["admin", "manager_wh"],
         },
         {
           title: t("warehouses"),
-          url: "/inventory/warehouses",
+          url: "/warehouses",
           icon: <Building2 className="h-4 w-4 text-cyan-600" />,
           roles: ["admin", "manager_wh"],
         },
         {
           title: t("products"),
-          url: "/inventory/products",
+          url: "/products",
           icon: <Package className="h-4 w-4 text-emerald-600" />,
           roles: ["admin", "manager_wh"],
         },
         {
           title: t("suppliers"),
-          url: "/inventory/suppliers",
+          url: "/suppliers",
           icon: <Handshake className="h-4 w-4 text-orange-600" />,
           roles: ["admin", "manager_wh"],
         },
@@ -154,7 +154,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         },
         {
           title: t("generalLedger"),
-          url: "/journalEntry/journal",
+          url: "/journal",
           icon: <NotebookPen className="h-4 w-4 text-pink-600" />,
           roles: ["admin"],
         },
@@ -162,7 +162,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     },
     {
       title: t("cashierMain"),
-      url: "/sells/salesDashboard",
+      url: "/salesDashboard",
       icon: () => <ShoppingCart className="text-blue-500" />,
       roles: ["cashier"],
     },
@@ -190,13 +190,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       subItems: [
         {
           title: t("cashierMain"),
-          url: "/sells/salesDashboard",
+          url: "/salesDashboard",
           icon: <ShoppingCart className="text-indigo-500" />,
           roles: ["admin"],
         },
         {
           title: t("cashier"),
-          url: "/sells/cashiercontrol",
+          url: "/cashiercontrol",
           icon: <ShoppingCart className="text-blue-500" />,
           roles: ["admin"],
         },

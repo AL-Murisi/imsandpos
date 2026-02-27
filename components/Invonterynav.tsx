@@ -33,28 +33,28 @@ export default function Invonterynav() {
   const items = [
     {
       title: " المخزون",
-      url: "/inventory/manageStocks",
+      url: "/inventory",
       icon: <FolderKanban className="h-4 w-4 text-orange-500" />,
     },
     {
       title: "المنتجات",
-      url: "/inventory/products",
+      url: "/products",
       icon: <Package className="h-4 w-4 text-teal-600" />,
     },
     {
       title: "الفئات",
-      url: "/inventory/categories",
+      url: "/categories",
       icon: <FolderKanban className="h-4 w-4 text-orange-500" />,
     },
 
     {
       title: "الموردون",
-      url: "/inventory/suppliers",
+      url: "/suppliers",
       icon: <Users className="h-4 w-4 text-purple-500" />,
     },
     {
       title: "المخازن",
-      url: "/inventory/warehouses",
+      url: "/warehouses",
       icon: <Building2 className="h-4 w-4 text-pink-500" />,
     },
   ];

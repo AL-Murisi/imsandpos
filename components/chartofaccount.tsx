@@ -26,7 +26,8 @@ export function ChartOfAccountsSkeleton() {
           </div>
         ))}
       </div>
-      <TableSkeleton />
+      <TableSkeleton rows={20} columns={10} />
     </div>
   );
 }
+

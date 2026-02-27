@@ -1,12 +1,7 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
-import withSerwist from "@serwist/next"; // ✅ correct import
 import { execSync } from "child_process";
-import { register } from "module";
 // Use git commit hash as cache version
-const revision = execSync("git rev-parse HEAD", { encoding: "utf8" })
-  .trim()
-  .slice(0, 7);
 
 const withNextIntl = createNextIntlPlugin();
 

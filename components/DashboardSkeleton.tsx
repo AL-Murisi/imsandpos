@@ -27,7 +27,7 @@ export function DashboardSkeleton() {
       <div className="grid w-80 grid-cols-2 gap-4 py-4 sm:w-sm md:w-md md:grid-cols-4 lg:w-full">
         <ExportDashboardButtonAPI role={"admin"} filters={{}} />
         <Button asChild>
-          <Link href="/dashboard/users" prefetch={false}>
+          <Link href="/company" prefetch={false}>
             إدارة المستخدمين
           </Link>
         </Button>
@@ -37,7 +37,7 @@ export function DashboardSkeleton() {
           </Link>
         </Button>
         <Button asChild>
-          <Link href="/sells/debtSell" prefetch={false}>
+          <Link href="/customer" prefetch={false}>
             عرض الديون
           </Link>
         </Button>

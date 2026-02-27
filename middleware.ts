@@ -8,21 +8,21 @@ const routePermissions: Record<string, string[]> = {
   "/dashboard": ["admin"],
   "/settings": ["admin"],
   "/inventory": ["admin", "manager_wh"],
-  "/users": ["admin"],
+  "/company": ["admin"],
   // Admin and workers routes
-  "/inventory/products": ["admin", "manager_wh"],
-  "/inventory/categories": ["admin", "manager_wh"],
+  "/products": ["admin", "manager_wh"],
+  "/categories": ["admin", "manager_wh"],
   "/suppliers": ["admin", "manager_wh"],
-  "/inventory/warehouses": ["admin", "manager_wh"],
-  "/inventory/dashboardUser": ["manager_wh"],
+  "/warehouses": ["admin", "manager_wh"],
+  "/dashboardUser": ["manager_wh"],
   // Admin, workers, and customers routes
   //   "/dashboard": ["admin", "worker", "worker"],
   //   "/orders": ["admin", "worker", "worker"],
 
   // Cashier specific routes
-  "/sells/salesDashboard": ["admin", "cashier"],
+  "/salesDashboard": ["admin", "cashier"],
 
-  "/sells/cashiercontrol": ["admin", "cashier"],
+  "/cashiercontrol": ["admin", "cashier"],
 
   // Supplier specific routes
   "/supplier/products": ["admin", "supplier"],
@@ -101,14 +101,14 @@ async function decryptSession(session: string | undefined = "") {
 }
 
 function getDefaultRedirectForRole(roles: string[]): string {
-  if (roles.includes("admin")) return "/users/company"; // Note: Changed from /inventory to /dashboard to match your current code
-  if (roles.includes("cashier")) return "/sells/salesDashboard"; // Note: Changed from /sells/cashiercontrol to /sells to match your current code
-  if (roles.includes("manager_wh")) return "/inventory/dashboardUser";
+  if (roles.includes("admin")) return "/company";
+  if (roles.includes("cashier")) return "/salesDashboard";
+  if (roles.includes("manager_wh")) return "/dashboardUser";
   return "/login"; // Default redirect if no role matches
 }
 
 export const config = {
   matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico).*)", // Match all routes except for API, static files, and images
+    "/((?!api|_next/static|_next/image|favicon.ico|manifest.json|apple-icon.png|icon1.png|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };

@@ -3,7 +3,6 @@
     "types": [
       // Other types...
       // This allows Serwist to type `window.serwist`.
-      "@serwist/next/typings"
     ],
 
     "target": "ES2017",
@@ -34,7 +33,8 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     "next.config.js",
-    "app/reports/clinet.ts"
-, "server.js"  ],
+    "app/reports/clinet.ts",
+    "server.js"
+  ],
   "exclude": ["node_modules", "sw.ts"]
 }

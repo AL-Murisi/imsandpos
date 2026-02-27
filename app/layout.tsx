@@ -29,25 +29,14 @@ export const metadata: Metadata = {
 
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default", // "black", "black-translucent", or "default"
+    statusBarStyle: "default",
     title: "IMS",
   },
   formatDetection: {
-    telephone: true, // 📱 Makes phone numbers tappable
+    telephone: true,
     email: true,
     address: true,
   },
-  //icons: [
-  //   {
-  //     rel: "apple-touch-icon",
-  //     url: "/icons/icon-192x192.png",
-  //     sizes: "192x192",
-  //   },
-  //   { rel: "icon", url: "/icons/icon-192x192.png", sizes: "192x192" },
-  //   { rel: "icon", url: "/icons/icon-512x512.png", sizes: "512x512" },
-  //   // Favicon for browsers
-  //   { rel: "icon", url: "/favicon.ico" },
-  // ],
 };
 type CurrencyKey = keyof typeof currencyConfig;
 export const viewport: Viewport = {
@@ -67,7 +56,6 @@ export default async function RootLayout({
   const messages = (await import(`@/messages/${locale}.json`)).default;
   const cookieStore = cookies();
   const cookieCurrency = (await cookieStore).get("NEXT_CURRENCY")?.value;
-  type CurrencyKey = keyof typeof currencyConfig; // "YER" | "SAR" | "USD"
   const validKeys = Object.keys(currencyConfig) as CurrencyKey[];
 
   const currencyKey: CurrencyKey =
@@ -89,8 +77,6 @@ export default async function RootLayout({
             <link rel="dns-prefetch" href="https://va.vercel-scripts.com" />
 
             <link rel="apple-touch-icon" href="/apple-icon.png" />
-            {/* <link rel="icon" type="image/svg+xml" href="/icon0.optimized.svg" /> */}
-
             <link rel="manifest" href="/manifest.json" />
             <link rel="icon" href="/favicon.ico" sizes="512x512" />
           </header>

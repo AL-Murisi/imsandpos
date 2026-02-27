@@ -23,7 +23,7 @@ export function BottomBar() {
         </Link>
 
         <Link
-          href="/sells/salesDashboard"
+          href="/salesDashboard"
           className="flex flex-col items-center text-xs"
         >
           <ShoppingCart size={22} />
@@ -38,17 +38,11 @@ export function BottomBar() {
           <span>القائمة</span>
         </button>
 
-        <Link
-          href="/inventory/manageStocks"
-          className="flex flex-col items-center text-xs"
-        >
+        <Link href="/inventory" className="flex flex-col items-center text-xs">
           <Package size={22} />
           <span> المخازن</span>
         </Link>
-        <Link
-          href="/users/company"
-          className="flex flex-col items-center text-xs"
-        >
+        <Link href="/company" className="flex flex-col items-center text-xs">
           <User size={22} />
           <span>حسابي</span>
         </Link>

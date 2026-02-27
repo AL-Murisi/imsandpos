@@ -19,27 +19,27 @@ export default function Appheader() {
     },
     {
       title: t("home"),
-      url: "/inventory/dashboardUser",
+      url: "/dashboardUser",
     },
     {
       title: t("users"),
-      url: "/users",
+      url: "/company",
     },
     {
       title: t("inventory"),
-      url: "/inventory/manageStocks",
+      url: "/inventory",
     },
     {
       title: t("products"),
-      url: "/inventory/products",
+      url: "/products",
     },
     {
       title: `${t("products")}/${t("new")}`,
-      url: "/inventory/products/new",
+      url: "/products/new",
     },
     {
       title: t("categories"), // Categories
-      url: "/inventory/categories",
+      url: "/categories",
     },
     {
       title: t("sales"),
@@ -47,15 +47,15 @@ export default function Appheader() {
     },
     {
       title: t("warehouses"), // Warehouses
-      url: "/inventory/warehouses",
+      url: "/warehouses",
     },
     {
       title: t("suppliers"), // Suppliers
-      url: "/inventory/suppliers",
+      url: "/suppliers",
     },
     {
       title: t("sales"),
-      url: "/sells/cashiercontrol",
+      url: "/cashiercontrol",
     },
     {
       title: t("reservedOrders"),

@@ -1,6 +1,11 @@
 import { Skeleton } from "../ui/skeleton";
 
-export default function TableSkeleton() {
+type Props = {
+  rows?: number;
+  columns?: number;
+};
+
+export default function TableSkeleton({ rows = 20, columns = 10 }: Props) {
   return (
     <div className="space-y-1" dir="rtl">
       {/* Top Filters + Actions */}
@@ -18,35 +23,30 @@ export default function TableSkeleton() {
 
       {/* Table Controls */}
       <div className="h-[80vh] rounded-xl bg-gray-500 p-3">
-        {/* <div className="flex items-center justify-between">
-               <div className="flex gap-2">
-                 <Skeleton className="h-10 w-[80px] bg-gray-500" />
-                 <Skeleton className="h-10 w-[80px] bg-gray-500" />
-               </div>
-               <Skeleton className="h-10 w-[160px] bg-gray-500" />
-               <div className="flex items-center gap-2">
-                 <Skeleton className="h-10 w-[100px] bg-gray-500" />
-                 <Skeleton className="h-5 w-[180px] bg-gray-500" />
-               </div>
-             </div> */}
+        <div className="space-y-2">
+          <div
+            className="grid gap-3"
+            style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+          >
+            {Array.from({ length: columns }).map((_, i) => (
+              <Skeleton key={`h-${i}`} className="h-7 w-full bg-gray-400" />
+            ))}
+          </div>
 
-        {/* Table Skeleton
-             <div className="space-y-2">
-              
-               <div className="grid grid-cols-7 gap-4">
-                 {Array.from({ length: 7 }).map((_, i) => (
-                   <Skeleton key={i} className="h-6 w-full" />
-                 ))}
-               </div>
-   
-               {Array.from({ length: 20 }).map((_, row) => (
-                 <div key={row} className="grid grid-cols-1 gap-4">
-                   {Array.from({ length: 1 }).map((_, col) => (
-                     <Skeleton key={col} className="h-6 w-full" />
-                   ))}
-                 </div>
-               ))}
-             </div> */}
+          {Array.from({ length: rows }).map((_, row) => (
+            <div
+              key={`r-${row}`}
+              className="grid gap-3"
+              style={{
+                gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+              }}
+            >
+              {Array.from({ length: columns }).map((_, col) => (
+                <Skeleton key={`c-${row}-${col}`} className="h-6 w-full" />
+              ))}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

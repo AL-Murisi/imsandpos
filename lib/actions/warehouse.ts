@@ -1361,7 +1361,7 @@ export async function getInventoryById(
   from?: string,
   to?: string,
   page: number = 1,
-  pageSize: number = 7,
+  pageSize: number = 12,
   sort: SortState = [],
 ) {
   try {
@@ -1468,7 +1468,6 @@ export async function getInventoryById(
         reservedByUnit,
       };
     });
-
     return {
       inventory: serializeData(convertedInventory),
       totalCount,

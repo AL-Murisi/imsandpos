@@ -29,26 +29,40 @@ export async function getActivityLogs(
   pageSize: number = 7,
   sort?: SortingState,
 ) {
-  const total = await prisma.activityLogs.count({ where: { companyId } });
-  const logs = await prisma.activityLogs.findMany({
-    where: { companyId },
-    include: {
-      user: {
-        include: {
-          roles: {
-            include: {
-              role: true,
+  const [total, logs] = await Promise.all([
+    prisma.activityLogs.count({ where: { companyId } }),
+    prisma.activityLogs.findMany({
+      where: { companyId },
+      select: {
+        id: true,
+        action: true,
+        details: true,
+        ip: true,
+        userAgent: true,
+        createdAt: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            roles: {
+              select: {
+                role: {
+                  select: {
+                    name: true,
+                  },
+                },
+              },
             },
           },
         },
       },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-    skip: page * pageSize,
-    take: pageSize,
-  });
+      orderBy: {
+        createdAt: "desc",
+      },
+      skip: page * pageSize,
+      take: pageSize,
+    }),
+  ]);
   return { logs, total };
 }
 export async function getUsers() {

@@ -1,0 +1,89 @@
+import { ParsedSort } from "@/hooks/sort";
+import { fetchAllFormData } from "@/lib/actions/roles";
+import { fetchAllFormDatas, getInventoryById } from "@/lib/actions/warehouse";
+import { getSession } from "@/lib/session";
+import { Prisma } from "@prisma/client";
+import { SortingState } from "@tanstack/react-table";
+
+import { fetchPayments } from "@/lib/actions/banks";
+import ManageStocksClient from "../_components/manageinvetoryClient";
+
+type DashboardProps = {
+  searchParams: Promise<{
+    from?: string;
+    to?: string;
+    page?: string;
+    limit?: string;
+    query?: string;
+    movementquery?: string;
+    inventoreyquery?: string;
+    sort?: string;
+    supplierId?: string;
+    warehouseId?: string;
+    categoryId?: string;
+    tab?: string;
+  }>;
+};
+
+export default async function manageStocks({ searchParams }: DashboardProps) {
+  const params = await searchParams;
+  const {
+    from,
+    to,
+    movementquery = "",
+    query = "",
+    page = "1",
+    limit = "13",
+    sort,
+    inventoreyquery = "",
+    supplierId,
+    warehouseId,
+    categoryId,
+    tab,
+  } = params || {};
+
+  const currentTab = tab ?? "inventory";
+  const pageIndex = Number(page) - 1;
+  const pageSize = Number(limit);
+
+  const where: Prisma.InventoryWhereInput = {
+    warehouseId,
+  };
+  const user = await getSession();
+  if (!user) return;
+  const parsedSort: SortingState = ParsedSort(sort);
+  const input: any = {
+    supplierId,
+    warehouseId,
+    categoryId,
+  };
+  // ✅ Run all fetches in parallelfetchAllFormData
+  let inventoryParams: any = {};
+  let movementParams: any = {};
+  const [b, formData, MultipleInventory, inventoryData] = await Promise.all([
+    fetchPayments(),
+    fetchAllFormData(user.companyId),
+    fetchAllFormDatas(user.companyId),
+    getInventoryById(
+      user.companyId,
+      query,
+      where,
+      from,
+      to,
+      pageIndex,
+      pageSize,
+      parsedSort,
+    ),
+  ]);
+  // Collect common params
+
+  return (
+    <ManageStocksClient
+      products={inventoryData.inventory}
+      total={inventoryData.totalCount}
+      formData={formData}
+      multipleInventory={MultipleInventory}
+      payments={b}
+    />
+  );
+}

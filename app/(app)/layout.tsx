@@ -1,7 +1,9 @@
+import ClientLayoutWrapper from "./clientLayoutWrapper";
+
 export default function AppLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <>{children}</>;
+  return <ClientLayoutWrapper>{children}</ClientLayoutWrapper>;
 }

@@ -5,7 +5,7 @@ type Props = {
   columns?: number;
 };
 
-export default function TableSkeleton({ rows = 6, columns = 5 }: Props) {
+export default function TableSkeleton({ rows = 20, columns = 10 }: Props) {
   return (
     <div className="animate-pulse space-y-4 px-2">
       {/* Toolbar */}
