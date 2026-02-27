@@ -2,7 +2,13 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ProductForSale, SellingUnit } from "@/lib/zod";
 import dynamic from "next/dynamic";
-import { Suspense } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useAuth } from "@/lib/context/AuthContext";
+import {
+  getOfflineCache,
+  offlineCacheKeys,
+  setOfflineCache,
+} from "@/lib/offline/db";
 const CartDisplayRedux = dynamic(() => import("./Showpriceandquanityt"), {
   ssr: false,
   loading: () => (
@@ -136,21 +142,72 @@ export default function Clientwraper({
   searchParams,
   queryr,
 }: CustomDialogProps) {
+  const { user } = useAuth();
+  const [offlineBootstrap, setOfflineBootstrap] = useState<{
+    users: CustomDialogProps["users"];
+    product: CustomDialogProps["product"];
+    formData: CustomDialogProps["formData"];
+    nextnumber: string;
+  } | null>(null);
+
+  useEffect(() => {
+    const loadOffline = async () => {
+      if (!user?.companyId) return;
+      const cached = await getOfflineCache<typeof offlineBootstrap>(
+        offlineCacheKeys.cashierBootstrap(user.companyId),
+      );
+      if (cached) {
+        setOfflineBootstrap(cached);
+      }
+    };
+
+    void loadOffline();
+  }, [user?.companyId]);
+
+  useEffect(() => {
+    const saveOffline = async () => {
+      if (!user?.companyId) return;
+      if (!product.length) return;
+
+      await setOfflineCache(offlineCacheKeys.cashierBootstrap(user.companyId), {
+        users: users ?? [],
+        product,
+        formData,
+        nextnumber,
+      });
+    };
+
+    void saveOffline();
+  }, [user?.companyId, users, product, formData, nextnumber]);
+
+  const hydratedData = useMemo(() => {
+    return {
+      users: users && users.length > 0 ? users : (offlineBootstrap?.users ?? []),
+      product:
+        product && product.length > 0 ? product : (offlineBootstrap?.product ?? []),
+      formData:
+        formData.categories.length || formData.warehouses.length
+          ? formData
+          : (offlineBootstrap?.formData ?? { categories: [], warehouses: [] }),
+      nextnumber: nextnumber || offlineBootstrap?.nextnumber || "",
+    };
+  }, [users, product, formData, nextnumber, offlineBootstrap]);
+
   return (
     <div className="grid grid-cols-1 gap-4 py-2 lg:grid-cols-2">
       <Suspense>
         <ProductListRedux
-          product={product}
-          formData={formData}
+          product={hydratedData.product}
+          formData={hydratedData.formData}
           searchParams={searchParams}
           queryr={queryr}
         />
       </Suspense>{" "}
       <Suspense>
         <CartDisplayRedux
-          users={users}
-          product={product}
-          nextnumber={nextnumber}
+          users={hydratedData.users}
+          product={hydratedData.product}
+          nextnumber={hydratedData.nextnumber}
         />{" "}
       </Suspense>
     </div>

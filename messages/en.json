@@ -29,19 +29,20 @@
     "cashierMain": "Cashier Home",
     "cashier": "Cashier",
     "reservedOrders": "Reserved Orders",
-    "debt": "Credit Sales",
     "profile": "Profile",
     "settings": "Settings",
     "logout": "logout",
     "welcome": "Hello",
     "role": "role",
+    "banks": "Banks",
+    "financials": "Financials",
     "new": "New Product",
     "expenses": "Expenses",
     "customer": "customer",
     "edit": "Edit Product",
     "pos": "pos",
     "chartofaccount": "chart of account",
-    "journalEntry": "journalEntry"
+    "generalLedger": "ledger"
   },
   "selection": {
     "all": "All"

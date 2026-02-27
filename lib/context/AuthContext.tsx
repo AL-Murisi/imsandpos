@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { SessionData } from "@/lib/session";
 
 import { toast } from "sonner";
+const OFFLINE_USER_CACHE_KEY = "ims:offline:user";
 interface AuthContextType {
   user: SessionData | null;
   login: (email: string, password: string) => Promise<boolean>;
@@ -30,11 +31,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (response.ok) {
         const userData = await response.json();
         setUser(userData);
+        if (typeof window !== "undefined") {
+          localStorage.setItem(OFFLINE_USER_CACHE_KEY, JSON.stringify(userData));
+        }
       } else {
+        if (typeof window !== "undefined" && !navigator.onLine) {
+          const cached = localStorage.getItem(OFFLINE_USER_CACHE_KEY);
+          if (cached) {
+            setUser(JSON.parse(cached));
+            return;
+          }
+        }
         setUser(null);
+        if (typeof window !== "undefined") {
+          localStorage.removeItem(OFFLINE_USER_CACHE_KEY);
+        }
       }
     } catch (error) {
       console.error("Auth check failed:", error);
+      if (typeof window !== "undefined" && !navigator.onLine) {
+        const cached = localStorage.getItem(OFFLINE_USER_CACHE_KEY);
+        if (cached) {
+          setUser(JSON.parse(cached));
+          return;
+        }
+      }
       setUser(null);
     } finally {
       setLoading(false);
@@ -94,10 +115,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await fetch("/api/logout", { method: "POST" });
       toast("loggedout successfully");
       setUser(null);
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(OFFLINE_USER_CACHE_KEY);
+      }
     } catch (error) {
       console.error("Logout failed:", error);
       // Still set user to null even if API call fails
       setUser(null);
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(OFFLINE_USER_CACHE_KEY);
+      }
     }
   };
 

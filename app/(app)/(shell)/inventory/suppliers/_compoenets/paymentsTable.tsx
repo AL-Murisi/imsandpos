@@ -1,7 +1,5 @@
 "use client";
 
-import dynamic from "next/dynamic";
-
 import { DataTable } from "@/components/common/ReusbleTable";
 import { useTablePrams } from "@/hooks/useTableParams";
 

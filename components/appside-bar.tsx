@@ -10,6 +10,7 @@ import {
   FolderKanban,
   Handshake,
   Home,
+  Landmark,
   LogOut,
   Notebook,
   NotebookPen,
@@ -22,6 +23,7 @@ import {
   User,
   UserCircle,
   Users,
+  Wallet,
 } from "lucide-react";
 import Image from "next/image";
 
@@ -126,14 +128,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         },
       ],
     },
-
-    {
-      title: t("expenses"),
-      url: "/expenses",
-      icon: () => <Receipt className="h-4 w-4 text-red-600" />,
-      roles: ["admin"],
-    },
-
     {
       title: t("customer"),
       url: "/customer",
@@ -141,10 +135,30 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       roles: ["admin", "cashier"],
     },
     {
-      title: "البنوك",
-      url: "/banks",
-      icon: () => <Banknote className="h-4 w-4 text-sky-500" />,
+      title: t("financials"), // or t("accounting")
+      icon: () => <Wallet className="text-blue-600" />, // Wallet or Landmark icon fits well here
       roles: ["admin"],
+      isDropdown: true,
+      subItems: [
+        {
+          title: t("banks"), // Used t("banks") for consistency, or "البنوك"
+          url: "/banks",
+          icon: <Banknote className="h-4 w-4 text-sky-500" />,
+          roles: ["admin"],
+        },
+        {
+          title: t("expenses"),
+          url: "/expenses",
+          icon: <Receipt className="h-4 w-4 text-red-600" />,
+          roles: ["admin"],
+        },
+        {
+          title: t("generalLedger"),
+          url: "/journalEntry/journal",
+          icon: <NotebookPen className="h-4 w-4 text-pink-600" />,
+          roles: ["admin"],
+        },
+      ],
     },
     {
       title: t("cashierMain"),
@@ -165,13 +179,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       url: "/chartOfAccount",
       icon: () => <Notebook className="text-pink-600" />,
       roles: ["admin", "supplier"],
-    },
-
-    {
-      title: t("journalEntry"),
-      url: "/journalEntry/journal",
-      icon: () => <NotebookPen className="text-pink-600" />,
-      roles: ["admin"],
     },
 
     {
@@ -202,12 +209,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       ],
     },
 
-    {
-      title: t("profile"),
-      url: "/profile",
-      icon: () => <UserCircle className="text-pink-600" />,
-      roles: ["customer", "supplier"],
-    },
+    // {
+    //   title: t("profile"),
+    //   url: "/profile",
+    //   icon: () => <UserCircle className="text-pink-600" />,
+    //   roles: ["customer", "supplier"],
+    // },
 
     {
       title: t("settings"),

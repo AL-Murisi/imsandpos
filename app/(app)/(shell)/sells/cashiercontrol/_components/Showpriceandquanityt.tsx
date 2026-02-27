@@ -7,6 +7,7 @@ type FullProductForSale = ProductForSale & {
   warehousename: string;
   sellingMode: string;
   sellingUnits: SellingUnit[];
+  barcode: string;
   availableStock: Record<string, number>;
 };
 

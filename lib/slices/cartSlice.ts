@@ -29,6 +29,11 @@ interface CartState {
   discountValue: number;
 }
 
+export type CartStateSnapshot = Pick<
+  CartState,
+  "carts" | "activeCartId" | "discountType" | "discountValue"
+>;
+
 const initialState: CartState = {
   carts: [],
   activeCartId: undefined,
@@ -40,6 +45,12 @@ const cartSlice = createSlice({
   name: "cart",
   initialState,
   reducers: {
+    hydrateCartState: (state, action: PayloadAction<CartStateSnapshot>) => {
+      state.carts = action.payload.carts || [];
+      state.activeCartId = action.payload.activeCartId ?? null;
+      state.discountType = action.payload.discountType || "fixed";
+      state.discountValue = action.payload.discountValue || 0;
+    },
     // 🔹 Tab Management
     addCart: (state, action: PayloadAction<{ id: string; name: string }>) => {
       state.carts.push({
@@ -250,6 +261,7 @@ const cartSlice = createSlice({
 });
 
 export const {
+  hydrateCartState,
   setActiveCart,
   addCart,
   removeCart,

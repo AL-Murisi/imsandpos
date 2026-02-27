@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,9 +10,13 @@ import { useState } from "react";
 import { Building2, Upload, X } from "lucide-react";
 import { updateCompany } from "@/lib/actions/createcompnayacc";
 import { useAuth } from "@/lib/context/AuthContext";
-import { FormValues, UpdateCompanySchema } from "@/lib/zod";
-import { supabase } from "@/lib/supabaseClient";
+import { FormValues, UpdateCompanySchema } from "@/lib/zod/user";
 // ✅ Validation schema
+
+async function getSupabaseClient() {
+  const mod = await import("@/lib/supabaseClient");
+  return mod.supabase;
+}
 
 export default function UpdateCompanyForm({
   company,
@@ -79,6 +84,7 @@ export default function UpdateCompanyForm({
 
   const removeLogo = async () => {
     try {
+      const supabase = await getSupabaseClient();
       if (company?.logoUrl) {
         // Extract path after /public/
         const oldFileName = company.logoUrl.split("/public/").pop();
@@ -115,6 +121,7 @@ export default function UpdateCompanyForm({
     if (!logoFile || !user) return null;
 
     try {
+      const supabase = await getSupabaseClient();
       setUploadingLogo(true);
 
       const fileExt = logoFile.name.split(".").pop();
@@ -296,10 +303,13 @@ export default function UpdateCompanyForm({
             </label>
           ) : (
             <div className="relative inline-block">
-              <img
+              <Image
                 src={logoPreview}
                 alt="Logo Preview"
+                width={128}
+                height={128}
                 className="h-32 w-32 rounded-lg border object-contain"
+                unoptimized={logoPreview.startsWith("data:")}
               />
               <button
                 type="button"

@@ -1,23 +1,10 @@
 "use client";
 
-import SearchInput from "@/components/common/searchtest";
-import { SelectField } from "@/components/common/selection";
-import TableSkeleton from "@/components/common/TableSkeleton";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import TableSkeleton from "@/components/skeleton/table";
 import { useTablePrams } from "@/hooks/useTableParams";
-import { Download } from "lucide-react";
 import dynamic from "next/dynamic";
-import { use, useState } from "react";
-import {
-  journalEntryColumns,
-  voucherColumns,
-} from "../_components/columns/columns";
-import { BulkPostButton } from "./selection";
-import { useFormatter } from "@/hooks/usePrice";
-import DashboardTabs from "@/components/common/Tabs";
-import FiscalYearManager from "./FiscalYearManager";
-import ManualJournalEntry from "./Manualjournal";
+import { useState } from "react";
+import { voucherColumns } from "../_components/columns/columns";
 
 const Calendar22 = dynamic(
   () => import("@/components/common/DatePicker").then((m) => m.Calendar22),
@@ -30,7 +17,7 @@ const DataTable = dynamic(
   () => import("@/components/common/ReusbleTable").then((m) => m.DataTable),
   {
     ssr: false,
-    loading: () => <TableSkeleton />,
+    loading: () => <TableSkeleton rows={10} columns={9} />,
   },
 );
 
@@ -64,8 +51,8 @@ export default function VouvherEntriesTable({
   return (
     <div className="" dir="rtl">
       <div className="bg-accent rounded-2xl p-2 shadow-xl/20 shadow-gray-900">
-        {/* Data Table */}
         <DataTable
+          search={<Calendar22 />}
           data={data}
           columns={voucherColumns}
           initialPageSize={pagination.pageSize}

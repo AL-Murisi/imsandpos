@@ -30,7 +30,7 @@
     "cashierMain": "الرئيسية الكاشير",
     "cashier": "الكاشير",
     "reservedOrders": "المحجوزة",
-    "debt": "الدين",
+    "banks": "البنوك",
     "profile": "الملف الشخصي",
     "settings": "الإعدادات",
     "logout": "تسجيل الخروج",
@@ -41,7 +41,8 @@
     "expenses": "المصروفات",
     "pos": "نقطة البيع",
     "chartofaccount": " الدليل المحاسبي",
-    "journalEntry": " الماليه"
+    "generalLedger": " الأستاذ العام",
+    "financials": " الماليه"
   },
   "selection": {
     "all": "الكل"

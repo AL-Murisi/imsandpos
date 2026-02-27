@@ -8,15 +8,9 @@ import {
 import { useAppDispatch, useAppSelector } from "@/lib/store";
 import { ProductForSale, SellingUnit } from "@/lib/zod";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-const BarcodeScanner = dynamic(
-  () =>
-    import(
-      "@/app/(app)/(shell)/sells/cashiercontrol/_components/BarcodeScannerZXing"
-    ),
-  {
-    ssr: false,
-  },
-);
+const LiveBarcodeScanner = dynamic(() => import("./barcodetesting"), {
+  ssr: false,
+});
 import { useFormatter } from "@/hooks/usePrice";
 import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
@@ -25,6 +19,7 @@ import { ProductCard } from "./CartClient";
 import { supabase } from "@/lib/supabaseClient";
 import { useCompany } from "@/hooks/useCompany";
 import Dailogreuse from "@/components/common/dailogreuse";
+import { Button } from "@/components/ui/button";
 
 const ScrollArea = dynamic(
   () => import("@/components/ui/scroll-area").then((m) => m.ScrollArea),
@@ -47,9 +42,8 @@ export default function List({ product }: Props) {
   const t = useTranslations("cashier");
   const dispatch = useAppDispatch();
   const [opens, setOpens] = useState(false);
-  const [last, setLast] = useState<{ text: string; format: string } | null>(
-    null,
-  );
+  const [last, setLast] = useState("");
+  const [openScanner, setOpenScanner] = useState(false);
 
   const products = useAppSelector((s) => s.products.products);
   const { formatCurrency } = useFormatter();
@@ -204,29 +198,29 @@ export default function List({ product }: Props) {
     },
     [dispatch, cartItems],
   );
-  const handleBarcodeAction = useCallback(
-    (result: { text: string; format: string }) => {
-      // 1. Check if we are already processing a scan to prevent duplicates
-      if (isProcessingRef.current) return;
+  // const handleBarcodeAction = useCallback(
+  //   (result: { text: string; format: string }) => {
+  //     // 1. Check if we are already processing a scan to prevent duplicates
+  //     if (isProcessingRef.current) return;
 
-      const scannedProduct = products.find(
-        (p) => p.sku === result.text || p.barcode === result.text,
-      );
+  //     const scannedProduct = products.find(
+  //       (p) => p.sku === result.text || p.barcode === result.text,
+  //     );
 
-      if (scannedProduct) {
-        isProcessingRef.current = true; // Lock scanning
+  //     if (scannedProduct) {
+  //       isProcessingRef.current = true; // Lock scanning
 
-        setLast({ text: result.text, format: result.format });
-        handleAdd(scannedProduct);
+  //       setLast({ text: result.text, format: result.format });
+  //       handleAdd(scannedProduct);
 
-        // 2. Release the lock after 1.5 seconds to allow the next item
-        setTimeout(() => {
-          isProcessingRef.current = false;
-        }, 1500);
-      }
-    },
-    [products, handleAdd],
-  );
+  //       // 2. Release the lock after 1.5 seconds to allow the next item
+  //       setTimeout(() => {
+  //         isProcessingRef.current = false;
+  //       }, 1500);
+  //     }
+  //   },
+  //   [products, handleAdd],
+  // );
   /**
    * ✅ UI GRID
    */
@@ -261,14 +255,16 @@ export default function List({ product }: Props) {
         style="w-full max-w-[1400px] overflow-y-auto rounded-lg p-6 xl:max-w-[1600px]"
         titel="قم بتحديث تفاصيل المنتج"
       >
-        <BarcodeScanner
-          action={(result) => {
+        {" "}
+        <Button onClick={() => setOpenScanner(true)}>Open Scanner</Button>
+        <LiveBarcodeScanner
+          onDetected={(code) => {
             // 1. Update the visual "Last Scanned" state
-            setLast({ text: result.text, format: result.format });
+            setLast(code);
 
             // 2. Find the product that matches the scanned text (SKU or Barcode)
             const scannedProduct = products.find(
-              (p) => p.sku === result.text || p.barcode === result.text,
+              (p) => p.sku === code || p.barcode === code,
             );
 
             if (scannedProduct) {
@@ -280,10 +276,12 @@ export default function List({ product }: Props) {
 
               console.log(`Successfully added: ${scannedProduct.name}`);
             } else {
-              console.warn("Product not found for code:", result.text);
+              console.warn("Product not found for code:", code);
               // Optional: Add a toast notification here for "Product not found"
             }
           }}
+          opened={openScanner}
+          action={() => setOpenScanner(false)}
         />
       </Dailogreuse>{" "}
       {products.length > 0 && <div className="mt-4 px-4">{productGrid}</div>}

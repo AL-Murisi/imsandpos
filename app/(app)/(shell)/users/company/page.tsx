@@ -1,9 +1,11 @@
 import { getSession } from "@/lib/session";
 
 import { getCompany } from "@/lib/actions/createcompnayacc";
-import UpdateCompanyForm from "../_compoent/updateCompany";
-import { Suspense } from "react";
-import CompanyFormSkeleton from "./loading";
+import dynamic from "next/dynamic";
+
+const UpdateCompanyForm = dynamic(() => import("../_compoent/updateCompany"), {
+  loading: () => <div className="p-4 text-sm text-muted-foreground">Loading...</div>,
+});
 
 type Users = {
   searchParams: Promise<{
@@ -20,21 +22,7 @@ type Users = {
   }>;
 };
 export default async function User({ searchParams }: Users) {
-  const param = await searchParams;
-  const {
-    from,
-    to,
-    usersquery = "",
-    page = "1",
-    limit = "12",
-    sort,
-    supplierId,
-    warehouseId,
-    categoryId,
-    role,
-  } = param || {};
-  const pageIndex = Number(page) - 1;
-  const pageSize = Number(limit);
+  await searchParams;
   const user = await getSession();
   if (!user) return;
   const company = await getCompany();

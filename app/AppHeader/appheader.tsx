@@ -2,12 +2,13 @@
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "../../components/toggoletheme";
 import { usePathname } from "next/navigation";
-import { SidebarTrigger } from "../../components/ui/sidebar";
+import { SidebarTrigger, useSidebar } from "../../components/ui/sidebar";
 import React from "react";
 import { AiFillProduct } from "react-icons/ai";
 import { Separator } from "@/components/ui/separator";
 import { useTranslations } from "next-intl";
 import PushNotificationManager from "@/components/NotificationBell";
+import { Menu } from "lucide-react";
 
 export default function Appheader() {
   const t = useTranslations("menu");
@@ -60,10 +61,7 @@ export default function Appheader() {
       title: t("reservedOrders"),
       url: "/sells/reservation",
     },
-    {
-      title: t("debt"),
-      url: "/debt",
-    },
+
     {
       title: t("profile"),
       url: "/profile",
@@ -75,6 +73,8 @@ export default function Appheader() {
   ];
   type MenuItem = (typeof menuItems)[number];
   const pathname = usePathname();
+  const { toggleSidebar } = useSidebar();
+
   function usePageTitle() {
     // Recursively find title by url
     const findTitle = (items: MenuItem[], path: string): string | null => {
@@ -96,7 +96,12 @@ export default function Appheader() {
       dir="rtl"
     >
       <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
-        <SidebarTrigger className="-ml-1" />
+        <button
+          onClick={toggleSidebar}
+          className="flex flex-col items-center text-xs"
+        >
+          <Menu size={22} />
+        </button>{" "}
         <Separator
           orientation="vertical"
           className="mx-2 data-[orientation=vertical]:h-4"

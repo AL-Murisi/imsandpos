@@ -30,6 +30,7 @@ import {
   changeSellingUnit,
   clearAllCart,
   clearCart,
+  hydrateCartState,
   removeCart,
   removeFromCart,
   setActiveCart,
@@ -46,10 +47,20 @@ import { toast } from "sonner";
 import { useCompany } from "@/hooks/useCompany";
 import { getLatestExchangeRate } from "@/lib/actions/currency";
 import { currencyOptions, UserOption } from "@/lib/actions/currnciesOptions";
-import { updateProductStockOptimistic } from "@/lib/slices/productsSlice";
+import {
+  setProductsLocal,
+  updateProductStockOptimistic,
+} from "@/lib/slices/productsSlice";
 import { Clock } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import {
+  enqueueOfflineOperation,
+  getOfflineCache,
+  offlineCacheKeys,
+  setOfflineCache,
+} from "@/lib/offline/db";
+import { syncPendingOfflineOperations } from "@/lib/offline/sync";
 
 const PrintButton = dynamic(
   () => import("./test").then((mod) => mod.PrintButton),
@@ -71,6 +82,7 @@ export type discountType = "fixed" | "percentage";
 type forsale = ProductForSale & {
   warehousename: string;
   sellingMode: string;
+  barcode: string;
   sellingUnits: SellingUnit[];
   availableStock: Record<string, number>;
 };
@@ -109,6 +121,8 @@ export default function CartDisplay({
   const totals = useAppSelector(selectCartTotals);
   const carts = useAppSelector((state) => state.cart.carts);
   const activeCartId = useAppSelector((state) => state.cart.activeCartId);
+  const cartState = useAppSelector((state) => state.cart);
+  const persistedProducts = useAppSelector((state) => state.products.products);
   // const products = useAppSelector(selectAvailableStock);
   const userAgent =
     typeof window !== "undefined" ? navigator.userAgent.toLowerCase() : "";
@@ -117,7 +131,6 @@ export default function CartDisplay({
       userAgent,
     );
   // Local state
-  if (!user) return; // wait until user is loaded
   const { company } = useCompany();
   const cartItems =
     useAppSelector(
@@ -130,19 +143,111 @@ export default function CartDisplay({
   const [selectedUser, setSelectedUser] = useState<UserOption | null>(null);
   const [isLoadingSaleNumber, setIsLoadingSaleNumber] = useState(false);
   const [currency, setCurrency] = useState<UserOption | null>(null);
+  const [offlineSession, setOfflineSession] = useState<{
+    cashierId: string;
+    companyId: string;
+    branchId: string;
+    currency: string;
+    baseCurrency: string;
+  } | null>(null);
+
+  const effectiveCompanyId = user?.companyId ?? offlineSession?.companyId ?? "";
+  const effectiveCashierId = user?.userId ?? offlineSession?.cashierId ?? "";
+  const effectiveBranchId =
+    company?.branches?.[0]?.id ?? offlineSession?.branchId ?? "";
+  const effectiveBaseCurrency =
+    company?.base_currency ?? offlineSession?.baseCurrency ?? "";
+  const effectiveCurrency =
+    currency?.id ?? company?.base_currency ?? offlineSession?.currency ?? "";
 
   const debtLimit = totals.totalAfter + (selectedUser?.outstandingBalance ?? 0);
 
   const hasAddedCart = useRef(false);
+  const hasHydratedOfflineState = useRef(false);
 
   useEffect(() => {
-    if (hasAddedCart.current || !user) return;
+    const loadOfflineSession = async () => {
+      const cached = await getOfflineCache<{
+        cashierId: string;
+        companyId: string;
+        branchId: string;
+        currency: string;
+        baseCurrency: string;
+      }>(offlineCacheKeys.cashierSession);
+      if (cached) setOfflineSession(cached);
+    };
+    void loadOfflineSession();
+  }, []);
+
+  useEffect(() => {
+    const hydrateOfflineState = async () => {
+      if (!effectiveCompanyId || hasHydratedOfflineState.current) return;
+      const cached = await getOfflineCache<{
+        cartState?: {
+          carts: any[];
+          activeCartId: string | null;
+          discountType: "fixed" | "percentage";
+          discountValue: number;
+        };
+        products?: forsale[];
+      }>(offlineCacheKeys.cashierUiState(effectiveCompanyId));
+
+      if (cached?.cartState && cached.cartState.carts?.length) {
+        dispatch(hydrateCartState(cached.cartState));
+      }
+      if (cached?.products?.length) {
+        dispatch(setProductsLocal(cached.products));
+      }
+      hasHydratedOfflineState.current = true;
+    };
+
+    void hydrateOfflineState();
+  }, [dispatch, effectiveCompanyId]);
+
+  useEffect(() => {
+    const persistOfflineState = async () => {
+      if (!effectiveCompanyId) return;
+      await setOfflineCache(offlineCacheKeys.cashierUiState(effectiveCompanyId), {
+        cartState: {
+          carts: cartState.carts,
+          activeCartId: cartState.activeCartId ?? null,
+          discountType: cartState.discountType,
+          discountValue: cartState.discountValue,
+        },
+        products: persistedProducts,
+      });
+    };
+    void persistOfflineState();
+  }, [effectiveCompanyId, cartState, persistedProducts]);
+
+  useEffect(() => {
+    const persistOfflineSession = async () => {
+      if (!effectiveCashierId || !effectiveCompanyId || !effectiveBranchId) return;
+      await setOfflineCache(offlineCacheKeys.cashierSession, {
+        cashierId: effectiveCashierId,
+        companyId: effectiveCompanyId,
+        branchId: effectiveBranchId,
+        currency: effectiveCurrency || effectiveBaseCurrency,
+        baseCurrency: effectiveBaseCurrency || effectiveCurrency,
+      });
+    };
+    void persistOfflineSession();
+  }, [
+    effectiveCashierId,
+    effectiveCompanyId,
+    effectiveBranchId,
+    effectiveCurrency,
+    effectiveBaseCurrency,
+  ]);
+
+  useEffect(() => {
+    if (hasAddedCart.current) return;
     if (!activeCartId) {
       const newCartId = Date.now().toString();
       dispatch(addCart({ id: newCartId, name: `Cart-${newCartId.slice(-3)}` }));
     }
     hasAddedCart.current = true;
-  }, [activeCartId, dispatch, user]);
+  }, [activeCartId, dispatch]);
 
   // 🚀 Memoized callbacks
   const handleUpdateQty = useCallback(
@@ -267,15 +372,15 @@ export default function CartDisplay({
       cart: items,
       discountValue,
       discountType,
-      baseCurrency: company?.base_currency,
-      currency: currency?.id ?? company?.base_currency,
+      baseCurrency: effectiveBaseCurrency,
+      currency: effectiveCurrency,
       totalBeforeDiscount: totals.totalBefore,
       totalDiscount: totals.discount,
       totalAfterDiscount: totals.totalAfter,
-      cashierId: user.userId ?? "",
-      branchId: company?.branches[0].id,
+      cashierId: effectiveCashierId,
+      branchId: effectiveBranchId,
       customer: selectedUser,
-      saleNumber: nextnumber,
+      saleNumber: nextnumber || `OFFLINE-${Date.now()}`,
 
       // المبالغ المطلوبة:
       receivedAmount, // المبلغ بالعملة الأجنبية (مثلاً 10$)
@@ -288,6 +393,12 @@ export default function CartDisplay({
 
     setIsSubmitting(true);
 
+    if (!effectiveCompanyId || !effectiveCashierId || !effectiveBranchId) {
+      toast.error("Offline session is missing cashier/company/branch data");
+      setIsSubmitting(false);
+      return;
+    }
+
     // التحقق من اختيار العميل في حالة الدفع الآجل (إذا كان المبلغ المدفوع أقل من الإجمالي)
     if (totals.totalAfter > baseAmount + 0.1 && !selectedUser?.id) {
       toast.error("يرجى اختيار العميل للبيع الآجل");
@@ -295,31 +406,53 @@ export default function CartDisplay({
       return;
     }
 
-    try {
-      await processSale(payment, user.companyId);
-      toast.success("✅ تم الدفع بنجاح!");
-
-      // إعادة ضبط الحالة
+    const resetCartAfterSubmit = () => {
       dispatch(clearCart());
       setReceivedAmount(0);
       dispatch(setDiscount({ type: "fixed", value: 0 }));
       setDiscountsValue(0);
       dispatch(removeCart(activeCartId ?? ""));
-
       const newCartId = Date.now().toString();
       dispatch(
         addCart({ id: newCartId, name: `Chart-${newCartId.slice(-3)}` }),
       );
       dispatch(setActiveCart(newCartId));
+    };
+
+    try {
+      if (!navigator.onLine) {
+        await enqueueOfflineOperation({
+          operationType: "processSale",
+          companyId: effectiveCompanyId,
+          payload: payment,
+        });
+        toast.info("تم حفظ العملية محليًا وسيتم مزامنتها عند عودة الإنترنت");
+        resetCartAfterSubmit();
+        return;
+      }
+
+      await processSale(payment, effectiveCompanyId);
+      toast.success("✅ تم الدفع بنجاح!");
+      resetCartAfterSubmit();
+      void syncPendingOfflineOperations();
     } catch (err: any) {
-      toast.error(`❌ حدث خطأ: ${err.message}`);
+      if (!navigator.onLine) {
+        await enqueueOfflineOperation({
+          operationType: "processSale",
+          companyId: effectiveCompanyId,
+          payload: payment,
+        });
+        toast.info("تم حفظ العملية محليًا بسبب انقطاع الإنترنت");
+        resetCartAfterSubmit();
+      } else {
+        toast.error(`❌ حدث خطأ: ${err.message}`);
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
   const [isLoading2, setIsLoading2] = useState(false);
 
-  if (!user) return null;
   const [exchangeRate, setExchangeRate] = useState(1);
 
   // 1️⃣ أثر تغيير العملة: جلب سعر الصرف وحساب المبلغ

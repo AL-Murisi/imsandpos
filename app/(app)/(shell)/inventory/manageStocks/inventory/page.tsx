@@ -58,9 +58,23 @@ export default async function manageStocks({ searchParams }: DashboardProps) {
     categoryId,
   };
   // ✅ Run all fetches in parallelfetchAllFormData
-
-  const b = await fetchPayments();
-  const formData = await fetchAllFormData(user.companyId);
+  let inventoryParams: any = {};
+  let movementParams: any = {};
+  const [b, formData, MultipleInventory, inventoryData] = await Promise.all([
+    fetchPayments(),
+    fetchAllFormData(user.companyId),
+    fetchAllFormDatas(user.companyId),
+    getInventoryById(
+      user.companyId,
+      inventoryParams.query,
+      inventoryParams.where,
+      inventoryParams.from,
+      inventoryParams.to,
+      inventoryParams.pageIndex,
+      inventoryParams.pageSize,
+      inventoryParams.parsedSort,
+    ),
+  ]);
   // Collect common params
   const commonParams = {
     from,
@@ -72,10 +86,7 @@ export default async function manageStocks({ searchParams }: DashboardProps) {
     categoryId,
     parsedSort,
   };
-  const MultipleInventory = await fetchAllFormDatas(user.companyId);
   // Tab-specific params
-  let inventoryParams: any = {};
-  let movementParams: any = {};
 
   if (currentTab === "inventory") {
     inventoryParams = { ...commonParams, query: inventoreyquery, where };
@@ -84,16 +95,6 @@ export default async function manageStocks({ searchParams }: DashboardProps) {
   }
 
   // Then call the functions
-  const inventoryData = await getInventoryById(
-    user.companyId,
-    inventoryParams.query,
-    inventoryParams.where,
-    inventoryParams.from,
-    inventoryParams.to,
-    inventoryParams.pageIndex,
-    inventoryParams.pageSize,
-    inventoryParams.parsedSort,
-  );
 
   return (
     <ManageStocksClient

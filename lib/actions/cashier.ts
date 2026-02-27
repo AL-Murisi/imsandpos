@@ -217,8 +217,12 @@ export async function processSale(data: any, companyId: string) {
     receivedAmount,
   } = data;
   await validateFiscalYear(companyId);
-  return await prisma.$transaction(
-    async (tx) => {
+  let currentSaleNumber = typeof saleNumber === "string" ? saleNumber.trim() : "";
+
+  for (let txAttempt = 0; txAttempt < 5; txAttempt++) {
+    try {
+      return await prisma.$transaction(
+        async (tx) => {
       let status: string;
       if (baseAmount >= totalAfterDiscount) {
         status = "paid"; // تم التعديل من === إلى =
@@ -272,7 +276,7 @@ export async function processSale(data: any, companyId: string) {
         // warehouseId: item.warehouseId
       }));
 
-      const paymentData =
+      const paymentDataTemplate = async (invoiceNo: string) =>
         baseAmount > 0
           ? {
               companyId,
@@ -290,14 +294,21 @@ export async function processSale(data: any, companyId: string) {
               type: TransactionType.RECEIPT,
               amount: receivedAmount,
               status: "paid",
-              notes: `دفعة فاتورة مبيعات رقم: ${saleNumber}`,
+              notes: `Sale payment for invoice: ${invoiceNo}`,
             }
           : undefined;
+
+      let effectiveSaleNumber = currentSaleNumber;
+      if (!effectiveSaleNumber || effectiveSaleNumber.startsWith("OFFLINE-")) {
+        effectiveSaleNumber = await generateSaleNumber(companyId);
+      }
+
       const baseAmountDue = Math.max(0, totalAfterDiscount - baseAmount);
+      const paymentData = await paymentDataTemplate(effectiveSaleNumber);
       const sale = await tx.invoice.create({
         data: {
           companyId,
-          invoiceNumber: saleNumber,
+          invoiceNumber: effectiveSaleNumber,
           customerId: customer?.id,
           cashierId,
           branchId: branchId,
@@ -308,7 +319,6 @@ export async function processSale(data: any, companyId: string) {
           warehouseId: cart[0]?.warehouseId || cart.warehouseId,
           amountDue: baseAmountDue,
           items: {
-            // This must match the relation name in your schema.prisma
             create: invoiceItemsData,
           },
           transactions: { create: paymentData },
@@ -518,12 +528,22 @@ export async function processSale(data: any, companyId: string) {
         message: "Sale processed successfully",
         saleId: sale.id,
       };
-    },
-    {
-      timeout: 20000,
-      maxWait: 5000,
-    },
-  );
+        },
+        {
+          timeout: 20000,
+          maxWait: 5000,
+        },
+      );
+    } catch (error: any) {
+      const isUniqueViolation = error?.code === "P2002";
+      if (!isUniqueViolation || txAttempt === 4) {
+        throw error;
+      }
+      currentSaleNumber = await generateSaleNumber(companyId);
+    }
+  }
+
+  throw new Error("Failed to process sale after retries");
 }
 
 export async function getAllActiveProductsForSale(
@@ -992,3 +1012,4 @@ export async function processReturn(data: any, companyId: string) {
   revalidatePath("/sells");
   return result;
 }
+

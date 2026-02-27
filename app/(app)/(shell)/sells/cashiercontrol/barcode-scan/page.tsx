@@ -233,43 +233,13 @@
 //     </main>
 //   );
 // }
-"use client";
+import React from "react";
+import CashierClient from "../_components/hi";
 
-import { useState } from "react";
-import dynamic from "next/dynamic";
-import { Button } from "@/components/ui/button";
-// import BarcodeScanner from "../_components/barcodetesting";
-
-const BarcodeScanner = dynamic(() => import("../_components/barcodetesting"), {
-  ssr: false,
-});
-
-export default function CashierClient() {
-  const [openScanner, setOpenScanner] = useState(false);
-
-  const handleDetected = (code: string) => {
-    console.log("Scanned:", code);
-
-    // 🔥 Example: find product
-    // const product = products.find((p: any) => p.barcode === code);
-
-    // if (product) {
-    //   console.log("Product found:", product);
-    //   // add to cart here
-    // }
-
-    setOpenScanner(false);
-  };
-
+export default function Home() {
   return (
-    <>
-      <Button onClick={() => setOpenScanner(true)}>Open Scanner</Button>
-
-      <BarcodeScanner
-        opened={openScanner}
-        onClose={() => setOpenScanner(false)}
-        onDetected={handleDetected}
-      />
-    </>
+    <div>
+      <CashierClient />
+    </div>
   );
 }

@@ -6,13 +6,13 @@ import { Button } from "@/components/ui/button";
 
 type Props = {
   opened: boolean;
-  onClose: () => void;
+  action: () => void;
   onDetected: (code: string) => void;
 };
 
 export default function LiveBarcodeScanner({
   opened,
-  onClose,
+  action,
   onDetected,
 }: Props) {
   const readerRef = useRef<Html5Qrcode | null>(null);
@@ -40,6 +40,8 @@ export default function LiveBarcodeScanner({
         Html5QrcodeSupportedFormats.PDF_417,
         Html5QrcodeSupportedFormats.DATA_MATRIX,
         Html5QrcodeSupportedFormats.QR_CODE,
+        Html5QrcodeSupportedFormats.RSS_EXPANDED,
+        Html5QrcodeSupportedFormats.RSS_14,
       ],
     });
 
@@ -49,8 +51,8 @@ export default function LiveBarcodeScanner({
       .start(
         { facingMode: "environment" },
         {
-          fps: isNativeSupported ? 15 : 10, // native API can handle higher fps
-          qrbox: { width: 350, height: 200 },
+          fps: 5, // native API can handle higher fps
+          qrbox: 250,
           aspectRatio: 1.7778,
         },
         (decodedText, result) => {
@@ -84,7 +86,7 @@ export default function LiveBarcodeScanner({
         <Button
           variant="destructive"
           onClick={() => {
-            readerRef.current?.stop().finally(() => onClose());
+            readerRef.current?.stop().finally(() => action());
           }}
         >
           Close

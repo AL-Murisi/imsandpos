@@ -10,6 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import IMSLoader from "@/components/loadinf";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import Appheader from "@/app/AppHeader/appheader";
+import { useOfflineSync } from "@/hooks/useOfflineSync";
 
 const AppSidebar = dynamic(
   () => import("@/components/appside-bar").then((m) => m.AppSidebar),
@@ -30,6 +31,7 @@ export default function ClientLayoutWrapper({
 }) {
   const { user, loading } = useAuth();
   const pathname = usePathname();
+  useOfflineSync();
 
   // Routes that don't need sidebar and header
   const authRoutes = ["/login", "/signup"];
