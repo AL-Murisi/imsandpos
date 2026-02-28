@@ -21,6 +21,11 @@ import CategoryForm from "@/components/forms/catigresShortcut";
 import { Check, Plus, Trash2 } from "lucide-react";
 import dynamic from "next/dynamic";
 
+const LiveBarcodeScanner = dynamic(
+  () => import("@/app/(app)/(sales)/cashiercontrol/_components/barcodetesting"),
+  { ssr: false },
+);
+
 interface Option {
   id: string;
   name: string;
@@ -50,7 +55,7 @@ export default function ProductEditForm({
   });
 
   const [open, setOpen] = useState(false);
-  const [opens, setOpens] = useState(false);
+  const [openScanner, setOpenScanner] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -125,6 +130,7 @@ export default function ProductEditForm({
     reset({
       name: product.name || "",
       sku: product.sku || "",
+      barcode: product.barcode || "",
       categoryId: product.categoryId || "",
       supplierId: product.supplierId || "",
       warehouseId: product.warehouseId || "",
@@ -368,19 +374,27 @@ export default function ProductEditForm({
             </div>{" "}
             <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
               <div className="grid gap-2">
-                <Label htmlFor="barcode">الحد الأدنى</Label>
+                <Label htmlFor="barcode">Barcode</Label>
                 <Input
                   id="barcode"
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   {...register("barcode", {})}
                   className="text-right"
-                  placeholder="0"
+                  placeholder="Enter barcode"
                 />
                 {errors.barcode && (
                   <p className="text-right text-xs text-red-500">
                     {errors.barcode.message}
                   </p>
                 )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setOpenScanner(true)}
+                >
+                  Scan barcode
+                </Button>
               </div>
               {/* <Dailogreuse
                 open={opens}
@@ -394,6 +408,17 @@ export default function ProductEditForm({
                   action={(result) => setValue("barcode", result.text)}
                 /> */}
               {/* </Dailogreuse>{" "} */}
+            </div>
+            <div className="w-90 md:w-1/2">
+              <LiveBarcodeScanner
+                opened={openScanner}
+                action={() => setOpenScanner(false)}
+                onDetected={(code) => {
+                  setValue("barcode", code);
+                  console.log(code);
+                  setOpenScanner(false);
+                }}
+              />
             </div>
           </Card>
 

@@ -9,7 +9,7 @@ export default function ReportsLoading() {
       </div>
 
       {/* Report Grid Skeleton */}
-      <div className="h-[70vh] rounded-lg bg-gray-200 px-2 py-2">
+      <div className="h-[80vh] rounded-lg bg-gray-200 px-2 py-2">
         <div className="space-y-4 p-5">
           <div className="h-6 w-1/4 rounded bg-gray-300" />
           <div className="h-4 w-1/3 rounded bg-gray-300" />

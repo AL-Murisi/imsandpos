@@ -60,7 +60,7 @@ export const PrintButton: React.FC<PrintButtonProps> = ({
       company: JSON.stringify(company),
     }).toString();
 
-    router.push(`/sells/receipt?${query}`);
+    router.push(`/receipt?${query}`);
   };
 
   return (

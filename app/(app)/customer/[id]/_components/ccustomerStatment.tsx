@@ -103,33 +103,6 @@ export default function CustomerStatement({
     // دفع التغييرات إلى الرابط
     replace(`${pathname}?${params.toString()}`);
   };
-  // const loadStatement = async () => {
-  //   if (!selectedCustomerId) {
-  //     alert("الرجاء اختيار عميل");
-  //     return;
-  //   }
-
-  //   setLoading(true);
-  //   try {
-  //     const result = await getCustomerStatement(
-  //       selectedCustomerId,
-  //       user.companyId,
-  //       dateFrom,
-  //       dateTo,
-  //     );
-
-  //     if (result.success) {
-  //       setStatement(result.data || undefined);
-  //     } else {
-  //       alert(result.error);
-  //     }
-  //   } catch (error) {
-  //     console.error("Error:", error);
-  //     alert("حدث خطأ أثناء جلب البيانات");
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
 
   return (
     <Card className="@container/card h-[85vh] border-transparent bg-transparent px-2">

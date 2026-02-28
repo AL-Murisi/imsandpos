@@ -28,7 +28,9 @@ export default function CashierClient() {
 
   return (
     <>
-      <Button onClick={() => setOpenScanner(true)}>Open Scanner</Button>
+      <Button type="button" onClick={() => setOpenScanner(true)}>
+        Open Scanner
+      </Button>
 
       <BarcodeScanner
         opened={openScanner}

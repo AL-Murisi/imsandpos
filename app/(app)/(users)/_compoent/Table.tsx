@@ -12,17 +12,12 @@ const Calendar22 = dynamic(
 
 import { SelectField } from "@/components/common/selection";
 // import SearchInput from "@/components/common/SearchInput";
-const DataTable = dynamic(
-  () => import("@/components/common/ReusbleTable").then((m) => m.DataTable),
-  {
-    ssr: false,
-    loading: () => <TableSkeleton rows={20} columns={10} />,
-  },
-);
+
 import SearchInput from "@/components/common/searchtest";
 import { columns } from "./columns";
 import UserForm from "./form";
 import TableSkeleton from "@/components/skeleton/table";
+import { DataTable } from "@/components/common/ReusbleTable";
 
 type ProductClientProps = {
   users: any[];
@@ -78,4 +73,3 @@ export default function UserClinet({ users, total, role }: ProductClientProps) {
     </div>
   );
 }
-

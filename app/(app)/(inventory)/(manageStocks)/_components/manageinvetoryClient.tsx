@@ -13,7 +13,6 @@ import { Calendar22 } from "@/components/common/DatePicker";
 import { DataTable } from "@/components/common/ReusbleTable";
 import MultiInventoryUpdateForm from "./multiplr";
 import { Prisma } from "@prisma/client";
-import { supabase } from "@/lib/supabaseClient";
 import { useCompany } from "@/hooks/useCompany";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -94,31 +93,37 @@ export default function ManageStocksClient({
   const router = useRouter();
 
   useEffect(() => {
-    if (!company?.id) return;
+    let channel: any;
 
-    const channel = supabase
-      .channel("inventory-updates")
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "inventory",
-          filter: `company_id=eq.${company.id}`,
-        },
-        (payload) => {
-          console.log("📦 Inventory updated:", payload.new);
+    async function initRealtime() {
+      const { supabase } = await import("@/lib/supabaseClient");
+      if (!company?.id) return;
 
-          // ✅ REFRESH SERVER DATA
-          router.refresh();
-        },
-      )
-      .subscribe();
+      channel = supabase
+        .channel("inventory-updates")
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "inventory",
+            filter: `company_id=eq.${company.id}`,
+          },
+          (payload) => {
+            console.log("📦 Inventory updated:", payload.new);
 
+            // ✅ REFRESH SERVER DATA
+            router.refresh();
+          },
+        )
+        .subscribe();
+    }
+
+    initRealtime();
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) channel.unsubscribe();
     };
-  }, [company?.id]);
+  }, [company?.id, products]);
 
   const t = useTranslations("productColumns");
   return (

@@ -37,6 +37,23 @@ type Forsale = ProductForSale & {
 type Props = {
   product: Forsale[];
 };
+
+const barcodeVariants = (value: string) => {
+  const trimmed = value.trim();
+  const digits = trimmed.replace(/\D/g, "");
+  const variants = new Set<string>([trimmed, digits]);
+
+  // Common case: UPC-A (12) is represented as EAN-13 with a leading zero.
+  if (digits.length === 13 && digits.startsWith("0")) {
+    variants.add(digits.slice(1));
+  }
+  if (digits.length === 12) {
+    variants.add(`0${digits}`);
+  }
+
+  return variants;
+};
+
 export default function List({ product }: Props) {
   const { company } = useCompany();
   const t = useTranslations("cashier");
@@ -252,20 +269,34 @@ export default function List({ product }: Props) {
         open={opens}
         setOpen={setOpens}
         btnLabl="تعديل"
-        style="w-full max-w-[1400px] overflow-y-auto rounded-lg p-6 xl:max-w-[1600px]"
+        style="w-90 md:w-1/2"
         titel="قم بتحديث تفاصيل المنتج"
       >
         {" "}
-        <Button onClick={() => setOpenScanner(true)}>Open Scanner</Button>
+        <Button type="button" onClick={() => setOpenScanner(true)}>
+          Open Scanner
+        </Button>
         <LiveBarcodeScanner
           onDetected={(code) => {
             // 1. Update the visual "Last Scanned" state
             setLast(code);
 
+            const scannedVariants = barcodeVariants(code);
+
             // 2. Find the product that matches the scanned text (SKU or Barcode)
-            const scannedProduct = products.find(
-              (p) => p.sku === code || p.barcode === code,
-            );
+            const scannedProduct = products.find((p) => {
+              const skuVariants = barcodeVariants(String(p.sku || ""));
+              const barcodeValue = String(p.barcode || "");
+              const productVariants = new Set<string>([
+                ...skuVariants,
+                ...barcodeVariants(barcodeValue),
+              ]);
+
+              for (const v of scannedVariants) {
+                if (productVariants.has(v)) return true;
+              }
+              return false;
+            });
 
             if (scannedProduct) {
               // 3. Trigger your existing add logic

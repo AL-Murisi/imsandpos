@@ -5,36 +5,6 @@ import { execSync } from "child_process";
 
 const withNextIntl = createNextIntlPlugin();
 
-// const withPWA = withSerwist({
-//   swSrc: "app/sw.ts",
-//   swDest: "public/sw.js",
-//   cacheOnNavigation: true,
-//   register: true, // ✅ auto register
-//   // ✅ activate immediately
-//   scope: "/", // ✅ global scope
-//   disable: process.env.NODE_ENV === "development",
-//   additionalPrecacheEntries: [
-//     { url: "/", revision },
-//     { url: "/offline", revision },
-//   ],
-// });
-// const withPWA = require("@ducanh2912/next-pwa").default({
-//   dest: "public",
-//   cacheOnFrontEndNav: true,
-//   aggressiveFrontEndNavCaching: true,
-//   reloadOnOnline: true,
-//   swcMinify: true,
-//   register: true,
-//   disable: process.env.NODE_ENV === "development",
-//   fallbacks: {
-//     document: "/offline",
-//   },
-//   workboxOptions: {
-//     disableDevLogs: true,
-//   },
-//   swSrc: "public/sw-custom.js", // ✅ CORRECT
-//   // <-- your custom service worker
-// });
 const enablePwaInDev = process.env.NEXT_PUBLIC_ENABLE_PWA_DEV === "true";
 
 const withPWA = require("@ducanh2912/next-pwa").default({
@@ -44,7 +14,7 @@ const withPWA = require("@ducanh2912/next-pwa").default({
   reloadOnOnline: true,
   swcMinify: true,
   register: true,
-  // disable: process.env.NODE_ENV === "development" && !enablePwaInDev,
+  disable: process.env.NODE_ENV === "development" && !enablePwaInDev,
   // fallbacks: {
   //   document: "/offline",
   // },

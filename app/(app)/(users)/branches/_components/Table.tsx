@@ -2,32 +2,20 @@
 
 import { useTablePrams } from "@/hooks/useTableParams";
 
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { DataTable } from "@/components/common/ReusbleTable";
 import dynamic from "next/dynamic";
-const Calendar22 = dynamic(
-  () => import("@/components/common/DatePicker").then((m) => m.Calendar22),
-  {
-    ssr: false,
-  },
-);
-// import SearchInput from "@/components/common/SearchInput";
-const DataTable = dynamic(
-  () => import("@/components/common/ReusbleTable").then((m) => m.DataTable),
-  {
-    ssr: false,
-  },
-);
-const CustomDialog = dynamic(() => import("@/components/common/Dailog"), {
-  ssr: false,
-});
-const POSForm = dynamic(() => import("./AddSalePoint"), {
-  ssr: false,
-});
-import SearchInput from "@/components/common/searchtest";
-import { posColumns } from "./columns";
 import { use } from "react";
-import { SelectField } from "@/components/common/selectproduct";
+import { posColumns } from "./columns";
+
+// import SearchInput from "@/components/common/SearchInput";
+// const DataTable = dynamic(
+//   () => import("@/components/common/ReusbleTable").then((m) => m.DataTable),
+//   {
+//     ssr: false,
+//   },
+// );
+
+const POSForm = dynamic(() => import("./AddSalePoint"), { ssr: false });
 
 type Props = {
   salespoint: Promise<any[]>;

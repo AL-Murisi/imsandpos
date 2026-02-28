@@ -19,6 +19,12 @@ import CategoryForm from "@/app/(app)/(inventory)/categories/_components/form";
 import { CreateProduct } from "@/lib/actions/Product";
 import { useAuth } from "@/lib/context/AuthContext";
 import { toast } from "sonner";
+import dynamic from "next/dynamic";
+
+const LiveBarcodeScanner = dynamic(
+  () => import("@/app/(app)/(sales)/cashiercontrol/_components/barcodetesting"),
+  { ssr: false },
+);
 interface Option {
   id: string;
   name: string;
@@ -128,6 +134,7 @@ export default function ProductForm({ formData }: ExpenseFormProps) {
     name: "sellingUnits",
   });
   const [open, setOpen] = useState(false);
+  const [openScanner, setOpenScanner] = useState(false);
   const sellingUnits = watch("sellingUnits");
   useEffect(() => {
     // سجل للتصحيح: تأكد أن القيم تصل فعلاً عند التغيير
@@ -334,21 +341,40 @@ export default function ProductForm({ formData }: ExpenseFormProps) {
             </div>{" "}
             <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
               <div className="grid gap-2">
-                <Label htmlFor="barcode">الحد الأدنى</Label>
+                <Label htmlFor="barcode">Barcode</Label>
                 <Input
                   id="barcode"
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   {...register("barcode", {})}
                   className="text-right"
-                  placeholder="0"
+                  placeholder="Enter barcode"
                 />
                 {errors.barcode && (
                   <p className="text-right text-xs text-red-500">
                     {errors.barcode.message}
                   </p>
                 )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setOpenScanner(true)}
+                >
+                  Scan barcode
+                </Button>
               </div>
             </div>
+            <LiveBarcodeScanner
+              opened={openScanner}
+              action={() => setOpenScanner(false)}
+              onDetected={(code) => {
+                setValue("barcode", code, {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                });
+                setOpenScanner(false);
+              }}
+            />
           </Card>
 
           {/* وحدات البيع المخصصة */}
