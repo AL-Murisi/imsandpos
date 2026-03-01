@@ -9,8 +9,6 @@ const enablePwaInDev = process.env.NEXT_PUBLIC_ENABLE_PWA_DEV === "true";
 
 const withPWA = require("@ducanh2912/next-pwa").default({
   dest: "public",
-  cacheStartUrl: false,
-  dynamicStartUrl: false,
   cacheOnFrontEndNav: true,
   aggressiveFrontEndNavCaching: true,
   reloadOnOnline: true,
