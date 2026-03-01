@@ -13,6 +13,7 @@ import Appheader from "@/app/AppHeader/appheader";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { Suspense } from "react";
 import { AppSidebar } from "@/components/appside-bar";
+import PullToRefreshCurrentPage from "@/components/refresh";
 
 // const AppSidebar = dynamic(
 //   () => import("@/components/appside-bar").then((m) => m.AppSidebar),
@@ -22,9 +23,9 @@ const BottomBar = dynamic(
   () => import("@/components/bottom-bar").then((m) => m.BottomBar),
   { ssr: false },
 );
-const PullToRefreshCurrentPage = dynamic(() => import("@/components/refresh"), {
-  ssr: false,
-});
+// const PullToRefreshCurrentPage = dynamic(() => import("@/components/refresh"), {
+//   ssr: false,
+// });
 
 function ShellContentFallback() {
   return (
