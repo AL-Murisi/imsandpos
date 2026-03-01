@@ -97,12 +97,6 @@ export default function ChartOfAccountsTable({
   return (
     <ScrollArea className="h-[95vh] p-3" dir="rtl">
       {/* Header Section */}
-      <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-xl font-bold">دليل الحسابات</h1>
-          <p className="mt-1 text-lg">إدارة هيكل الحسابات المحاسبية</p>
-        </div>
-      </div>
 
       {/* Summary Cards */}
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
@@ -531,4 +525,3 @@ export default function ChartOfAccountsTable({
 //     </ScrollArea>
 //   );
 // }
-

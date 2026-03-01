@@ -12,11 +12,12 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import Appheader from "@/app/AppHeader/appheader";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { Suspense } from "react";
+import { AppSidebar } from "@/components/appside-bar";
 
-const AppSidebar = dynamic(
-  () => import("@/components/appside-bar").then((m) => m.AppSidebar),
-  { ssr: false },
-);
+// const AppSidebar = dynamic(
+//   () => import("@/components/appside-bar").then((m) => m.AppSidebar),
+//   { ssr: false },
+// );
 const BottomBar = dynamic(
   () => import("@/components/bottom-bar").then((m) => m.BottomBar),
   { ssr: false },
@@ -72,14 +73,12 @@ export default function ClientLayoutWrapper({
                   dir="rtl"
                 >
                   <Appheader />
-                  <Suspense fallback={<ShellContentFallback />}>
-                    <PullToRefreshCurrentPage>
-                      {children}
-                      <div className="mt-12 md:mt-0 md:hidden">
-                        <BottomBar />
-                      </div>
-                    </PullToRefreshCurrentPage>
-                  </Suspense>
+                  <PullToRefreshCurrentPage>
+                    {children}
+                    <div className="mt-12 md:mt-0 md:hidden">
+                      <BottomBar />
+                    </div>
+                  </PullToRefreshCurrentPage>
                 </ScrollArea>
               </div>
             </SidebarInset>
