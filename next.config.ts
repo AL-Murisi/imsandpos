@@ -1,11 +1,9 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
-import { execSync } from "child_process";
+
 // Use git commit hash as cache version
 
 const withNextIntl = createNextIntlPlugin();
-
-const enablePwaInDev = process.env.NEXT_PUBLIC_ENABLE_PWA_DEV === "true";
 
 const withPWA = require("@ducanh2912/next-pwa").default({
   dest: "public",
@@ -14,7 +12,7 @@ const withPWA = require("@ducanh2912/next-pwa").default({
   reloadOnOnline: true,
   swcMinify: true,
   register: true,
-  disable: process.env.NODE_ENV === "development" && !enablePwaInDev,
+  disable: process.env.NODE_ENV === "development",
   // fallbacks: {
   //   document: "/offline",
   // },

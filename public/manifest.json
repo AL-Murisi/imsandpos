@@ -3,6 +3,7 @@
   "short_name": "إدارة المنتجات",
   "description": "نظام شامل لإدارة المنتجات والمخزون - Comprehensive product and inventory management system",
   "start_url": "/",
+  "id": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#ffffff",
@@ -16,13 +17,13 @@
       "src": "/web-app-manifest-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any"
     },
     {
       "src": "/web-app-manifest-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any"
     },
     {
       "src": "/badge-72x72.png",
@@ -31,18 +32,45 @@
       "purpose": "monochrome"
     }
   ],
+  "screenshots": [
+    {
+      "src": "/screenshots/desktop-wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    },
+    {
+      "src": "/screenshots/mobile-portrait.png",
+      "sizes": "750x1334",
+      "type": "image/png"
+    }
+  ],
   "shortcuts": [
     {
       "name": "إضافة منتج جديد",
       "short_name": "منتج جديد",
       "description": "إضافة منتج جديد بسرعة",
-      "url": "/products/new"
+      "url": "/products/new",
+      "icons": [
+        {
+          "src": "/icon.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
     },
     {
       "name": "قائمة المنتجات",
       "short_name": "المنتجات",
       "description": "عرض جميع المنتجات",
-      "url": "/products"
+      "url": "/products",
+      "icons": [
+        {
+          "src": "/icon.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
     }
   ],
   "prefer_related_applications": false,

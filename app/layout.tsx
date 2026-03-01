@@ -35,6 +35,23 @@ export const metadata: Metadata = {
   generator: "Next.js",
   manifest: "/manifest.json",
   applicationName: "IMS",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      {
+        url: "/web-app-manifest-192x192.png",
+        type: "image/png",
+        sizes: "192x192",
+      },
+      {
+        url: "/web-app-manifest-512x512.png",
+        type: "image/png",
+        sizes: "512x512",
+      },
+    ],
+    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
+    shortcut: ["/favicon.ico"],
+  },
 
   appleWebApp: {
     capable: true,
@@ -81,15 +98,6 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <header>
-            <link rel="preconnect" href="https://va.vercel-scripts.com" />
-            <link rel="dns-prefetch" href="https://va.vercel-scripts.com" />
-
-            <link rel="manifest" href="/manifest.json" />
-
-            <link rel="icon" href="/favicon.ico" sizes="512x512" />
-          </header>
-
           <AuthProvider>
             <NextIntlClientProvider locale={locale} messages={messages[locale]}>
               <CurrencyProvider currency={currencyConfig[currencyKey]}>
