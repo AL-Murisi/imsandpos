@@ -1,3 +1,10 @@
+// Workbox precache manifest injected at build time by next-pwa (injectManifest).
+// This is required for proper install lifecycle and prevents SW install from failing.
+self.__WB_MANIFEST = self.__WB_MANIFEST || [];
+if (self.workbox && self.workbox.precaching) {
+  self.workbox.precaching.precacheAndRoute(self.__WB_MANIFEST);
+}
+
 self.addEventListener("install", () => {
   self.skipWaiting();
 });

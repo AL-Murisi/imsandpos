@@ -12,12 +12,15 @@ const withPWA = require("@ducanh2912/next-pwa").default({
   reloadOnOnline: true,
   swcMinify: true,
   register: true,
+  skipWaiting: true,
+  clientsClaim: true,
   disable: process.env.NODE_ENV === "development",
   // fallbacks: {
   //   document: "/offline",
   // },
   workboxOptions: {
     disableDevLogs: true,
+    maximumFileSizeToCacheInBytes: 2 * 1024 * 1024,
     runtimeCaching: [
       {
         urlPattern: /\/_next\/static\/.*/,
@@ -71,6 +74,11 @@ const withPWA = require("@ducanh2912/next-pwa").default({
       },
     ],
   },
+  buildExcludes: [
+    /splash_screens\/.*/,
+    /templates\/.*/,
+    /wasm\/.*/,
+  ],
   swSrc: "public/swcustom.js",
   swDest: "public/sw.js",
 });
