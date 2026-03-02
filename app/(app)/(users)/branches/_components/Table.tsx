@@ -49,9 +49,12 @@ export default function SalesPointTable({ salespoint, total, role }: Props) {
   const salespoints = use(salespoint);
   const user = use(role);
   return (
-    <div className="bg-accent flex flex-col" dir="rtl">
+    <div
+      className="bg-accent border-primary flex flex-col rounded-2xl border p-3 shadow-xl/20 shadow-gray-900"
+      dir="rtl"
+    >
+      {" "}
       {/* Add dir="rtl" for proper RTL layout */}
-
       <DataTable
         search={<POSForm users={user} />}
         data={salespoints}

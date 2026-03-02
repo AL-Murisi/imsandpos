@@ -48,15 +48,13 @@ export default function ClientLayoutWrapper({
   const authRoutes = ["/login", "/signup"];
   const isAuthRoute = authRoutes.includes(pathname);
 
-  if (loading) {
-    return <IMSLoader />;
-  }
-
+  // if (loading) {
+  //   return <IMSLoader />;
+  // }
   return (
     <Provider store={store}>
       <NuqsAdapter>
-        {/* If it's an auth route or user is not authenticated, show simple layout */}
-        {isAuthRoute || !user ? (
+        {isAuthRoute ? (
           <div className="min-h-screen">{children}</div>
         ) : (
           <SidebarProvider
@@ -68,32 +66,84 @@ export default function ClientLayoutWrapper({
             }
           >
             <SidebarInset>
-              <div className="flex flex-col">
+              <div className="flex min-h-screen flex-col">
                 <ScrollArea
                   className="group @container/main flex flex-col"
                   dir="rtl"
                 >
                   <Appheader />
-                  <PullToRefreshCurrentPage>
-                    {children}
-                    <div className="mt-12 md:mt-0 md:hidden">
-                      <BottomBar />
+
+                  {loading ? (
+                    <div className="flex flex-1 items-center justify-center">
+                      <IMSLoader />
                     </div>
-                  </PullToRefreshCurrentPage>
+                  ) : (
+                    <PullToRefreshCurrentPage>
+                      {children}
+                      <div className="mt-12 md:mt-0 md:hidden">
+                        <BottomBar />
+                      </div>
+                    </PullToRefreshCurrentPage>
+                  )}
                 </ScrollArea>
               </div>
             </SidebarInset>
-            {/* {" "}
-          <SidebarTrigger /> */}
-            <AppSidebar
-              variant="floating"
-              className="text-2xl"
-              side="right"
-              dir="rtl"
-            />
+
+            {!loading && (
+              <AppSidebar
+                variant="floating"
+                className="text-2xl"
+                side="right"
+                dir="rtl"
+              />
+            )}
           </SidebarProvider>
-        )}{" "}
+        )}
       </NuqsAdapter>
     </Provider>
   );
+  // return (
+  //   <Provider store={store}>
+  //     <NuqsAdapter>
+  //       {/* If it's an auth route or user is not authenticated, show simple layout */}
+  //       {isAuthRoute || !user ? (
+  //         <div className="min-h-screen">{children}</div>
+  //       ) : (
+  //         <SidebarProvider
+  //           style={
+  //             {
+  //               "--sidebar-width": "17rem",
+  //               "--sidebar-width-mobile": "1rem",
+  //             } as React.CSSProperties
+  //           }
+  //         >
+  //           <SidebarInset>
+  //             <div className="flex flex-col">
+  //               <ScrollArea
+  //                 className="group @container/main flex flex-col"
+  //                 dir="rtl"
+  //               >
+  //                 <Appheader />
+  //                 <PullToRefreshCurrentPage>
+  //                   {children}
+  //                   <div className="mt-12 md:mt-0 md:hidden">
+  //                     <BottomBar />
+  //                   </div>
+  //                 </PullToRefreshCurrentPage>
+  //               </ScrollArea>
+  //             </div>
+  //           </SidebarInset>
+  //           {/* {" "}
+  //         <SidebarTrigger /> */}
+  //           <AppSidebar
+  //             variant="floating"
+  //             className="text-2xl"
+  //             side="right"
+  //             dir="rtl"
+  //           />
+  //         </SidebarProvider>
+  //       )}{" "}
+  //     </NuqsAdapter>
+  //   </Provider>
+  // );
 }

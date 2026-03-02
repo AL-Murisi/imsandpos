@@ -36,6 +36,7 @@ type Forsale = ProductForSale & {
 
 type Props = {
   product: Forsale[];
+  selecteditemId: string;
 };
 
 const barcodeVariants = (value: string) => {
@@ -54,7 +55,7 @@ const barcodeVariants = (value: string) => {
   return variants;
 };
 
-export default function List({ product }: Props) {
+export default function List({ selecteditemId }: Props) {
   const { company } = useCompany();
   const t = useTranslations("cashier");
   const dispatch = useAppDispatch();
@@ -90,9 +91,6 @@ export default function List({ product }: Props) {
           // ✅ Correct: Matching the exact keys from your log
           console.log(payload.new);
           const { product_id, available_quantity } = payload.new;
-
-          console.log("Product ID:", product_id);
-          console.log("Available Qty:", available_quantity);
 
           dispatch(
             syncProductStock({
@@ -165,8 +163,15 @@ export default function List({ product }: Props) {
     },
     [],
   );
-  const isProcessingRef = useRef(false); // Add this ref
+  useEffect(() => {
+    if (!selecteditemId) return;
 
+    const selectedProduct = products.find((p) => p.id === selecteditemId);
+
+    if (selectedProduct) {
+      handleAdd(selectedProduct);
+    }
+  }, [selecteditemId, products]);
   const handleAdd = useCallback(
     (p: Forsale, selectedUnit?: SellingUnit) => {
       const targetUnit =
@@ -216,31 +221,7 @@ export default function List({ product }: Props) {
     [dispatch, cartItems],
   );
   // const handleBarcodeAction = useCallback(
-  //   (result: { text: string; format: string }) => {
-  //     // 1. Check if we are already processing a scan to prevent duplicates
-  //     if (isProcessingRef.current) return;
 
-  //     const scannedProduct = products.find(
-  //       (p) => p.sku === result.text || p.barcode === result.text,
-  //     );
-
-  //     if (scannedProduct) {
-  //       isProcessingRef.current = true; // Lock scanning
-
-  //       setLast({ text: result.text, format: result.format });
-  //       handleAdd(scannedProduct);
-
-  //       // 2. Release the lock after 1.5 seconds to allow the next item
-  //       setTimeout(() => {
-  //         isProcessingRef.current = false;
-  //       }, 1500);
-  //     }
-  //   },
-  //   [products, handleAdd],
-  // );
-  /**
-   * ✅ UI GRID
-   */
   const productGrid = useMemo(
     () => (
       <div className="grid auto-rows-fr grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-x-5 gap-y-4">

@@ -75,6 +75,7 @@ export default function ProductsList({
       </div>
       <List
         product={product}
+        selecteditemId={selectedproduct?.id ?? ""}
         // queryr={queryr || (selectedproduct ? selectedproduct.name || "" : "")}
       />
 

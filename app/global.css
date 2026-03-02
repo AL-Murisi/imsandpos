@@ -1,7 +1,36 @@
 @import "tailwindcss";
 
 @custom-variant dark (&:is(.dark *));
+@keyframes scan-line {
+  0% {
+    top: 10%;
+  }
+  100% {
+    top: 90%;
+  }
+}
 
+.scanner-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none; /* Allows the camera to still work underneath */
+  z-index: 10;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+}
+
+/* The Animated Laser Line */
+.scan-laser {
+  position: absolute;
+  left: 5%;
+  width: 90%;
+  height: 2px;
+  background-color: #00ff00;
+  box-shadow: 0 0 8px #00ff00;
+  animation: scan-line 2s linear infinite;
+}
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

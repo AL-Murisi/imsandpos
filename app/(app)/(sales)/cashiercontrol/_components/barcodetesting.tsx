@@ -23,6 +23,7 @@ export default function LiveBarcodeScanner({
   const [facingMode, setFacingMode] = useState<"environment" | "user">(
     "environment",
   );
+  const [isScanning, setIsScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const containerId = "live-qr-reader";
 
@@ -33,6 +34,7 @@ export default function LiveBarcodeScanner({
   const stopScanner = async () => {
     if (!readerRef.current || !isScanningRef.current) return;
     try {
+      setIsScanning(false);
       await readerRef.current.stop();
     } catch {
       // ignore stop errors when scanner is already stopped
@@ -116,13 +118,24 @@ export default function LiveBarcodeScanner({
         const cameraConfig = selectedCameraId
           ? { deviceId: { exact: selectedCameraId } }
           : { facingMode };
+        const isMobile = window.innerWidth < 768;
 
+        // 2. Set responsive qrbox dimensions
+        // Mobile: Square (Third image style) | Laptop: Wide (Barcode style)
+        const qrboxSize = isMobile
+          ? { width: 250, height: 250 }
+          : { width: 420, height: 180 };
         await readerRef.current.start(
           cameraConfig,
+          // {
+          //   fps: 10,
+          //   // Wider target box is better for product barcodes than a square.
+          //   qrbox: { width: 420, height: 180 },
+          // },
           {
-            fps: 10,
-            // Wider target box is better for product barcodes than a square.
-            qrbox: { width: 420, height: 180 },
+            fps: 15, // Slightly higher FPS for smoother scanning on mobile
+            qrbox: qrboxSize,
+            aspectRatio: isMobile ? 1.0 : 1.777778, // Force 1:1 on mobile, 16:9 on laptop
           },
           (decodedText, result) => {
             if (isCancelled) return;
@@ -138,6 +151,7 @@ export default function LiveBarcodeScanner({
             }
           },
         );
+        setIsScanning(true); // Set scanning state to true
         isScanningRef.current = true;
       } catch {
         if (!isCancelled) {
@@ -157,8 +171,9 @@ export default function LiveBarcodeScanner({
   if (!opened) return null;
 
   return (
-    <div className="relative">
-      <div className="mb-3 flex items-center gap-2">
+    <div className="relative flex flex-col items-center">
+      {/* Camera controls centered */}
+      <div className="mb-3 flex w-full flex-wrap items-center justify-center gap-2">
         <label htmlFor="camera-select" className="text-sm font-medium">
           Camera
         </label>
@@ -198,10 +213,39 @@ export default function LiveBarcodeScanner({
           ))}
         </select>
       </div>
-      <div
+      {/* <div
         id={containerId}
-        className="min-h-[320px] w-full rounded-md border"
-      />
+        className="flex w-full max-w-[600px] items-center justify-center overflow-hidden rounded-md border bg-black"
+        style={{
+          minHeight: "320px",
+          // This ensures the video element inside centers itself
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      /> */}
+      <div className="relative w-full max-w-[500px]">
+        <div
+          id={containerId}
+          className="flex min-h-[300px] w-full items-center justify-center overflow-hidden rounded-md border bg-black"
+        />
+
+        {/* Visual Guide Overlay */}
+        {isScanning && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            {/* This box should match the qrbox size you set in JS */}
+            <div className="relative h-[250px] w-[250px] rounded-lg border-2 border-white/50 md:h-[200px] md:w-[400px]">
+              <div className="scan-laser" />
+
+              {/* Corner Brackets */}
+              <div className="border-primary absolute top-0 left-0 h-4 w-4 border-t-4 border-l-4" />
+              <div className="border-primary absolute top-0 right-0 h-4 w-4 border-t-4 border-r-4" />
+              <div className="border-primary absolute bottom-0 left-0 h-4 w-4 border-b-4 border-l-4" />
+              <div className="border-primary absolute right-0 bottom-0 h-4 w-4 border-r-4 border-b-4" />
+            </div>
+          </div>
+        )}
+      </div>
       {scanError ? (
         <p className="mt-2 text-sm text-red-600">{scanError}</p>
       ) : null}

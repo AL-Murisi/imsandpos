@@ -35,7 +35,11 @@ export default function UserActivityTable({
   } = useTablePrams();
 
   return (
-    <div className="bg-accent rounded-2xl p-2" dir="rtl">
+    <div
+      className="bg-accent border-primary flex flex-col rounded-2xl border p-3 shadow-xl/20 shadow-gray-900"
+      dir="rtl"
+    >
+      {" "}
       <DataTable
         data={logs}
         search={<SearchInput placeholder={"search"} paramKey="selas" />}
