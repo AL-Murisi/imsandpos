@@ -123,8 +123,8 @@ export default function LiveBarcodeScanner({
         // 2. Set responsive qrbox dimensions
         // Mobile: Square (Third image style) | Laptop: Wide (Barcode style)
         const qrboxSize = isMobile
-          ? { width: 350, height: 250 }
-          : { width: 420, height: 280 };
+          ? { width: 300, height: 250 }
+          : { width: 420, height: 250 };
         await readerRef.current.start(
           cameraConfig,
           // {
