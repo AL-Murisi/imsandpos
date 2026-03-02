@@ -5,13 +5,8 @@ import { useTablePrams } from "@/hooks/useTableParams";
 import { role } from "./columns";
 import dynamic from "next/dynamic";
 import TableSkeleton from "@/components/skeleton/table";
-const DataTable = dynamic(
-  () => import("@/components/common/ReusbleTable").then((m) => m.DataTable),
-  {
-    ssr: false,
-    loading: () => <TableSkeleton rows={20} columns={10} />,
-  },
-);
+import { DataTable } from "@/components/common/ReusbleTable";
+
 type ProductClientProps = {
   Role: any[];
 };
@@ -53,4 +48,3 @@ export default function Role({ Role }: ProductClientProps) {
     </div>
   );
 }
-

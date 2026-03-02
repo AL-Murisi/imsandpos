@@ -123,8 +123,8 @@ export default function LiveBarcodeScanner({
         // 2. Set responsive qrbox dimensions
         // Mobile: Square (Third image style) | Laptop: Wide (Barcode style)
         const qrboxSize = isMobile
-          ? { width: 250, height: 250 }
-          : { width: 420, height: 180 };
+          ? { width: 350, height: 250 }
+          : { width: 420, height: 280 };
         await readerRef.current.start(
           cameraConfig,
           // {
@@ -213,7 +213,7 @@ export default function LiveBarcodeScanner({
           ))}
         </select>
       </div>
-      {/* <div
+      <div
         id={containerId}
         className="flex w-full max-w-[600px] items-center justify-center overflow-hidden rounded-md border bg-black"
         style={{
@@ -223,29 +223,7 @@ export default function LiveBarcodeScanner({
           alignItems: "center",
           justifyContent: "center",
         }}
-      /> */}
-      <div className="relative w-full max-w-[500px]">
-        <div
-          id={containerId}
-          className="flex min-h-[300px] w-full items-center justify-center overflow-hidden rounded-md border bg-black"
-        />
-
-        {/* Visual Guide Overlay */}
-        {isScanning && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            {/* This box should match the qrbox size you set in JS */}
-            <div className="relative h-[250px] w-[250px] rounded-lg border-2 border-white/50 md:h-[200px] md:w-[400px]">
-              <div className="scan-laser" />
-
-              {/* Corner Brackets */}
-              <div className="border-primary absolute top-0 left-0 h-4 w-4 border-t-4 border-l-4" />
-              <div className="border-primary absolute top-0 right-0 h-4 w-4 border-t-4 border-r-4" />
-              <div className="border-primary absolute bottom-0 left-0 h-4 w-4 border-b-4 border-l-4" />
-              <div className="border-primary absolute right-0 bottom-0 h-4 w-4 border-r-4 border-b-4" />
-            </div>
-          </div>
-        )}
-      </div>
+      />
       {scanError ? (
         <p className="mt-2 text-sm text-red-600">{scanError}</p>
       ) : null}
