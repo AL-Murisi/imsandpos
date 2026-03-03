@@ -12,16 +12,11 @@ import dynamic from "next/dynamic";
 
 import { accountColumns } from "./columns";
 import { useFormatter } from "@/hooks/usePrice";
+import { DataTable } from "@/components/common/ReusbleTable";
 const AccountFormDialog = dynamic(() => import("./AccountFormDialog"), {
   ssr: false,
 });
-const DataTable = dynamic(
-  () => import("@/components/common/ReusbleTable").then((m) => m.DataTable),
-  {
-    ssr: false,
-    loading: () => <TableSkeleton rows={20} columns={10} />,
-  },
-);
+
 type ParentAccount = {
   id: string;
   account_code: string;

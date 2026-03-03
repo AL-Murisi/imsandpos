@@ -241,11 +241,6 @@ export default function List({ selecteditemId }: Props) {
 
   return (
     <ScrollArea className="h-[85vh]">
-      {/* {products.length === 0 && (
-        <div className="text-muted-foreground mt-4 px-4 text-center text-sm">
-          <p>{t("noProductFound")}</p>
-        </div>
-      )} */}
       <Dailogreuse
         open={opens}
         setOpen={setOpens}

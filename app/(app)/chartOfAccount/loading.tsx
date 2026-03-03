@@ -1,4 +1,4 @@
-import { ChartOfAccountsSkeleton } from "@/components/chartofaccount";
+import { ChartOfAccountsSkeleton } from "@/components/skeleton/chartofaccount";
 import React from "react";
 
 export default function Loading() {
