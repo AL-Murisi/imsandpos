@@ -250,51 +250,53 @@ export default function List({ selecteditemId }: Props) {
         open={opens}
         setOpen={setOpens}
         btnLabl="تعديل"
-        style="w-90 md:w-1/2"
+        style="w-lg
+"
         titel="قم بتحديث تفاصيل المنتج"
       >
-        {" "}
-        <Button type="button" onClick={() => setOpenScanner(true)}>
-          Open Scanner
-        </Button>
-        <LiveBarcodeScanner
-          onDetected={(code) => {
-            // 1. Update the visual "Last Scanned" state
-            setLast(code);
+        <div className="w-80 md:w-2xl">
+          <Button type="button" onClick={() => setOpenScanner(true)}>
+            Open Scanner
+          </Button>
+          <LiveBarcodeScanner
+            onDetected={(code) => {
+              // 1. Update the visual "Last Scanned" state
+              setLast(code);
 
-            const scannedVariants = barcodeVariants(code);
+              const scannedVariants = barcodeVariants(code);
 
-            // 2. Find the product that matches the scanned text (SKU or Barcode)
-            const scannedProduct = products.find((p) => {
-              const skuVariants = barcodeVariants(String(p.sku || ""));
-              const barcodeValue = String(p.barcode || "");
-              const productVariants = new Set<string>([
-                ...skuVariants,
-                ...barcodeVariants(barcodeValue),
-              ]);
+              // 2. Find the product that matches the scanned text (SKU or Barcode)
+              const scannedProduct = products.find((p) => {
+                const skuVariants = barcodeVariants(String(p.sku || ""));
+                const barcodeValue = String(p.barcode || "");
+                const productVariants = new Set<string>([
+                  ...skuVariants,
+                  ...barcodeVariants(barcodeValue),
+                ]);
 
-              for (const v of scannedVariants) {
-                if (productVariants.has(v)) return true;
+                for (const v of scannedVariants) {
+                  if (productVariants.has(v)) return true;
+                }
+                return false;
+              });
+
+              if (scannedProduct) {
+                // 3. Trigger your existing add logic
+                handleAdd(scannedProduct);
+
+                // Optional: Close the dialog after a successful scan
+                // setOpens(false);
+
+                console.log(`Successfully added: ${scannedProduct.name}`);
+              } else {
+                console.warn("Product not found for code:", code);
+                // Optional: Add a toast notification here for "Product not found"
               }
-              return false;
-            });
-
-            if (scannedProduct) {
-              // 3. Trigger your existing add logic
-              handleAdd(scannedProduct);
-
-              // Optional: Close the dialog after a successful scan
-              // setOpens(false);
-
-              console.log(`Successfully added: ${scannedProduct.name}`);
-            } else {
-              console.warn("Product not found for code:", code);
-              // Optional: Add a toast notification here for "Product not found"
-            }
-          }}
-          opened={openScanner}
-          action={() => setOpenScanner(false)}
-        />
+            }}
+            opened={openScanner}
+            action={() => setOpenScanner(false)}
+          />
+        </div>
       </Dailogreuse>{" "}
       {products.length > 0 && <div className="mt-4 px-4">{productGrid}</div>}
     </ScrollArea>

@@ -92,7 +92,8 @@ export default async function RootLayout({
   return (
     <html lang={locale} className={``} suppressHydrationWarning>
       <head>
-        <link rel="icon" href="/icon0.optimized.svg" sizes="any" />
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="icon" href="/icon0.optimized.svg" sizes="any" />{" "}
         <link
           rel="apple-touch-startup-image"
           media="screen and (device-width: 820px) and (device-height: 1180px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
