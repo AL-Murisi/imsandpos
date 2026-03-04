@@ -38,12 +38,12 @@ export const metadata: Metadata = {
     icon: [
       { url: "/favicon.ico", sizes: "any" },
       {
-        url: "/web-app-manifest-192x192.png",
+        url: "/icons/icon-192x192.png",
         type: "image/png",
         sizes: "192x192",
       },
       {
-        url: "/web-app-manifest-512x512.png",
+        url: "/icons/icon-512x512.png",
         type: "image/png",
         sizes: "512x512",
       },
@@ -119,55 +119,6 @@ export const metadata: Metadata = {
         media:
           "screen and (device-width: 420px) and (device-height: 912px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)",
       },
-
-      // // iPads Landscape
-      // {
-      //   url: "/splash_screens/13__iPad_Pro_M4_landscape.png",
-      //   media:
-      //     "screen and (device-width: 1032px) and (device-height: 1376px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)",
-      // },
-      // {
-      //   url: "/splash_screens/12.9__iPad_Pro_landscape.png",
-      //   media:
-      //     "screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)",
-      // },
-      // {
-      //   url: "/splash_screens/11__iPad_Pro_M4_landscape.png",
-      //   media:
-      //     "screen and (device-width: 834px) and (device-height: 1210px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)",
-      // },
-      // {
-      //   url: "/splash_screens/11__iPad_Pro__10.5__iPad_Pro_landscape.png",
-      //   media:
-      //     "screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)",
-      // },
-      // {
-      //   url: "/splash_screens/10.9__iPad_Air_landscape.png",
-      //   media:
-      //     "screen and (device-width: 820px) and (device-height: 1180px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)",
-      // },
-      // {
-      //   url: "/splash_screens/10.5__iPad_Air_landscape.png",
-      //   media:
-      //     "screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)",
-      // },
-      // {
-      //   url: "/splash_screens/10.2__iPad_landscape.png",
-      //   media:
-      //     "screen and (device-width: 810px) and (device-height: 1080px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)",
-      // },
-      // {
-      //   url: "/splash_screens/9.7__iPad_Pro__7.9__iPad_mini__9.7__iPad_Air__9.7__iPad_landscape.png",
-      //   media:
-      //     "screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)",
-      // },
-      // {
-      //   url: "/splash_screens/8.3__iPad_Mini_landscape.png",
-      //   media:
-      //     "screen and (device-width: 744px) and (device-height: 1133px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)",
-      // },
-
-      // iPhones Landscape
       {
         url: "/splash_screens/iPhone_17_Pro_Max__iPhone_16_Pro_Max_landscape.png",
         media:
@@ -238,56 +189,8 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "IMS & POS",
+    title: "IMS",
     startupImage: [
-      // iPads Portrait
-      // {
-      //   url: "/splash_screens/13__iPad_Pro_M4_portrait.png",
-      //   media:
-      //     "screen and (device-width: 1032px) and (device-height: 1376px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)",
-      // },
-      // {
-      //   url: "/splash_screens/12.9__iPad_Pro_portrait.png",
-      //   media:
-      //     "screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)",
-      // },
-      // {
-      //   url: "/splash_screens/11__iPad_Pro_M4_portrait.png",
-      //   media:
-      //     "screen and (device-width: 834px) and (device-height: 1210px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)",
-      // },
-      // {
-      //   url: "/splash_screens/11__iPad_Pro__10.5__iPad_Pro_portrait.png",
-      //   media:
-      //     "screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)",
-      // },
-      // {
-      //   url: "/splash_screens/10.9__iPad_Air_portrait.png",
-      //   media:
-      //     "screen and (device-width: 820px) and (device-height: 1180px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)",
-      // },
-      // {
-      //   url: "/splash_screens/10.5__iPad_Air_portrait.png",
-      //   media:
-      //     "screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)",
-      // },
-      // {
-      //   url: "/splash_screens/10.2__iPad_portrait.png",
-      //   media:
-      //     "screen and (device-width: 810px) and (device-height: 1080px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)",
-      // },
-      // {
-      //   url: "/splash_screens/9.7__iPad_Pro__7.9__iPad_mini__9.7__iPad_Air__9.7__iPad_portrait.png",
-      //   media:
-      //     "screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)",
-      // },
-      // {
-      //   url: "/splash_screens/8.3__iPad_Mini_portrait.png",
-      //   media:
-      //     "screen and (device-width: 744px) and (device-height: 1133px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)",
-      // },
-
-      // iPhones Portrait
       {
         url: "/splash_screens/iPhone_17_Pro_Max__iPhone_16_Pro_Max_portrait.png",
         media:
@@ -353,55 +256,6 @@ export const metadata: Metadata = {
         media:
           "screen and (device-width: 420px) and (device-height: 912px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)",
       },
-
-      // // iPads Landscape
-      // {
-      //   url: "/splash_screens/13__iPad_Pro_M4_landscape.png",
-      //   media:
-      //     "screen and (device-width: 1032px) and (device-height: 1376px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)",
-      // },
-      // {
-      //   url: "/splash_screens/12.9__iPad_Pro_landscape.png",
-      //   media:
-      //     "screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)",
-      // },
-      // {
-      //   url: "/splash_screens/11__iPad_Pro_M4_landscape.png",
-      //   media:
-      //     "screen and (device-width: 834px) and (device-height: 1210px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)",
-      // },
-      // {
-      //   url: "/splash_screens/11__iPad_Pro__10.5__iPad_Pro_landscape.png",
-      //   media:
-      //     "screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)",
-      // },
-      // {
-      //   url: "/splash_screens/10.9__iPad_Air_landscape.png",
-      //   media:
-      //     "screen and (device-width: 820px) and (device-height: 1180px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)",
-      // },
-      // {
-      //   url: "/splash_screens/10.5__iPad_Air_landscape.png",
-      //   media:
-      //     "screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)",
-      // },
-      // {
-      //   url: "/splash_screens/10.2__iPad_landscape.png",
-      //   media:
-      //     "screen and (device-width: 810px) and (device-height: 1080px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)",
-      // },
-      // {
-      //   url: "/splash_screens/9.7__iPad_Pro__7.9__iPad_mini__9.7__iPad_Air__9.7__iPad_landscape.png",
-      //   media:
-      //     "screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)",
-      // },
-      // {
-      //   url: "/splash_screens/8.3__iPad_Mini_landscape.png",
-      //   media:
-      //     "screen and (device-width: 744px) and (device-height: 1133px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)",
-      // },
-
-      // iPhones Landscape
       {
         url: "/splash_screens/iPhone_17_Pro_Max__iPhone_16_Pro_Max_landscape.png",
         media:
