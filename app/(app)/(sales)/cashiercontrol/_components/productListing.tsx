@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { addItem } from "@/lib/slices/cartSlice";
 import {
@@ -18,7 +18,7 @@ import dynamic from "next/dynamic";
 import { ProductCard } from "./CartClient";
 import { supabase } from "@/lib/supabaseClient";
 import { useCompany } from "@/hooks/useCompany";
-import Dailogreuse from "@/components/common/dailogreuse";
+import DraggableDailogreuse from "@/components/common/draggableDailogreuse";
 import { Button } from "@/components/ui/button";
 
 const ScrollArea = dynamic(
@@ -71,7 +71,7 @@ export default function List({ selecteditemId }: Props) {
     ) ?? [];
   useEffect(() => {
     /**
-     * 🔥 Supabase Realtime Subscription
+     * ðŸ”¥ Supabase Realtime Subscription
      * This listens for any UPDATE on the inventory table
      */
     const channel = supabase
@@ -85,10 +85,10 @@ export default function List({ selecteditemId }: Props) {
           filter: `company_id=eq.${company?.id}`,
         },
         (payload) => {
-          console.log("📦 Realtime change received:", payload);
+          console.log("ðŸ“¦ Realtime change received:", payload);
 
           // Assuming your table has productId and current stock
-          // ✅ Correct: Matching the exact keys from your log
+          // âœ… Correct: Matching the exact keys from your log
           console.log(payload.new);
           const { product_id, available_quantity } = payload.new;
 
@@ -107,7 +107,7 @@ export default function List({ selecteditemId }: Props) {
       supabase.removeChannel(channel);
     };
   }, [dispatch, supabase]);
-  // 🔥 Listen for stock updates from other users
+  // ðŸ”¥ Listen for stock updates from other users
   // useEffect(() => {
   //   const handleStockUpdate = (data: {
   //     productId: string;
@@ -115,7 +115,7 @@ export default function List({ selecteditemId }: Props) {
   //     quantity: number;
   //     mode: "consume" | "restore";
   //   }) => {
-  //     console.log("📦 Stock updated by another user:", data);
+  //     console.log("ðŸ“¦ Stock updated by another user:", data);
 
   //     // Update local stock immediately
   //     dispatch(updateProductStockOptimistic(data));
@@ -128,7 +128,7 @@ export default function List({ selecteditemId }: Props) {
   //       selectedQty: number;
   //     }>;
   //   }) => {
-  //     console.log("🛒 Sale completed by another user:", data);
+  //     console.log("ðŸ›’ Sale completed by another user:", data);
 
   //     // Update all affected products
   //     data.items.forEach((item) => {
@@ -216,7 +216,7 @@ export default function List({ selecteditemId }: Props) {
         }),
       );
 
-      // 🔥 Emit stock update to other users
+      // ðŸ”¥ Emit stock update to other users
     },
     [dispatch, cartItems],
   );
@@ -241,13 +241,12 @@ export default function List({ selecteditemId }: Props) {
 
   return (
     <ScrollArea className="h-[85vh]">
-      <Dailogreuse
+      <DraggableDailogreuse
         open={opens}
         setOpen={setOpens}
-        btnLabl="تعديل"
+        btnLabl="o"
         style="w-lg
 "
-        titel="قم بتحديث تفاصيل المنتج"
       >
         <div className="w-80 md:w-2xl">
           <Button type="button" onClick={() => setOpenScanner(true)}>
@@ -292,7 +291,7 @@ export default function List({ selecteditemId }: Props) {
             action={() => setOpenScanner(false)}
           />
         </div>
-      </Dailogreuse>{" "}
+      </DraggableDailogreuse>{" "}
       {products.length > 0 && <div className="mt-4 px-4">{productGrid}</div>}
     </ScrollArea>
   );

@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { Button } from "@/components/ui/button";
 
@@ -15,9 +15,12 @@ export default function LiveBarcodeScanner({
   action,
   onDetected,
 }: Props) {
+  const BEEP_COOLDOWN_MS = 500;
   const readerRef = useRef<Html5Qrcode | null>(null);
   const isScanningRef = useRef(false);
   const onDetectedRef = useRef(onDetected);
+  const scanAudioRef = useRef<HTMLAudioElement | null>(null);
+  const lastBeepAtRef = useRef(0);
   const [cameras, setCameras] = useState<{ id: string; label: string }[]>([]);
   const [selectedCameraId, setSelectedCameraId] = useState("");
   const [facingMode, setFacingMode] = useState<"environment" | "user">(
@@ -30,6 +33,31 @@ export default function LiveBarcodeScanner({
   useEffect(() => {
     onDetectedRef.current = onDetected;
   }, [onDetected]);
+
+  const playScanSound = useCallback(() => {
+    const now = Date.now();
+    if (now - lastBeepAtRef.current < BEEP_COOLDOWN_MS) return;
+    lastBeepAtRef.current = now;
+
+    const audio = scanAudioRef.current;
+    if (!audio) return;
+
+    audio.currentTime = 0;
+    void audio.play().catch(() => {
+      // Ignore autoplay/audio errors; scanner should continue working.
+    });
+  }, []);
+
+  useEffect(() => {
+    const audio = new Audio("/sound/scanning.mp3");
+    audio.preload = "auto";
+    audio.volume = 0.6;
+    scanAudioRef.current = audio;
+
+    return () => {
+      scanAudioRef.current = null;
+    };
+  }, []);
 
   const stopScanner = async () => {
     if (!readerRef.current || !isScanningRef.current) return;
@@ -127,11 +155,6 @@ export default function LiveBarcodeScanner({
           : { width: 420, height: 250 };
         await readerRef.current.start(
           cameraConfig,
-          // {
-          //   fps: 10,
-          //   // Wider target box is better for product barcodes than a square.
-          //   qrbox: { width: 420, height: 180 },
-          // },
           {
             fps: 15, // Slightly higher FPS for smoother scanning on mobile
             qrbox: qrboxSize,
@@ -140,6 +163,7 @@ export default function LiveBarcodeScanner({
           (decodedText, result) => {
             if (isCancelled) return;
             console.log("Decoder used:", result.result.debugData?.decoderName);
+            playScanSound();
             onDetectedRef.current(decodedText);
           },
           (errorMessage) => {
@@ -166,7 +190,7 @@ export default function LiveBarcodeScanner({
       isCancelled = true;
       void stopScanner();
     };
-  }, [opened, selectedCameraId, facingMode]);
+  }, [opened, selectedCameraId, facingMode, playScanSound]);
 
   if (!opened) return null;
 
