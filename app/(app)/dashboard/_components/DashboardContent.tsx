@@ -1,15 +1,13 @@
 "use client";
 // import { ReusableAreaChart } from "@/components/common/Chart";
-import { useMemo, lazy, Suspense } from "react";
+import { useMemo } from "react";
 import Charts from "./overview";
 // import TopSellingChartWrapper from "@/components/common/Barchart";
 // import { ChartPieLegend } from "@/components/common/PieChart";
-import { LazySection } from "@/components/common/LazySection";
-import UserActivityTable from "./userActivityTable";
+import { Decimal } from "@prisma/client/runtime/library";
+import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
 import React from "react";
-import { useTranslations } from "next-intl";
-import { Decimal } from "@prisma/client/runtime/library";
 // Lazy load heavy chart components
 const ChartPieLegend = dynamic(
   () => import("@/components/common/PieChart").then((m) => m.ChartPieLegend),
@@ -208,4 +206,3 @@ function DashboardContentClient({
   );
 }
 export default React.memo(DashboardContentClient);
-

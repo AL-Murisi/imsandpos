@@ -1,110 +1,115 @@
-// middleware.ts
 import { NextRequest, NextResponse } from "next/server";
-import { jwtVerify } from "jose";
+import { getToken } from "next-auth/jwt";
 
-// Define role-based route access
-const routePermissions: Record<string, string[]> = {
-  // Admin only routes
-  "/dashboard": ["admin"],
-  "/settings": ["admin"],
-  "/inventory": ["admin", "manager_wh"],
-  "/company": ["admin"],
-  // Admin and workers routes
-  "/products": ["admin", "manager_wh"],
-  "/categories": ["admin", "manager_wh"],
-  "/suppliers": ["admin", "manager_wh"],
-  "/warehouses": ["admin", "manager_wh"],
-  "/dashboardUser": ["manager_wh"],
-  // Admin, workers, and customers routes
-  //   "/dashboard": ["admin", "worker", "worker"],
-  //   "/orders": ["admin", "worker", "worker"],
+const KNOWN_ROLES = ["admin", "cashier", "manager_wh", "supplier"] as const;
+type Role = (typeof KNOWN_ROLES)[number];
 
-  // Cashier specific routes
-  "/salesDashboard": ["admin", "cashier"],
+const roleSet = new Set<string>(KNOWN_ROLES);
 
-  "/cashiercontrol": ["admin", "cashier"],
+// Prefix-based route permissions to cover nested paths too.
+const routePermissions: ReadonlyArray<{ prefix: string; roles: Role[] }> = [
+  { prefix: "/settings", roles: ["admin"] },
+  { prefix: "/company", roles: ["admin"] },
+  { prefix: "/inventory", roles: ["admin", "manager_wh"] },
+  { prefix: "/products", roles: ["admin", "manager_wh"] },
+  { prefix: "/categories", roles: ["admin", "manager_wh"] },
+  { prefix: "/suppliers", roles: ["admin", "manager_wh"] },
+  { prefix: "/warehouses", roles: ["admin", "manager_wh"] },
+  { prefix: "/dashboardUser", roles: ["manager_wh"] },
+  { prefix: "/salesDashboard", roles: ["admin", "cashier"] },
+  { prefix: "/cashiercontrol", roles: ["admin", "cashier"] },
+  { prefix: "/supplier/products", roles: ["admin", "supplier"] },
+  { prefix: "/supplier/orders", roles: ["admin", "supplier"] },
+  { prefix: "/dashboard", roles: ["admin"] },
+];
 
-  // Supplier specific routes
-  "/supplier/products": ["admin", "supplier"],
-  "/supplier/orders": ["admin", "supplier"],
-
-  // Customer specific routes
-  // "/customer": ["admin", "customer"],
-  // "/customer": ["admin", "customer"],
-};
-
-// Public routes that don't require authentication
-const publicRoutes = [
+const publicRoutes = new Set([
   "/login",
   "/signup",
   "/landing",
   "/manifest.json",
   "/createcompanybyemail",
-];
+]);
+
+const authRoutes = new Set(["/login", "/signup"]);
 
 export default async function middleware(req: NextRequest) {
-  const path = req.nextUrl.pathname;
-  const isPublicRoute = publicRoutes.includes(path);
+  const path = normalizePath(req.nextUrl.pathname);
+  const isPublicRoute = publicRoutes.has(path);
 
-  const cookie = req.cookies.get("session")?.value;
-  const session = await decryptSession(cookie);
-  const userrole = (session?.roles as string[]) || [];
+  const authToken = await getToken({
+    req,
+    secret: process.env.AUTH_SECRET ?? process.env.ENCRYPTION_SECRET,
+  });
 
-  // ➡️ NEW: Handle root (/) path redirection for authenticated users
-  if (path === "/" && session?.roles) {
-    const redirectPath = getDefaultRedirectForRole(userrole);
-    if (redirectPath !== path) {
-      // Avoid unnecessary self-redirects
-      return NextResponse.redirect(new URL(redirectPath, req.nextUrl));
-    }
+  const tokenRoles = sanitizeRoles(authToken?.roles);
+  const userRoles = tokenRoles;
+  const isAuthenticated = userRoles.length > 0;
+
+  // Redirect authenticated users away from auth pages.
+  if (isAuthenticated && authRoutes.has(path)) {
+    return safeRedirect(req, getDefaultRedirectForRole(userRoles));
   }
 
-  // (Keep your existing middleware logic for login and role-based permissions)
+  // Role-based root routing.
+  if (path === "/" && isAuthenticated) {
+    return safeRedirect(req, getDefaultRedirectForRole(userRoles));
+  }
 
-  // If no session and trying to access protected route
-  if (!session?.roles && !isPublicRoute) {
+  // Unauthenticated users can only access public routes.
+  if (!isAuthenticated && !isPublicRoute) {
     return NextResponse.redirect(new URL("/login", req.nextUrl));
   }
 
-  // If authenticated worker trying to access auth routes, redirect to their default path
-
-  // Check role-based permissions for protected routes
-  const requiredRoles = routePermissions[path];
-  if (requiredRoles) {
-    const hasPermission = requiredRoles.some((role) => userrole.includes(role));
-    if (!hasPermission) {
-      const redirectPath = getDefaultRedirectForRole(userrole);
-      return NextResponse.redirect(new URL(redirectPath, req.nextUrl));
+  // Enforce permissions using the most-specific matching prefix.
+  if (isAuthenticated) {
+    const requiredRoles = getRequiredRoles(path);
+    if (requiredRoles && !requiredRoles.some((role) => userRoles.includes(role))) {
+      return safeRedirect(req, getDefaultRedirectForRole(userRoles));
     }
   }
 
   return NextResponse.next();
 }
 
-async function decryptSession(session: string | undefined = "") {
-  if (!session || !session.includes(".")) {
-    return null;
-  }
-
-  const secretKey = process.env.ENCRYPTION_SECRET;
-  if (!secretKey) return null;
-
-  try {
-    const encodedKey = new TextEncoder().encode(secretKey);
-    const { payload } = await jwtVerify(session, encodedKey, {
-      algorithms: ["HS256"],
-    });
-    return payload as { roles?: string[] };
-  } catch {
-    return null;
-  }
+function normalizePath(pathname: string): string {
+  if (!pathname || pathname === "/") return "/";
+  return pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
 }
 
-function getDefaultRedirectForRole(roles: string[]): string {
-  if (roles.includes("admin")) return "/company";
+function getRequiredRoles(path: string): Role[] | null {
+  const match = routePermissions
+    .filter(({ prefix }) => path === prefix || path.startsWith(`${prefix}/`))
+    .sort((a, b) => b.prefix.length - a.prefix.length)[0];
+
+  return match?.roles ?? null;
+}
+
+function sanitizeRoles(value: unknown): Role[] {
+  if (!Array.isArray(value)) return [];
+
+  return value.filter((role): role is Role => {
+    return typeof role === "string" && roleSet.has(role);
+  });
+}
+
+function getDefaultRedirectForRole(roles: Role[]): string {
+  if (roles.includes("admin")) return "/salesDashboard";
   if (roles.includes("cashier")) return "/salesDashboard";
   if (roles.includes("manager_wh")) return "/dashboardUser";
-  return "/login"; // Default redirect if no role matches
+  if (roles.includes("supplier")) return "/supplier/orders";
+  return "/login";
+}
+
+function safeRedirect(req: NextRequest, destination: string): NextResponse {
+  const fallback = "/login";
+  const target = destination.startsWith("/") ? destination : fallback;
+
+  if (normalizePath(req.nextUrl.pathname) === normalizePath(target)) {
+    return NextResponse.next();
+  }
+
+  return NextResponse.redirect(new URL(target, req.nextUrl));
 }
 
 export const config = {

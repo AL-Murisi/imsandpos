@@ -1,4 +1,5 @@
-import TableSkeleton from "@/components/common/TableSkeleton";
+import TableSkeleton from "@/components/skeleton/table";
+
 import React from "react";
 
 function Loading() {
@@ -64,4 +65,3 @@ function Loading() {
 }
 
 export default Loading;
-

@@ -207,22 +207,26 @@ export default function CartDisplay({
   useEffect(() => {
     const persistOfflineState = async () => {
       if (!effectiveCompanyId) return;
-      await setOfflineCache(offlineCacheKeys.cashierUiState(effectiveCompanyId), {
-        cartState: {
-          carts: cartState.carts,
-          activeCartId: cartState.activeCartId ?? null,
-          discountType: cartState.discountType,
-          discountValue: cartState.discountValue,
+      await setOfflineCache(
+        offlineCacheKeys.cashierUiState(effectiveCompanyId),
+        {
+          cartState: {
+            carts: cartState.carts,
+            activeCartId: cartState.activeCartId ?? null,
+            discountType: cartState.discountType,
+            discountValue: cartState.discountValue,
+          },
+          products: persistedProducts,
         },
-        products: persistedProducts,
-      });
+      );
     };
     void persistOfflineState();
   }, [effectiveCompanyId, cartState, persistedProducts]);
 
   useEffect(() => {
     const persistOfflineSession = async () => {
-      if (!effectiveCashierId || !effectiveCompanyId || !effectiveBranchId) return;
+      if (!effectiveCashierId || !effectiveCompanyId || !effectiveBranchId)
+        return;
       await setOfflineCache(offlineCacheKeys.cashierSession, {
         cashierId: effectiveCashierId,
         companyId: effectiveCompanyId,
@@ -367,7 +371,6 @@ export default function CartDisplay({
         ? receivedAmount -
           (isForeign ? totals.totalAfter / exchangeRate : totals.totalAfter)
         : 0;
-
     const payment = {
       cart: items,
       discountValue,

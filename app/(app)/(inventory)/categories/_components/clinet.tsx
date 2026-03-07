@@ -1,6 +1,7 @@
 "use client";
 
-import TableSkeleton from "@/components/common/TableSkeleton";
+import TableSkeleton from "@/components/skeleton/table";
+
 import dynamic from "next/dynamic";
 import React from "react";
 
@@ -22,4 +23,3 @@ type ProductClientProps = {
 export default function Clinet({ data, total, formData }: ProductClientProps) {
   return <CategoryTable data={data} total={total} formData={formData} />;
 }
-

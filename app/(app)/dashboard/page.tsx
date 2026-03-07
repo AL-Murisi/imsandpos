@@ -10,7 +10,6 @@ import {
   getUserCount,
 } from "@/lib/actions/dashboard";
 import { fetchAllFormData } from "@/lib/actions/roles";
-import prisma from "@/lib/prisma";
 
 interface DashboardProps {
   searchParams: Promise<Record<string, string | undefined>>;

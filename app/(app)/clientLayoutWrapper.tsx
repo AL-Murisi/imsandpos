@@ -40,7 +40,7 @@ export default function ClientLayoutWrapper({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, loading } = useAuth();
+  const { user, loading, loggingOut } = useAuth();
   const pathname = usePathname();
   useOfflineSync();
 
@@ -48,7 +48,7 @@ export default function ClientLayoutWrapper({
   const authRoutes = ["/login", "/signup"];
   const isAuthRoute = authRoutes.includes(pathname);
 
-  if (loading) {
+  if (loading || loggingOut) {
     return <IMSLoader />;
   }
 

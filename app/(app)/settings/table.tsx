@@ -8,13 +8,6 @@ import { Plus, Users2 } from "lucide-react";
 import dynamic from "next/dynamic";
 
 // import SearchInput from "@/components/common/SearchInput";
-const DataTable = dynamic(
-  () => import("@/components/common/ReusbleTable").then((m) => m.DataTable),
-  {
-    ssr: false,
-    loading: () => <TableSkeleton rows={20} columns={10} />,
-  },
-);
 
 const ExchangeRatesPage = dynamic(() => import("./clinet"), {
   ssr: false,
@@ -23,8 +16,10 @@ import { PushNotificationManager } from "@/components/manangeNotifications";
 
 import SearchInput from "@/components/common/searchtest";
 import { exchangeRateColumns } from "./_components/columns";
-import TableSkeleton from "@/components/common/TableSkeleton";
+import TableSkeleton from "@/components/skeleton/table";
+
 import { Calendar22 } from "@/components/common/DatePicker";
+import { DataTable } from "@/components/common/ReusbleTable";
 
 type Props = {
   exchangeRate: any;
@@ -77,4 +72,3 @@ export default function Exchange({ exchangeRate }: Props) {
     </div>
   );
 }
-

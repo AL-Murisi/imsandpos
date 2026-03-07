@@ -1,13 +1,10 @@
 // lib/dal.ts
 "use server";
 import { cache } from "react";
-import { cookies } from "next/headers";
-import { decrypt, SessionData } from "@/lib/session";
-import { redirect } from "next/navigation"; // ➡️ Keep this import if Dashboard.tsx uses it
+import { getSession } from "@/lib/session";
 
 export const verifySession = cache(async () => {
-  const cookie = (await cookies()).get("session")?.value;
-  const session = await decrypt(cookie);
+  const session = await getSession();
 
   // Return the session data directly instead of redirecting
   if (!session?.userId) {

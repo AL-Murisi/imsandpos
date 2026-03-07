@@ -1,4 +1,5 @@
-import TableSkeleton from "@/components/common/TableSkeleton";
+import TableSkeleton from "@/components/skeleton/table";
+
 import React from "react";
 
 export default function Loading() {
@@ -8,4 +9,3 @@ export default function Loading() {
     </div>
   );
 }
-

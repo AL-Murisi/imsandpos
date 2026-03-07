@@ -2,7 +2,8 @@
 
 import SearchInput from "@/components/common/searchtest";
 import { SelectField } from "@/components/common/selection";
-import TableSkeleton from "@/components/common/TableSkeleton";
+import TableSkeleton from "@/components/skeleton/table";
+
 import { Button } from "@/components/ui/button";
 import { useTablePrams } from "@/hooks/useTableParams";
 import { Download } from "lucide-react";

@@ -2,24 +2,41 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { SessionData } from "@/lib/session";
+import {
+  signIn as nextAuthSignIn,
+  signOut as nextAuthSignOut,
+} from "next-auth/react";
 
 import { toast } from "sonner";
 const OFFLINE_USER_CACHE_KEY = "ims:offline:user";
 interface AuthContextType {
   user: SessionData | null;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (
+    email: string,
+    password: string,
+  ) => Promise<{ success: boolean; redirectPath?: string }>;
   logout: () => Promise<void>;
   logoutAndRedirect: () => Promise<void>;
   loading: boolean;
+  loggingOut: boolean;
   hasRole: (role: string) => boolean;
   hasAnyRole: (roles: string[]) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function getDefaultRedirectForRole(roles: string[] = []): string {
+  if (roles.includes("admin")) return "/salesDashboard";
+  if (roles.includes("cashier")) return "/salesDashboard";
+  if (roles.includes("manager_wh")) return "/dashboardUser";
+  if (roles.includes("supplier")) return "/supplier/orders";
+  return "/login";
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<SessionData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -32,7 +49,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const userData = await response.json();
         setUser(userData);
         if (typeof window !== "undefined") {
-          localStorage.setItem(OFFLINE_USER_CACHE_KEY, JSON.stringify(userData));
+          localStorage.setItem(
+            OFFLINE_USER_CACHE_KEY,
+            JSON.stringify(userData),
+          );
         }
       } else {
         if (typeof window !== "undefined" && !navigator.onLine) {
@@ -62,57 +82,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (
+    email: string,
+    password: string,
+  ): Promise<{ success: boolean; redirectPath?: string }> => {
     try {
-      // Load Supabase only when needed (keeps it out of the base app layout chunk).
-      const { supabase } = await import("@/lib/supabaseClient");
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const result = await nextAuthSignIn("credentials", {
         email,
         password,
+        redirect: false,
       });
 
-      if (!error && data.session?.access_token) {
-        const response = await fetch("/api/login", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ accessToken: data.session.access_token }),
-        });
-
-        if (response.ok) {
-          await checkAuth();
-          return true;
+      if (!result?.error) {
+        const me = await fetch("/api/auth/me", { cache: "no-store" });
+        if (me.ok) {
+          const userData = (await me.json()) as SessionData;
+          setUser(userData);
+          if (typeof window !== "undefined") {
+            localStorage.setItem(
+              OFFLINE_USER_CACHE_KEY,
+              JSON.stringify(userData),
+            );
+          }
+          return {
+            success: true,
+            redirectPath: getDefaultRedirectForRole(userData.roles ?? []),
+          };
         }
-
-        await supabase.auth.signOut();
-        return false;
       }
-
-      const response = await fetch("/api/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!response.ok) return false;
-
-      await checkAuth();
-      return true;
+      return { success: false };
     } catch (error) {
       console.error("Login failed:", error);
-      return false;
+      return { success: false };
     }
   };
 
   const logout = async () => {
     try {
-      // Call API to clear session server-side
-      const { supabase } = await import("@/lib/supabaseClient");
-      await supabase.auth.signOut();
-      await fetch("/api/logout", { method: "POST" });
+      await nextAuthSignOut({ redirect: false, callbackUrl: "/login" });
       toast("loggedout successfully");
       setUser(null);
       if (typeof window !== "undefined") {
@@ -129,10 +136,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logoutAndRedirect = async () => {
+    setLoggingOut(true);
     try {
       // Log activity if user exists
       if (user) {
-        fetch("/api/log-activity", {
+        await fetch("/api/log-activity", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -146,14 +154,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }).catch(console.error); // Don't await - fire and forget
       }
 
-      // Clear session
-      await logout();
-      // Force redirect to login with full page reload
-      window.location.href = `/`;
+      // Clear local auth cache right before navigation.
+      setUser(null);
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(OFFLINE_USER_CACHE_KEY);
+      }
+
+      // Sign out through NextAuth (handles CSRF) then redirect.
+      await nextAuthSignOut({ redirect: false, callbackUrl: "/login" });
+      window.location.replace("/login");
     } catch (err) {
       console.error("Logout and redirect failed:", err);
+      setLoggingOut(false);
       // Fallback: force redirect anyway
-      window.location.href = "/landing";
+      window.location.replace("/login");
     }
   };
 
@@ -173,6 +187,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         logout,
         logoutAndRedirect,
         loading,
+        loggingOut,
         hasRole,
         hasAnyRole,
       }}

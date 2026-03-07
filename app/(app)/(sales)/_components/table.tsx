@@ -1,20 +1,12 @@
 "use client";
 
-import SearchInput from "@/components/common/searchtest";
 import { useTablePrams } from "@/hooks/useTableParams";
 import { SortingState } from "@tanstack/react-table";
 import { debtSaleColumns } from "./columns";
-import dynamic from "next/dynamic";
-import TableSkeleton from "@/components/common/TableSkeleton";
-const DataTable = dynamic(
-  () => import("@/components/common/ReusbleTable").then((m) => m.DataTable),
-  {
-    ssr: false,
-    loading: () => <TableSkeleton rows={20} columns={10} />,
-  },
-);
+
 import { SelectField } from "@/components/common/selection";
 import { Calendar22 } from "@/components/common/DatePicker";
+import { DataTable } from "@/components/common/ReusbleTable";
 
 type ProductClientProps = {
   data: any[];
@@ -83,4 +75,3 @@ export default function DebtSells({
     </div>
   );
 }
-

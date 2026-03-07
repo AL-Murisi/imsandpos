@@ -1,7 +1,8 @@
 "use client";
 
 import DashboardTabs from "@/components/common/Tabs";
-import TableSkeleton from "@/components/common/TableSkeleton";
+import TableSkeleton from "@/components/skeleton/table";
+
 import dynamic from "next/dynamic";
 import { use } from "react";
 import { Prisma } from "@prisma/client";
@@ -130,4 +131,3 @@ export default function InventoryTabs({
     />
   );
 }
-

@@ -6,7 +6,8 @@ import dynamic from "next/dynamic";
 
 // import SearchInput from "@/components/common/SearchInput";
 import SearchInput from "@/components/common/searchtest";
-import TableSkeleton from "@/components/common/TableSkeleton";
+import TableSkeleton from "@/components/skeleton/table";
+
 import { useTranslations } from "next-intl";
 import { inventoryColumns } from "./columnsMovment";
 import { Calendar22 } from "@/components/common/DatePicker";

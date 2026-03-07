@@ -10,8 +10,8 @@ import {
   FolderKanban,
   Handshake,
   Home,
-  Landmark,
   LogOut,
+  Loader2,
   Notebook,
   NotebookPen,
   Package,
@@ -21,7 +21,6 @@ import {
   ShoppingBag,
   ShoppingCart,
   User,
-  UserCircle,
   Users,
   Wallet,
 } from "lucide-react";
@@ -57,7 +56,7 @@ import { cn } from "@/lib/utils";
 import CurrencySwitcher from "./common/CurrencySwitcher";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { user, hasAnyRole, logoutAndRedirect } = useAuth();
+  const { user, logout, hasAnyRole, logoutAndRedirect, loggingOut } = useAuth();
   const pathname = usePathname();
   const t = useTranslations("menu");
 
@@ -447,10 +446,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <SidebarMenuButton
                     tooltip={t("logout")}
                     onClick={() => logoutAndRedirect()}
+                    disabled={loggingOut}
                     className="text-red-600 hover:bg-orange-300/20 hover:text-red-700"
                   >
-                    <LogOut className="h-5 w-5" />
-                    {t("logout")}
+                    {loggingOut ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <LogOut className="h-5 w-5" />
+                    )}
+                    {loggingOut ? "Logging out..." : t("logout")}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>

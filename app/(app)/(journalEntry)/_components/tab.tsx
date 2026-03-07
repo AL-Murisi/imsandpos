@@ -1,5 +1,6 @@
 "use client";
-import TableSkeleton from "@/components/common/TableSkeleton";
+import TableSkeleton from "@/components/skeleton/table";
+
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useFormatter } from "@/hooks/usePrice";
 import dynamic from "next/dynamic";
@@ -80,4 +81,3 @@ export default function Tab({
     </ScrollArea>
   );
 }
-

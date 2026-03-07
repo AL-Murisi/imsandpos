@@ -19,7 +19,7 @@ interface CreateCompanyInput {
 }
 
 export async function createCompany(data: CreateCompanyInput) {
-  const {
+  let {
     name,
     email,
     phone,
@@ -32,6 +32,8 @@ export async function createCompany(data: CreateCompanyInput) {
     base_currency,
     supabaseId,
   } = data;
+  email = email.trim().toLowerCase();
+  adminEmail = adminEmail.trim().toLowerCase();
 
   try {
     // 1️⃣ Check if company already exists

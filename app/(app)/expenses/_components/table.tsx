@@ -26,7 +26,8 @@ const ExpenseForm = dynamic(() => import("./ExpenseForm"), {
 });
 import { useAuth } from "@/lib/context/AuthContext";
 import { expenseColumns } from "./columns";
-import TableSkeleton from "@/components/common/TableSkeleton";
+import TableSkeleton from "@/components/skeleton/table";
+
 import { Calendar22 } from "@/components/common/DatePicker";
 
 type ProductClientProps = {
@@ -99,4 +100,3 @@ export default function ExpensesPage({
     </div>
   );
 }
-

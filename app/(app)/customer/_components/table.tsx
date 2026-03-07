@@ -7,24 +7,19 @@ import { SelectField } from "@/components/common/selection";
 import dynamic from "next/dynamic";
 
 // import SearchInput from "@/components/common/SearchInput";
-const DataTable = dynamic(
-  () => import("@/components/common/ReusbleTable").then((m) => m.DataTable),
-  {
-    ssr: true, // 🔥 IMPORTANT
-    // loading: () => <TableSkeleton rows={20} columns={10} />,
-  },
-);
 
 const CustomerForm = dynamic(() => import("./Newcustomer"), {
   ssr: false,
 });
 import SearchInput from "@/components/common/searchtest";
 import { customerColumns } from "./columns";
-import TableSkeleton from "@/components/common/TableSkeleton";
+import TableSkeleton from "@/components/skeleton/table";
+
 import { Calendar22 } from "@/components/common/DatePicker";
 import { use, useEffect, useState } from "react";
 import { useAuth } from "@/lib/context/AuthContext";
 import { useRouter } from "next/navigation";
+import { DataTable } from "@/components/common/ReusbleTable";
 
 type Props = {
   users: any[];
@@ -143,4 +138,3 @@ export default function CustomerClinet({ users, total, role }: Props) {
     </div>
   );
 }
-

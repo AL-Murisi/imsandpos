@@ -2,7 +2,8 @@
 
 import SearchInput from "@/components/common/searchtest";
 import { SelectField } from "@/components/common/selectproduct";
-import TableSkeleton from "@/components/common/TableSkeleton";
+import TableSkeleton from "@/components/skeleton/table";
+
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTablePrams } from "@/hooks/useTableParams";

@@ -5,6 +5,7 @@ import { useTablePrams } from "@/hooks/useTableParams";
 import dynamic from "next/dynamic";
 import { useState } from "react";
 import { voucherColumns } from "./columns/columns";
+import { DataTable } from "@/components/common/ReusbleTable";
 
 const Calendar22 = dynamic(
   () => import("@/components/common/DatePicker").then((m) => m.Calendar22),
@@ -13,13 +14,13 @@ const Calendar22 = dynamic(
   },
 );
 
-const DataTable = dynamic(
-  () => import("@/components/common/ReusbleTable").then((m) => m.DataTable),
-  {
-    ssr: false,
-    loading: () => <TableSkeleton rows={20} columns={10} />,
-  },
-);
+// const DataTable = dynamic(
+//   () => import("@/components/common/ReusbleTable").then((m) => m.DataTable),
+//   {
+//     ssr: false,
+//     loading: () => <TableSkeleton rows={20} columns={10} />,
+//   },
+// );
 
 type JournalEntriesClientProps = {
   data: any | undefined;
@@ -71,4 +72,3 @@ export default function VouvherEntriesTable({
     </div>
   );
 }
-

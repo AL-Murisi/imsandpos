@@ -1,6 +1,7 @@
 "use client";
 
-import TableSkeleton from "@/components/common/TableSkeleton";
+import TableSkeleton from "@/components/skeleton/table";
+
 import dynamic from "next/dynamic";
 
 const WarehouseTable = dynamic(() => import("./tables"), {
@@ -35,4 +36,3 @@ export default function Clint({
     />
   );
 }
-

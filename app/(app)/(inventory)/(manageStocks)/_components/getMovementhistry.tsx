@@ -14,7 +14,8 @@ import SearchInput from "@/components/common/searchtest";
 import { useTablePrams } from "@/hooks/useTableParams";
 import { StockMovementColumns } from "./columnsMovment";
 import dynamic from "next/dynamic";
-import TableSkeleton from "@/components/common/TableSkeleton";
+import TableSkeleton from "@/components/skeleton/table";
+
 import { DataTable } from "@/components/common/ReusbleTable";
 
 type DateRange = {

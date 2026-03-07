@@ -10,6 +10,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { currencyConfig } from "@/currency/config";
 import { cookies } from "next/headers";
 import { CurrencyProvider } from "@/components/CurrencyProvider";
+import Providers from "./providers";
 
 export const metadata: Metadata = {
   title: "IMS - نظام إدارة المخزون | Inventory Management System",
@@ -52,7 +53,6 @@ export const metadata: Metadata = {
       { url: "/apple-icon.png" },
       { url: "/apple-icon.png", sizes: "180x180", type: "image/png" },
     ],
-    shortcut: ["/favicon.ico"],
     other: [
       {
         url: "/splash_screens/iPhone_17_Pro_Max__iPhone_16_Pro_Max_portrait.png",
@@ -367,16 +367,21 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <AuthProvider>
-            <NextIntlClientProvider locale={locale} messages={messages[locale]}>
-              <CurrencyProvider currency={currencyConfig[currencyKey]}>
-                {children}
-                <Analytics />
-                <SpeedInsights />
-                <Toaster />
-              </CurrencyProvider>
-            </NextIntlClientProvider>
-          </AuthProvider>
+          <Providers>
+            <AuthProvider>
+              <NextIntlClientProvider
+                locale={locale}
+                messages={messages[locale]}
+              >
+                <CurrencyProvider currency={currencyConfig[currencyKey]}>
+                  {children}
+                  <Analytics />
+                  <SpeedInsights />
+                  <Toaster />
+                </CurrencyProvider>
+              </NextIntlClientProvider>
+            </AuthProvider>
+          </Providers>
         </ThemeProvider>
       </body>
     </html>

@@ -6,7 +6,8 @@ import dynamic from "next/dynamic";
 import SearchInput from "@/components/common/searchtest";
 import { columns } from "./columns";
 
-import TableSkeleton from "@/components/common/TableSkeleton";
+import TableSkeleton from "@/components/skeleton/table";
+
 import WarehouseForm from "@/components/forms/form";
 
 import { useTranslations } from "next-intl";

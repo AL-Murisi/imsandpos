@@ -22,7 +22,8 @@ import SearchInput from "@/components/common/searchtest";
 import { useTranslations } from "next-intl";
 
 import { supplierColumns } from "./columns";
-import TableSkeleton from "@/components/common/TableSkeleton";
+import TableSkeleton from "@/components/skeleton/table";
+
 import { use } from "react";
 import { DataTable } from "@/components/common/ReusbleTable";
 const SupplierForm = dynamic(() => import("@/components/forms/supplierform"), {
@@ -93,4 +94,3 @@ export default function SuppliersTable({
     </div>
   );
 }
-

@@ -1,18 +1,16 @@
 // app/sells/SellsDashboardClient.tsx (This will be your "use client" component)
 "use client";
 
-import TableSkeleton from "@/components/common/TableSkeleton";
+import TableSkeleton from "@/components/skeleton/table";
+
 import { Button } from "@/components/ui/button";
 import { notificationUnsupported } from "@/hooks/Push";
 import { BarChart3, Clock, Package, ShoppingCart } from "lucide-react"; // Example icons
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation"; // For refreshing data or navigation
 import { useEffect, useState } from "react";
+import DebtSells from "./table";
 
-const DebtSells = dynamic(() => import("./table"), {
-  ssr: false,
-  loading: () => <TableSkeleton rows={20} columns={10} />,
-});
 interface SellsDashboardClientProps {
   debtSales: any; // Use proper types from your FetchDebtSales
   salesSummary: any; // Define a type for your sales summary
@@ -147,4 +145,3 @@ export default function SellsDashboardClient({
     </section>
   );
 }
-

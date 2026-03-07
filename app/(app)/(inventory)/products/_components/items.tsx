@@ -26,7 +26,8 @@ import { useTablePrams } from "@/hooks/useTableParams";
 import { createColumns } from "./column";
 
 import { useTranslations } from "next-intl";
-import TableSkeleton from "@/components/common/TableSkeleton";
+import TableSkeleton from "@/components/skeleton/table";
+
 import { Calendar22 } from "@/components/common/DatePicker";
 import SearchInput from "@/components/common/searchtest";
 import { DataTable } from "@/components/common/ReusbleTable";
@@ -143,4 +144,3 @@ export default function Items({
     </div>
   );
 }
-
