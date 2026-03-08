@@ -39,7 +39,8 @@ export default async function middleware(req: NextRequest) {
 
   const authToken = await getToken({
     req,
-    secret: process.env.NEXTAUTH_SECRET ?? process.env.ENCRYPTION_SECRET,
+    secret: process.env.NEXTAUTH_SECRET,
+    secureCookie: true,
   });
 
   const tokenRoles = sanitizeRoles(authToken?.roles);

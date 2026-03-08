@@ -67,6 +67,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   providers,
   callbacks: {
+    async signIn({ user, account }) {
+      if (account?.provider === "google") {
+        const existingUser = await prisma.user.findUnique({
+          where: { email: user.email! },
+        });
+
+        if (!existingUser) {
+          return "/signup"; // redirect if Google user not registered
+        }
+      }
+
+      return true;
+    },
     async jwt({ token, user }) {
       if (user) {
         token.userId = (user as any).userId ?? user.id;
@@ -76,6 +89,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
       const email =
         typeof token.email === "string" ? token.email.trim().toLowerCase() : "";
+
       if (email) {
         const appUser = await prisma.user.findUnique({
           where: { email },
@@ -86,11 +100,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           },
         });
 
-        if (appUser) {
-          token.userId = appUser.id;
-          token.companyId = appUser.companyId;
-          token.roles = appUser.roles.map((r) => r.role.name);
+        if (!appUser) {
+          token.roles = [];
+          return token;
         }
+
+        token.userId = appUser.id;
+        token.companyId = appUser.companyId;
+        token.roles = appUser.roles.map((r) => r.role.name);
       }
 
       return token;
