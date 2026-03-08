@@ -79,7 +79,7 @@ export default function LoginPage() {
       className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0a0f1d]"
       dir="rtl"
     >
-      {/* --- طبقة الخلفية التفاعلية --- */}
+      s{/* --- طبقة الخلفية التفاعلية --- */}
       <div className="pointer-events-none absolute inset-0 z-0 opacity-[0.03]">
         <Package className="absolute top-10 left-10 h-32 w-32 rotate-12" />
         <ShoppingCart className="absolute right-20 bottom-20 h-40 w-40 -rotate-12" />
@@ -90,7 +90,6 @@ export default function LoginPage() {
         <Users className="absolute top-20 left-1/3 h-16 w-16" />
         <Building2 className="absolute right-10 bottom-1/3 h-32 w-32 opacity-20" />
       </div>
-
       {/* --- الكارت الرئيسي --- */}
       <Card className="z-10 w-full max-w-md border-gray-800 bg-[#111827]/80 shadow-[0_0_50px_rgba(0,0,0,0.5)] backdrop-blur-md">
         <CardHeader className="space-y-2 text-center">
