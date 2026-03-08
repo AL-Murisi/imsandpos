@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
+import { getToken, GetTokenParams } from "next-auth/jwt";
+import request from "./i18n/request";
 
 const KNOWN_ROLES = ["admin", "cashier", "manager_wh", "supplier"] as const;
 type Role = (typeof KNOWN_ROLES)[number];
@@ -37,10 +38,19 @@ export default async function middleware(req: NextRequest) {
   const path = normalizePath(req.nextUrl.pathname);
   const isPublicRoute = publicRoutes.has(path);
 
-  const authToken = await getToken({
+  let params: GetTokenParams = {
     req,
-    secret: process.env.NEXTAUTH_SECRET ?? process.env.ENCRYPTION_SECRET,
-  });
+    secret: process.env.AUTH_SECRET ?? "secret",
+  };
+
+  if (process.env.NODE_ENV === "production") {
+    params = {
+      ...params,
+      cookieName: "__Secure-authjs.session-token", // 🔒 Secure cookie for production
+    };
+  }
+
+  const authToken = await getToken(params);
 
   const tokenRoles = sanitizeRoles(authToken?.roles);
   const userRoles = tokenRoles;
