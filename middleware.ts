@@ -40,7 +40,7 @@ export default async function middleware(req: NextRequest) {
 
   let params: GetTokenParams = {
     req,
-    secret: process.env.AUTH_SECRET ?? "secret",
+    secret: process.env.NEXTAUTH_SECRET ?? "secret",
   };
 
   if (process.env.NODE_ENV === "production") {
