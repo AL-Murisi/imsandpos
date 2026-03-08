@@ -39,7 +39,7 @@ export default async function middleware(req: NextRequest) {
 
   const authToken = await getToken({
     req,
-    secret: process.env.AUTH_SECRET ?? process.env.ENCRYPTION_SECRET,
+    secret: process.env.NEXTAUTH_SECRET ?? process.env.ENCRYPTION_SECRET,
   });
 
   const tokenRoles = sanitizeRoles(authToken?.roles);
@@ -64,7 +64,10 @@ export default async function middleware(req: NextRequest) {
   // Enforce permissions using the most-specific matching prefix.
   if (isAuthenticated) {
     const requiredRoles = getRequiredRoles(path);
-    if (requiredRoles && !requiredRoles.some((role) => userRoles.includes(role))) {
+    if (
+      requiredRoles &&
+      !requiredRoles.some((role) => userRoles.includes(role))
+    ) {
       return safeRedirect(req, getDefaultRedirectForRole(userRoles));
     }
   }
