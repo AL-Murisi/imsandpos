@@ -69,24 +69,9 @@ export default function LoginPage() {
 
   const handleGoogleLogin = async () => {
     setLoading(true);
-    try {
-      const result = await signIn("google", {
-        callbackUrl: "/",
-        redirect: false,
-      });
-
-      if (
-        result?.error === "OAuthAccountNotLinked" ||
-        result?.error === "UserNotFound"
-      ) {
-        toast.error("هذا الحساب غير مسجل لدينا، يرجى إنشاء حساب.");
-        router.push("/signup");
-      } else if (result?.url) {
-        window.location.href = result.url;
-      }
-    } finally {
-      setLoading(false);
-    }
+    await signIn("google", {
+      callbackUrl: "/",
+    });
   };
 
   return (
