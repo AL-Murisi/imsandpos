@@ -23,7 +23,7 @@ export default function PushNotificationManager() {
         }
 
         if (Notification.permission === "granted") {
-          const registration = await navigator.serviceWorker.getRegistration();
+          const registration = await navigator.serviceWorker.ready;
           if (registration) {
             const existingSubscription =
               await registration.pushManager.getSubscription();

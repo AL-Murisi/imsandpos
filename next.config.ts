@@ -24,7 +24,7 @@ const withPWA = require("@ducanh2912/next-pwa").default({
     runtimeCaching: [
       {
         urlPattern: /\/_next\/static\/.*/,
-        handler: "StaleWhileRevalidate",
+        handler: "NetworkFirst",
         method: "GET",
         options: {
           cacheName: "ims-next-static",
@@ -39,7 +39,7 @@ const withPWA = require("@ducanh2912/next-pwa").default({
       },
       {
         urlPattern: /\/api\/auth\/me$/,
-        handler: "StaleWhileRevalidate",
+        handler: "NetworkFirst",
         method: "GET",
         options: {
           cacheName: "ims-auth-me-cache",
@@ -74,11 +74,7 @@ const withPWA = require("@ducanh2912/next-pwa").default({
       },
     ],
   },
-  buildExcludes: [
-    /splash_screens\/.*/,
-    /templates\/.*/,
-    /wasm\/.*/,
-  ],
+  buildExcludes: [/splash_screens\/.*/, /templates\/.*/, /wasm\/.*/],
   swSrc: "public/swcustom.js",
   swDest: "public/sw.js",
 });

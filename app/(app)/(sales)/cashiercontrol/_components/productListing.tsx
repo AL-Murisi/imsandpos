@@ -166,12 +166,24 @@ export default function List({ selecteditemId }: Props) {
   useEffect(() => {
     if (!selecteditemId) return;
 
+    // 1. Find the product
     const selectedProduct = products.find((p) => p.id === selecteditemId);
+    if (!selectedProduct) return;
 
-    if (selectedProduct) {
-      handleAdd(selectedProduct);
+    // 2. Check if it's already in the cart
+    // We check against the ID to see if any version of this product is added
+    const alreadyInCart = cartItems.some((item) => item.id === selecteditemId);
+
+    if (alreadyInCart) {
+      console.log("Product already in cart, skipping add.");
+      // You could add a toast notification here: toast.error("Product already added")
+      return;
     }
-  }, [selecteditemId, products]);
+
+    // 3. If not in cart, add it
+    handleAdd(selectedProduct);
+  }, [selecteditemId, products, cartItems]);
+  // Added cartItems and handleAdd to dependencies for safety
   const handleAdd = useCallback(
     (p: Forsale, selectedUnit?: SellingUnit) => {
       const targetUnit =

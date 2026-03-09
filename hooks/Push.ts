@@ -11,16 +11,14 @@ export function notificationUnsupported(): boolean {
 }
 
 // IMPORTANT: Must match the output file from next-pwa
-const SERVICE_WORKER_FILE_PATH = "/swcustom.js"; // Changed from /swcustom.js
-
+const SERVICE_WORKER_FILE_PATH = "/sw.js";
 export async function registerAndSubscribe(
   onSubscribe: (subs: PushSubscription | null) => void,
 ): Promise<void> {
   try {
     console.log("[Push] Registering service worker...");
-    const existingRegistration = await navigator.serviceWorker.getRegistration(
-      "/",
-    );
+    const existingRegistration =
+      await navigator.serviceWorker.register("/sw.js");
     const registration =
       existingRegistration ??
       (await navigator.serviceWorker.register(SERVICE_WORKER_FILE_PATH, {
@@ -56,10 +54,10 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 
   return outputArray;
 }
-export const unregisterServiceWorkers = async () => {
-  const registrations = await navigator.serviceWorker.getRegistrations();
-  await Promise.all(registrations.map((r) => r.unregister()));
-};
+// export const unregisterServiceWorkers = async () => {
+//   const registrations = await navigator.serviceWorker.getRegistrations();
+//   await Promise.all(registrations.map((r) => r.unregister()));
+// };
 async function subscribe(
   onSubscribe: (subs: PushSubscription | null) => void,
 ): Promise<void> {

@@ -7,7 +7,7 @@ import { getTranslations } from "next-intl/server";
 import dynamic from "next/dynamic";
 import List from "./productListing";
 import { useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { setProductsLocal } from "@/lib/slices/productsSlice";
 import { useAppDispatch } from "@/lib/store";
 
@@ -47,6 +47,12 @@ export default function ProductsList({
     null,
   );
   const dispatch = useAppDispatch();
+  const productSearchOptions = useMemo(() => {
+    return product.map((p) => ({
+      id: p.id,
+      name: p.name,
+    }));
+  }, [product]); // Only re-calculates if the 'product' prop changes
   useEffect(() => {
     dispatch(setProductsLocal([...product]));
   }, [product, dispatch]); // Only runs when products change
@@ -64,12 +70,15 @@ export default function ProductsList({
         <SearchInput
           placeholder={t("search")}
           paramKey="product"
-          options={product.map((p) => ({
-            id: p.id,
-            name: p.name,
-          }))} // 👈 map your products into { id, name }
+          options={productSearchOptions} // 2. Pass the memoized variable here} // 👈 map your products into { id, name }
           action={(selected) => {
+            // 1. Set the ID to trigger the List effect
             setSelectedproduct(selected);
+
+            // 2. IMMEDIATELY clear it (on the next tick) so typing doesn't re-trigger it
+            setTimeout(() => {
+              setSelectedproduct(null);
+            }, 50);
           }}
         />
       </div>

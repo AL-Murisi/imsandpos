@@ -79,7 +79,7 @@ export default function LoginPage() {
       className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0a0f1d]"
       dir="rtl"
     >
-      s{/* --- طبقة الخلفية التفاعلية --- */}
+      {/* --- طبقة الخلفية التفاعلية --- */}
       <div className="pointer-events-none absolute inset-0 z-0 opacity-[0.03]">
         <Package className="absolute top-10 left-10 h-32 w-32 rotate-12" />
         <ShoppingCart className="absolute right-20 bottom-20 h-40 w-40 -rotate-12" />
