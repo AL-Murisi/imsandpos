@@ -287,6 +287,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               priority={true}
               sizes="100px"
               className="rounded-full object-cover"
+              unoptimized={true}
             />
           ) : (
             <div className="flex items-center justify-center rounded-full bg-amber-400 transition-all duration-300 data-[state=collapsed]:h-8 data-[state=collapsed]:w-8 data-[state=expanded]:h-14 data-[state=expanded]:w-14">
