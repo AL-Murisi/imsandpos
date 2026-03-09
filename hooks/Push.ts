@@ -18,25 +18,14 @@ export async function registerAndSubscribe(
 ): Promise<void> {
   try {
     console.log("[Push] Registering service worker...");
-
-    // Unregister any existing service workers first (clean slate)
-    const existingRegistrations =
-      await navigator.serviceWorker.getRegistrations();
-    for (const registration of existingRegistrations) {
-      console.log(
-        "[Push] Unregistering old service worker:",
-        registration.scope,
-      );
-      await registration.unregister();
-    }
-
-    // Register the service worker
-    const registration = await navigator.serviceWorker.register(
-      SERVICE_WORKER_FILE_PATH,
-      {
-        scope: "/",
-      },
+    const existingRegistration = await navigator.serviceWorker.getRegistration(
+      "/",
     );
+    const registration =
+      existingRegistration ??
+      (await navigator.serviceWorker.register(SERVICE_WORKER_FILE_PATH, {
+        scope: "/",
+      }));
 
     console.log("[Push] Service worker registered:", registration);
 

@@ -1,27 +1,48 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { getToken, GetTokenParams } from "next-auth/jwt";
-import request from "./i18n/request";
 
-const KNOWN_ROLES = ["admin", "cashier", "manager_wh", "supplier"] as const;
+const KNOWN_ROLES = [
+  "admin",
+  "cashier",
+  "manager_wh",
+  "supplier",
+  "accountant",
+] as const;
+
 type Role = (typeof KNOWN_ROLES)[number];
 
 const roleSet = new Set<string>(KNOWN_ROLES);
 
-// Prefix-based route permissions to cover nested paths too.
 const routePermissions: ReadonlyArray<{ prefix: string; roles: Role[] }> = [
   { prefix: "/settings", roles: ["admin"] },
   { prefix: "/company", roles: ["admin"] },
+  { prefix: "/user", roles: ["admin"] },
+  { prefix: "/branches", roles: ["admin"] },
+  { prefix: "/userActiviteslogs", roles: ["admin"] },
+  { prefix: "/userroles", roles: ["admin"] },
+  { prefix: "/dashboard", roles: ["admin"] },
+  { prefix: "/fiscalYears", roles: ["admin"] },
+  { prefix: "/balanceSheet", roles: ["admin"] },
+
   { prefix: "/inventory", roles: ["admin", "manager_wh"] },
+  { prefix: "/manageStocks", roles: ["admin", "manager_wh"] },
   { prefix: "/products", roles: ["admin", "manager_wh"] },
   { prefix: "/categories", roles: ["admin", "manager_wh"] },
+  { prefix: "/brand", roles: ["admin", "manager_wh"] },
   { prefix: "/suppliers", roles: ["admin", "manager_wh"] },
   { prefix: "/warehouses", roles: ["admin", "manager_wh"] },
-  { prefix: "/dashboardUser", roles: ["manager_wh"] },
+  { prefix: "/dashboardUser", roles: ["manager_wh", "admin"] },
+
+  { prefix: "/journal", roles: ["admin", "accountant"] },
+  { prefix: "/menualjournal", roles: ["admin", "accountant"] },
+  { prefix: "/voucher", roles: ["admin", "accountant"] },
+  { prefix: "/banks", roles: ["admin", "accountant"] },
+  { prefix: "/chartOfAccount", roles: ["admin", "accountant"] },
+  { prefix: "/expenses", roles: ["admin", "accountant"] },
+
   { prefix: "/salesDashboard", roles: ["admin", "cashier"] },
-  { prefix: "/cashiercontrol", roles: ["admin", "cashier"] },
-  { prefix: "/supplier/products", roles: ["admin", "supplier"] },
-  { prefix: "/supplier/orders", roles: ["admin", "supplier"] },
-  { prefix: "/dashboard", roles: ["admin"] },
+  { prefix: "/customer", roles: ["admin", "cashier", "accountant"] },
+  { prefix: "/reports", roles: ["admin", "cashier", "manager_wh"] },
 ];
 
 const publicRoutes = new Set([
@@ -30,60 +51,10 @@ const publicRoutes = new Set([
   "/landing",
   "/manifest.json",
   "/createcompanybyemail",
+  "/unauthorized",
 ]);
 
 const authRoutes = new Set(["/login", "/signup"]);
-
-export default async function middleware(req: NextRequest) {
-  const path = normalizePath(req.nextUrl.pathname);
-  const isPublicRoute = publicRoutes.has(path);
-
-  let params: GetTokenParams = {
-    req,
-    secret: process.env.NEXTAUTH_SECRET ?? "secret",
-  };
-
-  if (process.env.NODE_ENV === "production") {
-    params = {
-      ...params,
-      cookieName: "__Secure-authjs.session-token", // 🔒 Secure cookie for production
-    };
-  }
-
-  const authToken = await getToken(params);
-
-  const tokenRoles = sanitizeRoles(authToken?.roles);
-  const userRoles = tokenRoles;
-  const isAuthenticated = userRoles.length > 0;
-
-  // Redirect authenticated users away from auth pages.
-  if (isAuthenticated && authRoutes.has(path)) {
-    return safeRedirect(req, getDefaultRedirectForRole(userRoles));
-  }
-
-  // Role-based root routing.
-  if (path === "/" && isAuthenticated) {
-    return safeRedirect(req, getDefaultRedirectForRole(userRoles));
-  }
-
-  // Unauthenticated users can only access public routes.
-  if (!isAuthenticated && !isPublicRoute) {
-    return NextResponse.redirect(new URL("/login", req.nextUrl));
-  }
-
-  // Enforce permissions using the most-specific matching prefix.
-  if (isAuthenticated) {
-    const requiredRoles = getRequiredRoles(path);
-    if (
-      requiredRoles &&
-      !requiredRoles.some((role) => userRoles.includes(role))
-    ) {
-      return safeRedirect(req, getDefaultRedirectForRole(userRoles));
-    }
-  }
-
-  return NextResponse.next();
-}
 
 function normalizePath(pathname: string): string {
   if (!pathname || pathname === "/") return "/";
@@ -101,9 +72,10 @@ function getRequiredRoles(path: string): Role[] | null {
 function sanitizeRoles(value: unknown): Role[] {
   if (!Array.isArray(value)) return [];
 
-  return value.filter((role): role is Role => {
-    return typeof role === "string" && roleSet.has(role);
-  });
+  return value
+    .filter((role): role is string => typeof role === "string")
+    .map((role) => role.trim().toLowerCase())
+    .filter((role): role is Role => roleSet.has(role));
 }
 
 function getDefaultRedirectForRole(roles: Role[]): string {
@@ -111,7 +83,8 @@ function getDefaultRedirectForRole(roles: Role[]): string {
   if (roles.includes("cashier")) return "/salesDashboard";
   if (roles.includes("manager_wh")) return "/dashboardUser";
   if (roles.includes("supplier")) return "/supplier/orders";
-  return "/login";
+  if (roles.includes("accountant")) return "/voucher";
+  return "/unauthorized";
 }
 
 function safeRedirect(req: NextRequest, destination: string): NextResponse {
@@ -123,6 +96,51 @@ function safeRedirect(req: NextRequest, destination: string): NextResponse {
   }
 
   return NextResponse.redirect(new URL(target, req.nextUrl));
+}
+
+export default async function middleware(req: NextRequest) {
+  const path = normalizePath(req.nextUrl.pathname);
+  const isPublicRoute = publicRoutes.has(path);
+
+  let params: GetTokenParams = {
+    req,
+    secret: process.env.NEXTAUTH_SECRET ?? "secret",
+  };
+
+  if (process.env.NODE_ENV === "production") {
+    params = {
+      ...params,
+      cookieName: "__Secure-authjs.session-token",
+    };
+  }
+
+  const authToken = await getToken(params);
+  const userRoles = sanitizeRoles(authToken?.roles);
+  const isAuthenticated = Boolean(authToken?.userId || authToken?.email);
+
+  if (isAuthenticated && authRoutes.has(path)) {
+    return safeRedirect(req, getDefaultRedirectForRole(userRoles));
+  }
+
+  if (path === "/" && isAuthenticated) {
+    return safeRedirect(req, getDefaultRedirectForRole(userRoles));
+  }
+
+  if (!isAuthenticated && !isPublicRoute) {
+    return NextResponse.redirect(new URL("/login", req.nextUrl));
+  }
+
+  if (isAuthenticated) {
+    const requiredRoles = getRequiredRoles(path);
+    if (
+      requiredRoles &&
+      !requiredRoles.some((role) => userRoles.includes(role))
+    ) {
+      return safeRedirect(req, getDefaultRedirectForRole(userRoles));
+    }
+  }
+
+  return NextResponse.next();
 }
 
 export const config = {

@@ -2,13 +2,6 @@
 
 import dynamic from "next/dynamic";
 
-const DataTable = dynamic(
-  () => import("@/components/common/ReusbleTable").then((m) => m.DataTable),
-  {
-    ssr: false,
-    loading: () => <TableSkeleton rows={20} columns={10} />,
-  },
-);
 import { useTablePrams } from "@/hooks/useTableParams";
 
 import SearchInput from "@/components/common/searchtest";
@@ -26,9 +19,9 @@ const ExpenseForm = dynamic(() => import("./ExpenseForm"), {
 });
 import { useAuth } from "@/lib/context/AuthContext";
 import { expenseColumns } from "./columns";
-import TableSkeleton from "@/components/skeleton/table";
 
 import { Calendar22 } from "@/components/common/DatePicker";
+import { DataTable } from "@/components/common/ReusbleTable";
 
 type ProductClientProps = {
   data: any;
@@ -66,7 +59,7 @@ export default function ExpensesPage({
 
   return (
     <div
-      className="bg-accent w-full rounded-2xl p-2 shadow-xl/20 shadow-gray-500 group-data-[[state=pending]]:animate-pulse"
+      className="bg-accent border-primary flex flex-col rounded-2xl border p-3 shadow-xl/20 shadow-gray-900"
       dir="rtl"
     >
       <DataTable
@@ -94,7 +87,7 @@ export default function ExpensesPage({
         globalFilter={globalFilter}
         sorting={sorting}
         pagination={pagination}
-        highet="h-[68vh]"
+        highet="h-[70vh]"
         totalCount={total}
       />
     </div>

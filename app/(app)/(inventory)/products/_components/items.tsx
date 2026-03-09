@@ -39,15 +39,7 @@ const PrintProductTable = dynamic(
   { ssr: false },
 );
 import ProductForm from "./form";
-// const PrintProductTable = dynamic(
-//   () => import("@/components/printItems").then((m) => m.PrintProductTable),
-//   {
-//     ssr: false,
-//   },
-// );
-// const ImportProductsPage = dynamic(() => import("@/components/uploadItesm"), {
-//   ssr: false,
-// });
+
 type ProductClientProps = {
   products: any[];
   total: number;

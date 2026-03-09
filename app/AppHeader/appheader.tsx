@@ -12,64 +12,43 @@ import { Menu } from "lucide-react";
 
 export default function Appheader() {
   const t = useTranslations("menu");
-  const menuItems = [
-    {
-      title: t("home"),
-      url: "/dashboard",
-    },
-    {
-      title: t("home"),
-      url: "/dashboardUser",
-    },
-    {
-      title: t("users"),
-      url: "/company",
-    },
-    {
-      title: t("inventory"),
-      url: "/inventory",
-    },
-    {
-      title: t("products"),
-      url: "/products",
-    },
-    {
-      title: `${t("products")}/${t("new")}`,
-      url: "/products/new",
-    },
-    {
-      title: t("categories"), // Categories
-      url: "/categories",
-    },
-    {
-      title: t("sales"),
-      url: "/sells",
-    },
-    {
-      title: t("warehouses"), // Warehouses
-      url: "/warehouses",
-    },
-    {
-      title: t("suppliers"), // Suppliers
-      url: "/suppliers",
-    },
-    {
-      title: t("sales"),
-      url: "/cashiercontrol",
-    },
-    {
-      title: t("reservedOrders"),
-      url: "/sells/reservation",
-    },
 
-    {
-      title: t("profile"),
-      url: "/profile",
-    },
-    {
-      title: t("settings"),
-      url: "/settings",
-    },
+  const menuItems = [
+    // --- الرئيسية ---
+    { title: t("home"), url: "/dashboard" },
+    { title: t("home"), url: "/dashboardUser" },
+
+    // --- إدارة المستخدمين والشركة (Users & Company) ---
+    { title: t("company"), url: "/company" },
+    { title: t("userManagement"), url: "/user" },
+    { title: t("branches"), url: "/branches" },
+    { title: t("userActivities"), url: "/userActiviteslogs" },
+    { title: t("userRoles"), url: "/userroles" },
+
+    // --- المخزون (Inventory) ---
+    { title: t("manageInventory"), url: "/inventory" },
+    { title: t("manageStocks"), url: "/manageStocks" },
+    { title: t("brand"), url: "/brand" },
+    { title: t("categories"), url: "/categories" },
+    { title: t("products"), url: "/products" },
+    { title: t("suppliers"), url: "/suppliers" },
+    { title: t("warehouses"), url: "/warehouses" },
+    { title: t("cashierMain"), url: "/salesDashboard" }, // مضاف
+    { title: t("cashier"), url: "/cashiercontrol" }, //
+    // --- القيود المحاسبية (Journal Entries) ---
+    { title: t("fiscalYears"), url: "/fiscalYears" },
+    { title: t("journal"), url: "/journal" },
+    { title: t("manualJournal"), url: "/menualjournal" },
+    { title: t("vouchers"), url: "/voucher" },
+
+    // --- المالية والتقارير ---
+    { title: t("balanceSheet"), url: "/balanceSheet" },
+    { title: t("banks"), url: "/banks" },
+    { title: t("chartOfAccount"), url: "/chartOfAccount" },
+    { title: t("expenses"), url: "/expenses" },
+    { title: t("customer"), url: "/customer" },
+    { title: t("reports"), url: "/reports" },
+    { title: t("settings"), url: "/settings" },
   ];
   type MenuItem = (typeof menuItems)[number];
   const pathname = usePathname();

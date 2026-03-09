@@ -16,6 +16,7 @@ import {
 import { getActiveFiscalYears, validateFiscalYear } from "./fiscalYear";
 import { PaymentState } from "@/components/common/ReusablePayment";
 import { getNextVoucherNumber } from "./cashier";
+import { sendRoleBasedNotification } from "@/lib/push-notifications";
 function serializeData<T>(data: T): T {
   if (data === null || data === undefined) return data;
   if (typeof data !== "object") return data;
@@ -407,6 +408,21 @@ export async function updateInventory(
 
     // Fire non-blocking operations
     revalidatePath("/manageStocks");
+
+    if (finalAvailableQty <= finalReorderLevel) {
+      await sendRoleBasedNotification(
+        {
+          companyId,
+          targetRoles: ["admin", "cashier", "manager_wh"],
+        },
+        {
+          title: "تنبيه انخفاض المخزون",
+          body: `${product.name} في ${currentInventory.warehouse.name} وصل إلى ${finalAvailableQty} (حد إعادة الطلب ${finalReorderLevel})`,
+          url: "/manageStocks",
+          tag: `low-stock-${product.id}-${inventoryTarget.warehouseId}`,
+        },
+      );
+    }
 
     return { success: true, data: result.updatedInventory };
   } catch (error) {
@@ -1127,6 +1143,18 @@ export async function adjustStock(
             warehouseId,
           },
         },
+        include: {
+          product: {
+            select: {
+              name: true,
+            },
+          },
+          warehouse: {
+            select: {
+              name: true,
+            },
+          },
+        },
       });
 
       if (!inventory) {
@@ -1181,6 +1209,22 @@ export async function adjustStock(
         },
       });
       revalidatePath("/manageStocks");
+
+      if (newAvailableQuantity <= inventory.reorderLevel) {
+        await sendRoleBasedNotification(
+          {
+            companyId,
+            targetRoles: ["admin", "cashier", "manager_wh"],
+          },
+          {
+            title: "تنبيه انخفاض المخزون",
+            body: `${inventory.product.name} في ${inventory.warehouse.name} وصل إلى ${newAvailableQuantity} (حد إعادة الطلب ${inventory.reorderLevel})`,
+            url: "/manageStocks",
+            tag: `low-stock-${productId}-${warehouseId}`,
+          },
+        );
+      }
+
       return { success: true, data: updatedInventory };
     });
   } catch (error) {

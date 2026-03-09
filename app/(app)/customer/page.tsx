@@ -61,5 +61,10 @@ export default async function DebtSell({ searchParams }: DashboardProps) {
     from,
   );
   // const data = await FetchDebtSales(filter);
-  return <CustomerClinet users={data.result} total={data.total} role={[]} />;
+  return (
+    <div className="p-3">
+      {" "}
+      <CustomerClinet users={data.result} total={data.total} role={[]} />
+    </div>
+  );
 }

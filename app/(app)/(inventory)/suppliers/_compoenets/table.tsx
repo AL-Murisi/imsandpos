@@ -8,13 +8,6 @@ const Calendar22 = dynamic(
   },
 );
 
-// const DataTable = dynamic(
-//   () => import("@/components/common/test").then((m) => m.DataTable),
-//   {
-//     ssr: false,
-//     loading: () => <TableSkeleton rows={20} columns={10} />,
-//   },
-// );
 import { useTablePrams } from "@/hooks/useTableParams";
 
 import SearchInput from "@/components/common/searchtest";

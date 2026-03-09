@@ -127,14 +127,7 @@ export default function SectionCards({
       chartData: salesSummary.purchases.chart,
       bg: "bg-gradient-to-r dark:from-green-500 dark:to-emerald-700 from-chart-3 to-chart-4",
     },
-    {
-      description: "debt",
-      title: `${salesSummary.debt.unreceived} `,
-      label: t("debt"),
-      link: "/debt",
-      chartData: salesSummary.debt.unreceivedChart,
-      bg: "bg-gradient-to-r dark:from-red-500 dark:to-orange-700 from-chart-4 to-chart-1",
-    },
+
     {
       description: "receivedDebt",
       title: `${salesSummary.profit.total} `,

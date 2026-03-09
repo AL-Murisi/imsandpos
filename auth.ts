@@ -47,7 +47,9 @@ const providers = [
         return null;
       }
 
-      const roles = user.roles.map((r) => r.role.name);
+      const roles = user.roles
+        .map((r) => r.role.name?.trim().toLowerCase())
+        .filter(Boolean);
       return {
         id: user.id,
         email: user.email,
@@ -89,7 +91,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (appUser) {
           token.userId = appUser.id;
           token.companyId = appUser.companyId;
-          token.roles = appUser.roles.map((r) => r.role.name);
+          token.roles = appUser.roles
+            .map((r) => r.role.name?.trim().toLowerCase())
+            .filter(Boolean);
         }
       }
 

@@ -93,21 +93,49 @@ async function createJournalEntry(data: {
  * - Credit: Inventory (Asset) - $600
  */
 
-export async function getVouchers(companyId: string) {
+export async function getVouchers(
+  companyId: string,
+  searchQuery: string = "",
+  from?: string,
+  to?: string,
+  page: number = 1, // 0-indexed page number
+  pageSize: number = 13,
+  sort?: SortingState,
+) {
   try {
+    const orderBy = sort?.length
+      ? { [sort[0].id]: sort[0].desc ? "desc" : "asc" }
+      : { createdAt: "desc" as const };
+    const today = new Date();
+    const startOfToday = new Date(today.setHours(0, 0, 0, 0));
+    const endOfToday = new Date(today.setHours(23, 59, 59, 999));
+    const fromatDate = from ? new Date(from).toISOString() : startOfToday;
+    const toDate = to ? new Date(to).toISOString() : endOfToday;
+    const combinedWhere: Prisma.FinancialTransactionWhereInput = {
+      companyId,
+    };
+    if (fromatDate || toDate) {
+      combinedWhere.createdAt = {
+        ...(fromatDate && {
+          gte: fromatDate,
+        }),
+        ...(toDate && {
+          lte: toDate,
+        }),
+      };
+    }
+
     const vouchers = await prisma.financialTransaction.findMany({
-      where: {
-        companyId: companyId,
-      },
       include: {
         customer: { select: { name: true } },
         supplier: { select: { name: true } },
         invoice: { select: { invoiceNumber: true } },
         expense: { select: { expense_number: true } },
       },
-      orderBy: {
-        createdAt: "desc",
-      },
+      where: combinedWhere,
+      skip: page * pageSize,
+      take: pageSize,
+      orderBy,
     });
     const result = serializeData(vouchers);
     return { success: true, data: result };

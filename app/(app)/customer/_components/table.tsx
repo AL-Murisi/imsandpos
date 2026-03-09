@@ -102,7 +102,10 @@ export default function CustomerClinet({ users, total, role }: Props) {
     }
   }
   return (
-    <div className="bg-accent flex flex-col p-3" dir="rtl">
+    <div
+      className="bg-accent border-primary flex flex-col rounded-2xl border p-3 shadow-xl/20 shadow-gray-900"
+      dir="rtl"
+    >
       {/* Add dir="rtl" for proper RTL layout */}
       <input
         placeholder={"Type push message ..."}

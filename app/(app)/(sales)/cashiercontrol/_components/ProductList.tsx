@@ -78,12 +78,6 @@ export default function ProductsList({
         selecteditemId={selectedproduct?.id ?? ""}
         // queryr={queryr || (selectedproduct ? selectedproduct.name || "" : "")}
       />
-
-      {last ? (
-        <div className="rounded border border-green-300 bg-green-50 p-3 text-sm text-green-800">
-          Last scan: {last.text} ({last.format})
-        </div>
-      ) : null}
     </div>
   );
 }

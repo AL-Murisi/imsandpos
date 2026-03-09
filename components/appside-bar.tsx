@@ -174,7 +174,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     },
 
     {
-      title: t("chartofaccount"),
+      title: t("chartOfAccount"),
       url: "/chartOfAccount",
       icon: () => <Notebook className="text-pink-600" />,
       roles: ["admin", "supplier"],

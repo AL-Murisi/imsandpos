@@ -21,7 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Label } from "@/components/ui/label";
+
 import { deleteCustomer, updateCustomerStatus } from "@/lib/actions/customers";
 import { useAuth } from "@/lib/context/AuthContext";
 import dynamic from "next/dynamic";
@@ -293,4 +293,3 @@ export const customerColumns: ColumnDef<any>[] = [
     },
   },
 ];
-

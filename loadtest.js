@@ -36,7 +36,7 @@ const weightedRoutes = [
   { url: "/sells", weight: 0.2 },
   { url: "/inventory/manageStocks", weight: 0.1 },
   { url: "/products", weight: 0.1 },
-  { url: "/debt", weight: 0.1 },
+
   { url: "/users", weight: 0.05 },
   { url: "/expenses", weight: 0.05 },
   { url: "/reports", weight: 0.05 },

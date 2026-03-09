@@ -2,26 +2,18 @@
 
 import SearchInput from "@/components/common/searchtest";
 import { SelectField } from "@/components/common/selectproduct";
-import TableSkeleton from "@/components/skeleton/table";
 
-import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTablePrams } from "@/hooks/useTableParams";
-import { SortingState } from "@tanstack/react-table";
-import { Download, FileSpreadsheet } from "lucide-react";
 import dynamic from "next/dynamic";
 
-import { bankColumns } from "./columns";
+import { DataTable } from "@/components/common/ReusbleTable";
 import { useFormatter } from "@/hooks/usePrice";
+import { bankColumns } from "./columns";
 const BankFormDialog = dynamic(() => import("./form"), {
   ssr: false,
 });
-const DataTable = dynamic(
-  () => import("@/components/common/ReusbleTable").then((m) => m.DataTable),
-  {
-    ssr: false,
-  },
-);
+
 type ParentAccount = {
   id: string;
   account_code: string;
@@ -86,14 +78,7 @@ export default function BanksTable({
 
   return (
     <ScrollArea className="h-[95vh] p-3" dir="rtl">
-      {/* Header Section */}
-      {/* <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="flex gap-2 rounded-2xl shadow-xl/20 shadow-gray-900">
-       
-        </div>
-      </div> */}
-
-      <div className="space-y-4">
+      <div className="bg-accent border-primary flex flex-col rounded-2xl border p-3 shadow-xl/20 shadow-gray-900">
         {/* Data Table */}
         <DataTable
           search={
@@ -120,7 +105,7 @@ export default function BanksTable({
           onGlobalFilterChange={setGlobalFilter}
           globalFilter={globalFilter}
           sorting={[]}
-          highet="h-[60vh]"
+          highet="h-[70vh]"
           pagination={pagination}
           totalCount={total}
         />

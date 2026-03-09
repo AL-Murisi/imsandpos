@@ -6,6 +6,7 @@ import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { availableMemory } from "process";
 import { logActivity } from "./activitylogs";
+import { sendRoleBasedNotification } from "@/lib/push-notifications";
 import {
   CreateProductInput,
   CreateProductInputs,
@@ -14,6 +15,19 @@ import {
   UpdateProductFormValues,
 } from "@/lib/zod";
 import { success } from "zod";
+
+function getExpiryStatus(expiryDateInput: string | Date) {
+  const now = new Date();
+  const expiryDate = new Date(expiryDateInput);
+  const diffMs = expiryDate.getTime() - now.getTime();
+  const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+  return {
+    isExpired: daysLeft < 0,
+    isExpiringSoon: daysLeft >= 0 && daysLeft <= 30,
+    daysLeft,
+  };
+}
 
 export async function CreateProduct(
   data: any,
@@ -122,6 +136,22 @@ export async function CreateProduct(
 
     // ✅ Revalidate cache
     revalidatePath("/products/ProductClient");
+
+    const expiryStatus = getExpiryStatus(date);
+    if (expiryStatus.isExpired || expiryStatus.isExpiringSoon) {
+      await sendRoleBasedNotification(
+        {
+          companyId,
+          targetRoles: ["admin", "cashier", "manager_wh"],
+        },
+        {
+          title: expiryStatus.isExpired ? "منتج منتهي الصلاحية" : "منتج قرب الانتهاء",
+          body: `${name} (${sku}) ${expiryStatus.isExpired ? "منتهي الصلاحية" : `ينتهي خلال ${expiryStatus.daysLeft} يوم`}`,
+          url: "/products",
+          tag: `product-expiry-${product.id}`,
+        },
+      );
+    }
 
     return {
       id: product.id,
@@ -514,6 +544,22 @@ export async function UpdateProduct(
     });
     // ✅ Revalidate cache
     revalidatePath("/inventory/products");
+
+    const expiryStatus = getExpiryStatus(new Date(expiredAt));
+    if (expiryStatus.isExpired || expiryStatus.isExpiringSoon) {
+      await sendRoleBasedNotification(
+        {
+          companyId,
+          targetRoles: ["admin", "cashier", "manager_wh"],
+        },
+        {
+          title: expiryStatus.isExpired ? "منتج منتهي الصلاحية" : "تنبيه صلاحية منتج",
+          body: `${name} (${sku}) ${expiryStatus.isExpired ? "منتهي الصلاحية" : `سينتهي خلال ${expiryStatus.daysLeft} يوم`}`,
+          url: "/products",
+          tag: `product-expiry-${existing.id}`,
+        },
+      );
+    }
 
     return {
       ...updatedProduct,

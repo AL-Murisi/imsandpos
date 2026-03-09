@@ -18,12 +18,14 @@ export default async function Home() {
     ]);
 
     return (
-      <ExpensesPage
-        data={expensesData.data}
-        total={expensesData}
-        payment={payment}
-        formData={categoriesData}
-      />
+      <div className="p-3">
+        <ExpensesPage
+          data={expensesData.data}
+          total={expensesData}
+          payment={payment}
+          formData={categoriesData}
+        />
+      </div>
     );
   } catch (error) {
     console.error("Error loading expenses:", error);

@@ -1,11 +1,11 @@
-"use server";
+﻿"use server";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { fetchProductStats } from "./Product";
 import { success } from "zod";
 import { getActiveFiscalYears } from "@/lib/actions/fiscalYear";
 import { TransactionType } from "@prisma/client";
-import webpush from "web-push";
+import { sendRoleBasedNotification } from "@/lib/push-notifications";
 
 type CustomerPayments = Record<string, number>;
 
@@ -15,62 +15,34 @@ async function sendPaymentNotifications(
   label: string,
 ) {
   try {
-    const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-    const privateKey = process.env.VAPID_PRIVATE_KEY;
-    const subject = process.env.VAPID_SUBJECT;
-
-    if (!publicKey || !privateKey || !subject) {
-      console.error("VAPID keys are missing in environment variables");
-      return;
-    }
-
     const customerIds = Object.keys(customerTotals);
     if (customerIds.length === 0) return;
 
-    const [customers, subscriptions] = await Promise.all([
-      prisma.customer.findMany({
-        where: { companyId, id: { in: customerIds } },
-        select: { id: true, name: true },
-      }),
-      prisma.pushSubscription.findMany({
-        where: { company_id: companyId },
-      }),
-    ]);
-
-    if (subscriptions.length === 0) return;
+    const customers = await prisma.customer.findMany({
+      where: { companyId, id: { in: customerIds } },
+      select: { id: true, name: true },
+    });
 
     const customerNameMap = new Map(customers.map((c) => [c.id, c.name]));
 
-    webpush.setVapidDetails(subject, publicKey, privateKey);
-
-    const payloads = customerIds.map((id) => {
-      const name = customerNameMap.get(id) || "عميل";
-      const amount = customerTotals[id] || 0;
-      return JSON.stringify({
-        title: "سداد ديون",
-        body: `تم تسديد مبلغ ${amount} من ${name} - ${label}`,
-        data: { url: "/", sound: "/sounds/notification.wav" },
-      });
-    });
-
     await Promise.all(
-      subscriptions.flatMap((sub) =>
-        payloads.map(async (payload) => {
-          try {
-            await webpush.sendNotification(
-              {
-                endpoint: sub.endpoint,
-                keys: { p256dh: sub.p256dh, auth: sub.auth },
-              },
-              payload,
-            );
-          } catch (error: any) {
-            if (error?.statusCode === 410) {
-              await prisma.pushSubscription.delete({ where: { id: sub.id } });
-            }
-          }
-        }),
-      ),
+      customerIds.map(async (id) => {
+        const name = customerNameMap.get(id) || "Customer";
+        const amount = customerTotals[id] || 0;
+
+        await sendRoleBasedNotification(
+          {
+            companyId,
+            targetRoles: ["admin", "cashier", "manager_wh"],
+          },
+          {
+            title: "Debt Payment",
+            body: `Paid amount ${amount} from ${name} - ${label}`,
+            url: "/customer",
+            tag: `debt-payment-${id}`,
+          },
+        );
+      }),
     );
   } catch (err) {
     console.error("Failed to send payment notifications:", err);
@@ -122,7 +94,7 @@ export async function updateSales(
   if (!companyId) return;
 
   const updatedSale = await prisma.$transaction(async (tx) => {
-    // 1️⃣ Fetch current sale
+    // 1ï¸âƒ£ Fetch current sale
     const sale = await tx.invoice.findUnique({
       where: { id: saleId, cashierId, companyId },
       select: {
@@ -142,7 +114,7 @@ export async function updateSales(
     const currentDue = sale.amountDue.toNumber();
     const customerId = sale.customerId;
 
-    // 2️⃣ Compute new values
+    // 2ï¸âƒ£ Compute new values
     let newAmountPaid = currentPaid + paymentAmount;
     let newAmountDue = currentDue - paymentAmount;
     if (newAmountDue < 0) newAmountDue = 0;
@@ -157,7 +129,7 @@ export async function updateSales(
       newPaymentStatus = "pending";
     }
 
-    // 3️⃣ Update Sale
+    // 3ï¸âƒ£ Update Sale
     const updatedSaleRecord = await tx.invoice.update({
       where: { id: saleId, companyId: companyId },
       data: {
@@ -168,10 +140,10 @@ export async function updateSales(
       },
     });
 
-    // 4️⃣ Get next voucher number with locking
+    // 4ï¸âƒ£ Get next voucher number with locking
     const voucherNumber = await getNextVoucherNumber(companyId, "RECEIPT", tx);
 
-    // 5️⃣ Log Payment
+    // 5ï¸âƒ£ Log Payment
     const payment = await tx.financialTransaction.create({
       data: {
         companyId,
@@ -188,7 +160,7 @@ export async function updateSales(
       },
     });
 
-    // 6️⃣ CREATE JOURNAL EVENT
+    // 6ï¸âƒ£ CREATE JOURNAL EVENT
     await tx.journalEvent.create({
       data: {
         companyId: companyId,
@@ -210,7 +182,7 @@ export async function updateSales(
       },
     });
 
-    // 7️⃣ Update Customer balance
+    // 7ï¸âƒ£ Update Customer balance
     if (customerId) {
       await tx.customer.update({
         where: { id: customerId },
@@ -222,7 +194,7 @@ export async function updateSales(
       });
     }
 
-    // 8️⃣ Return clean serialized sale
+    // 8ï¸âƒ£ Return clean serialized sale
     return {
       ...updatedSaleRecord,
       totalAmount: updatedSaleRecord.totalAmount.toString(),
@@ -261,7 +233,7 @@ export async function updateSales(
 
 //   const result = await prisma.$transaction(
 //     async (tx) => {
-//       // 1️⃣ Fetch sales
+//       // 1ï¸âƒ£ Fetch sales
 //       const sales = await tx.invoice.findMany({
 //         where: { id: { in: saleIds }, companyId },
 //         select: {
@@ -275,8 +247,8 @@ export async function updateSales(
 //       });
 
 //       if (sales.length === 0) throw new Error("No matching sales found.");
-//       const distributedPayments = []; // مصفوفة لتخزين تفاصيل كل فاتورة للـ Journal Event
-//       // 2️⃣ Allocate payments
+//       const distributedPayments = []; // Ù…ØµÙÙˆÙØ© Ù„ØªØ®Ø²ÙŠÙ† ØªÙØ§ØµÙŠÙ„ ÙƒÙ„ ÙØ§ØªÙˆØ±Ø© Ù„Ù„Ù€ Journal Event
+//       // 2ï¸âƒ£ Allocate payments
 //       let remaining = paymentAmount;
 //       const saleUpdates = [];
 //       const customerUpdates: Record<string, number> = {};
@@ -316,7 +288,7 @@ export async function updateSales(
 //         });
 //       }
 
-//       // 3️⃣ Update invoices
+//       // 3ï¸âƒ£ Update invoices
 //       for (const u of saleUpdates) {
 //         await tx.invoice.update({
 //           where: { id: u.id },
@@ -329,7 +301,7 @@ export async function updateSales(
 //         });
 //       }
 
-//       // 4️⃣ Create payments with sequential voucher numbers
+//       // 4ï¸âƒ£ Create payments with sequential voucher numbers
 //       const createdPayments = [];
 //       for (const p of paymentsToCreate) {
 //         // Get voucher number with locking for EACH payment
@@ -363,7 +335,7 @@ export async function updateSales(
 //             exchangeRate: paymentDetails.exchange_rate,
 
 //             status: "completed",
-//             notes: `تسديد الدين للفاتورة رقم ${p.invoiceNumber}`,
+//             notes: `ØªØ³Ø¯ÙŠØ¯ Ø§Ù„Ø¯ÙŠÙ† Ù„Ù„ÙØ§ØªÙˆØ±Ø© Ø±Ù‚Ù… ${p.invoiceNumber}`,
 //             createdAt: new Date(),
 //           },
 //         });
@@ -393,7 +365,7 @@ export async function updateSales(
 //         });
 //       }
 
-//       // 5️⃣ Update customer balances
+//       // 5ï¸âƒ£ Update customer balances
 //       for (const [custId, amt] of Object.entries(customerUpdates)) {
 //         await tx.customer.update({
 //           where: { id: custId },
@@ -442,14 +414,14 @@ export async function updateSales(
 
 //   const result = await prisma.$transaction(
 //     async (tx) => {
-//       // 1️⃣ Get next voucher number with locking
+//       // 1ï¸âƒ£ Get next voucher number with locking
 //       const voucherNumber = await getNextVoucherNumber(
 //         companyId,
 //         TransactionType.RECEIPT,
 //         tx,
 //       );
 
-//       // 2️⃣ Create payment
+//       // 2ï¸âƒ£ Create payment
 //       const payment = await tx.financialTransaction.create({
 //         data: {
 //           companyId,
@@ -462,14 +434,14 @@ export async function updateSales(
 //           paymentMethod: paymentDetails.paymentMethod,
 //           amount: paymentAmount,
 //           status: "paid",
-//           notes: "تسديد رصيد مستحق غير مرتبط بفاتورة",
+//           notes: "ØªØ³Ø¯ÙŠØ¯ Ø±ØµÙŠØ¯ Ù…Ø³ØªØ­Ù‚ ØºÙŠØ± Ù…Ø±ØªØ¨Ø· Ø¨ÙØ§ØªÙˆØ±Ø©",
 //           createdAt: new Date(),
 //         },
 //       });
 
-//       // 3️⃣ Update customer outstanding balance
+//       // 3ï¸âƒ£ Update customer outstanding balance
 
-//       // 4️⃣ Create journal event
+//       // 4ï¸âƒ£ Create journal event
 //       await tx.journalEvent.create({
 //         data: {
 //           companyId,
@@ -603,7 +575,7 @@ export async function updateSalesBulk(
 
   const result = await prisma.$transaction(
     async (tx) => {
-      // 1️⃣ Fetch sales
+      // 1ï¸âƒ£ Fetch sales
       const sales = await tx.invoice.findMany({
         where: { id: { in: saleIds }, companyId },
         select: {
@@ -618,7 +590,7 @@ export async function updateSalesBulk(
 
       if (sales.length === 0) throw new Error("No matching sales found.");
 
-      // 2️⃣ Allocate payments
+      // 2ï¸âƒ£ Allocate payments
       let remaining = paymentAmount;
       const saleUpdates = [];
       const customerUpdates: Record<string, number> = {};
@@ -655,7 +627,7 @@ export async function updateSalesBulk(
         }
       }
 
-      // 3️⃣ Update invoices
+      // 3ï¸âƒ£ Update invoices
       await Promise.all(
         saleUpdates.map((u) =>
           tx.invoice.update({
@@ -670,7 +642,7 @@ export async function updateSalesBulk(
         ),
       );
 
-      // 4️⃣ Get ALL voucher numbers in ONE call (FIX HERE!)
+      // 4ï¸âƒ£ Get ALL voucher numbers in ONE call (FIX HERE!)
       const voucherNumbers = await getNextVoucherNumbers(
         companyId,
         TransactionType.RECEIPT,
@@ -678,7 +650,7 @@ export async function updateSalesBulk(
         tx,
       );
 
-      // 5️⃣ Create ALL payments with pre-allocated voucher numbers
+      // 5ï¸âƒ£ Create ALL payments with pre-allocated voucher numbers
       const createdPayments = [];
       for (let i = 0; i < paymentsToCreate.length; i++) {
         const p = paymentsToCreate[i];
@@ -705,7 +677,7 @@ export async function updateSalesBulk(
             currencyCode: paymentDetails.currencyCode,
             exchangeRate: paymentDetails.exchange_rate,
             status: "completed",
-            notes: `تسديد الدين للفاتورة رقم ${p.invoiceNumber}`,
+            notes: `ØªØ³Ø¯ÙŠØ¯ Ø§Ù„Ø¯ÙŠÙ† Ù„Ù„ÙØ§ØªÙˆØ±Ø© Ø±Ù‚Ù… ${p.invoiceNumber}`,
             createdAt: new Date(),
           },
         });
@@ -735,7 +707,7 @@ export async function updateSalesBulk(
         });
       }
 
-      // 6️⃣ Update customer balances
+      // 6ï¸âƒ£ Update customer balances
       await Promise.all(
         Object.entries(customerUpdates).map(([custId, amt]) =>
           tx.customer.update({
@@ -762,7 +734,7 @@ export async function updateSalesBulk(
     await sendPaymentNotifications(
       companyId,
       result.customerUpdates,
-      "تسديد فواتير",
+      "ØªØ³Ø¯ÙŠØ¯ ÙÙˆØ§ØªÙŠØ±",
     );
   }
 
@@ -798,14 +770,14 @@ export async function payOutstandingOnly(
 
   const result = await prisma.$transaction(
     async (tx) => {
-      // 1️⃣ Get next voucher number (only ONE call - this is fine)
+      // 1ï¸âƒ£ Get next voucher number (only ONE call - this is fine)
       const voucherNumber = await getNextVoucherNumber(
         companyId,
         TransactionType.RECEIPT,
         tx,
       );
 
-      // 2️⃣ Create payment
+      // 2ï¸âƒ£ Create payment
       const payment = await tx.financialTransaction.create({
         data: {
           companyId,
@@ -820,12 +792,12 @@ export async function payOutstandingOnly(
           amount: paymentAmount,
           exchangeRate: paymentDetails.exchangeRate,
           status: "completed",
-          notes: "تسديد رصيد مستحق غير مرتبط بفاتورة",
+          notes: "ØªØ³Ø¯ÙŠØ¯ Ø±ØµÙŠØ¯ Ù…Ø³ØªØ­Ù‚ ØºÙŠØ± Ù…Ø±ØªØ¨Ø· Ø¨ÙØ§ØªÙˆØ±Ø©",
           createdAt: new Date(),
         },
       });
 
-      // 3️⃣ Update customer outstanding balance
+      // 3ï¸âƒ£ Update customer outstanding balance
       await tx.customer.update({
         where: { id: customerId },
         data: {
@@ -835,7 +807,7 @@ export async function payOutstandingOnly(
         },
       });
 
-      // 4️⃣ Create journal event
+      // 4ï¸âƒ£ Create journal event
       await tx.journalEvent.create({
         data: {
           companyId,
@@ -876,7 +848,7 @@ export async function payOutstandingOnly(
     await sendPaymentNotifications(
       companyId,
       { [result.customerId]: result.paymentBaseAmount },
-      "تسديد رصيد",
+      "ØªØ³Ø¯ÙŠØ¯ Ø±ØµÙŠØ¯",
     );
   }
 
@@ -890,22 +862,22 @@ export async function payOutstandingOnly(
 /*
 KEY FIXES APPLIED:
 
-1. ✅ Batch Voucher Number Generation
+1. âœ… Batch Voucher Number Generation
    - Instead of calling getNextVoucherNumber() in a loop
    - Call getNextVoucherNumbers() ONCE to get all numbers
    - Eliminates multiple lock acquisitions
 
-2. ✅ Parallel Updates
+2. âœ… Parallel Updates
    - Changed sequential updates to Promise.all()
    - Invoice updates now run in parallel
    - Customer updates now run in parallel
 
-3. ✅ Proper Timeout Configuration
+3. âœ… Proper Timeout Configuration
    - Increased timeout for bulk operations (45s)
    - Kept shorter timeout for single operations (15s)
    - Added appropriate maxWait times
 
-4. ✅ Transaction Scope Optimization
+4. âœ… Transaction Scope Optimization
    - Reduced number of database round-trips
    - Minimized time holding advisory locks
    - Better error handling
@@ -930,3 +902,6 @@ ADDITIONAL RECOMMENDATIONS:
    - Consider limiting bulk payment batches to 50-100 invoices
    - Split larger batches into multiple transactions
 */
+
+
+

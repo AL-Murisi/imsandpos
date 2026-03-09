@@ -134,12 +134,6 @@ export default function SellsDashboardClient({
           {isLoading2 && <Clock className="h-4 w-4 animate-spin" />}
           {isLoading2 ? "جاري الفتح..." : " عرض ديون العملاء"}
         </Button>
-        {/* <Link
-          href="/debt"
-          className="bg-primary rounded-sm p-2 text-white dark:text-black"
-        >
-       
-        </Link> */}
       </div>
       <DebtSells data={debtSales} total={totalSales} sort={[]} />
     </section>

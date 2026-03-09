@@ -12,7 +12,18 @@ export async function POST(request: Request) {
 
     const user = await prisma.user.findUnique({
       where: { id: userinf.userId },
-      select: { companyId: true, roles: true },
+      select: {
+        companyId: true,
+        roles: {
+          select: {
+            role: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!user) {
@@ -46,6 +57,15 @@ export async function POST(request: Request) {
 
     console.log("[API] Saving subscription for user:", userinf.userId);
 
+    const rolePriority = ["admin", "manager_wh", "cashier"];
+    const normalizedRoles = user.roles
+      .map((r) => r.role.name.trim().toLowerCase())
+      .filter(Boolean);
+    const primaryRole =
+      rolePriority.find((role) => normalizedRoles.includes(role)) ??
+      normalizedRoles[0] ??
+      null;
+
     // Save or update subscription in database
     const savedSubscription = await prisma.pushSubscription.upsert({
       where: {
@@ -56,6 +76,7 @@ export async function POST(request: Request) {
         auth: keys.auth,
         userId: userinf.userId,
         company_id: user.companyId,
+        role: primaryRole,
       },
       create: {
         endpoint: subscription.endpoint,
@@ -63,6 +84,7 @@ export async function POST(request: Request) {
         auth: keys.auth,
         company_id: user.companyId,
         userId: userinf.userId,
+        role: primaryRole,
       },
     });
 

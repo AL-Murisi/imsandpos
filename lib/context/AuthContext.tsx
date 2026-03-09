@@ -26,10 +26,11 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 function getDefaultRedirectForRole(roles: string[] = []): string {
-  if (roles.includes("admin")) return "/salesDashboard";
-  if (roles.includes("cashier")) return "/salesDashboard";
-  if (roles.includes("manager_wh")) return "/dashboardUser";
-  if (roles.includes("supplier")) return "/supplier/orders";
+  const normalizedRoles = roles.map((r) => r.trim().toLowerCase());
+  if (normalizedRoles.includes("admin")) return "/salesDashboard";
+  if (normalizedRoles.includes("cashier")) return "/salesDashboard";
+  if (normalizedRoles.includes("manager_wh")) return "/dashboardUser";
+  if (normalizedRoles.includes("supplier")) return "/supplier/orders";
   return "/login";
 }
 
@@ -109,6 +110,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             redirectPath: getDefaultRedirectForRole(userData.roles ?? []),
           };
         }
+
+        const fallbackRedirect =
+          typeof result.url === "string" && result.url
+            ? new URL(result.url, window.location.origin).pathname
+            : "/salesDashboard";
+
+        return {
+          success: true,
+          redirectPath: fallbackRedirect,
+        };
       }
       return { success: false };
     } catch (error) {

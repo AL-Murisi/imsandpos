@@ -60,10 +60,11 @@ export default function SearchInput({
     debouncedSetQuery(e.target.value);
   };
 
-  const filteredOptions = options.filter((opt) =>
-    opt.name?.toLowerCase().includes(query.toLowerCase()),
-  );
-
+  const filteredOptions = options
+    .filter((opt) => opt.name?.toLowerCase().includes(query.toLowerCase()))
+    .sort((a, b) =>
+      a.name!.toLowerCase().startsWith(query.toLowerCase()) ? -1 : 1,
+    );
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -88,9 +89,22 @@ export default function SearchInput({
               placeholder="ابحث..."
               value={query}
               autoComplete="off"
-              onChangeCapture={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setQuery(e.target.value)
-              }
+              onValueChange={(value: string) => {
+                const exists = options.some((opt) =>
+                  opt.name?.toLowerCase().includes(value.toLowerCase()),
+                );
+
+                if (exists) {
+                  // Local match → only open dropdown
+                  setOpen(true);
+                } else {
+                  // No local match → update URL (server search)
+                  setQuery(value);
+                }
+              }}
+              // onChangeCapture={(e: React.ChangeEvent<HTMLInputElement>) =>
+              //   setQuery(e.target.value)
+              // }
             />
             <div className="absolute top-1/2 right-10 -translate-y-1/2">
               <button onClick={() => setQuery("")}>
