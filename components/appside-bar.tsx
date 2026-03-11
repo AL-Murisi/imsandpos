@@ -82,7 +82,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     },
 
     {
-      title: t("users"),
+      title: t("company"),
       url: "/company",
       icon: () => <Users className="text-blue-600" />,
       roles: ["admin"],

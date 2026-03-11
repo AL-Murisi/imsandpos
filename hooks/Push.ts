@@ -11,21 +11,13 @@ export function notificationUnsupported(): boolean {
 }
 
 // IMPORTANT: Must match the output file from next-pwa
-const SERVICE_WORKER_FILE_PATH = "/sw.js";
+const SERVICE_WORKER_FILE_PATH = "/swcustom.js";
 export async function registerAndSubscribe(
   onSubscribe: (subs: PushSubscription | null) => void,
 ): Promise<void> {
   try {
     console.log("[Push] Registering service worker...");
-    const existingRegistration =
-      await navigator.serviceWorker.register("/sw.js");
-    const registration =
-      existingRegistration ??
-      (await navigator.serviceWorker.register(SERVICE_WORKER_FILE_PATH, {
-        scope: "/",
-      }));
-
-    console.log("[Push] Service worker registered:", registration);
+    const registration = await navigator.serviceWorker.ready;
 
     // Wait for the service worker to be ready
     await navigator.serviceWorker.ready;
@@ -34,7 +26,7 @@ export async function registerAndSubscribe(
     // Small delay to ensure SW is fully active (important for iOS)
     await new Promise((resolve) => setTimeout(resolve, 500));
 
-    await subscribe(onSubscribe);
+    await subscribe(registration, onSubscribe);
   } catch (e) {
     console.error("[Push] Failed to register service worker:", e);
     onSubscribe(null);
@@ -58,76 +50,107 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 //   const registrations = await navigator.serviceWorker.getRegistrations();
 //   await Promise.all(registrations.map((r) => r.unregister()));
 // };
+// async function subscribe(
+//   onSubscribe: (subs: PushSubscription | null) => void,
+// ): Promise<void> {
+//   try {
+//     // await unregisterServiceWorkers();
+//     const registration = await navigator.serviceWorker.ready;
+//     console.log("[Push] Service worker ready for subscription");
+
+//     // Check for existing subscription
+//     let subscription = await registration.pushManager.getSubscription();
+//     console.log("[Push] Existing subscription:", subscription?.endpoint);
+
+//     if (subscription) {
+//       // Subscription already exists, just verify it's on the server
+//       console.log("[Push] Using existing subscription");
+
+//       // Verify subscription exists on server and is valid
+//       try {
+//         await submitSubscription(subscription);
+//         console.log("[Push] Existing subscription verified on server");
+//         onSubscribe(subscription);
+//         return;
+//       } catch (error) {
+//         console.warn(
+//           "[Push] Existing subscription not on server or invalid, creating new one",
+//         );
+//         // If server doesn't have it, we'll create a new one below
+//         // First unsubscribe the old one
+//         try {
+//           await subscription.unsubscribe();
+//         } catch (e) {
+//           console.warn("[Push] Failed to unsubscribe old subscription:", e);
+//         }
+//         subscription = null;
+//       }
+//     }
+
+//     // No existing subscription or old one was invalid, create new one
+//     const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+//     if (!vapidKey) {
+//       throw new Error("Missing VAPID public key");
+//     }
+
+//     console.log("[Push] Creating new subscription with VAPID key");
+
+//     // Subscribe with explicit options
+//     subscription = await registration.pushManager.subscribe({
+//       userVisibleOnly: true,
+//       applicationServerKey: urlBase64ToUint8Array(vapidKey)
+//         .buffer as ArrayBuffer,
+//     });
+
+//     console.log("[Push] New subscription created:", subscription.toJSON());
+
+//     // Submit new subscription to server
+//     await submitSubscription(subscription);
+//     onSubscribe(subscription);
+//   } catch (e) {
+//     console.error("[Push] Failed to subscribe:", e);
+
+//     // Log more details about the error
+//     if (e instanceof Error) {
+//       console.error("[Push] Error name:", e.name);
+//       console.error("[Push] Error message:", e.message);
+//     }
+
+//     onSubscribe(null);
+//   }
+// }
 async function subscribe(
+  registration: ServiceWorkerRegistration,
   onSubscribe: (subs: PushSubscription | null) => void,
 ): Promise<void> {
   try {
-    // await unregisterServiceWorkers();
-    const registration = await navigator.serviceWorker.ready;
-    console.log("[Push] Service worker ready for subscription");
+    console.log("[Push] Using SW:", registration);
 
-    // Check for existing subscription
     let subscription = await registration.pushManager.getSubscription();
-    console.log("[Push] Existing subscription:", subscription?.endpoint);
 
     if (subscription) {
-      // Subscription already exists, just verify it's on the server
-      console.log("[Push] Using existing subscription");
-
-      // Verify subscription exists on server and is valid
-      try {
-        await submitSubscription(subscription);
-        console.log("[Push] Existing subscription verified on server");
-        onSubscribe(subscription);
-        return;
-      } catch (error) {
-        console.warn(
-          "[Push] Existing subscription not on server or invalid, creating new one",
-        );
-        // If server doesn't have it, we'll create a new one below
-        // First unsubscribe the old one
-        try {
-          await subscription.unsubscribe();
-        } catch (e) {
-          console.warn("[Push] Failed to unsubscribe old subscription:", e);
-        }
-        subscription = null;
-      }
+      await submitSubscription(subscription);
+      onSubscribe(subscription);
+      return;
     }
 
-    // No existing subscription or old one was invalid, create new one
     const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-    if (!vapidKey) {
-      throw new Error("Missing VAPID public key");
-    }
+    if (!vapidKey) throw new Error("Missing VAPID key");
 
-    console.log("[Push] Creating new subscription with VAPID key");
-
-    // Subscribe with explicit options
     subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(vapidKey)
         .buffer as ArrayBuffer,
     });
 
-    console.log("[Push] New subscription created:", subscription.toJSON());
-
-    // Submit new subscription to server
     await submitSubscription(subscription);
+
     onSubscribe(subscription);
   } catch (e) {
-    console.error("[Push] Failed to subscribe:", e);
-
-    // Log more details about the error
-    if (e instanceof Error) {
-      console.error("[Push] Error name:", e.name);
-      console.error("[Push] Error message:", e.message);
-    }
-
+    console.error("[Push] Subscribe error:", e);
     onSubscribe(null);
   }
 }
-
 async function submitSubscription(
   subscription: PushSubscription,
 ): Promise<void> {

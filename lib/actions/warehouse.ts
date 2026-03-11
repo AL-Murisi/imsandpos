@@ -409,21 +409,6 @@ export async function updateInventory(
     // Fire non-blocking operations
     revalidatePath("/manageStocks");
 
-    if (finalAvailableQty <= finalReorderLevel) {
-      await sendRoleBasedNotification(
-        {
-          companyId,
-          targetRoles: ["admin", "cashier", "manager_wh"],
-        },
-        {
-          title: "تنبيه انخفاض المخزون",
-          body: `${product.name} في ${currentInventory.warehouse.name} وصل إلى ${finalAvailableQty} (حد إعادة الطلب ${finalReorderLevel})`,
-          url: "/manageStocks",
-          tag: `low-stock-${product.id}-${inventoryTarget.warehouseId}`,
-        },
-      );
-    }
-
     return { success: true, data: result.updatedInventory };
   } catch (error) {
     console.error("خطأ في تحديث المخزون:", error);
@@ -1208,7 +1193,7 @@ export async function adjustStock(
             `Stock adjustment: ${difference > 0 ? "+" : ""}${difference}`,
         },
       });
-      revalidatePath("/manageStocks");
+      revalidatePath("/inventory");
 
       if (newAvailableQuantity <= inventory.reorderLevel) {
         await sendRoleBasedNotification(
@@ -1219,7 +1204,7 @@ export async function adjustStock(
           {
             title: "تنبيه انخفاض المخزون",
             body: `${inventory.product.name} في ${inventory.warehouse.name} وصل إلى ${newAvailableQuantity} (حد إعادة الطلب ${inventory.reorderLevel})`,
-            url: "/manageStocks",
+            url: "/inventory",
             tag: `low-stock-${productId}-${warehouseId}`,
           },
         );
@@ -1474,6 +1459,29 @@ export async function getInventoryById(
       take: pageSize,
     });
 
+    const lowStockItems: string[] = [];
+
+    inventory.forEach((item) => {
+      if (item.availableQuantity <= (item.reorderLevel || 0)) {
+        lowStockItems.push(item.product.name);
+      }
+    });
+
+    if (lowStockItems.length > 0) {
+      // إرسال الإشعار بدون await لمنع البطء
+      sendRoleBasedNotification(
+        {
+          companyId,
+          targetRoles: ["admin", "cashier", "manager_wh"],
+        },
+        {
+          title: "⚠️ تنبيه انخفاض المخزون",
+          body: `يوجد ${lowStockItems.length} منتجات وصلت للحد الأدنى: ${lowStockItems.slice(0, 3).join("، ")}${lowStockItems.length > 3 ? "..." : ""}`,
+          url: "/inventory",
+          tag: `low-stock-summary-${companyId}`,
+        },
+      ).catch((err) => console.error("Notification Error:", err));
+    }
     // 🆕 Convert base units to all selling units
     const convertedInventory = inventory.map((item) => {
       const sellingUnits = (item.product.sellingUnits as any[]) || [];

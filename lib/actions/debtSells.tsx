@@ -36,8 +36,8 @@ async function sendPaymentNotifications(
             targetRoles: ["admin", "cashier", "manager_wh"],
           },
           {
-            title: "Debt Payment",
-            body: `Paid amount ${amount} from ${name} - ${label}`,
+            title: "سداد مديونية",
+            body: `تم سداد مبلغ ${amount} من ${name} - ${label}`,
             url: "/customer",
             tag: `debt-payment-${id}`,
           },

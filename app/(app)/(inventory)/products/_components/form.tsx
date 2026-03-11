@@ -99,6 +99,7 @@ export default function ProductForm({ formData }: ExpenseFormProps) {
     control,
     handleSubmit,
     watch,
+    reset,
     setValue,
     formState: { errors },
   } = useForm<CreateProductInputs>({
@@ -118,7 +119,7 @@ export default function ProductForm({ formData }: ExpenseFormProps) {
   });
   const { user } = useAuth();
   const isUpdatingRef = useRef(false);
-
+  const [isSubmitting, setIsSubmitting] = useState(false); // حالة التحميل
   if (!user) return;
   const watchedWarehouseId = watch("warehouseId");
   const watchedCategoryId = watch("categoryId");
@@ -193,11 +194,31 @@ export default function ProductForm({ formData }: ExpenseFormProps) {
   };
   const onSubmit = async (data: CreateProductInputs) => {
     try {
-      // setIsSubmitting(true);
+      setIsSubmitting(true);
 
       if (user) {
         await CreateProduct(data, user.userId, user.companyId);
         toast.success("✅ تم إضافة المنتج بنجاح!");
+        // 2. إعادة تعيين القيم الافتراضية للفورم
+        reset({
+          name: "",
+          sku: "",
+          costPrice: 0,
+          barcode: "",
+          warehouseId: "",
+          categoryId: "",
+          supplierId: "",
+          sellingUnits: [
+            {
+              id: "unit-1",
+              name: "حبة",
+              nameEn: "Unit",
+              unitsPerParent: 1,
+              price: 0,
+              isBase: true,
+            },
+          ],
+        });
       }
     } catch (error) {
       toast.error("❌ حدث خطأ أثناء إضافة المنتج");
@@ -525,8 +546,13 @@ export default function ProductForm({ formData }: ExpenseFormProps) {
             </Card>
           )}
 
-          <Button type="submit" className="w-full" size="lg">
-            حفظ المنتج
+          <Button
+            disabled={isSubmitting}
+            type="submit"
+            className="w-full"
+            size="lg"
+          >
+            {isSubmitting ? "جاري الحفظ..." : "حفظ "}
           </Button>
         </form>
       </ScrollArea>

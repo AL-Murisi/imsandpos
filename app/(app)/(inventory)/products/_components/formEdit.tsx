@@ -135,12 +135,7 @@ export default function ProductEditForm({
       supplierId: product.supplierId || "",
       warehouseId: product.warehouseId || "",
       description: product.description || "",
-      // unitsPerPacket: product.unitsPerPacket || 0,
-      // packetsPerCarton: product.packetsPerCarton || 0,
-      // costPrice: product.costPrice || undefined,
-      // pricePerUnit: product.pricePerUnit || undefined,
-      // pricePerPacket: product.pricePerPacket || undefined,
-      // pricePerCarton: product.pricePerCarton || undefined,
+
       wholesalePrice: product.wholesalePrice || undefined,
       minWholesaleQty: product.minWholesaleQty || undefined,
       dimensions: product.dimensions || "",
@@ -303,10 +298,16 @@ export default function ProductEditForm({
                 <Label>تاريخ الانتهاء</Label>
                 <Input
                   type="datetime-local"
-                  value={toDateTimeLocal(product.expiredAt)}
                   className="text-end"
+                  // Use defaultValue so it shows the existing date but stays editable
+                  defaultValue={toDateTimeLocal(product?.expiredAt)}
                   {...register("expiredAt")}
                 />
+                {errors.expiredAt && (
+                  <p className="text-right text-xs text-red-500">
+                    {errors.expiredAt.message}
+                  </p>
+                )}
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="supplierId">المورد</Label>

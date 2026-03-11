@@ -16,6 +16,7 @@ import { getLatestExchangeRate } from "./currency";
 import { SellingUnit } from "../zod";
 import { console } from "inspector";
 import { stat } from "fs";
+import { sendRoleBasedNotification } from "../push-notifications";
 
 type CartItem = {
   id: string;
@@ -217,317 +218,322 @@ export async function processSale(data: any, companyId: string) {
     receivedAmount,
   } = data;
   await validateFiscalYear(companyId);
-  let currentSaleNumber = typeof saleNumber === "string" ? saleNumber.trim() : "";
+  let currentSaleNumber =
+    typeof saleNumber === "string" ? saleNumber.trim() : "";
 
   for (let txAttempt = 0; txAttempt < 5; txAttempt++) {
     try {
       return await prisma.$transaction(
         async (tx) => {
-      let status: string;
-      if (baseAmount >= totalAfterDiscount) {
-        status = "paid"; // تم التعديل من === إلى =
-      } else if (baseAmount > 0 && baseAmount < totalAfterDiscount) {
-        status = "partial";
-      } else {
-        status = "unpaid";
-      }
-      const inventoryUnits = await tx.inventory.findMany({
-        where: {
-          companyId,
-          OR: cart.map((item: any) => ({
-            productId: item.id,
-            warehouseId: item.warehouseId,
-          })),
-        },
-        include: { product: true },
-      });
-      for (const item of cart) {
-        const inventory = inventoryUnits.find(
-          (i) => i.productId === item.id && i.warehouseId === item.warehouseId,
-        );
-
-        if (!inventory) {
-          throw new Error(`المنتج ${item.name} غير متوفر في هذا المستودع`);
-        }
-
-        // Convert requested qty to base unit (e.g., 1 Box -> 12 Pieces)
-        const requestedBaseQty = toBaseQty(
-          item.selectedQty,
-          item.selectedUnitId,
-          item.sellingUnits,
-        );
-
-        // Check if requested quantity exceeds available quantity
-        if (requestedBaseQty > inventory.availableQuantity) {
-          throw new Error(
-            `كمية غير كافية للمنتج: ${item.name}. المتوفر: ${inventory.availableQuantity}, المطلوب (بالوحدة الأساسية): ${requestedBaseQty}`,
-          );
-        }
-      }
-      const invoiceItemsData = cart.map((item: any) => ({
-        companyId,
-        productId: item.id,
-        unit: item.selectedUnitName,
-        quantity: item.selectedQty,
-        price: item.selectedUnitPrice,
-        discountAmount: totalDiscount || 0,
-        totalPrice: item.selectedQty * item.selectedUnitPrice,
-        // If you need warehouse info at the item level:
-        // warehouseId: item.warehouseId
-      }));
-
-      const paymentDataTemplate = async (invoiceNo: string) =>
-        baseAmount > 0
-          ? {
+          let status: string;
+          if (baseAmount >= totalAfterDiscount) {
+            status = "paid"; // تم التعديل من === إلى =
+          } else if (baseAmount > 0 && baseAmount < totalAfterDiscount) {
+            status = "partial";
+          } else {
+            status = "unpaid";
+          }
+          const inventoryUnits = await tx.inventory.findMany({
+            where: {
               companyId,
-              userId: cashierId,
-              branchId,
-              customerId: customer?.id,
-              voucherNumber: await getNextVoucherNumber(
-                companyId,
-                "RECEIPT",
-                tx,
-              ),
-              currencyCode: currency,
-              exchangeRate: exchangeRate,
-              paymentMethod: "cash",
-              type: TransactionType.RECEIPT,
-              amount: receivedAmount,
-              status: "paid",
-              notes: `Sale payment for invoice: ${invoiceNo}`,
-            }
-          : undefined;
-
-      let effectiveSaleNumber = currentSaleNumber;
-      if (!effectiveSaleNumber || effectiveSaleNumber.startsWith("OFFLINE-")) {
-        effectiveSaleNumber = await generateSaleNumber(companyId);
-      }
-
-      const baseAmountDue = Math.max(0, totalAfterDiscount - baseAmount);
-      const paymentData = await paymentDataTemplate(effectiveSaleNumber);
-      const sale = await tx.invoice.create({
-        data: {
-          companyId,
-          invoiceNumber: effectiveSaleNumber,
-          customerId: customer?.id,
-          cashierId,
-          branchId: branchId,
-          sale_type: "SALE",
-          status,
-          totalAmount: totalAfterDiscount,
-          amountPaid: baseAmount,
-          warehouseId: cart[0]?.warehouseId || cart.warehouseId,
-          amountDue: baseAmountDue,
-          items: {
-            create: invoiceItemsData,
-          },
-          transactions: { create: paymentData },
-        },
-      });
-      console.log(customer);
-      // ==========================================
-      // 2️⃣ Fetch inventory per PRODUCT + UNIT
-
-      const invMap = new Map(
-        inventoryUnits.map((i) => [`${i.productId}-${i.warehouseId}`, i]),
-      );
-
-      const saleItems: any[] = [];
-      const stockMovements: any[] = [];
-      const inventoryUpdates: any[] = [];
-      let returnTotalCOGS = 0;
-      // ==========================================
-      // 3️⃣ Process each cart line
-      // ==========================================
-      for (const item of cart) {
-        const inventoryKey = `${item.id}-${item.warehouseId}`;
-        const inventory = invMap.get(inventoryKey);
-
-        if (!inventory) {
-          throw new Error(`لا يوجد مخزون للمنتج ${item.name}`);
-        }
-
-        const baseQty = toBaseQty(
-          item.selectedQty,
-          item.selectedUnitId,
-          item.sellingUnits,
-        );
-        const costPerBaseUnit = inventory.product.costPrice.toNumber();
-        // 3. حساب إجمالي التكلفة لهذا السطر باستخدام baseQty
-        // (مثلاً: 880 حبة * 1 حبة تكلفة)
-        const lineCOGS = baseQty * costPerBaseUnit;
-        // io.emit("refresh");
-
-        // 4. إضافة الناتج للإجمالي الكلي للمبيعات
-        returnTotalCOGS += lineCOGS;
-        console.log("lineCOGS", lineCOGS);
-        // 🟢 Sale Item (بالوحدة المختارة)
-        saleItems.push({
-          companyId,
-          invoiceId: sale.id,
-          productId: item.id,
-
-          unit: item.selectedUnitName,
-          quantity: item.selectedQty,
-          price: item.selectedUnitPrice,
-          discountAmount: totalDiscount,
-
-          totalPrice: item.selectedQty * item.selectedUnitPrice,
-        });
-
-        // 🟢 Stock Movement (بالوحدة الأساسية)
-        stockMovements.push({
-          companyId,
-          productId: item.id,
-          warehouseId: item.warehouseId,
-          movementType: "صادر بيع",
-          quantity: baseQty,
-          quantityBefore: inventory.stockQuantity,
-          quantityAfter: inventory.stockQuantity - baseQty,
-          referenceType: "sale",
-          referenceId: sale.id,
-          userId: cashierId,
-        });
-
-        inventoryUpdates.push({
-          id: inventory.id,
-          stockQuantity: inventory.stockQuantity - baseQty,
-          availableQuantity: inventory.availableQuantity - baseQty,
-        });
-      }
-
-      // ==========================================
-      // 4️⃣ Execute DB Operations
-      // ==========================================
-      await Promise.all([
-        // tx.invoiceItem.createMany({ data: saleItems }),
-        tx.stockMovement.createMany({ data: stockMovements }),
-      ]);
-
-      await Promise.all(
-        inventoryUpdates.map((u) =>
-          tx.inventory.update({
-            where: { id: u.id },
-            data: {
-              stockQuantity: u.stockQuantity,
-              availableQuantity: u.availableQuantity,
+              OR: cart.map((item: any) => ({
+                productId: item.id,
+                warehouseId: item.warehouseId,
+              })),
             },
-          }),
-        ),
-      );
-
-      // ==========================================
-      // 5️⃣ Customer balance update
-      // ==========================================
-      if (customer?.id) {
-        const delta = totalAfterDiscount - receivedAmount;
-
-        if (delta !== 0) {
-          await tx.customer.update({
-            where: { id: customer?.id, companyId },
-            data:
-              delta > 0
-                ? { outstandingBalance: { increment: delta } }
-                : { balance: { increment: Math.abs(delta) } },
+            include: { product: true },
           });
-        }
-      }
+          for (const item of cart) {
+            const inventory = inventoryUnits.find(
+              (i) =>
+                i.productId === item.id && i.warehouseId === item.warehouseId,
+            );
 
-      // ==========================================
-      // 6️⃣ Payment
-      // ==========================================
-      // if (baseAmount > 0) {
-      //   const voucherNumber = await getNextVoucherNumber(
-      //     companyId,
-      //     "RECEIPT",
-      //     tx,
-      //   );
-      //   let status: string;
-      //   if (baseAmount >= totalAfterDiscount) {
-      //     status = "paid"; // تم التعديل من === إلى =
-      //   } else if (baseAmount > 0 && baseAmount < totalAfterDiscount) {
-      //     status = "partial";
-      //   } else {
-      //     status = "unpaid";
-      //   }
-      //   await tx.financialTransaction.create({
-      //     data: {
-      //       companyId,
-      //       //     invoiceId: sale.id,
-      //       userId: cashierId,
-      //       branchId,
-      //       customerId: customer?.id,
-      //       voucherNumber,
-      //       currencyCode: currency,
-      //       exchangeRate: exchangeRate,
-      //       paymentMethod: "cash",
-      //       type: "RECEIPT",
-      //       amount: receivedAmount,
-      //       status: "paid",
-      //       notes: ` فاتوره شراء:${sale.invoiceNumber}`,
-      //     },
-      //   });
-      //   // await tx.financialTransaction.create({
-      //   //   data: {
-      //   //     companyId,
-      //   //     invoiceId: sale.id,
-      //   //     userId: cashierId,
-      //   //     branchId,
-      //   //     customerId: customer?.id,
-      //   //     voucherNumber: nextNumber,
-      //   //     currencyCode: currency,
-      //   //     exchangeRate: exchangeRate,
-      //   //     paymentMethod: "cash",
-      //   //     type: "RECEIPT",
-      //   //     amount: receivedAmount,
-      //   //     status: status,
-      //   //     notes: ` فاتوره شراء:${sale.invoiceNumber}`,
-      //   //   },
-      //   // });
-      // }
-      revalidatePath("/cashiercontrol");
-      // ==========================================
-      // 7️⃣ Journal Event (async later)
-      // ==========================================
-      await tx.journalEvent.create({
-        data: {
-          companyId: companyId,
-          eventType: "sale",
-          status: "pending",
-          entityType: "sale",
-          payload: {
+            if (!inventory) {
+              throw new Error(`المنتج ${item.name} غير متوفر في هذا المستودع`);
+            }
+
+            // Convert requested qty to base unit (e.g., 1 Box -> 12 Pieces)
+            const requestedBaseQty = toBaseQty(
+              item.selectedQty,
+              item.selectedUnitId,
+              item.sellingUnits,
+            );
+
+            // Check if requested quantity exceeds available quantity
+            if (requestedBaseQty > inventory.availableQuantity) {
+              throw new Error(
+                `كمية غير كافية للمنتج: ${item.name}. المتوفر: ${inventory.availableQuantity}, المطلوب (بالوحدة الأساسية): ${requestedBaseQty}`,
+              );
+            }
+          }
+          const invoiceItemsData = cart.map((item: any) => ({
             companyId,
-            sale: {
-              id: sale.id,
-              saleNumber: sale.invoiceNumber,
-              sale_type: sale.sale_type,
-              status: sale.status,
+            productId: item.id,
+            unit: item.selectedUnitName,
+            quantity: item.selectedQty,
+            price: item.selectedUnitPrice,
+            discountAmount: totalDiscount || 0,
+            totalPrice: item.selectedQty * item.selectedUnitPrice,
+            // If you need warehouse info at the item level:
+            // warehouseId: item.warehouseId
+          }));
+
+          const paymentDataTemplate = async (invoiceNo: string) =>
+            baseAmount > 0
+              ? {
+                  companyId,
+                  userId: cashierId,
+                  branchId,
+                  customerId: customer?.id,
+                  voucherNumber: await getNextVoucherNumber(
+                    companyId,
+                    "RECEIPT",
+                    tx,
+                  ),
+                  currencyCode: currency,
+                  exchangeRate: exchangeRate,
+                  paymentMethod: "cash",
+                  type: TransactionType.RECEIPT,
+                  amount: receivedAmount,
+                  status: "paid",
+                  notes: `Sale payment for invoice: ${invoiceNo}`,
+                }
+              : undefined;
+
+          let effectiveSaleNumber = currentSaleNumber;
+          if (
+            !effectiveSaleNumber ||
+            effectiveSaleNumber.startsWith("OFFLINE-")
+          ) {
+            effectiveSaleNumber = await generateSaleNumber(companyId);
+          }
+
+          const baseAmountDue = Math.max(0, totalAfterDiscount - baseAmount);
+          const paymentData = await paymentDataTemplate(effectiveSaleNumber);
+          const sale = await tx.invoice.create({
+            data: {
+              companyId,
+              invoiceNumber: effectiveSaleNumber,
+              customerId: customer?.id,
+              cashierId,
+              branchId: branchId,
+              sale_type: "SALE",
+              status,
               totalAmount: totalAfterDiscount,
               amountPaid: baseAmount,
-              ...(currency !== baseCurrency && {
-                foreignAmount: receivedAmount, // المبلغ بالدولار مثلاً
-                exchangeRate: exchangeRate,
-                foreignCurrency: currency,
-              }),
-              baseAmount: baseAmount,
-              branchId: branchId,
-              baseCurrency,
-              currency,
-              // paymentStatus: sale.paymentStatus,
+              warehouseId: cart[0]?.warehouseId || cart.warehouseId,
+              amountDue: baseAmountDue,
+              items: {
+                create: invoiceItemsData,
+              },
+              transactions: { create: paymentData },
             },
-            customer,
-            returnTotalCOGS,
-            saleItems: cart,
-            cashierId,
-          },
-          processed: false,
-        },
-      });
+          });
+          console.log(customer);
+          // ==========================================
+          // 2️⃣ Fetch inventory per PRODUCT + UNIT
 
-      return {
-        message: "Sale processed successfully",
-        saleId: sale.id,
-      };
+          const invMap = new Map(
+            inventoryUnits.map((i) => [`${i.productId}-${i.warehouseId}`, i]),
+          );
+
+          const saleItems: any[] = [];
+          const stockMovements: any[] = [];
+          const inventoryUpdates: any[] = [];
+          let returnTotalCOGS = 0;
+          // ==========================================
+          // 3️⃣ Process each cart line
+          // ==========================================
+          for (const item of cart) {
+            const inventoryKey = `${item.id}-${item.warehouseId}`;
+            const inventory = invMap.get(inventoryKey);
+
+            if (!inventory) {
+              throw new Error(`لا يوجد مخزون للمنتج ${item.name}`);
+            }
+
+            const baseQty = toBaseQty(
+              item.selectedQty,
+              item.selectedUnitId,
+              item.sellingUnits,
+            );
+            const costPerBaseUnit = inventory.product.costPrice.toNumber();
+            // 3. حساب إجمالي التكلفة لهذا السطر باستخدام baseQty
+            // (مثلاً: 880 حبة * 1 حبة تكلفة)
+            const lineCOGS = baseQty * costPerBaseUnit;
+            // io.emit("refresh");
+
+            // 4. إضافة الناتج للإجمالي الكلي للمبيعات
+            returnTotalCOGS += lineCOGS;
+            console.log("lineCOGS", lineCOGS);
+            // 🟢 Sale Item (بالوحدة المختارة)
+            saleItems.push({
+              companyId,
+              invoiceId: sale.id,
+              productId: item.id,
+
+              unit: item.selectedUnitName,
+              quantity: item.selectedQty,
+              price: item.selectedUnitPrice,
+              discountAmount: totalDiscount,
+
+              totalPrice: item.selectedQty * item.selectedUnitPrice,
+            });
+
+            // 🟢 Stock Movement (بالوحدة الأساسية)
+            stockMovements.push({
+              companyId,
+              productId: item.id,
+              warehouseId: item.warehouseId,
+              movementType: "صادر بيع",
+              quantity: baseQty,
+              quantityBefore: inventory.stockQuantity,
+              quantityAfter: inventory.stockQuantity - baseQty,
+              referenceType: "sale",
+              referenceId: sale.id,
+              userId: cashierId,
+            });
+
+            inventoryUpdates.push({
+              id: inventory.id,
+              stockQuantity: inventory.stockQuantity - baseQty,
+              availableQuantity: inventory.availableQuantity - baseQty,
+            });
+          }
+
+          // ==========================================
+          // 4️⃣ Execute DB Operations
+          // ==========================================
+          await Promise.all([
+            // tx.invoiceItem.createMany({ data: saleItems }),
+            tx.stockMovement.createMany({ data: stockMovements }),
+          ]);
+
+          await Promise.all(
+            inventoryUpdates.map((u) =>
+              tx.inventory.update({
+                where: { id: u.id },
+                data: {
+                  stockQuantity: u.stockQuantity,
+                  availableQuantity: u.availableQuantity,
+                },
+              }),
+            ),
+          );
+
+          // ==========================================
+          // 5️⃣ Customer balance update
+          // ==========================================
+          if (customer?.id) {
+            const delta = totalAfterDiscount - receivedAmount;
+
+            if (delta !== 0) {
+              await tx.customer.update({
+                where: { id: customer?.id, companyId },
+                data:
+                  delta > 0
+                    ? { outstandingBalance: { increment: delta } }
+                    : { balance: { increment: Math.abs(delta) } },
+              });
+            }
+          }
+
+          // ==========================================
+          // 6️⃣ Payment
+          // ==========================================
+          // if (baseAmount > 0) {
+          //   const voucherNumber = await getNextVoucherNumber(
+          //     companyId,
+          //     "RECEIPT",
+          //     tx,
+          //   );
+          //   let status: string;
+          //   if (baseAmount >= totalAfterDiscount) {
+          //     status = "paid"; // تم التعديل من === إلى =
+          //   } else if (baseAmount > 0 && baseAmount < totalAfterDiscount) {
+          //     status = "partial";
+          //   } else {
+          //     status = "unpaid";
+          //   }
+          //   await tx.financialTransaction.create({
+          //     data: {
+          //       companyId,
+          //       //     invoiceId: sale.id,
+          //       userId: cashierId,
+          //       branchId,
+          //       customerId: customer?.id,
+          //       voucherNumber,
+          //       currencyCode: currency,
+          //       exchangeRate: exchangeRate,
+          //       paymentMethod: "cash",
+          //       type: "RECEIPT",
+          //       amount: receivedAmount,
+          //       status: "paid",
+          //       notes: ` فاتوره شراء:${sale.invoiceNumber}`,
+          //     },
+          //   });
+          //   // await tx.financialTransaction.create({
+          //   //   data: {
+          //   //     companyId,
+          //   //     invoiceId: sale.id,
+          //   //     userId: cashierId,
+          //   //     branchId,
+          //   //     customerId: customer?.id,
+          //   //     voucherNumber: nextNumber,
+          //   //     currencyCode: currency,
+          //   //     exchangeRate: exchangeRate,
+          //   //     paymentMethod: "cash",
+          //   //     type: "RECEIPT",
+          //   //     amount: receivedAmount,
+          //   //     status: status,
+          //   //     notes: ` فاتوره شراء:${sale.invoiceNumber}`,
+          //   //   },
+          //   // });
+          // }
+          revalidatePath("/cashiercontrol");
+          // ==========================================
+          // 7️⃣ Journal Event (async later)
+          // ==========================================
+          await tx.journalEvent.create({
+            data: {
+              companyId: companyId,
+              eventType: "sale",
+              status: "pending",
+              entityType: "sale",
+              payload: {
+                companyId,
+                sale: {
+                  id: sale.id,
+                  saleNumber: sale.invoiceNumber,
+                  sale_type: sale.sale_type,
+                  status: sale.status,
+                  totalAmount: totalAfterDiscount,
+                  amountPaid: baseAmount,
+                  ...(currency !== baseCurrency && {
+                    foreignAmount: receivedAmount, // المبلغ بالدولار مثلاً
+                    exchangeRate: exchangeRate,
+                    foreignCurrency: currency,
+                  }),
+                  baseAmount: baseAmount,
+                  branchId: branchId,
+                  baseCurrency,
+                  currency,
+                  // paymentStatus: sale.paymentStatus,
+                },
+                customer,
+                returnTotalCOGS,
+                saleItems: cart,
+                cashierId,
+              },
+              processed: false,
+            },
+          });
+
+          return {
+            message: "Sale processed successfully",
+            saleId: sale.id,
+          };
         },
         {
           timeout: 20000,
@@ -545,7 +551,18 @@ export async function processSale(data: any, companyId: string) {
 
   throw new Error("Failed to process sale after retries");
 }
+function getExpiryStatus(expiryDateInput: string | Date) {
+  const now = new Date();
+  const expiryDate = new Date(expiryDateInput);
+  const diffMs = expiryDate.getTime() - now.getTime();
+  const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
+  return {
+    isExpired: daysLeft < 0,
+    isExpiringSoon: daysLeft >= 0 && daysLeft <= 30,
+    daysLeft,
+  };
+}
 export async function getAllActiveProductsForSale(
   where: Prisma.ProductWhereInput,
   companyId: string,
@@ -585,6 +602,7 @@ export async function getAllActiveProductsForSale(
         barcode: true,
         packetsPerCarton: true,
         unitsPerPacket: true,
+        expiredAt: true,
         warehouseId: true,
         inventory: { select: { availableQuantity: true } },
       },
@@ -595,20 +613,44 @@ export async function getAllActiveProductsForSale(
 
   const warehouseMap = new Map(warehouses.map((w) => [w.id, w.name]));
 
-  // function convertFromBaseUnit(product: any, availableUnits: number) {
-  //   const unitsPerPacket = product.unitsPerPacket || 1;
-  //   const packetsPerCarton = product.packetsPerCarton || 1;
+  const expiringSoon: string[] = [];
+  const expiredAlready: string[] = [];
 
-  //   const availablePackets = Number(
-  //     (availableUnits / unitsPerPacket).toFixed(2),
-  //   );
-  //   const availableCartons = Number(
-  //     (availablePackets / packetsPerCarton).toFixed(2),
-  //   );
+  activeProducts.forEach((product) => {
+    if (product.expiredAt) {
+      const status = getExpiryStatus(new Date(product.expiredAt));
+      if (status.isExpired) {
+        expiredAlready.push(product.name);
+      } else if (status.isExpiringSoon) {
+        expiringSoon.push(product.name);
+      }
+    }
+  });
 
-  //   return { availablePackets, availableCartons };
-  // }
+  // إرسال إشعار واحد ملخص في الخلفية (بدون await)
+  if (expiredAlready.length > 0 || expiringSoon.length > 0) {
+    const totalIssues = expiredAlready.length + expiringSoon.length;
+    const bodyText = [
+      expiredAlready.length > 0 ? `منتهية (${expiredAlready.length})` : "",
+      expiringSoon.length > 0
+        ? `توشك على الانتهاء (${expiringSoon.length})`
+        : "",
+    ]
+      .filter(Boolean)
+      .join(" و ");
 
+    // لا نستخدم await هنا لكي لا ينتظر الكاشير
+    sendRoleBasedNotification(
+      { companyId, targetRoles: ["admin", "cashier", "manager_wh"] },
+      {
+        title: "⚠️ تنبيه صلاحية المنتجات",
+        body: `يوجد ${totalIssues} منتجات تحتاج انتباهك: ${bodyText}`,
+        url: "/products",
+        tag: `expiry-summary-${companyId}-${new Date().toISOString().split("T")[0]}`, // إشعار واحد يومياً
+      },
+    ).catch((err) => console.error("Notification Error:", err));
+  }
+  // --- نهاية منطق الصلاحية ---
   return activeProducts.map((product) => {
     const sellingUnits = (product.sellingUnits as SellingUnit[]) || [];
     const availableUnits = product.inventory[0]?.availableQuantity ?? 0;
@@ -626,27 +668,6 @@ export async function getAllActiveProductsForSale(
         availableStock[unit.id] = unit.isbase ? baseStock : 0;
       }
     });
-    // ✅ Only return quantities that are actually sold
-    // let finalAvailableUnits = 0;
-    // let finalAvailablePackets = 0;
-    // let finalAvailableCartons = 0;
-
-    // if (product.type === "full") {
-    //   // Sell all three levels
-    //   finalAvailableUnits = availableUnits;
-    //   finalAvailablePackets = availablePackets;
-    //   finalAvailableCartons = availableCartons;
-    // } else if (product.type === "cartonUnit") {
-    //   // Only sell units and cartons, hide packets
-    //   finalAvailableUnits = availableUnits;
-    //   finalAvailableCartons = availableCartons;
-    //   finalAvailablePackets = 0; // ✅ Don't show packets
-    // } else if (product.type === "cartonOnly") {
-    //   // Only sell cartons, hide units and packets
-    //   finalAvailableCartons = availableCartons;
-    //   finalAvailableUnits = 0; // ✅ Don't show units
-    //   finalAvailablePackets = 0; // ✅ Don't show packets
-    // }
 
     return {
       id: product.id,
@@ -657,14 +678,7 @@ export async function getAllActiveProductsForSale(
       warehouseId: product.warehouseId,
       warehousename: warehouseMap.get(product.warehouseId) ?? "",
       barcode: product.barcode ?? "",
-      // pricePerUnit: Number(product.pricePerUnit) || 0,
-      // pricePerPacket: Number(product.pricePerPacket) || 0,
-      // pricePerCarton: Number(product.pricePerCarton) || 0,
-      // unitsPerPacket: product.unitsPerPacket,
-      // packetsPerCarton: product.packetsPerCarton,
-      // availableUnits: finalAvailableUnits,
-      // availablePackets: finalAvailablePackets,
-      // availableCartons: finalAvailableCartons,
+
       sellingMode: product.type ?? "", // ✅ Optional: helpful for debugging
     };
   });
@@ -1012,4 +1026,3 @@ export async function processReturn(data: any, companyId: string) {
   revalidatePath("/sells");
   return result;
 }
-
