@@ -84,7 +84,7 @@ function getDefaultRedirectForRole(roles: Role[]): string {
   if (roles.includes("manager_wh")) return "/dashboardUser";
   if (roles.includes("supplier")) return "/supplier/orders";
   if (roles.includes("accountant")) return "/voucher";
-  return "/unauthorized";
+  return "/landing";
 }
 
 function safeRedirect(req: NextRequest, destination: string): NextResponse {
