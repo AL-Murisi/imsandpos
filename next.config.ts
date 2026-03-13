@@ -20,12 +20,11 @@ const withPWA = require("@ducanh2912/next-pwa").default({
   // },
   workboxOptions: {
     disableDevLogs: true,
-    inlineWorkboxRuntime: true,
     maximumFileSizeToCacheInBytes: 2 * 1024 * 1024,
     runtimeCaching: [
       {
         urlPattern: /\/_next\/static\/.*/,
-        handler: "NetworkFirst",
+        handler: "CacheFirst",
         method: "GET",
         options: {
           cacheName: "ims-next-static",
@@ -75,6 +74,7 @@ const withPWA = require("@ducanh2912/next-pwa").default({
       },
     ],
   },
+  customWorkerSrc: "worker",
   buildExcludes: [/splash_screens\/.*/, /templates\/.*/, /wasm\/.*/],
 });
 const withBundleAnalyzer = require("@next/bundle-analyzer")({
