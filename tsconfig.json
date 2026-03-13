@@ -35,7 +35,8 @@
     ".next/types/**/*.ts",
     "next.config.js",
     "app/reports/clinet.ts",
-    "server.js"
+    "server.js",
+    "public/swcustom.js"
   ],
-  "exclude": ["node_modules", "sw.ts"]
+  "exclude": ["node_modules", "sw.js"]
 }

@@ -76,24 +76,34 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.roles = (user as any).roles ?? [];
       }
 
+      // If we already have the core fields, avoid hitting the DB on every request.
+      if (token.userId && token.companyId && Array.isArray(token.roles)) {
+        return token;
+      }
+
       const email =
         typeof token.email === "string" ? token.email.trim().toLowerCase() : "";
       if (email) {
-        const appUser = await prisma.user.findUnique({
-          where: { email },
-          select: {
-            id: true,
-            companyId: true,
-            roles: { include: { role: true } },
-          },
-        });
+        try {
+          const appUser = await prisma.user.findUnique({
+            where: { email },
+            select: {
+              id: true,
+              companyId: true,
+              roles: { include: { role: true } },
+            },
+          });
 
-        if (appUser) {
-          token.userId = appUser.id;
-          token.companyId = appUser.companyId;
-          token.roles = appUser.roles
-            .map((r) => r.role.name?.trim().toLowerCase())
-            .filter(Boolean);
+          if (appUser) {
+            token.userId = appUser.id;
+            token.companyId = appUser.companyId;
+            token.roles = appUser.roles
+              .map((r) => r.role.name?.trim().toLowerCase())
+              .filter(Boolean);
+          }
+        } catch (error) {
+          // If DB is unavailable, keep the existing token instead of failing session.
+          return token;
         }
       }
 
