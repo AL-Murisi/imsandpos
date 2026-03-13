@@ -38,5 +38,5 @@
     "server.js",
     "public/swcustom.js"
   ],
-  "exclude": ["node_modules", "sw.js"]
+  "exclude": ["node_modules", "sw.ts"]
 }
