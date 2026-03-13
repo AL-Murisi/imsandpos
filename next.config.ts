@@ -74,9 +74,8 @@ const withPWA = require("@ducanh2912/next-pwa").default({
       },
     ],
   },
+  customWorkerSrc: "worker",
   buildExcludes: [/splash_screens\/.*/, /templates\/.*/, /wasm\/.*/],
-  swSrc: "public/swcustom.js",
-  swDest: "public/sw.js",
 });
 const withBundleAnalyzer = require("@next/bundle-analyzer")({
   enabled: process.env.ANALYZE === "true",
