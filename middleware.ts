@@ -145,6 +145,9 @@ export default async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|sw.js|swcustom.js|splash_screens|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    /*
+     * Exclude all PWA and static assets from middleware
+     */
+    "/((?!api|_next/static|_next/image|favicon.ico|sw\\.js|swe-worker|workbox-|worker-|icons|manifest\\.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };

@@ -25,7 +25,7 @@ const withPWA = require("@ducanh2912/next-pwa").default({
     runtimeCaching: [
       {
         urlPattern: /\/_next\/static\/.*/,
-        handler: "CacheFirst",
+        handler: "NetworkFirst",
         method: "GET",
         options: {
           cacheName: "ims-next-static",
