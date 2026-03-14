@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
+import { custom } from "zod";
 
 // Use git commit hash as cache version
 
@@ -75,6 +76,9 @@ const withPWA = require("@ducanh2912/next-pwa").default({
     ],
   },
   customWorkerSrc: "worker",
+  customWorkerDest: "public",
+  customWorkerPrefix: "worker",
+
   buildExcludes: [/splash_screens\/.*/, /templates\/.*/, /wasm\/.*/],
 });
 const withBundleAnalyzer = require("@next/bundle-analyzer")({
