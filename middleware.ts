@@ -102,15 +102,28 @@ export default async function middleware(req: NextRequest) {
   const path = normalizePath(req.nextUrl.pathname);
   const isPublicRoute = publicRoutes.has(path);
 
+  const authSecret =
+    process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? "secret";
+
+  const forwardedProto = req.headers.get("x-forwarded-proto");
+  const isSecureRequest =
+    (forwardedProto ? forwardedProto.split(",")[0].trim() : null) === "https" ||
+    req.nextUrl.protocol === "https:";
+
   let params: GetTokenParams = {
     req,
-    secret: process.env.NEXTAUTH_SECRET ?? "secret",
+    secret: authSecret,
   };
 
-  if (process.env.NODE_ENV === "production") {
+  if (process.env.NODE_ENV === "production" && isSecureRequest) {
     params = {
       ...params,
       cookieName: "__Secure-authjs.session-token",
+    };
+  } else {
+    params = {
+      ...params,
+      cookieName: "authjs.session-token",
     };
   }
 
@@ -145,6 +158,6 @@ export default async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|sw.js|swcustom.js|splash_screens|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|sw.js|swcustom.js|workbox-.*\\.js|worker-.*\\.js|swe-worker-.*\\.js|splash_screens|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };

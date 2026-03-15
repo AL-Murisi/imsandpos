@@ -63,7 +63,10 @@ const providers = [
 ];
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  secret: process.env.NEXTAUTH_SECRET ?? process.env.ENCRYPTION_SECRET,
+  secret:
+    process.env.AUTH_SECRET ??
+    process.env.NEXTAUTH_SECRET ??
+    process.env.ENCRYPTION_SECRET,
   session: {
     strategy: "jwt",
   },

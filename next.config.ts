@@ -8,8 +8,10 @@ const withNextIntl = createNextIntlPlugin();
 
 const withPWA = require("@ducanh2912/next-pwa").default({
   dest: "public",
-  cacheOnFrontEndNav: true,
-  aggressiveFrontEndNavCaching: true,
+  // Avoid extra frontend-nav caching worker that can throw Cache.put network errors
+  cacheOnFrontEndNav: false,
+  aggressiveFrontEndNavCaching: false,
+  cacheStartUrl: false,
   reloadOnOnline: true,
   swcMinify: true,
   register: true,
@@ -21,6 +23,8 @@ const withPWA = require("@ducanh2912/next-pwa").default({
   // },
   workboxOptions: {
     disableDevLogs: true,
+    // Inline Workbox runtime to avoid importScripts timing errors in some browsers
+    inlineWorkboxRuntime: true,
     maximumFileSizeToCacheInBytes: 2 * 1024 * 1024,
     runtimeCaching: [
       {
