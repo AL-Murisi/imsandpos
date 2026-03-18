@@ -31,7 +31,8 @@ function getDefaultRedirectForRole(roles: string[] = []): string {
   if (normalizedRoles.includes("cashier")) return "/salesDashboard";
   if (normalizedRoles.includes("manager_wh")) return "/dashboardUser";
   if (normalizedRoles.includes("supplier")) return "/supplier/orders";
-  return "/login";
+  if (normalizedRoles.includes("accountant")) return "/voucher";
+  return "/landing";
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {

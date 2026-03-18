@@ -21,7 +21,7 @@ const routePermissions: ReadonlyArray<{ prefix: string; roles: Role[] }> = [
   { prefix: "/userActiviteslogs", roles: ["admin"] },
   { prefix: "/userroles", roles: ["admin"] },
   { prefix: "/dashboard", roles: ["admin"] },
-  { prefix: "/fiscalYears", roles: ["admin"] },
+  { prefix: "/fiscalYears", roles: ["admin", "accountant"] },
   { prefix: "/balanceSheet", roles: ["admin"] },
 
   { prefix: "/inventory", roles: ["admin", "manager_wh"] },
@@ -42,10 +42,14 @@ const routePermissions: ReadonlyArray<{ prefix: string; roles: Role[] }> = [
 
   { prefix: "/salesDashboard", roles: ["admin", "cashier"] },
   { prefix: "/customer", roles: ["admin", "cashier", "accountant"] },
-  { prefix: "/reports", roles: ["admin", "cashier", "manager_wh"] },
+  {
+    prefix: "/reports",
+    roles: ["admin", "cashier", "manager_wh", "accountant", "supplier"],
+  },
 ];
 
 const publicRoutes = new Set([
+  "/",
   "/login",
   "/signup",
   "/landing",

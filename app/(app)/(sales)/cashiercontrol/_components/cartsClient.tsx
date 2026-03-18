@@ -61,6 +61,7 @@ import {
   setOfflineCache,
 } from "@/lib/offline/db";
 import { syncPendingOfflineOperations } from "@/lib/offline/sync";
+import DisbursementOrderButton from "./DisbursementOrderButton";
 
 const PrintButton = dynamic(
   () => import("./test").then((mod) => mod.PrintButton),
@@ -863,6 +864,23 @@ export default function CartDisplay({
                   company={company} // ✅ new prop
                 />
               )}
+              <DisbursementOrderButton
+                items={items.map((item) => ({
+                  id: item.id,
+                  name: item.name,
+                  warehousename: item.warehousename,
+                  warehouseName: item.warehousename,
+                  selectedQty: item.selectedQty,
+                  sellingUnit:
+                    item.sellingUnits.find(
+                      (unit) => unit.id === item.selectedUnitId,
+                    )?.name || "",
+                  selectedUnitName: item.selectedUnitName,
+                  sku: item.sku,
+                }))}
+                saleNumber={nextnumber}
+                cashierName={user?.name ?? ""}
+              />
               <Button
                 disabled={!canPay || isSubmitting || isLoadingSaleNumber}
                 onClick={handlePayment}

@@ -338,6 +338,9 @@ export const role: ColumnDef<any>[] = [
         case "manager_wh":
           arabicName = "مدير مخزن";
           break;
+        case "accountant":
+          arabicName = "محاسب";
+          break;
         default:
           arabicName = roleName;
       }

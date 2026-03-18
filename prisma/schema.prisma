@@ -34,6 +34,7 @@ model Company {
   categories                                         Category[]
   customers                                          Customer[]
   pushSubscription                                     pushSubscription[]
+
   expenses                                           expenses[]
   inventory                                          Inventory[]
   journal_entries                                    journal_entries[]
@@ -93,6 +94,7 @@ model User {
   @@index([createdAt])
   @@map("users")
 }
+
 model exchange_rates {
   id            String   @id @default(cuid())
   company_id    String
@@ -682,6 +684,7 @@ model pushSubscription {
 
   createdAt DateTime @default(now())
 }
+
 
 // NEW: Fiscal periods for closing books
 model fiscal_periods {

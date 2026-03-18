@@ -8,43 +8,35 @@ const withNextIntl = createNextIntlPlugin();
 
 const withPWA = require("@ducanh2912/next-pwa").default({
   dest: "public",
-  // Avoid extra frontend-nav caching worker that can throw Cache.put network errors
+
   cacheOnFrontEndNav: false,
   aggressiveFrontEndNavCaching: false,
   cacheStartUrl: false,
+
   reloadOnOnline: true,
   swcMinify: true,
+
   register: true,
   skipWaiting: true,
   clientsClaim: true,
+
   disable: process.env.NODE_ENV === "development",
-  // fallbacks: {
-  //   document: "/offline",
-  // },
+
+  customWorkerSrc: "worker",
+  customWorkerDest: "public",
+  customWorkerPrefix: "worker",
+
   workboxOptions: {
     disableDevLogs: true,
-    // Inline Workbox runtime to avoid importScripts timing errors in some browsers
     inlineWorkboxRuntime: true,
-    maximumFileSizeToCacheInBytes: 2 * 1024 * 1024,
+
+    // increase limit
+    maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
+
     runtimeCaching: [
       {
-        urlPattern: /\/_next\/static\/.*/,
-        handler: "NetworkFirst",
-        method: "GET",
-        options: {
-          cacheName: "ims-next-static",
-          expiration: {
-            maxEntries: 300,
-            maxAgeSeconds: 60 * 60 * 24 * 30,
-          },
-          cacheableResponse: {
-            statuses: [0, 200],
-          },
-        },
-      },
-      {
         urlPattern: /\/api\/auth\/me$/,
-        handler: "NetworkFirst",
+        handler: "StaleWhileRevalidate",
         method: "GET",
         options: {
           cacheName: "ims-auth-me-cache",
@@ -52,36 +44,27 @@ const withPWA = require("@ducanh2912/next-pwa").default({
             maxEntries: 10,
             maxAgeSeconds: 60 * 60 * 24 * 7,
           },
-          cacheableResponse: {
-            statuses: [0, 200],
-          },
         },
       },
+
       {
         urlPattern: ({ request, url }: { request: Request; url: URL }) =>
-          request.mode === "navigate" &&
-          (url.origin === "http://localhost:3000" ||
-            url.origin.endsWith(".vercel.app") ||
-            url.origin === "https://imsandpos.vercel.app"),
+          request.mode === "navigate" && url.origin === self.location.origin,
+
         handler: "NetworkFirst",
-        method: "GET",
+
         options: {
           cacheName: "ims-pages-cache",
           networkTimeoutSeconds: 5,
+
           expiration: {
             maxEntries: 200,
             maxAgeSeconds: 60 * 60 * 24 * 14,
-          },
-          cacheableResponse: {
-            statuses: [0, 200],
           },
         },
       },
     ],
   },
-  customWorkerSrc: "worker",
-  customWorkerDest: "public",
-  customWorkerPrefix: "worker",
 
   buildExcludes: [/splash_screens\/.*/, /templates\/.*/, /wasm\/.*/],
 });

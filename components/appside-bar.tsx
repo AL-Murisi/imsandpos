@@ -157,7 +157,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           icon: <NotebookPen className="h-4 w-4 text-pink-600" />,
           roles: ["admin"],
         },
+        {
+          title: t("vouchers"),
+          url: "/voucher",
+          icon: <Receipt className="h-4 w-4 text-amber-600" />,
+          roles: ["admin"],
+        },
       ],
+    },
+    {
+      title: t("vouchers"),
+      url: "/voucher",
+      icon: () => <Receipt className="h-4 w-4 text-amber-600" />,
+      roles: ["accountant"],
     },
     {
       title: t("cashierMain"),
@@ -170,14 +182,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       title: "التقرير",
       url: "/reports",
       icon: () => <BarChart3 className="h-4 w-4 text-green-600" />,
-      roles: ["admin", "cashier"],
+      roles: ["admin", "cashier", "manager_wh", "accountant", "supplier"],
     },
 
     {
       title: t("chartOfAccount"),
       url: "/chartOfAccount",
       icon: () => <Notebook className="text-pink-600" />,
-      roles: ["admin", "supplier"],
+      roles: ["admin", "supplier", "accountant"],
     },
 
     {
@@ -206,6 +218,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         //   roles: ["admin"],
         // },
       ],
+    },
+
+    {
+      title: t("expenses"),
+      url: "/expenses",
+      icon: () => <Receipt className="h-4 w-4 text-red-600" />,
+      roles: ["accountant"],
+    },
+    {
+      title: t("generalLedger"),
+      url: "/journal",
+      icon: () => <NotebookPen className="h-4 w-4 text-pink-600" />,
+      roles: ["accountant"],
     },
 
     // {

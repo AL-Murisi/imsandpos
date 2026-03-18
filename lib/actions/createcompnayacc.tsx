@@ -56,19 +56,48 @@ export async function createCompany(data: CreateCompanyInput) {
       });
     }
 
-    // 2️⃣ Ensure admin role exists
-    let role = await prisma.role.findUnique({
-      where: { name: "admin" },
-    });
+    // 2️⃣ Ensure base roles exist
+    const baseRoles = [
+      {
+        name: "admin",
+        description: "Full access to all modules",
+        permissions: ["*"],
+      },
+      {
+        name: "cashier",
+        description: "Sales and cashier operations",
+        permissions: ["sales", "cashier"],
+      },
+      {
+        name: "manager_wh",
+        description: "Warehouse management",
+        permissions: ["inventory", "warehouse"],
+      },
+      {
+        name: "accountant",
+        description: "Journal entries, vouchers, chart of accounts",
+        permissions: ["journal_entries", "voucher", "chart_of_accounts"],
+      },
+    ];
 
-    if (!role) {
-      role = await prisma.role.create({
-        data: {
-          name: "admin",
-          description: "Full access to all modules",
-          permissions: ["*"],
-        },
-      });
+    const rolesByName = new Map(
+      (
+        await prisma.role.findMany({
+          where: { name: { in: baseRoles.map((r) => r.name) } },
+        })
+      ).map((r) => [r.name, r]),
+    );
+
+    for (const roleDef of baseRoles) {
+      if (!rolesByName.has(roleDef.name)) {
+        const created = await prisma.role.create({ data: roleDef });
+        rolesByName.set(roleDef.name, created);
+      }
+    }
+
+    const adminRole = rolesByName.get("admin");
+    if (!adminRole) {
+      throw new Error("Admin role is missing");
     }
 
     // 3️⃣ Create admin user (if not exists)
@@ -99,7 +128,7 @@ export async function createCompany(data: CreateCompanyInput) {
     const existingLink = await prisma.userRole.findFirst({
       where: {
         userId: user.id,
-        roleId: role.id,
+        roleId: adminRole.id,
       },
     });
 
@@ -107,7 +136,7 @@ export async function createCompany(data: CreateCompanyInput) {
       await prisma.userRole.create({
         data: {
           userId: user.id,
-          roleId: role.id,
+          roleId: adminRole.id,
         },
       });
     }

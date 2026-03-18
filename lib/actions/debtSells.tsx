@@ -33,12 +33,12 @@ async function sendPaymentNotifications(
         await sendRoleBasedNotification(
           {
             companyId,
-            targetRoles: ["admin", "cashier", "manager_wh"],
+            targetRoles: ["admin", "cashier"],
           },
           {
             title: "سداد مديونية",
             body: `تم سداد مبلغ ${amount} من ${name} - ${label}`,
-            url: "/customer",
+            url: `/customer/${id}`,
             tag: `debt-payment-${id}`,
           },
         );

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useAuth } from "@/lib/context/AuthContext";
 
 export default function StocksLayout({
   children,
@@ -12,18 +13,37 @@ export default function StocksLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const { hasAnyRole } = useAuth();
 
   const navItems = [
-    { label: "قيود يومية", href: "/journal" },
-    { label: "قيد يدوي", href: "/menualjournal" },
-    { label: "سنة مالية", href: "/fiscalYears" },
-    { label: "السندات", href: "/voucher" },
+    {
+      label: "قيود يومية",
+      href: "/journal",
+      roles: ["admin", "accountant"],
+    },
+    {
+      label: "قيد يدوي",
+      href: "/menualjournal",
+      roles: ["admin", "accountant"],
+    },
+    {
+      label: "سنة مالية",
+      href: "/fiscalYears",
+      roles: ["admin", "accountant"],
+    },
+    {
+      label: "السندات",
+      href: "/voucher",
+      roles: ["admin", "accountant"],
+    },
   ];
+
+  const visibleItems = navItems.filter((item) => hasAnyRole(item.roles));
 
   return (
     <div className="p-1">
       <div className="flex flex-wrap gap-2 border-b p-2">
-        {navItems.map((item) => {
+        {visibleItems.map((item) => {
           const isActive =
             pathname === item.href || pathname.startsWith(`${item.href}/`);
 

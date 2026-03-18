@@ -57,7 +57,7 @@ export async function POST(request: Request) {
 
     console.log("[API] Saving subscription for user:", userinf.userId);
 
-    const rolePriority = ["admin", "manager_wh", "cashier"];
+    const rolePriority = ["admin", "manager_wh", "cashier", "accountant"];
     const normalizedRoles = user.roles
       .map((r) => r.role.name.trim().toLowerCase())
       .filter(Boolean);

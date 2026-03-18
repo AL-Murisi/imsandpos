@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, use, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,6 +36,7 @@ import SearchInput from "@/components/common/searchlist";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Decimal } from "@prisma/client/runtime/library";
 import { UserOption } from "@/lib/actions/currnciesOptions";
+import { useAuth } from "@/lib/context/AuthContext";
 
 const reports = [
   // Sales
@@ -215,7 +216,6 @@ const reports = [
     icon: "🧾",
     description: "عرض وطباعة جميع سندات وفواتير العملاء في صفحة واحدة",
   },
-  ,
   // {
   //   name: "تقرير المدفوعات من العملاء",
   //   id: "customer-payments",
@@ -314,8 +314,56 @@ const categories = [
   },
 ];
 
+const reportAccessByRole: Record<
+  string,
+  { ids?: string[]; types?: string[]; all?: boolean }
+> = {
+  admin: { all: true },
+  accountant: {
+    ids: ["payments", "expenses", "profit-loss", "accounts-statement"],
+  },
+  manager_wh: {
+    types: ["inventory"],
+    ids: ["purchases"],
+  },
+  cashier: {
+    ids: [
+      "sales",
+      "sales-by-product",
+      "sales-by-user",
+      "daily-sales",
+      "customer-receipts",
+      "customer_statment",
+    ],
+  },
+  supplier: {
+    ids: ["supplier_statment", "supplier-balance", "supplier-receipts"],
+  },
+};
+
+function getAllowedReportsForRoles(roles: string[]) {
+  if (roles.includes("admin")) {
+    return reports;
+  }
+
+  const allowedIds = new Set<string>();
+  const allowedTypes = new Set<string>();
+
+  for (const role of roles) {
+    const access = reportAccessByRole[role];
+    if (!access) continue;
+    if (access.all) return reports;
+    access.ids?.forEach((id) => allowedIds.add(id));
+    access.types?.forEach((type) => allowedTypes.add(type));
+  }
+
+  return reports.filter(
+    (report) => allowedIds.has(report.id) || allowedTypes.has(report.type),
+  );
+}
+
 export default function ReportsPage({
-  user,
+  user: userOptions,
   users,
   banks,
   suppliers,
@@ -358,6 +406,7 @@ export default function ReportsPage({
       }[]
     | undefined;
 }) {
+  const { user: authUser } = useAuth();
   const searchParams = useSearchParams();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -384,10 +433,26 @@ export default function ReportsPage({
   const [userr, setUser] = useState<any>(null);
   const [isBulkSubmitting, setIsBulkSubmitting] = useState(false);
   const [bulkProgress, setBulkProgress] = useState(0);
+  const allowedReports = useMemo(
+    () => getAllowedReportsForRoles(authUser?.roles ?? []),
+    [authUser?.roles],
+  );
+  const allowedReportIds = useMemo(
+    () => new Set(allowedReports.map((report) => report.id)),
+    [allowedReports],
+  );
+  const allowedCategories = useMemo(() => {
+    if ((authUser?.roles ?? []).includes("admin")) return categories;
+    const allowedTypes = new Set(allowedReports.map((report) => report.type));
+    return categories.filter(
+      (cat) => cat.id === "all" || allowedTypes.has(cat.id),
+    );
+  }, [allowedReports, authUser?.roles]);
+
   const filteredReports =
     category === "all"
-      ? reports
-      : reports.filter((r) => r && r.type === category);
+      ? allowedReports
+      : allowedReports.filter((r) => r.type === category);
 
   useEffect(() => {
     const from = searchParams.get("from");
@@ -396,12 +461,22 @@ export default function ReportsPage({
 
     if (from) setFromDate(from);
     if (to) setToDate(to);
-    if (type) {
+    if (type && allowedReportIds.has(type)) {
       setReportType(type);
-      const report = reports.find((r) => r?.id === type) ?? null;
+      const report = allowedReports.find((r) => r?.id === type) ?? null;
       if (report) setSelectedReport(report);
+    } else if (type) {
+      setReportType("");
+      setSelectedReport(null);
     }
-  }, [searchParams]);
+  }, [allowedReportIds, allowedReports, searchParams]);
+  useEffect(() => {
+    if (!reportType) return;
+    if (!allowedReportIds.has(reportType)) {
+      setReportType("");
+      setSelectedReport(null);
+    }
+  }, [allowedReportIds, reportType]);
   // const handleDownloadAll = async () => {
   //   setIsBulkSubmitting(true);
   //   setBulkProgress(0);
@@ -510,7 +585,7 @@ export default function ReportsPage({
       </div> */}
       {/* Category Filter */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-7">
-        {categories.map((cat) => (
+        {allowedCategories.map((cat) => (
           <Card
             key={cat.id}
             className={`cursor-pointer transition-all hover:shadow-md ${
@@ -641,13 +716,13 @@ export default function ReportsPage({
                       <SearchInput
                         placeholder="ابحث عن مستخدم"
                         paramKey="users"
-                        options={user ?? []}
+                        options={userOptions ?? []}
                         value={userr?.name || ""}
                         action={(acc) => {
                           setUser(acc);
                         }}
                       />{" "}
-                      {user && (
+                      {userr && (
                         <div className="flex items-center justify-center">
                           <button
                             onClick={() => setUser(null)}

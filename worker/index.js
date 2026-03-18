@@ -134,7 +134,7 @@ self.addEventListener("push", (event) => {
       url: data.url || data.data?.url || "/",
     },
     tag: data.tag || "ims-notification",
-    renotify: true,
+    renotify: false,
   };
 
   event.waitUntil(

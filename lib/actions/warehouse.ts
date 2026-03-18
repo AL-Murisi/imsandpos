@@ -1205,7 +1205,7 @@ export async function adjustStock(
             title: "تنبيه انخفاض المخزون",
             body: `${inventory.product.name} في ${inventory.warehouse.name} وصل إلى ${newAvailableQuantity} (حد إعادة الطلب ${inventory.reorderLevel})`,
             url: "/inventory",
-            tag: `low-stock-${productId}-${warehouseId}`,
+            tag: `low-stock-${productId}-${warehouseId}-${new Date().toISOString().split("T")[0]}`,
           },
         );
       }
@@ -1460,14 +1460,18 @@ export async function getInventoryById(
     });
 
     const lowStockItems: string[] = [];
+    const lowStockItemIds: string[] = [];
 
     inventory.forEach((item) => {
       if (item.availableQuantity <= (item.reorderLevel || 0)) {
         lowStockItems.push(item.product.name);
+        lowStockItemIds.push(item.product.id);
       }
     });
 
     if (lowStockItems.length > 0) {
+      const dayKey = new Date().toISOString().split("T")[0];
+      const idKey = Array.from(new Set(lowStockItemIds)).sort().join("-");
       // إرسال الإشعار بدون await لمنع البطء
       sendRoleBasedNotification(
         {
@@ -1478,7 +1482,7 @@ export async function getInventoryById(
           title: "⚠️ تنبيه انخفاض المخزون",
           body: `يوجد ${lowStockItems.length} منتجات وصلت للحد الأدنى: ${lowStockItems.slice(0, 3).join("، ")}${lowStockItems.length > 3 ? "..." : ""}`,
           url: "/inventory",
-          tag: `low-stock-summary-${companyId}`,
+          tag: `low-stock-summary-${companyId}-${dayKey}-${idKey}`,
         },
       ).catch((err) => console.error("Notification Error:", err));
     }
