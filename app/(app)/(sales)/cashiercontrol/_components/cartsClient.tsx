@@ -46,7 +46,11 @@ import { toast } from "sonner";
 
 import { useCompany } from "@/hooks/useCompany";
 import { getLatestExchangeRate } from "@/lib/actions/currency";
-import { currencyOptions, UserOption } from "@/lib/actions/currnciesOptions";
+import {
+  fallbackCurrencyOptions,
+  UserOption,
+} from "@/lib/actions/currnciesOptions";
+import { useCurrencyOptions } from "@/hooks/useCurrencyOptions";
 import {
   setProductsLocal,
   updateProductStockOptimistic,
@@ -144,6 +148,8 @@ export default function CartDisplay({
   const [selectedUser, setSelectedUser] = useState<UserOption | null>(null);
   const [isLoadingSaleNumber, setIsLoadingSaleNumber] = useState(false);
   const [currency, setCurrency] = useState<UserOption | null>(null);
+  const { options } = useCurrencyOptions();
+  const currencyOptions = options.length ? options : fallbackCurrencyOptions;
   const [offlineSession, setOfflineSession] = useState<{
     cashierId: string;
     companyId: string;

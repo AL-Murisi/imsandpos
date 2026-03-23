@@ -28,7 +28,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCompany } from "@/hooks/useCompany";
-import { currencyOptions, UserOption } from "@/lib/actions/currnciesOptions";
+import {
+  fallbackCurrencyOptions,
+  UserOption,
+} from "@/lib/actions/currnciesOptions";
+import { useCurrencyOptions } from "@/hooks/useCurrencyOptions";
 import { getLatestExchangeRate } from "@/lib/actions/currency";
 import SearchInput from "@/components/common/searchlist";
 import { SellingUnit } from "@/lib/zod";
@@ -86,6 +90,8 @@ export default function PurchaseReturnForm({
   const [isLoading, setIsLoading] = useState(false);
   const { company } = useCompany();
   const [currency, setCurrency] = useState<UserOption | null>(null);
+  const { options } = useCurrencyOptions();
+  const currencyOptions = options.length ? options : fallbackCurrencyOptions;
   const [exchangeRate, setExchangeRate] = useState(1);
   const { user } = useAuth();
 

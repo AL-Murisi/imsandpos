@@ -21,8 +21,9 @@ import { useEffect, useState } from "react";
 import { Check, Plus } from "lucide-react";
 import Dailogreuse from "../common/dailogreuse";
 import { ScrollArea } from "../ui/scroll-area";
-import { currencyOptions } from "@/lib/actions/currnciesOptions";
+import { fallbackCurrencyOptions } from "@/lib/actions/currnciesOptions";
 import { useCompany } from "@/hooks/useCompany";
+import { useCurrencyOptions } from "@/hooks/useCurrencyOptions";
 
 export default function SupplierForm() {
   const {
@@ -55,6 +56,8 @@ export default function SupplierForm() {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { company } = useCompany();
+  const { options } = useCurrencyOptions();
+  const currencyOptions = options.length ? options : fallbackCurrencyOptions;
   const basCurrncy = company?.base_currency;
   useEffect(() => {
     if (basCurrncy) {

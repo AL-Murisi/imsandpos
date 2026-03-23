@@ -721,7 +721,7 @@ export default function ReportsPage({
                         action={(acc) => {
                           setUser(acc);
                         }}
-                      />{" "}
+                      />
                       {userr && (
                         <div className="flex items-center justify-center">
                           <button

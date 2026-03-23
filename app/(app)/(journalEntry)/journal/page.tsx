@@ -37,15 +37,14 @@ export default async function Page({ searchParams }: JournalProps) {
   } = param || {};
 
   // ✅ Fix: default to false, and handle "true"/"false" correctly
-  const posted =
-    isPosted === "true" ? true : isPosted === "false" ? false : false;
+  const status = isPosted ?? "POSTED";
 
   const pageIndex = Number(page) - 1;
   const pageSize = Number(limit);
 
   // ✅ Ensure async calls are awaited
   const [data, accounts, fiscalYear, customers, suppliers] = await Promise.all([
-    getJournalEntries(account_id, posted, from, to, pageIndex, pageSize),
+    getJournalEntries(account_id, status, from, to, pageIndex, pageSize),
     getExpenseCategories(),
     getFiscalYears(),
     Fetchcustomerbyname(usersquery),

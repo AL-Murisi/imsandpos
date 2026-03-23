@@ -5,6 +5,7 @@ import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { CreatePosSchema, CreatePosType } from "@/lib/zod/pos";
 import { getSession } from "../session";
+import { canCreateSubscriptionResource } from "./subscription";
 
 export async function createPOS(data: CreatePosType, company_id: string) {
   const parsed = CreatePosSchema.safeParse(data);
@@ -15,6 +16,16 @@ export async function createPOS(data: CreatePosType, company_id: string) {
   const { name, location, managerId, cashierIds = [] } = parsed.data;
 
   try {
+    const branchCapacity = await canCreateSubscriptionResource(
+      company_id,
+      "branches",
+    );
+    if (!branchCapacity.allowed) {
+      return {
+        error: `تم الوصول إلى الحد الأقصى للفروع (${branchCapacity.usage.used}/${branchCapacity.usage.limit})`,
+      };
+    }
+
     const existing = await prisma.points_of_sale.findFirst({
       where: {
         name: name,

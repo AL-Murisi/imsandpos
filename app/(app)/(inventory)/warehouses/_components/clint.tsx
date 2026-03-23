@@ -11,6 +11,12 @@ const WarehouseTable = dynamic(() => import("./tables"), {
 type ProductClientProps = {
   products: any[];
   total: number;
+  warehouseLimit: {
+    limit: number | null;
+    used: number;
+    remaining: number | null;
+    atLimit: boolean;
+  } | null;
   formData: {
     warehouses: { id: string; name: string }[];
     categories: { id: string; name: string }[];
@@ -21,12 +27,14 @@ type ProductClientProps = {
 export default function Clint({
   products,
   total,
+  warehouseLimit,
   formData,
 }: ProductClientProps) {
   return (
     <WarehouseTable
       products={products}
       total={products.length}
+      warehouseLimit={warehouseLimit}
       formData={{
         warehouses: [],
         categories: [],

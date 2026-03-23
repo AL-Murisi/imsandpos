@@ -18,13 +18,26 @@ import { createWarehouse } from "@/lib/actions/warehouse";
 import { useAuth } from "@/lib/context/AuthContext";
 import { Plus } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
-export default function WarehouseForm() {
+type WarehouseLimit = {
+  limit: number | null;
+  used: number;
+  remaining: number | null;
+  atLimit: boolean;
+} | null;
+
+export default function WarehouseForm({
+  warehouseLimit,
+}: {
+  warehouseLimit?: WarehouseLimit;
+}) {
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!user) return;
+  const isWarehouseLimitReached = warehouseLimit?.atLimit ?? false;
   const warehouse = `warehouse-${Date.now().toString().slice(-2)}`;
   const {
     register,
@@ -49,9 +62,21 @@ export default function WarehouseForm() {
 
   // Load roles on mount
   const onSubmit = async (data: WarehouseInput) => {
-    setIsSubmitting(true);
+    if (isWarehouseLimitReached) {
+      toast.error("تم الوصول إلى الحد الأقصى للمخازن في الخطة الحالية");
+      return;
+    }
 
-    await createWarehouse(data, user.companyId);
+    setIsSubmitting(true);
+    try {
+      await createWarehouse(data, user.companyId);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "تعذر إنشاء المخزن حالياً",
+      );
+      setIsSubmitting(false);
+      return;
+    }
     setOpen(false);
     reset();
     setIsSubmitting(false);
@@ -60,7 +85,7 @@ export default function WarehouseForm() {
   return (
     <Dialog open={open} onOpenChange={setOpen} modal={false}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" disabled={isWarehouseLimitReached}>
           <Plus className="mr-2 h-4 w-4" />
           جديد
         </Button>
@@ -69,6 +94,11 @@ export default function WarehouseForm() {
       <DialogContent dir="rtl" className="sm:w-md">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" dir="rtl">
           <div className="grid gap-4">
+            {isWarehouseLimitReached && (
+              <p className="text-sm text-red-500">
+                تم الوصول إلى الحد الأقصى للمخازن في الاشتراك.
+              </p>
+            )}
             <div className="grid grid-cols-2 gap-4">
               {/* Full Name */}
               <div className="grid gap-2">
@@ -181,7 +211,7 @@ export default function WarehouseForm() {
           <div className="flex justify-end">
             <Button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isWarehouseLimitReached}
               className="min-w-[120px] bg-green-600 hover:bg-green-700"
             >
               {isSubmitting ? "جاري الحفظ..." : "حفظ "}

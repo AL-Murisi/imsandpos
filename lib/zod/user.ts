@@ -4,7 +4,10 @@ export const CreateUserSchema = z.object({
   email: z.string().email("صيغة البريد الإلكتروني غير صحيحة"),
   name: z.string().min(2, "يجب ألا يقل الاسم عن حرفين"),
   phoneNumber: z.string().optional(),
-  password: z.string().min(8, "كلمة المرور يجب ألا تقل عن 8 أحرف"),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .optional(),
   roleId: z.string().min(1, "يجب اختيار دور واحد على الأقل"),
   branchId: z.string().optional(),
 });

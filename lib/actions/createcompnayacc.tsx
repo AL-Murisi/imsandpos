@@ -56,6 +56,46 @@ export async function createCompany(data: CreateCompanyInput) {
       });
     }
 
+    await prisma.currency.upsert({
+      where: { code: base_currency },
+      update: {},
+      create: {
+        code: base_currency,
+        name: base_currency,
+      },
+    });
+
+    await prisma.companyCurrency.upsert({
+      where: {
+        companyId_currencyCode: {
+          companyId: company.id,
+          currencyCode: base_currency,
+        },
+      },
+      update: { isBase: true },
+      create: {
+        companyId: company.id,
+        currencyCode: base_currency,
+        isBase: true,
+      },
+    });
+
+    const existingSubscription = await prisma.subscription.findFirst({
+      where: { companyId: company.id },
+      select: { id: true },
+    });
+
+    if (!existingSubscription) {
+      await prisma.subscription.create({
+        data: {
+          companyId: company.id,
+          plan: "CUSTOM",
+          status: "ACTIVE",
+          isActive: true,
+        },
+      });
+    }
+
     // 2️⃣ Ensure base roles exist
     const baseRoles = [
       {

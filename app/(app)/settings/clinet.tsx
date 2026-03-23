@@ -10,15 +10,12 @@ import { SelectField } from "@/components/common/selectproduct";
 import { fr } from "zod/v4/locales";
 import { useAuth } from "@/lib/context/AuthContext";
 import Dailogreuse from "@/components/common/dailogreuse";
-
-const CURRENCIES = [
-  { id: "USD", name: "دولارامريكي" },
-  { id: "SAR", name: "ريال سعودي" },
-  { id: "EUR", name: "يورو" },
-  { id: "YER", name: "ريال يمني" },
-];
+import { useCurrencyOptions } from "@/hooks/useCurrencyOptions";
+import { fallbackCurrencyOptions } from "@/lib/actions/currnciesOptions";
 
 export default function ExchangeRatesPage() {
+  const { options } = useCurrencyOptions();
+  const currencyOptions = options.length ? options : fallbackCurrencyOptions;
   const [fromCurrency, setFromCurrency] = useState("USD");
   const [toCurrency, setToCurrency] = useState("YER");
   const [open, setOpen] = useState(false);
@@ -59,7 +56,7 @@ export default function ExchangeRatesPage() {
           <div className="space-y-2">
             <Label>من العملة</Label>
             <SelectField
-              options={CURRENCIES}
+              options={currencyOptions}
               action={(value) => setFromCurrency(value)}
               value={fromCurrency}
               placeholder="اختر العملة"
@@ -70,7 +67,7 @@ export default function ExchangeRatesPage() {
           <div className="space-y-2">
             <Label>إلى العملة</Label>
             <SelectField
-              options={CURRENCIES}
+              options={currencyOptions}
               action={(value) => setToCurrency(value)}
               value={toCurrency}
               placeholder="اختر العملة"

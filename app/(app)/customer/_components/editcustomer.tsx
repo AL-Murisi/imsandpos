@@ -14,7 +14,8 @@ import { updatedCustomer } from "@/lib/actions/customers";
 import { useEffect, useState } from "react";
 import Dailogreuse from "@/components/common/dailogreuse";
 import { Check } from "lucide-react";
-import { currencyOptions } from "@/lib/actions/currnciesOptions";
+import { fallbackCurrencyOptions } from "@/lib/actions/currnciesOptions";
+import { useCurrencyOptions } from "@/hooks/useCurrencyOptions";
 import { useCompany } from "@/hooks/useCompany";
 
 export default function CustomerEditForm({ customer }: { customer: any }) {
@@ -51,6 +52,8 @@ export default function CustomerEditForm({ customer }: { customer: any }) {
   const { user } = useAuth();
   const { company } = useCompany();
   const basCurrncy = company?.base_currency;
+  const { options } = useCurrencyOptions();
+  const currencyOptions = options.length ? options : fallbackCurrencyOptions;
   if (!user) return null;
 
   const customerTypes = watch("customerType");

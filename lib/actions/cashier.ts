@@ -297,7 +297,7 @@ export async function processSale(data: any, companyId: string) {
                   type: TransactionType.RECEIPT,
                   amount: receivedAmount,
                   status: "paid",
-                  notes: `Sale payment for invoice: ${invoiceNo}`,
+                  notes: `دفعة مبيعات للفاتورة رقم: ${invoiceNo}`,
                 }
               : undefined;
 
@@ -330,7 +330,6 @@ export async function processSale(data: any, companyId: string) {
               transactions: { create: paymentData },
             },
           });
-          console.log(customer);
           // ==========================================
           // 2️⃣ Fetch inventory per PRODUCT + UNIT
 
@@ -438,95 +437,135 @@ export async function processSale(data: any, companyId: string) {
               });
             }
           }
-
-          // ==========================================
-          // 6️⃣ Payment
-          // ==========================================
-          // if (baseAmount > 0) {
-          //   const voucherNumber = await getNextVoucherNumber(
-          //     companyId,
-          //     "RECEIPT",
-          //     tx,
-          //   );
-          //   let status: string;
-          //   if (baseAmount >= totalAfterDiscount) {
-          //     status = "paid"; // تم التعديل من === إلى =
-          //   } else if (baseAmount > 0 && baseAmount < totalAfterDiscount) {
-          //     status = "partial";
-          //   } else {
-          //     status = "unpaid";
-          //   }
-          //   await tx.financialTransaction.create({
-          //     data: {
-          //       companyId,
-          //       //     invoiceId: sale.id,
-          //       userId: cashierId,
-          //       branchId,
-          //       customerId: customer?.id,
-          //       voucherNumber,
-          //       currencyCode: currency,
-          //       exchangeRate: exchangeRate,
-          //       paymentMethod: "cash",
-          //       type: "RECEIPT",
-          //       amount: receivedAmount,
-          //       status: "paid",
-          //       notes: ` فاتوره شراء:${sale.invoiceNumber}`,
-          //     },
-          //   });
-          //   // await tx.financialTransaction.create({
-          //   //   data: {
-          //   //     companyId,
-          //   //     invoiceId: sale.id,
-          //   //     userId: cashierId,
-          //   //     branchId,
-          //   //     customerId: customer?.id,
-          //   //     voucherNumber: nextNumber,
-          //   //     currencyCode: currency,
-          //   //     exchangeRate: exchangeRate,
-          //   //     paymentMethod: "cash",
-          //   //     type: "RECEIPT",
-          //   //     amount: receivedAmount,
-          //   //     status: status,
-          //   //     notes: ` فاتوره شراء:${sale.invoiceNumber}`,
-          //   //   },
-          //   // });
-          // }
           revalidatePath("/cashiercontrol");
           // ==========================================
-          // 7️⃣ Journal Event (async later)
+          // 7️⃣ Journal Header + Lines (sync)
           // ==========================================
-          await tx.journalEvent.create({
-            data: {
-              companyId: companyId,
-              eventType: "sale",
-              status: "pending",
-              entityType: "sale",
-              payload: {
-                companyId,
-                sale: {
-                  id: sale.id,
-                  saleNumber: sale.invoiceNumber,
-                  sale_type: sale.sale_type,
-                  status: sale.status,
-                  totalAmount: totalAfterDiscount,
-                  amountPaid: baseAmount,
-                  ...(currency !== baseCurrency && {
-                    foreignAmount: receivedAmount, // المبلغ بالدولار مثلاً
-                    exchangeRate: exchangeRate,
-                    foreignCurrency: currency,
+          const [mappings, fy] = await Promise.all([
+            tx.account_mappings.findMany({
+              where: { company_id: companyId, is_default: true },
+              select: { mapping_type: true, account_id: true },
+            }),
+            getActiveFiscalYears(),
+          ]);
+
+          const accountMap = new Map(
+            mappings.map((m) => [m.mapping_type, m.account_id]),
+          );
+          const cash = accountMap.get("cash");
+          const ar = accountMap.get("accounts_receivable");
+          const revenue = accountMap.get("sales_revenue");
+          const inventory = accountMap.get("inventory");
+          const cogs = accountMap.get("cogs");
+
+          if (!cash || !ar || !revenue || !inventory || !cogs) {
+            throw new Error(
+              "Missing required account mappings for sales journal entry",
+            );
+          }
+
+          const entryYear = new Date().getFullYear();
+          const entryNumber = `JE-${entryYear}-${Date.now()}-${Math.floor(
+            Math.random() * 1000,
+          )}`;
+
+          const desc = `Sales invoice: ${sale.invoiceNumber}`;
+          const isForeign =
+            currency &&
+            baseCurrency &&
+            currency !== baseCurrency &&
+            exchangeRate &&
+            exchangeRate !== 1;
+
+          const toForeignAmount = (baseValue: number) => {
+            if (!isForeign || !exchangeRate) return null;
+            return Number((baseValue / exchangeRate).toFixed(2));
+          };
+
+          const createLine = (
+            accountId: string,
+            memo: string,
+            debitBase: number,
+            creditBase: number,
+            useForeign: boolean,
+          ) => {
+            const baseValue = debitBase > 0 ? debitBase : creditBase;
+            return {
+              companyId,
+              accountId,
+              debit: debitBase,
+              credit: creditBase,
+              memo,
+              ...(useForeign
+                ? {
+                    currencyCode: currency,
+                    exchangeRate,
+                    foreignAmount: toForeignAmount(baseValue),
+                    baseAmount: baseValue,
+                  }
+                : {
+                    currencyCode: baseCurrency,
                   }),
-                  baseAmount: baseAmount,
-                  branchId: branchId,
-                  baseCurrency,
-                  currency,
-                  // paymentStatus: sale.paymentStatus,
-                },
-                customer,
+            };
+          };
+
+          const totalBase = Number(totalAfterDiscount);
+          const paidBase = Number(baseAmount);
+          const dueBase = Math.max(0, totalBase - paidBase);
+          const lines: any[] = [];
+
+          if (sale.status === "paid") {
+            lines.push(
+              createLine(revenue, desc, 0, totalBase, isForeign),
+              createLine(cash, desc, paidBase, 0, isForeign),
+            );
+          } else if (sale.status === "partial") {
+            if (paidBase > 0) {
+              lines.push(
+                createLine(cash, `${desc} - cash`, paidBase, 0, isForeign),
+              );
+            }
+            lines.push(
+              createLine(revenue, desc, 0, totalBase, isForeign),
+              createLine(ar, `${desc} - due`, dueBase, 0, isForeign),
+            );
+          } else {
+            lines.push(
+              createLine(revenue, desc, 0, totalBase, isForeign),
+              createLine(ar, desc, totalBase, 0, isForeign),
+            );
+          }
+
+          if (returnTotalCOGS > 0) {
+            lines.push(
+              createLine(cogs, `${desc} - cogs`, returnTotalCOGS, 0, false),
+              createLine(
+                inventory,
+                `${desc} - inventory`,
+                0,
                 returnTotalCOGS,
-                saleItems: cart,
-                cashierId,
+                false,
+              ),
+            );
+          }
+
+          await tx.journalHeader.create({
+            data: {
+              companyId,
+              entryNumber,
+              description: desc,
+              branchId,
+              referenceType: "sale",
+              referenceId: sale.id,
+              entryDate: new Date(),
+              status: "POSTED",
+              createdBy: cashierId,
+              lines: {
+                create: lines.map((line) => ({
+                  ...line,
+                  companyId,
+                })),
               },
-              processed: false,
             },
           });
 

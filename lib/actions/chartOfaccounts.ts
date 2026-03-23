@@ -169,15 +169,15 @@ export async function getChartOfAccounts() {
     const accounts = await prisma.accounts.findMany({
       where: { company_id: companyId },
       include: {
-        journal_entries: {
-          where: { is_posted: true },
+        journalLines: {
+          where: { header: { status: "POSTED" } },
           select: {
             debit: true,
             credit: true,
-            currency_code: true,
-            base_amount: true,
-            foreign_amount: true,
-            exchange_rate: true,
+            currencyCode: true,
+            baseAmount: true,
+            foreignAmount: true,
+            exchangeRate: true,
           },
         },
         other_accounts: true,
@@ -206,17 +206,17 @@ export async function getChartOfAccounts() {
       const isDebitNature =
         account.account_type === "ASSET" || account.account_type === "EXPENSE";
 
-      account.journal_entries.forEach((entry) => {
-        const currency = entry.currency_code || baseCurrency;
+      account.journalLines.forEach((entry) => {
+        const currency = entry.currencyCode || baseCurrency;
 
         /* =========================
            1️⃣ FOREIGN BALANCE
         ========================= */
         const foreign =
-          entry.foreign_amount !== null && entry.foreign_amount !== undefined
+          entry.foreignAmount !== null && entry.foreignAmount !== undefined
             ? Number(entry.debit) - Number(entry.credit) >= 0
-              ? Number(entry.foreign_amount)
-              : -Number(entry.foreign_amount)
+              ? Number(entry.foreignAmount)
+              : -Number(entry.foreignAmount)
             : Number(entry.debit) - Number(entry.credit);
 
         const foreignChange = isDebitNature ? foreign : -foreign;
@@ -225,15 +225,15 @@ export async function getChartOfAccounts() {
 
         let baseChange = 0;
 
-        if (entry.base_amount !== null && entry.base_amount !== undefined) {
+        if (entry.baseAmount !== null && entry.baseAmount !== undefined) {
           baseChange =
             Number(entry.debit) - Number(entry.credit) >= 0
-              ? Number(entry.base_amount)
-              : -Number(entry.base_amount);
+              ? Number(entry.baseAmount)
+              : -Number(entry.baseAmount);
         } else if (currency === baseCurrency) {
           baseChange = Number(entry.debit) - Number(entry.credit);
         } else {
-          const rate = Number(entry.exchange_rate || 1);
+          const rate = Number(entry.exchangeRate || 1);
           baseChange = (Number(entry.debit) - Number(entry.credit)) * rate;
         }
 
@@ -306,10 +306,10 @@ export async function getAccount(accountId: string) {
       include: {
         accounts: true,
         other_accounts: true,
-        journal_entries: {
+        journalLines: {
           take: 10,
-          orderBy: { entry_date: "desc" },
-          where: { is_posted: true },
+          orderBy: { header: { entryDate: "desc" } },
+          where: { header: { status: "POSTED" } },
         },
       },
     });
@@ -604,7 +604,7 @@ export async function deleteAccount(accountId: string) {
       },
       include: {
         other_accounts: true,
-        journal_entries: true,
+        journalLines: true,
         account_mappings: true,
       },
     });
@@ -627,7 +627,7 @@ export async function deleteAccount(accountId: string) {
     }
 
     // Prevent deletion if has journal entries
-    if (account.journal_entries.length > 0) {
+    if (account.journalLines.length > 0) {
       return {
         success: false,
         error: "لا يمكن حذف حساب يحتوي على معاملات. يمكنك تعطيله بدلاً من ذلك.",
@@ -715,16 +715,16 @@ export async function getAccountBalance(
     }
 
     // Build date filter
-    const dateFilter: any = { is_posted: true };
+    const dateFilter: any = { header: { status: "POSTED" } };
     if (startDate || endDate) {
-      dateFilter.entry_date = {};
-      if (startDate) dateFilter.entry_date.gte = startDate;
-      if (endDate) dateFilter.entry_date.lte = endDate;
+      dateFilter.header.entryDate = {};
+      if (startDate) dateFilter.header.entryDate.gte = startDate;
+      if (endDate) dateFilter.header.entryDate.lte = endDate;
     }
 
-    const entries = await prisma.journal_entries.findMany({
+    const entries = await prisma.journalLine.findMany({
       where: {
-        account_id: accountId,
+        accountId: accountId,
         ...dateFilter,
       },
     });
@@ -794,15 +794,15 @@ export async function getAccountDetails(accountId: string) {
         company_id: companyId,
       },
       include: {
-        journal_entries: {
-          orderBy: { entry_date: "desc" },
+        journalLines: {
+          orderBy: { header: { entryDate: "desc" } },
           take: 4, // recent 10 transactions
           select: {
             id: true,
-            entry_date: true,
-            description: true,
             debit: true,
             credit: true,
+            memo: true,
+            header: { select: { entryDate: true, description: true } },
           },
         },
       },
@@ -814,12 +814,12 @@ export async function getAccountDetails(accountId: string) {
 
     // Calculate running balance for preview
     let balance = Number(account.opening_balance ?? 0);
-    const recentTransactions = account.journal_entries.map((j) => {
+    const recentTransactions = account.journalLines.map((j) => {
       balance += Number(j.debit ?? 0) - Number(j.credit ?? 0);
       return {
         id: j.id,
-        date: j.entry_date,
-        description: j.description ?? "",
+        date: j.header?.entryDate,
+        description: j.memo ?? j.header?.description ?? "",
         debit: Number(j.debit ?? 0),
         credit: Number(j.credit ?? 0),
         balance,

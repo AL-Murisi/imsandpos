@@ -177,6 +177,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       icon: () => <ShoppingCart className="text-blue-500" />,
       roles: ["cashier"],
     },
+    {
+      title: t("cashier"),
+      url: "/cashiercontrol",
+      icon: () => <ShoppingCart className="text-fuchsia-600" />,
+      roles: ["cashier"],
+    },
 
     {
       title: "التقرير",
@@ -195,7 +201,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     {
       title: t("sales"),
       icon: () => <ShoppingBag className="text-green-600" />,
-      roles: ["admin", "cashier"],
+      roles: ["admin"],
       isDropdown: true,
 
       subItems: [
@@ -242,9 +248,29 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
     {
       title: t("settings"),
-      url: "/settings",
       icon: () => <Settings className="text-gray-600" />,
       roles: ["admin"],
+      isDropdown: true,
+      subItems: [
+        {
+          title: "أسعار الصرف",
+          url: "/settings",
+          icon: <Settings className="h-4 w-4 text-gray-600" />,
+          roles: ["admin"],
+        },
+        {
+          title: "العملات",
+          url: "/settings/currencies",
+          icon: <Settings className="h-4 w-4 text-gray-600" />,
+          roles: ["admin"],
+        },
+        {
+          title: "الاشتراك",
+          url: "/settings/subscription",
+          icon: <Settings className="h-4 w-4 text-gray-600" />,
+          roles: ["admin"],
+        },
+      ],
     },
   ];
 
@@ -480,7 +506,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     ) : (
                       <LogOut className="h-5 w-5" />
                     )}
-                    {loggingOut ? "Logging out..." : t("logout")}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>

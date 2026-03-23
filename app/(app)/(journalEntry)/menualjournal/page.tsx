@@ -1,8 +1,4 @@
-import {
-  getExpenseCategories,
-  getJournalEntries,
-} from "@/lib/actions/Journal Entry";
-import { getFiscalYears } from "@/lib/actions/fiscalYear";
+import { getExpenseCategories } from "@/lib/actions/Journal Entry";
 
 import { Fetchcustomerbyname } from "@/lib/actions/customers";
 import { getSuppliers } from "@/lib/actions/manualJournalEntry";
@@ -40,17 +36,13 @@ export default async function Page({ searchParams }: JournalProps) {
   } = param || {};
 
   // ✅ Fix: default to false, and handle "true"/"false" correctly
-  const posted =
-    isPosted === "true" ? true : isPosted === "false" ? false : false;
 
   const pageIndex = Number(page) - 1;
   const pageSize = Number(limit);
 
   // ✅ Ensure async calls are awaited
-  const [data, accounts, fiscalYear, customers, suppliers] = await Promise.all([
-    getJournalEntries(account_id, posted, from, to, pageIndex, pageSize),
+  const [accounts, customers, suppliers] = await Promise.all([
     getExpenseCategories(),
-    getFiscalYears(),
     Fetchcustomerbyname(usersquery),
     getSuppliers(),
   ]);

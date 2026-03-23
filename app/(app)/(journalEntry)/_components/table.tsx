@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import SearchInput from "@/components/common/searchtest";
 import { SelectField } from "@/components/common/selection";
@@ -21,7 +21,6 @@ const Calendar22 = dynamic(
 
 type JournalEntriesClientProps = {
   data: any[];
-
   acount: { id: string; name: string }[];
   customers?:
     | {
@@ -57,25 +56,19 @@ export default function JournalEntriesTable({
   const total = data.find((t) => t.total ?? 0);
   const [selectedRows, setSelectedRows] = useState<any[]>([]);
   const optines = [
-    { id: "false", name: "قيد الإنشاء" },
-    { id: "true", name: "مرحّل" },
+    { id: "DRAFT", name: "قيد الإنشاء" },
+    { id: "POSTED", name: "مرحل" },
   ];
 
   return (
     <div className="" dir="rtl">
       <div className="bg-accent rounded-2xl p-2 shadow-xl/20 shadow-gray-900">
-        {/* Data Table */}
         <DataTable
           search={
             <div className="flex flex-wrap gap-2 p-1 md:flex-row lg:flex-row">
-              {/* <ManualJournalEntry
-                account={acount}
-                suppliers={suppliers}
-                customers={customers}
-              /> */}
               <BulkPostButton
                 selectedEntries={selectedRows.map((row) => ({
-                  entry_number: row.entry_number,
+                  entryNumber: row.entryNumber,
                 }))}
                 onSuccess={() => {}}
               />

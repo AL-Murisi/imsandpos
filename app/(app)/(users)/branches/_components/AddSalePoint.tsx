@@ -23,9 +23,15 @@ type Option = {
       id: string;
     }[];
   };
+  branchLimit?: {
+    limit: number | null;
+    used: number;
+    remaining: number | null;
+    atLimit: boolean;
+  } | null;
 };
 
-export default function POSForm(users: Option) {
+export default function POSForm({ users, branchLimit }: Option) {
   const {
     register,
     handleSubmit,
@@ -39,16 +45,22 @@ export default function POSForm(users: Option) {
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
   if (!user?.companyId) return null;
+  const isBranchLimitReached = branchLimit?.atLimit ?? false;
 
   const onSubmit = async (data: CreatePosType) => {
+    if (isBranchLimitReached) {
+      toast.error("تم الوصول إلى الحد الأقصى للفروع في الخطة الحالية");
+      return;
+    }
+
     setIsSubmitting(true);
 
     const result = await createPOS(data, user.companyId);
-    // console.log(result);
-    // if (result?.error) {
-    //   toast.error(result.error);
-    //   return;
-    // }
+    if (result?.error) {
+      toast.error(result.error);
+      setIsSubmitting(false);
+      return;
+    }
     setIsSubmitting(false);
     toast.success("✅ تمت إضافة نقطة البيع بنجاح");
     setOpen(false);
@@ -62,9 +74,15 @@ export default function POSForm(users: Option) {
       btnLabl={" إضافة فرع"}
       style="w-sm"
       description="أدخل تفاصيل المستخدم أدناه."
+      disabled={isBranchLimitReached}
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" dir="rtl">
         <div className="grid gap-4">
+          {isBranchLimitReached && (
+            <p className="text-sm text-red-500">
+              تم الوصول إلى الحد الأقصى للفروع في الاشتراك.
+            </p>
+          )}
           {/* Name */}
           <div className="grid gap-2">
             <Label htmlFor="name">اسم نقطة البيع</Label>
@@ -89,7 +107,7 @@ export default function POSForm(users: Option) {
             {/* Translate placeholder */}
             <SelectField
               placeholder="مستخدم"
-              options={users.users.managers ?? []}
+              options={users.managers ?? []}
               action={(val) => setValue("managerId", val)}
             />
             {errors.managerId && (
@@ -100,7 +118,7 @@ export default function POSForm(users: Option) {
           <div className="flex justify-end">
             <Button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isBranchLimitReached}
               className="min-w-[120px] bg-green-600 hover:bg-green-700"
             >
               {isSubmitting ? "جاري الحفظ..." : "حفظ "}

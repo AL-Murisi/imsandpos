@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Dialogreuse from "@/components/common/dailogreuse";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,8 @@ import { useEffect, useState } from "react";
 import { Check } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useCompany } from "@/hooks/useCompany";
+import { fallbackCurrencyOptions } from "@/lib/actions/currnciesOptions";
+import { useCurrencyOptions } from "@/hooks/useCurrencyOptions";
 
 export default function BankFormDialog({
   banks,
@@ -50,6 +52,8 @@ export default function BankFormDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { company } = useCompany();
   const basCurrncy = company?.base_currency;
+  const { options } = useCurrencyOptions();
+  const currencyOptions = options.length ? options : fallbackCurrencyOptions;
   const [bankOptions, setBankOptions] = useState<
     { id: string; name: string }[]
   >(banks ?? []);
@@ -77,21 +81,15 @@ export default function BankFormDialog({
       setIsSubmitting(false);
       toast.error(res.error);
     } else {
-      toast.success("تم الحفظ بنجاح");
+      toast.success("ØªÙ… Ø§Ù„Ø­ÙØ¸ Ø¨Ù†Ø¬Ø§Ø­");
       setIsSubmitting(false);
     }
   };
-  const currencyOptions = [
-    { name: "الريال اليمني (YER)", id: "YER" },
-    { name: "الدولار الأمريكي (USD)", id: "USD" },
-    { name: "الريال السعودي (SAR)", id: "SAR" },
-    { name: "اليورو (EUR)", id: "EUR" },
-    { name: "الدينار الكويتي (KWD)", id: "KWD" },
-  ];
+  
   return (
     <Dialogreuse
-      btnLabl={mode === "create" ? "إضافة بنك" : "تعديل"}
-      titel="بيانات البنك"
+      btnLabl={mode === "create" ? "Ø¥Ø¶Ø§ÙØ© Ø¨Ù†Ùƒ" : "ØªØ¹Ø¯ÙŠÙ„"}
+      titel="Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø¨Ù†Ùƒ"
       open={open}
       setOpen={setOpen}
       style="sm:max-w-6xl"
@@ -100,17 +98,17 @@ export default function BankFormDialog({
       <ScrollArea className="max-h-[85vh]" dir="rtl">
         <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4">
           <div className="grid gap-4">
-            <Label>اسم البنك</Label>
+            <Label>Ø§Ø³Ù… Ø§Ù„Ø¨Ù†Ùƒ</Label>
             <Input {...register("name")} />
           </div>
 
           <div className="grid gap-4">
-            <Label>الفرع</Label>
+            <Label>Ø§Ù„ÙØ±Ø¹</Label>
             <Input {...register("branch")} />
           </div>
 
           <div className="grid gap-4">
-            <Label>رقم الحساب</Label>
+            <Label>Ø±Ù‚Ù… Ø§Ù„Ø­Ø³Ø§Ø¨</Label>
             <Input {...register("accountNumber")} />
           </div>
 
@@ -124,7 +122,7 @@ export default function BankFormDialog({
             <Input {...register("swiftCode")} />
           </div>
           <div className="grid gap-3">
-            <Label className="text-right">العملات المسموحة</Label>
+            <Label className="text-right">Ø§Ù„Ø¹Ù…Ù„Ø§Øª Ø§Ù„Ù…Ø³Ù…ÙˆØ­Ø©</Label>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
               {currencyOptions.map((option) => {
                 // Check if this currency is currently in the array
@@ -173,7 +171,7 @@ export default function BankFormDialog({
             )}
           </div>
           <div className="grid gap-4">
-            <Label>الحساب المحاسبي</Label>
+            <Label>Ø§Ù„Ø­Ø³Ø§Ø¨ Ø§Ù„Ù…Ø­Ø§Ø³Ø¨ÙŠ</Label>
             {/* <SelectField
             options={banks ?? []}
             value={watch("accountId")}
@@ -187,10 +185,11 @@ export default function BankFormDialog({
           </div>
 
           <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "جاري الحفظ..." : "حفظ"}
+            {isSubmitting ? "Ø¬Ø§Ø±ÙŠ Ø§Ù„Ø­ÙØ¸..." : "Ø­ÙØ¸"}
           </Button>
         </form>
       </ScrollArea>
     </Dialogreuse>
   );
 }
+

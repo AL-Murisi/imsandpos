@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { VoucherReceipt } from "@/components/common/VoucherReceipt";
 import { Badge } from "@/components/ui/badge";
@@ -14,43 +14,38 @@ import {
   ArrowUpDown,
   CircleDollarSign,
   Eye,
-  Printer,
 } from "lucide-react";
 import dynamic from "next/dynamic";
+
 const JournalEntryDetailsDialog = dynamic(
   () => import("../JournalEntryDetailsDialog"),
   { ssr: false },
 );
+
 interface JournalEntryData {
   id: string;
-  entry_number: string;
-  entry_date: string;
-  description: string;
+  entryNumber: string;
+  entryDate: string;
+  description?: string | null;
+  status: string;
+  referenceType?: string | null;
+  createdUser?: {
+    name?: string | null;
+    email?: string | null;
+  } | null;
+  lines: {
+    debit: number;
+    credit: number;
+    currencyCode?: string | null;
+    memo?: string | null;
+    account: {
+      account_code: string | null;
+      account_name_ar: string | null;
+      account_name_en: string;
+    };
+  }[];
   debit: number;
   credit: number;
-  is_posted: boolean;
-  is_automated: boolean;
-  reference_type: string | null;
-  reference_id: string | null;
-  fiscal_period: string | null;
-  currency_code: string;
-  posted_by: {
-    id: string;
-    name: string;
-    email: string | null;
-  } | null; // optional if entry hasn't been posted
-  created_by: string;
-  users_journal_entries_created_byTousers: {
-    name: string;
-  };
-  users_journal_entries_updated_byTousers: {
-    name: string;
-  };
-  accounts: {
-    account_code: string | null;
-    account_name_ar: string | null;
-    account_name_en: string;
-  };
 }
 
 type SortableHeaderProps = {
@@ -109,107 +104,73 @@ export const journalEntryColumns: ColumnDef<JournalEntryData>[] = [
     enableHiding: false,
   },
   {
-    accessorKey: "entry_number",
+    accessorKey: "entryNumber",
     header: ({ column }) => (
       <SortableHeader column={column} label="رقم القيد" />
     ),
     cell: ({ row }) => (
       <span className="font-mono font-semibold">
-        {row.getValue("entry_number")}
+        {row.getValue("entryNumber")}
       </span>
     ),
   },
   {
-    accessorKey: "currency_code",
-    header: ({ column }) => (
-      <SortableHeader column={column} label="currency_code القيد" />
-    ),
-    cell: ({ row }) => (
-      <span className="font-mono font-semibold">
-        {row.getValue("currency_code")}
-      </span>
-    ),
-  },
-  {
-    accessorKey: "entry_date",
+    accessorKey: "entryDate",
     header: ({ column }) => <SortableHeader column={column} label="التاريخ" />,
     cell: ({ row }) => {
-      const date = new Date(row.getValue("entry_date"));
+      const date = new Date(row.getValue("entryDate"));
       return date.toLocaleDateString("ar-IQ");
     },
   },
   {
-    accessorKey: "accounts.account_code",
+    id: "accounts",
     header: ({ column }) => (
-      <SortableHeader column={column} label="رمز الحساب" />
-    ),
-    cell: ({ row }) => (
-      <span className="font-mono">{row.original.accounts.account_code}</span>
-    ),
-  },
-  {
-    accessorKey: "accounts.account_name_en",
-    header: ({ column }) => (
-      <SortableHeader column={column} label="اسم الحساب" />
+      <SortableHeader column={column} label="الحسابات" />
     ),
     cell: ({ row }) => {
-      const nameAr = row.original.accounts.account_name_ar;
-      const nameEn = row.original.accounts.account_name_en;
-      return <span>{nameAr || nameEn}</span>;
+      const accounts = row.original.lines.map(
+        (line) => line.account.account_name_ar || line.account.account_name_en,
+      );
+      const preview = accounts.slice(0, 2).join("، ");
+      const extra = accounts.length > 2 ? ` (+${accounts.length - 2})` : "";
+      return <span>{preview || "—"}{extra}</span>;
     },
   },
   {
-    accessorKey: "posted_by.name",
+    id: "currencies",
     header: ({ column }) => (
-      <SortableHeader column={column} label="تم الترحيل بواسطة" />
+      <SortableHeader column={column} label="العملات" />
     ),
     cell: ({ row }) => {
-      const posted_by = row.original.posted_by; // already mapped
-      return <span>{posted_by?.name || "—"}</span>;
+      const codes = Array.from(
+        new Set(
+          row.original.lines
+            .map((line) => line.currencyCode || "")
+            .filter(Boolean),
+        ),
+      );
+      return <span className="font-mono">{codes.join(", ") || "—"}</span>;
     },
   },
   {
-    accessorKey: "period_name,",
-    header: ({ column }) => (
-      <SortableHeader column={column} label="السنة المالية" />
-    ),
-    cell: ({ row }) => {
-      const posted_by = row.original.fiscal_period; // already mapped
-      return <span>{posted_by || "—"}</span>;
-    },
-  },
-  {
-    accessorKey: "users_journal_entries_created_byTousers.name",
+    accessorKey: "createdUser.name",
     header: ({ column }) => (
       <SortableHeader column={column} label="أنشأ بواسطة" />
     ),
     cell: ({ row }) => {
-      const createdBy =
-        row.original.users_journal_entries_created_byTousers?.name;
+      const createdBy = row.original.createdUser?.name;
       return <span>{createdBy || "—"}</span>;
     },
   },
-  {
-    accessorKey: "users_journal_entries_updated_byTousers.name",
-    header: ({ column }) => (
-      <SortableHeader column={column} label="آخر تعديل بواسطة" />
-    ),
-    cell: ({ row }) => {
-      const updatedBy =
-        row.original.users_journal_entries_updated_byTousers?.name;
-      return <span>{updatedBy || "—"}</span>;
-    },
-  },
-
   {
     accessorKey: "description",
     header: ({ column }) => <SortableHeader column={column} label="الوصف" />,
     cell: ({ row }) => (
       <div
         className="text-md max-w-xs truncate"
-        title={row.getValue("description")}
+        title={row.getValue("description") as string}
       >
-        {row.getValue("description")}
+        {row.getValue("description") as string}
       </div>
     ),
   },
@@ -217,58 +178,48 @@ export const journalEntryColumns: ColumnDef<JournalEntryData>[] = [
     accessorKey: "debit",
     header: ({ column }) => <SortableHeader column={column} label="مدين" />,
     cell: ({ row }) => {
-      const currency = row.original.currency_code;
       const debit = row.getValue("debit") as number;
 
       if (!debit || debit <= 0) {
         return <span className="text-gray-400">-</span>;
       }
 
-      const currencyLabel =
-        currency === "USD" ? "$" : currency === "YER" ? "ر.ي" : "ر.س";
-
       return (
         <div
           dir="ltr"
           className="flex items-center gap-1 font-mono text-lg font-semibold text-green-600"
         >
-          {/* <span className="text-sm opacity-70">{currencyLabel}</span> */}
           <span className="tabular-nums">{debit}</span>
         </div>
       );
     },
   },
-
   {
     accessorKey: "credit",
     header: ({ column }) => <SortableHeader column={column} label="دائن" />,
     cell: ({ row }) => {
-      const currency = row.original.currency_code;
       const credit = row.getValue("credit") as number;
 
       if (!credit || credit <= 0) {
         return <span className="text-lg text-gray-400">-</span>;
       }
 
-      const currencyLabel =
-        currency === "USD" ? "$" : currency === "YER" ? "ر.ي" : "ر.س";
-
       return (
         <div
           dir="ltr"
           className="flex items-center gap-1 font-mono text-lg font-semibold text-red-600"
         >
-          {/* <span className="text-sm opacity-70">{currencyLabel}</span> */}
           <span className="tabular-nums">{credit}</span>
         </div>
       );
     },
   },
   {
-    accessorKey: "is_posted",
+    accessorKey: "status",
     header: ({ column }) => <SortableHeader column={column} label="الحالة" />,
     cell: ({ row }) => {
-      const isPosted = row.getValue("is_posted") as boolean;
+      const status = row.getValue("status") as string;
+      const isPosted = status === "POSTED";
       return (
         <Badge
           className={
@@ -277,16 +228,16 @@ export const journalEntryColumns: ColumnDef<JournalEntryData>[] = [
               : "bg-yellow-100 text-lg text-yellow-800"
           }
         >
-          {isPosted ? "مرحّل" : "قيد الإنشاء"}
+          {isPosted ? "مرحل" : "قيد الإنشاء"}
         </Badge>
       );
     },
   },
   {
-    accessorKey: "reference_type",
+    accessorKey: "referenceType",
     header: ({ column }) => <SortableHeader column={column} label="المرجع" />,
     cell: ({ row }) => {
-      const refType = row.getValue("reference_type") as string | null;
+      const refType = row.getValue("referenceType") as string | null;
       if (!refType) return <span className="text-lg">-</span>;
 
       const typeMap: Record<string, string> = {
@@ -433,10 +384,9 @@ export const voucherColumns: ColumnDef<FinancialVoucher>[] = [
       const partyName = voucher.customer?.name || voucher.supplier?.name;
       return (
         <div className="flex items-center gap-2">
-          {/* مكون الطباعة مع تمرير البيانات الحقيقية */}
           <VoucherReceipt
-            voucherNumber={voucher.voucherNumber} // رقم السند (سيقوم المكون بعمل padding له)
-            voucherType={voucher.type} // RECEIPT أو PAYMENT
+            voucherNumber={voucher.voucherNumber}
+            voucherType={voucher.type}
             amount={voucher.amount}
             curruncy={voucher.currencyCode}
             personName={

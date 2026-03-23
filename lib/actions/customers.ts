@@ -40,15 +40,24 @@ export async function getCustomerById(
   from?: string,
   to?: string,
 ) {
-  const fromDate = from ? new Date(from).toISOString() : undefined;
-  const toDate = to ? new Date(to).toISOString() : undefined;
+  const fromDate = from ? new Date(from) : undefined;
+  const toDate = to ? new Date(to) : undefined;
   try {
+    const mappings = await prisma.account_mappings.findMany({
+      where: { company_id: companyId, is_default: true },
+      select: { mapping_type: true, account_id: true },
+    });
+    const arAccount = mappings.find(
+      (m) => m.mapping_type === "accounts_receivable",
+    )?.account_id;
+    if (!arAccount) {
+      throw new Error("Accounts receivable not mapped");
+    }
+
     const customers = await prisma.customer.findMany({
       where: {
         id: customerId,
         companyId,
-        ...(fromDate && { gte: fromDate }),
-        ...(toDate && { lte: toDate }),
         ...(customersquery && {
           OR: [
             { name: { contains: customersquery, mode: "insensitive" } },
@@ -79,47 +88,70 @@ export async function getCustomerById(
       skip: page * pageSize,
       take: pageSize,
     });
-    const entries = await prisma.journal_entries.findMany({
-      where: {
-        company_id: companyId,
-        reference_id: customers[0]?.id,
-        entry_date: { gte: fromDate, lte: toDate },
-      },
-      orderBy: { entry_date: "asc" },
-      select: {
-        debit: true,
-        credit: true,
-      },
-    });
-    const totalDebit = entries.reduce((s, t) => s + Number(t.debit), 0);
-    const totalCredit = entries.reduce((s, t) => s + Number(t.credit), 0);
     const result = await Promise.all(
       customers.map(async (customer) => {
-        // جلب القيود المحاسبية الخاصة بهذا العميل تحديداً ضمن الفترة الزمنية
-        const entries = await prisma.journal_entries.findMany({
+        const invoiceIds = await prisma.invoice.findMany({
+          where: { companyId, customerId: customer.id },
+          select: { id: true },
+        });
+        const invoiceIdList = invoiceIds.map((i) => i.id);
+
+        const paymentIds = await prisma.financialTransaction.findMany({
           where: {
-            company_id: companyId,
-            reference_id: customer.id, // العميل الحالي في الحلقة
-            entry_date: {
+            companyId,
+            customerId: customer.id,
+            createdAt: {
               ...(fromDate && { gte: fromDate }),
               ...(toDate && { lte: toDate }),
             },
           },
-          select: {
-            debit: true,
-            credit: true,
-          },
+          select: { id: true },
         });
+        const paymentIdList = paymentIds.map((p) => p.id);
+
+        // جلب القيود المحاسبية الخاصة بهذا العميل تحديداً ضمن الفترة الزمنية
+        const [entries, journalEntries] = await Promise.all([
+          prisma.journalLine.findMany({
+            where: {
+              companyId: companyId,
+              accountId: arAccount,
+              header: {
+                referenceId: { in: invoiceIdList },
+                entryDate: {
+                  ...(fromDate && { gte: fromDate }),
+                  ...(toDate && { lte: toDate }),
+                },
+              },
+            },
+            select: {
+              debit: true,
+              credit: true,
+            },
+          }),
+          prisma.journal_entries.findMany({
+            where: {
+              company_id: companyId,
+              account_id: arAccount,
+              reference_id: { in: [customer.id, ...invoiceIdList, ...paymentIdList] },
+              entry_date: {
+                ...(fromDate && { gte: fromDate }),
+                ...(toDate && { lte: toDate }),
+              },
+            },
+            select: {
+              debit: true,
+              credit: true,
+            },
+          }),
+        ]);
 
         // حساب الإجمالي من واقع القيود
-        const totalDebit = entries.reduce(
-          (s, t) => s + Number(t.debit || 0),
-          0,
-        );
-        const totalCredit = entries.reduce(
-          (s, t) => s + Number(t.credit || 0),
-          0,
-        );
+        const totalDebit =
+          entries.reduce((s, t) => s + Number(t.debit || 0), 0) +
+          journalEntries.reduce((s, t) => s + Number(t.debit || 0), 0);
+        const totalCredit =
+          entries.reduce((s, t) => s + Number(t.credit || 0), 0) +
+          journalEntries.reduce((s, t) => s + Number(t.credit || 0), 0);
 
         return {
           ...customer,

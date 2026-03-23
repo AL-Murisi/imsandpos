@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import {
@@ -8,12 +8,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DollarSign } from "lucide-react";
+import { useCurrencyOptions } from "@/hooks/useCurrencyOptions";
+import { fallbackCurrencyOptions } from "@/lib/actions/currnciesOptions";
 
 export default function CurrencySwitcher() {
   const [currency, setCurrency] = useState("YER");
+  const { options } = useCurrencyOptions();
+  const currencyOptions = options.length ? options : fallbackCurrencyOptions;
 
-  // Read currency from cookie on mount
   useEffect(() => {
     const cookieValue = document.cookie
       .split("; ")
@@ -34,9 +36,11 @@ export default function CurrencySwitcher() {
         <SelectValue>{currency}</SelectValue>
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="YER">ريال يمني</SelectItem>
-        <SelectItem value="USD"> دولار</SelectItem>
-        <SelectItem value="SAR">ريال سعودي</SelectItem>
+        {currencyOptions.map((option) => (
+          <SelectItem key={option.id} value={option.id}>
+            {option.name}
+          </SelectItem>
+        ))}
       </SelectContent>
     </Select>
   );

@@ -24,7 +24,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCompany } from "@/hooks/useCompany";
-import { currencyOptions } from "@/lib/actions/currnciesOptions";
+import { fallbackCurrencyOptions } from "@/lib/actions/currnciesOptions";
+import { useCurrencyOptions } from "@/hooks/useCurrencyOptions";
 import { getLatestExchangeRate } from "@/lib/actions/currency";
 import SearchInput from "@/components/common/searchlist";
 
@@ -71,6 +72,8 @@ export function ReturnForm({ sale }: { sale: any }) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currency, setCurrency] = useState<UserOption | null>(null);
+  const { options } = useCurrencyOptions();
+  const currencyOptions = options.length ? options : fallbackCurrencyOptions;
   const [isLoading, setIsLoading] = useState(false);
   const [receivedAmount, setReceivedAmount] = useState(0);
 

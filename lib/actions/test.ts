@@ -38,6 +38,20 @@ export async function getCustomerStatement(
   dateTo: string,
 ) {
   try {
+    const mappings = await prisma.account_mappings.findMany({
+      where: { company_id: companyId, is_default: true },
+      select: { mapping_type: true, account_id: true },
+    });
+    const arAccount = mappings.find(
+      (m) => m.mapping_type === "accounts_receivable",
+    )?.account_id;
+    if (!arAccount) {
+      return {
+        success: false,
+        error: "حساب العملاء (المدينون) غير مربوط",
+      };
+    }
+
     const fiscalYear = await prisma.fiscal_periods.findFirst({
       where: {
         company_id: companyId,
@@ -45,12 +59,25 @@ export async function getCustomerStatement(
       },
       select: { start_date: true, end_date: true },
     });
-    if (!fiscalYear) return;
-    console.log(fiscalYear.start_date, fiscalYear.end_date);
-    const fromDate = new Date(fiscalYear.start_date);
-    fromDate.setHours(0, 0, 0, 0); // Start of day
+    const fromDate = dateFrom
+      ? new Date(dateFrom)
+      : fiscalYear
+        ? new Date(fiscalYear.start_date)
+        : null;
+    const toDate = dateTo
+      ? new Date(dateTo)
+      : fiscalYear
+        ? new Date(fiscalYear.end_date)
+        : null;
 
-    const toDate = new Date(fiscalYear.end_date);
+    if (!fromDate || !toDate) {
+      return {
+        success: false,
+        error: "تعذر تحديد الفترة المالية",
+      };
+    }
+
+    fromDate.setHours(0, 0, 0, 0); // Start of day
     toDate.setHours(23, 59, 59, 999); // End of day
 
     // 1️⃣ جلب حساب المدينون
@@ -73,63 +100,122 @@ export async function getCustomerStatement(
       return { success: false, error: "العميل غير موجود" };
     }
 
-    // 2️⃣ الرصيد الافتتاحي قبل الفترة
-    const openingEntries = await prisma.journal_entries.findMany({
-      where: {
-        company_id: companyId,
-        reference_id: customerId,
-        // reference_type: {
-        //   contains: "opening_customer_balance",
-        //   mode: "insensitive", // يتجاهل حالة الأحرف
-        // },
-
-        entry_date: { lt: fromDate },
-      },
-      select: {
-        debit: true,
-        credit: true,
-      },
+    const invoiceIds = await prisma.invoice.findMany({
+      where: { companyId, customerId },
+      select: { id: true },
     });
+    const invoiceIdList = invoiceIds.map((i) => i.id);
 
-    const openingBalance = openingEntries.reduce(
-      (sum, e) => sum + Number(e.debit) - Number(e.credit),
-      0,
-    );
+    // 2️⃣ الرصيد الافتتاحي قبل الفترة
+    const [openingLines, openingJournalEntries] = await Promise.all([
+      prisma.journalLine.findMany({
+        where: {
+          companyId,
+          accountId: arAccount,
+          header: {
+            referenceId: { in: invoiceIdList },
+            entryDate: { lt: fromDate },
+          },
+        },
+        select: {
+          debit: true,
+          credit: true,
+        },
+      }),
+      prisma.journal_entries.findMany({
+        where: {
+          company_id: companyId,
+          account_id: arAccount,
+          reference_id: customerId,
+          entry_date: { lt: fromDate },
+        },
+        select: { debit: true, credit: true },
+      }),
+    ]);
+
+    const openingBalance =
+      openingLines.reduce(
+        (sum, e) => sum + Number(e.debit) - Number(e.credit),
+        0,
+      ) +
+      openingJournalEntries.reduce(
+        (sum, e) => sum + Number(e.debit) - Number(e.credit),
+        0,
+      );
 
     // 3️⃣ قيود الفترة
-    const entries = await prisma.journal_entries.findMany({
-      where: {
-        company_id: companyId,
-        reference_id: customerId,
-        entry_date: { gte: fromDate, lte: toDate },
-      },
-      orderBy: { entry_date: "asc" },
-      select: {
-        id: true,
-        entry_date: true,
-        debit: true,
-        credit: true,
-        description: true,
-        entry_number: true,
-        reference_type: true,
-      },
+    const [lines, journalEntries] = await Promise.all([
+      prisma.journalLine.findMany({
+        where: {
+          companyId,
+          accountId: arAccount,
+          header: {
+            referenceId: { in: invoiceIdList },
+            entryDate: { gte: fromDate, lte: toDate },
+          },
+        },
+        orderBy: { header: { entryDate: "asc" } },
+        include: {
+          header: true,
+        },
+      }),
+      prisma.journal_entries.findMany({
+        where: {
+          company_id: companyId,
+          account_id: arAccount,
+          reference_id: customerId,
+          entry_date: { gte: fromDate, lte: toDate },
+        },
+        orderBy: { entry_date: "asc" },
+        select: {
+          entry_date: true,
+          debit: true,
+          credit: true,
+          description: true,
+          entry_number: true,
+          reference_type: true,
+        },
+      }),
+    ]);
+
+    const combinedEntries = [
+      ...lines.map((entry) => ({
+        date: entry.header.entryDate,
+        debit: Number(entry.debit),
+        credit: Number(entry.credit),
+        description: entry.memo ?? entry.header.description,
+        docNo: entry.header.entryNumber,
+        typeName: mapType(entry.header.referenceType),
+      })),
+      ...journalEntries.map((entry) => ({
+        date: entry.entry_date,
+        debit: Number(entry.debit),
+        credit: Number(entry.credit),
+        description: entry.description,
+        docNo: entry.entry_number,
+        typeName: mapType(entry.reference_type),
+      })),
+    ].sort((a, b) => {
+      const aTime = a.date ? new Date(a.date).getTime() : 0;
+      const bTime = b.date ? new Date(b.date).getTime() : 0;
+      return aTime - bTime;
     });
 
     // 4️⃣ بناء كشف الحساب
     let runningBalance = openingBalance;
-    const transactions = entries.map((entry) => {
+    const transactions = combinedEntries.map((entry) => {
       runningBalance = Math.abs(
         runningBalance + Number(entry.debit) - Number(entry.credit),
       );
 
       return {
-        date: entry.entry_date,
+        date: entry.date,
         debit: Number(entry.debit),
         credit: Number(entry.credit),
         balance: runningBalance,
         description: entry.description,
-        docNo: entry.entry_number,
-        typeName: mapType(entry.reference_type),
+        docNo: entry.docNo,
+        typeName: entry.typeName,
       };
     });
     const totalDebit = transactions.reduce((s, t) => s + t.debit, 0);
@@ -441,6 +527,20 @@ export async function getSupplierStatement(
   dateTo: string,
 ) {
   try {
+    const mappings = await prisma.account_mappings.findMany({
+      where: { company_id: companyId, is_default: true },
+      select: { mapping_type: true, account_id: true },
+    });
+    const apAccount = mappings.find(
+      (m) => m.mapping_type === "accounts_payable",
+    )?.account_id;
+    if (!apAccount) {
+      return {
+        success: false,
+        error: "حساب الموردين (الدائنون) غير مربوط",
+      };
+    }
+
     const fiscalYear = await prisma.fiscal_periods.findFirst({
       where: {
         company_id: companyId,
@@ -473,59 +573,117 @@ export async function getSupplierStatement(
     }
 
     // 2️⃣ الرصيد الافتتاحي قبل الفترة
-    const openingEntries = await prisma.journal_entries.findMany({
-      where: {
-        company_id: companyId,
-        reference_id: supplierId,
+    const [openingEntries, openingJournalEntries] = await Promise.all([
+      prisma.journalLine.findMany({
+        where: {
+          companyId,
+          accountId: apAccount,
+          header: {
+            referenceId: supplierId,
+            entryDate: { lt: fromDate },
+          },
+        },
+        select: {
+          debit: true,
+          credit: true,
+        },
+      }),
+      prisma.journal_entries.findMany({
+        where: {
+          company_id: companyId,
+          account_id: apAccount,
+          reference_id: supplierId,
+          entry_date: { lt: fromDate },
+        },
+        select: { debit: true, credit: true },
+      }),
+    ]);
 
-        entry_date: { lt: fromDate },
-      },
-      select: {
-        debit: true,
-        credit: true,
-      },
-    });
-
-    const openingBalance = openingEntries.reduce(
-      (sum, e) => sum + Number(e.credit) - Number(e.debit),
-      0,
-    );
+    const openingBalance =
+      openingEntries.reduce(
+        (sum, e) => sum + Number(e.credit) - Number(e.debit),
+        0,
+      ) +
+      openingJournalEntries.reduce(
+        (sum, e) => sum + Number(e.credit) - Number(e.debit),
+        0,
+      );
 
     // 3️⃣ قيود الفترة
-    const entries = await prisma.journal_entries.findMany({
-      where: {
-        company_id: companyId,
-        reference_id: supplierId,
-        entry_date: { gte: fromDate, lte: toDate },
-      },
-      orderBy: { entry_date: "asc" },
-      select: {
-        id: true,
-        entry_date: true,
-        debit: true,
-        credit: true,
-        description: true,
-        entry_number: true,
-        currency_code: true,
-        reference_type: true,
-      },
+    const [entries, journalEntries] = await Promise.all([
+      prisma.journalLine.findMany({
+        where: {
+          companyId,
+          accountId: apAccount,
+          header: {
+            referenceId: supplierId,
+            entryDate: { gte: fromDate, lte: toDate },
+          },
+        },
+        orderBy: { header: { entryDate: "asc" } },
+        include: {
+          header: true,
+        },
+      }),
+      prisma.journal_entries.findMany({
+        where: {
+          company_id: companyId,
+          account_id: apAccount,
+          reference_id: supplierId,
+          entry_date: { gte: fromDate, lte: toDate },
+        },
+        orderBy: { entry_date: "asc" },
+        select: {
+          entry_date: true,
+          debit: true,
+          credit: true,
+          description: true,
+          entry_number: true,
+          reference_type: true,
+        },
+      }),
+    ]);
+
+    const combinedEntries = [
+      ...entries.map((entry) => ({
+        date: entry.header.entryDate,
+        debit: Number(entry.debit),
+        credit: Number(entry.credit),
+        description: entry.memo ?? entry.header.description,
+        docNo: entry.header.entryNumber,
+        Currency: entry.currencyCode,
+        typeName: mapType(entry.header.referenceType),
+      })),
+      ...journalEntries.map((entry) => ({
+        date: entry.entry_date,
+        debit: Number(entry.debit),
+        credit: Number(entry.credit),
+        description: entry.description,
+        docNo: entry.entry_number,
+        Currency: null,
+        typeName: mapType(entry.reference_type),
+      })),
+    ].sort((a, b) => {
+      const aTime = a.date ? new Date(a.date).getTime() : 0;
+      const bTime = b.date ? new Date(b.date).getTime() : 0;
+      return aTime - bTime;
     });
 
-    // 4️⃣ بناء كشف الحساب
+    // 4?????? ???????? ?????? ????????????
     let runningBalance = openingBalance;
-    const transactions = entries.map((entry) => {
+    const transactions = combinedEntries.map((entry) => {
       runningBalance =
         runningBalance + Number(entry.credit) - Number(entry.debit);
 
       return {
-        date: entry.entry_date,
+        date: entry.date,
         debit: Number(entry.debit),
         credit: Number(entry.credit),
         balance: runningBalance,
         description: entry.description,
-        docNo: entry.entry_number,
-        Currency: entry.currency_code,
-        typeName: mapType(entry.reference_type),
+        docNo: entry.docNo,
+        Currency: entry.Currency,
+        typeName: entry.typeName,
       };
     });
     const totalDebit = transactions.reduce((s, t) => s + t.debit, 0);
@@ -589,16 +747,13 @@ export async function getBankStatement(
         account: { select: { opening_balance: true } },
       },
     });
-    const openingEntries = await prisma.journal_entries.findMany({
+    const openingEntries = await prisma.journalLine.findMany({
       where: {
-        company_id: companyId,
-        account_id: id,
-        // reference_type: {
-        //   contains: "opening_customer_balance",
-        //   mode: "insensitive", // يتجاهل حالة الأحرف
-        // },
-
-        entry_date: { lt: fromDate },
+        companyId,
+        accountId: id,
+        header: {
+          entryDate: { lt: fromDate },
+        },
       },
       select: {
         debit: true,
@@ -616,21 +771,17 @@ export async function getBankStatement(
     // 2️⃣ الرصيد الافتتاحي قبل الفترة
 
     // 3️⃣ قيود الفترة
-    const entries = await prisma.journal_entries.findMany({
+    const entries = await prisma.journalLine.findMany({
       where: {
-        company_id: companyId,
-        account_id: id,
-        entry_date: { gte: fromDate, lte: toDate },
+        companyId,
+        accountId: id,
+        header: {
+          entryDate: { gte: fromDate, lte: toDate },
+        },
       },
-      orderBy: { entry_date: "asc" },
-      select: {
-        id: true,
-        entry_date: true,
-        debit: true,
-        credit: true,
-        description: true,
-        entry_number: true,
-        reference_type: true,
+      orderBy: { header: { entryDate: "asc" } },
+      include: {
+        header: true,
       },
     });
 
@@ -641,13 +792,13 @@ export async function getBankStatement(
         runningBalance + Number(entry.debit) - Number(entry.credit);
 
       return {
-        date: entry.entry_date,
+        date: entry.header.entryDate,
         debit: Number(entry.debit),
         credit: Number(entry.credit),
         balance: runningBalance,
-        description: entry.description,
-        docNo: entry.entry_number,
-        typeName: mapType(entry.reference_type),
+        description: entry.memo ?? entry.header.description,
+        docNo: entry.header.entryNumber,
+        typeName: mapType(entry.header.referenceType),
       };
     });
     const totalDebit = transactions.reduce((s, t) => s + t.debit, 0);

@@ -83,6 +83,13 @@ export async function POST(req: NextRequest, context: RouteContext) {
       });
     }
 
+    const isAdmin = user.roles?.some((r) =>
+      r.toLowerCase().includes("admin"),
+    );
+    const scopedUserId = isAdmin ? userId : user.userId;
+    const cashierFilter = scopedUserId ? { cashierId: scopedUserId } : {};
+
+
     let data: any = {};
     let templateFile = "";
 
@@ -131,6 +138,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
           where: {
             companyId: user.companyId,
             invoice: {
+              ...cashierFilter,
               // 1. Fixed logic: Get items BETWEEN from and to
               invoiceDate: {
                 gte: fromDate,
@@ -192,6 +200,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
           where: {
             companyId: user.companyId,
             invoice: {
+              ...cashierFilter,
               invoiceDate: {
                 gte: fromDate,
                 lte: toDate,
@@ -236,6 +245,12 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
       case "sales-by-user": {
         templateFile = "sales-by-user-report.html";
+        if (!scopedUserId) {
+          return new Response(
+            JSON.stringify({ error: "userId is required" }),
+            { status: 400 },
+          );
+        }
 
         const fiscalYear = await prisma.fiscal_periods.findFirst({
           where: {
@@ -257,7 +272,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
           where: {
             companyId: user.companyId,
             invoice: {
-              cashier: userId,
+              cashierId: scopedUserId,
 
               // 1. Fixed logic: Get items BETWEEN from and to
               invoiceDate: {
@@ -315,7 +330,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
           where: {
             companyId: user.companyId,
             invoice: {
-              cashier: userId,
+              ...cashierFilter,
               invoiceDate: {
                 gte: fromDate,
                 lte: toDate,
@@ -362,6 +377,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
           where: {
             companyId: user.companyId,
             invoice: {
+              ...cashierFilter,
               ...(branchId && { branchId }),
             },
           },
@@ -420,10 +436,12 @@ export async function POST(req: NextRequest, context: RouteContext) {
           prisma.accounts.findMany({
             where: { company_id: user.companyId, account_type: "REVENUE" },
             include: {
-              journal_entries: {
+              journalLines: {
                 where: {
-                  is_posted: true,
-                  entry_date: { gte: fromDate, lte: toDate },
+                  header: {
+                    status: "POSTED",
+                    entryDate: { gte: fromDate, lte: toDate },
+                  },
                 },
               },
             },
@@ -435,9 +453,9 @@ export async function POST(req: NextRequest, context: RouteContext) {
               account_category: "COST_OF_GOODS_SOLD",
             },
             include: {
-              journal_entries: {
+              journalLines: {
                 where: {
-                  entry_date: { gte: fromDate, lte: toDate },
+                  header: { entryDate: { gte: fromDate, lte: toDate } },
                 },
               },
             },
@@ -449,9 +467,9 @@ export async function POST(req: NextRequest, context: RouteContext) {
               account_category: { not: "COST_OF_GOODS_SOLD" },
             },
             include: {
-              journal_entries: {
+              journalLines: {
                 where: {
-                  entry_date: { gte: fromDate, lte: toDate },
+                  header: { entryDate: { gte: fromDate, lte: toDate } },
                 },
               },
             },
@@ -463,15 +481,12 @@ export async function POST(req: NextRequest, context: RouteContext) {
         const calculateBalance = (accs: any[], type: "REVENUE" | "EXPENSE") => {
           return accs
             .map((acc) => {
-              const total = acc.journal_entries.reduce(
-                (sum: number, je: any) => {
-                  const val = je.base_amount
-                    ? Number(je.base_amount)
-                    : Number(je.debit) - Number(je.credit);
-                  return sum + val;
-                },
-                0,
-              );
+              const total = acc.journalLines.reduce((sum: number, je: any) => {
+                const val = je.baseAmount
+                  ? Number(je.baseAmount)
+                  : Number(je.debit) - Number(je.credit);
+                return sum + val;
+              }, 0);
 
               // Flip sign for Revenue (Credits are positive income)
               const finalAmount = type === "REVENUE" ? -total : total;
@@ -861,18 +876,20 @@ export async function POST(req: NextRequest, context: RouteContext) {
         const reportData: any[] = [];
 
         for (const s of suppliers) {
-          const entries = await prisma.journal_entries.findMany({
+          const entries = await prisma.journalLine.findMany({
             where: {
-              company_id: user.companyId,
-              reference_id: s.id,
-              ...(branchId && { branch_id: branchId }),
+              companyId: user.companyId,
+              header: {
+                referenceId: s.id,
+                ...(branchId && { branchId }),
+              },
             },
             select: {
               debit: true,
               credit: true,
-              currency_code: true,
-              foreign_amount: true,
-              reference_type: true,
+              currencyCode: true,
+              foreignAmount: true,
+              header: { select: { referenceType: true } },
             },
           });
 
@@ -882,15 +899,15 @@ export async function POST(req: NextRequest, context: RouteContext) {
           const currencyTotals = entries.reduce<CurrencyGroups>(
             (acc, entry) => {
               // Ensure currency_code is a string, default to "Local"
-              const code: string = entry.currency_code ?? "Local";
+              const code: string = entry.currencyCode ?? "Local";
 
               if (!acc[code]) {
                 acc[code] = { onHim: 0, forHim: 0, count: 0 };
               }
 
               let amount = 0;
-              if (entry.foreign_amount && Number(entry.foreign_amount) !== 0) {
-                amount = Math.abs(Number(entry.foreign_amount));
+              if (entry.foreignAmount && Number(entry.foreignAmount) !== 0) {
+                amount = Math.abs(Number(entry.foreignAmount));
               } else {
                 amount =
                   Number(entry.debit) > 0
@@ -904,7 +921,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
                 acc[code].forHim += amount;
               }
 
-              const refType = entry.reference_type?.toLowerCase() ?? "";
+              const refType = entry.header?.referenceType?.toLowerCase() ?? "";
               if (["purchase", "invoice"].includes(refType)) {
                 acc[code].count += 1;
               }
@@ -1083,6 +1100,19 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
       case "customers": {
         templateFile = "customers-report.html";
+        const mappings = await prisma.account_mappings.findMany({
+          where: { company_id: user.companyId, is_default: true },
+          select: { mapping_type: true, account_id: true },
+        });
+        const arAccount = mappings.find(
+          (m) => m.mapping_type === "accounts_receivable",
+        )?.account_id;
+        if (!arAccount) {
+          return new Response(
+            JSON.stringify({ error: "Accounts receivable not mapped" }),
+            { status: 400 },
+          );
+        }
 
         const customers = await prisma.customer.findMany({
           where: {
@@ -1108,28 +1138,68 @@ export async function POST(req: NextRequest, context: RouteContext) {
         const customerReportData: any[] = [];
 
         for (const c of customers) {
-          // 2. Fetch all posted journal entries for the customer
-          const entries = await prisma.journal_entries.findMany({
-            where: {
-              company_id: user.companyId,
-              reference_id: c.id,
-              is_posted: true,
-              ...(branchId && { branch_id: branchId }),
-            },
-            select: {
-              debit: true,
-              credit: true,
-              currency_code: true,
-              foreign_amount: true,
-            },
+          const invoiceIds = await prisma.invoice.findMany({
+            where: { companyId: user.companyId, customerId: c.id },
+            select: { id: true },
           });
+          const invoiceIdList = invoiceIds.map((i) => i.id);
 
-          if (entries.length === 0) continue;
+          // 2. Fetch all posted journal entries for the customer
+          const [lineEntries, journalEntries] = await Promise.all([
+            prisma.journalLine.findMany({
+              where: {
+                companyId: user.companyId,
+                accountId: arAccount,
+                header: {
+                  referenceId: { in: invoiceIdList },
+                  status: "POSTED",
+                  ...(branchId && { branchId }),
+                },
+              },
+              select: {
+                debit: true,
+                credit: true,
+                currencyCode: true,
+                foreignAmount: true,
+              },
+            }),
+            prisma.journal_entries.findMany({
+              where: {
+                company_id: user.companyId,
+                account_id: arAccount,
+                reference_id: c.id,
+                ...(branchId && { branch_id: branchId }),
+              },
+              select: {
+                debit: true,
+                credit: true,
+                currency_code: true,
+                foreign_amount: true,
+              },
+            }),
+          ]);
+
+          if (lineEntries.length === 0 && journalEntries.length === 0) continue;
+
+          const mergedEntries = [
+            ...lineEntries.map((e) => ({
+              currencyCode: e.currencyCode,
+              foreignAmount: e.foreignAmount,
+              debit: e.debit,
+              credit: e.credit,
+            })),
+            ...journalEntries.map((e) => ({
+              currencyCode: e.currency_code,
+              foreignAmount: e.foreign_amount,
+              debit: e.debit,
+              credit: e.credit,
+            })),
+          ];
 
           // 3. Group by currency with strict typing
-          const currencyTotals = entries.reduce<CurrencyGroups>(
+          const currencyTotals = mergedEntries.reduce<CurrencyGroups>(
             (acc, entry) => {
-              const code: string = entry.currency_code ?? "Local";
+              const code: string = entry.currencyCode ?? "Local";
 
               if (!acc[code]) {
                 acc[code] = { onHim: 0, forHim: 0 };
@@ -1137,8 +1207,8 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
               // Logic: Use foreign_amount if available
               let amount = 0;
-              if (entry.foreign_amount && Number(entry.foreign_amount) !== 0) {
-                amount = Math.abs(Number(entry.foreign_amount));
+              if (entry.foreignAmount && Number(entry.foreignAmount) !== 0) {
+                amount = Math.abs(Number(entry.foreignAmount));
               } else {
                 amount =
                   Number(entry.debit) > 0
@@ -1190,8 +1260,8 @@ export async function POST(req: NextRequest, context: RouteContext) {
           createdAt: createDateFilter(fromDate, toDate),
         };
 
-        if (userId) {
-          where.userId = userId;
+        if (scopedUserId) {
+          where.userId = scopedUserId;
         }
 
         const useractivities = await prisma.activityLogs.findMany({
@@ -1270,6 +1340,19 @@ export async function POST(req: NextRequest, context: RouteContext) {
       }
       case "customer_statment": {
         templateFile = "customer_statment.html";
+        const mappings = await prisma.account_mappings.findMany({
+          where: { company_id: user.companyId, is_default: true },
+          select: { mapping_type: true, account_id: true },
+        });
+        const arAccount = mappings.find(
+          (m) => m.mapping_type === "accounts_receivable",
+        )?.account_id;
+        if (!arAccount) {
+          return new Response(
+            JSON.stringify({ error: "Accounts receivable not mapped" }),
+            { status: 400 },
+          );
+        }
         const fiscalYear = await prisma.fiscal_periods.findFirst({
           where: {
             company_id: user.companyId,
@@ -1303,56 +1386,158 @@ export async function POST(req: NextRequest, context: RouteContext) {
         const allStatements = []; // This will hold each separate page
 
         for (const c of customers) {
-          // Find all unique currencies this customer has used
-          const currencies = await prisma.journal_entries.findMany({
-            where: {
-              reference_id: c.id,
-              company_id: user.companyId,
-              ...(branchId && { branch_id: branchId }),
-            },
-            distinct: ["currency_code"],
-            select: { currency_code: true },
+          const invoiceIds = await prisma.invoice.findMany({
+            where: { companyId: user.companyId, customerId: c.id },
+            select: { id: true },
           });
+          const invoiceIdList = invoiceIds.map((i) => i.id);
 
-          for (const curr of currencies) {
-            const currencyCode = curr.currency_code || "Local";
+          // Find all unique currencies this customer has used (journal headers + journal_entries)
+          const [lineCurrencies, journalCurrencies] = await Promise.all([
+            prisma.journalLine.findMany({
+              where: {
+                companyId: user.companyId,
+                accountId: arAccount,
+                header: {
+                  referenceId: { in: invoiceIdList },
+                  ...(branchId && { branchId }),
+                },
+              },
+              distinct: ["currencyCode"],
+              select: { currencyCode: true },
+            }),
+            prisma.journal_entries.findMany({
+              where: {
+                company_id: user.companyId,
+                account_id: arAccount,
+                reference_id: c.id,
+                ...(branchId && { branch_id: branchId }),
+              },
+              distinct: ["currency_code"],
+              select: { currency_code: true },
+            }),
+          ]);
+
+          const currencySet = new Set<string | null>([
+            ...lineCurrencies.map((x) => x.currencyCode ?? null),
+            ...journalCurrencies.map((x) => x.currency_code ?? null),
+          ]);
+
+          for (const currCode of currencySet) {
+            const currencyCode = currCode || "Local";
 
             // 1. Get Opening Balance for THIS currency
-            const openingEntries = await prisma.journal_entries.findMany({
-              where: {
-                company_id: user.companyId,
-                reference_id: c.id,
-                ...(branchId && { branch_id: branchId }),
-                currency_code: curr.currency_code,
-                entry_date: { lt: fromDate },
-              },
-            });
+            const [openingLines, openingJournalEntries] = await Promise.all([
+              prisma.journalLine.findMany({
+                where: {
+                  companyId: user.companyId,
+                  accountId: arAccount,
+                  currencyCode: currCode ?? null,
+                  header: {
+                    referenceId: { in: invoiceIdList },
+                    ...(branchId && { branchId }),
+                    entryDate: { lt: fromDate },
+                  },
+                },
+              }),
+              prisma.journal_entries.findMany({
+                where: {
+                  company_id: user.companyId,
+                  account_id: arAccount,
+                  currency_code: currCode ?? null,
+                  reference_id: c.id,
+                  ...(branchId && { branch_id: branchId }),
+                  entry_date: { lt: fromDate },
+                },
+                select: { debit: true, credit: true, foreign_amount: true },
+              }),
+            ]);
 
-            const openingBalance = openingEntries.reduce((sum, e) => {
-              const val = e.foreign_amount
-                ? Number(e.foreign_amount)
-                : Number(e.debit) - Number(e.credit);
-              return sum + val;
-            }, 0);
+            const openingBalance =
+              openingLines.reduce((sum, e) => {
+                const val = e.foreignAmount
+                  ? Number(e.foreignAmount)
+                  : Number(e.debit) - Number(e.credit);
+                return sum + val;
+              }, 0) +
+              openingJournalEntries.reduce((sum, e) => {
+                const val = e.foreign_amount
+                  ? Number(e.foreign_amount)
+                  : Number(e.debit) - Number(e.credit);
+                return sum + val;
+              }, 0);
 
             // 2. Get Period Entries for THIS currency
-            const entries = await prisma.journal_entries.findMany({
-              where: {
-                company_id: user.companyId,
-                reference_id: c.id,
-                ...(branchId && { branch_id: branchId }),
-                currency_code: curr.currency_code,
-                entry_date: { gte: fromDate, lte: toDate },
-              },
-              orderBy: { entry_date: "asc" },
+            const [lines, journalEntries] = await Promise.all([
+              prisma.journalLine.findMany({
+                where: {
+                  companyId: user.companyId,
+                  accountId: arAccount,
+                  currencyCode: currCode ?? null,
+                  header: {
+                    referenceId: { in: invoiceIdList },
+                    ...(branchId && { branchId }),
+                    entryDate: { gte: fromDate, lte: toDate },
+                  },
+                },
+                orderBy: { header: { entryDate: "asc" } },
+                include: {
+                  header: true,
+                },
+              }),
+              prisma.journal_entries.findMany({
+                where: {
+                  company_id: user.companyId,
+                  account_id: arAccount,
+                  currency_code: currCode ?? null,
+                  reference_id: c.id,
+                  ...(branchId && { branch_id: branchId }),
+                  entry_date: { gte: fromDate, lte: toDate },
+                },
+                orderBy: { entry_date: "asc" },
+                select: {
+                  entry_date: true,
+                  debit: true,
+                  credit: true,
+                  description: true,
+                  entry_number: true,
+                  reference_type: true,
+                  foreign_amount: true,
+                },
+              }),
+            ]);
+
+            const combinedEntries = [
+              ...lines.map((entry) => ({
+                date: entry.header?.entryDate,
+                debit: Number(entry.debit),
+                credit: Number(entry.credit),
+                foreignAmount: entry.foreignAmount,
+                description: entry.memo ?? entry.header?.description,
+                docNo: entry.header?.entryNumber,
+                typeName: mapType(entry.header?.referenceType ?? null),
+              })),
+              ...journalEntries.map((entry) => ({
+                date: entry.entry_date,
+                debit: Number(entry.debit),
+                credit: Number(entry.credit),
+                foreignAmount: entry.foreign_amount,
+                description: entry.description,
+                docNo: entry.entry_number,
+                typeName: mapType(entry.reference_type ?? null),
+              })),
+            ].sort((a, b) => {
+              const aTime = a.date ? new Date(a.date).getTime() : 0;
+              const bTime = b.date ? new Date(b.date).getTime() : 0;
+              return aTime - bTime;
             });
 
             let runningBalance = openingBalance;
-            const transactions = entries.map((entry) => {
+            const transactions = combinedEntries.map((entry) => {
               const isDebit = Number(entry.debit) > 0;
               // Use foreign_amount if available
-              const amount = entry.foreign_amount
-                ? Math.abs(Number(entry.foreign_amount))
+              const amount = entry.foreignAmount
+                ? Math.abs(Number(entry.foreignAmount))
                 : isDebit
                   ? Number(entry.debit)
                   : Number(entry.credit);
@@ -1362,13 +1547,15 @@ export async function POST(req: NextRequest, context: RouteContext) {
               runningBalance = runningBalance + dVal - cVal;
 
               return {
-                date: entry.entry_date?.toLocaleDateString("ar-EG"),
+                date: entry.date
+                  ? new Date(entry.date).toLocaleDateString("ar-EG")
+                  : "",
                 debit: dVal.toFixed(2),
                 credit: cVal.toFixed(2),
                 balance: runningBalance.toFixed(2),
                 description: entry.description,
-                docNo: entry.entry_number,
-                typeName: mapType(entry.reference_type),
+                docNo: entry.docNo,
+                typeName: entry.typeName,
               };
             });
 
@@ -1432,6 +1619,19 @@ export async function POST(req: NextRequest, context: RouteContext) {
       }
       case "supplier_statment": {
         templateFile = "supplier_statment.html";
+        const mappings = await prisma.account_mappings.findMany({
+          where: { company_id: user.companyId, is_default: true },
+          select: { mapping_type: true, account_id: true },
+        });
+        const apAccount = mappings.find(
+          (m) => m.mapping_type === "accounts_payable",
+        )?.account_id;
+        if (!apAccount) {
+          return new Response(
+            JSON.stringify({ error: "Accounts payable not mapped" }),
+            { status: 400 },
+          );
+        }
         const fiscalYear = await prisma.fiscal_periods.findFirst({
           where: {
             company_id: user.companyId,
@@ -1482,12 +1682,15 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
         for (const c of suppliers) {
           // رصيد افتتاحي
-          const openingEntries = await prisma.journal_entries.findMany({
+          const openingEntries = await prisma.journalLine.findMany({
             where: {
-              company_id: user.companyId,
-              reference_id: c.id,
-              ...(branchId && { branch_id: branchId }),
-              entry_date: { lt: fromDate },
+              companyId: user.companyId,
+              accountId: apAccount,
+              header: {
+                referenceId: c.id,
+                ...(branchId && { branchId }),
+                entryDate: { lt: fromDate },
+              },
             },
             select: { debit: true, credit: true },
           });
@@ -1496,22 +1699,30 @@ export async function POST(req: NextRequest, context: RouteContext) {
             0,
           );
           // قيود الفترة
-          const entries = await prisma.journal_entries.findMany({
+          const entries = await prisma.journalLine.findMany({
             where: {
-              company_id: user.companyId,
-              ...(branchId && { branch_id: branchId }),
-              reference_id: c.id,
-              entry_date: { gte: fromDate, lte: toDate },
+              companyId: user.companyId,
+              accountId: apAccount,
+              header: {
+                referenceId: c.id,
+                ...(branchId && { branchId }),
+                entryDate: { gte: fromDate, lte: toDate },
+              },
             },
-            orderBy: { entry_date: "asc" },
+            orderBy: { header: { entryDate: "asc" } },
             select: {
               id: true,
-              entry_date: true,
               debit: true,
               credit: true,
-              description: true,
-              entry_number: true,
-              reference_type: true,
+              memo: true,
+              header: {
+                select: {
+                  entryDate: true,
+                  description: true,
+                  entryNumber: true,
+                  referenceType: true,
+                },
+              },
             },
           });
 
@@ -1522,13 +1733,13 @@ export async function POST(req: NextRequest, context: RouteContext) {
               runningBalance + Number(entry.credit) - Number(entry.debit);
 
             return {
-              date: entry.entry_date?.toLocaleDateString("ar-EG"),
+              date: entry.header?.entryDate?.toLocaleDateString("ar-EG"),
               debit: Number(entry.debit),
               credit: Number(entry.credit),
               balance: runningBalance.toFixed(2),
-              description: entry.description,
-              docNo: entry.entry_number,
-              typeName: mapType(entry.reference_type),
+              description: entry.memo ?? entry.header?.description,
+              docNo: entry.header?.entryNumber,
+              typeName: mapType(entry.header?.referenceType ?? null),
             };
           });
           const totalDebit = transactions.reduce((s, t) => s + t.debit, 0);
@@ -1695,7 +1906,8 @@ export async function POST(req: NextRequest, context: RouteContext) {
       case "customer-payments": {
         templateFile = "customer-payments-report.html";
         const payments = await prisma.financialTransaction.findMany({
-          where: {
+            where: {
+              ...(!isAdmin ? { userId: user.userId } : {}),
             companyId: user.companyId,
             ...(branchId && { branchId }),
             type: "PAYMENT",
@@ -1745,22 +1957,29 @@ export async function POST(req: NextRequest, context: RouteContext) {
           // رصيد افتتاحي
 
           // قيود الفترة
-          const entries = await prisma.journal_entries.findMany({
+          const entries = await prisma.journalLine.findMany({
             where: {
-              company_id: user.companyId,
-              account_id: bank.accountId,
-              ...(branchId && { branch_id: branchId }),
-              entry_date: { gte: fromDate, lte: toDate },
+              companyId: user.companyId,
+              accountId: bank.accountId,
+              header: {
+                ...(branchId && { branchId }),
+                entryDate: { gte: fromDate, lte: toDate },
+              },
             },
-            orderBy: { entry_date: "asc" },
+            orderBy: { header: { entryDate: "asc" } },
             select: {
               id: true,
-              entry_date: true,
               debit: true,
               credit: true,
-              description: true,
-              entry_number: true,
-              reference_type: true,
+              memo: true,
+              header: {
+                select: {
+                  entryDate: true,
+                  description: true,
+                  entryNumber: true,
+                  referenceType: true,
+                },
+              },
             },
           });
 
@@ -1771,13 +1990,13 @@ export async function POST(req: NextRequest, context: RouteContext) {
               runningBalance + Number(entry.debit) - Number(entry.credit);
 
             return {
-              date: entry.entry_date?.toLocaleDateString("ar-EG"),
+              date: entry.header?.entryDate?.toLocaleDateString("ar-EG"),
               debit: Number(entry.debit),
               credit: Number(entry.credit),
               balance: runningBalance.toFixed(2),
-              description: entry.description,
-              docNo: entry.entry_number,
-              typeName: mapType(entry.reference_type),
+              description: entry.memo ?? entry.header?.description,
+              docNo: entry.header?.entryNumber,
+              typeName: mapType(entry.header?.referenceType ?? null),
             };
           });
 
@@ -2084,31 +2303,33 @@ async function fetchAccountStatement({
   const safeAccountId =
     typeof accountId === "object" ? (accountId as any).id : accountId;
 
-  const branchCondition = branchId ? `AND je.branch_id::text = $5::text` : "";
+  const branchCondition = branchId ? `AND jh.branch_id::text = $5::text` : "";
   const sql = `
     SELECT 
-      je.id,
-      je.entry_number,
-      je.entry_date,
-      je.description,
-      je.debit,
-      je.credit,
-      je.reference_type,
-      je.currency_code,
+      jl.id,
+      jh.entry_number,
+      jh.entry_date,
+      jh.description,
+      jl.debit,
+      jl.credit,
+      jh.reference_type,
+      jl.currency_code,
       a.account_name_en AS account_name,
       a.account_code AS account_code,
       a.currency_code AS account_currency
-    FROM journal_entries je
+    FROM journal_lines jl
+    INNER JOIN journal_headers jh 
+      ON jl.header_id::text = jh.id::text
     INNER JOIN accounts a 
-      ON je.account_id::text = a.id::text
+      ON jl.account_id::text = a.id::text
 
-    WHERE je.company_id::text = $1::text
-      AND je.account_id::text = $2::text
-      AND je.entry_date BETWEEN $3 AND $4
-      AND je.is_posted = true
+    WHERE jl.company_id::text = $1::text
+      AND jl.account_id::text = $2::text
+      AND jh.entry_date BETWEEN $3 AND $4
+      AND jh.status = 'POSTED'
       ${branchCondition}
 
-    ORDER BY je.entry_date ASC, je.created_at ASC
+    ORDER BY jh.entry_date ASC, jh.created_at ASC
   `;
 
   const params = branchId

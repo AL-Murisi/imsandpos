@@ -24,33 +24,31 @@ export async function getSalesOverview(
   { startDate, endDate }: DateRange,
 ) {
   // Get revenue data (REVENUE ACCOUNTS)
-  const revenueEntries = await prisma.journal_entries.findMany({
+  const revenueEntries = await prisma.journalLine.findMany({
     where: {
-      accounts: {
+      account: {
         company_id: companyId,
         account_type: "REVENUE",
         is_active: true,
       },
-      is_posted: true,
-      entry_date: { gte: startDate, lte: endDate },
+      header: { status: "POSTED", entryDate: { gte: startDate, lte: endDate } },
     },
-    select: { entry_date: true, credit: true, debit: true },
-    orderBy: { entry_date: "asc" },
+    select: { debit: true, credit: true, header: { select: { entryDate: true } } },
+    orderBy: { header: { entryDate: "asc" } },
   });
 
   // Purchases / Expenses (EXPENSE ACCOUNTS)
-  const purchaseEntries = await prisma.journal_entries.findMany({
+  const purchaseEntries = await prisma.journalLine.findMany({
     where: {
-      accounts: {
+      account: {
         company_id: companyId,
         account_type: "EXPENSE",
         is_active: true,
       },
-      is_posted: true,
-      entry_date: { gte: startDate, lte: endDate },
+      header: { status: "POSTED", entryDate: { gte: startDate, lte: endDate } },
     },
-    select: { entry_date: true, credit: true, debit: true },
-    orderBy: { entry_date: "asc" },
+    select: { debit: true, credit: true, header: { select: { entryDate: true } } },
+    orderBy: { header: { entryDate: "asc" } },
   });
 
   // Debts (AR)
@@ -73,8 +71,8 @@ export async function getSalesOverview(
 
   // --- Revenue Aggregation (credit - debit) ---
   revenueEntries.forEach((entry) => {
-    if (!entry.entry_date) return;
-    const dateKey = entry.entry_date.toISOString().split("T")[0];
+    if (!entry.header?.entryDate) return;
+    const dateKey = entry.header.entryDate.toISOString().split("T")[0];
     const amount = Math.max(0, Number(entry.credit) - Number(entry.debit));
     revenueByDate.set(dateKey, (revenueByDate.get(dateKey) || 0) + amount);
   });
@@ -89,8 +87,8 @@ export async function getSalesOverview(
 
   // --- Purchases Aggregation (debit - credit) ---
   purchaseEntries.forEach((entry) => {
-    if (!entry.entry_date) return;
-    const dateKey = entry.entry_date.toISOString().split("T")[0];
+    if (!entry.header?.entryDate) return;
+    const dateKey = entry.header.entryDate.toISOString().split("T")[0];
     const amount = Math.max(0, Number(entry.debit) - Number(entry.credit));
     purchasesByDate.set(dateKey, (purchasesByDate.get(dateKey) || 0) + amount);
   });
@@ -136,34 +134,33 @@ export async function getRevenueChart(
   companyId: string,
   { startDate, endDate }: DateRange,
 ) {
-  const entries = await prisma.journal_entries.findMany({
+  const entries = await prisma.journalLine.findMany({
     where: {
-      accounts: {
+      account: {
         company_id: companyId,
         account_type: "REVENUE",
         is_active: true,
       },
-      is_posted: true,
-      entry_date: {
-        gte: startDate,
-        lte: endDate,
+      header: {
+        status: "POSTED",
+        entryDate: { gte: startDate, lte: endDate },
       },
     },
     select: {
-      entry_date: true,
       credit: true,
       debit: true,
+      header: { select: { entryDate: true } },
     },
-    orderBy: { entry_date: "asc" },
+    orderBy: { header: { entryDate: "asc" } },
   });
 
   const revenueByMonth = new Map<string, number>();
 
   entries.forEach((entry) => {
-    if (!entry.entry_date) return;
+    if (!entry.header?.entryDate) return;
 
     // Group by month (e.g. "2025-01")
-    const date = entry.entry_date;
+    const date = entry.header.entryDate;
     const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
     const amount = Math.abs(Number(entry.credit) - Number(entry.debit));
 
@@ -243,24 +240,17 @@ export async function getExpenseBreakdown(
       is_active: true,
     },
     include: {
-      journal_entries: {
+      journalLines: {
         where: {
-          is_posted: true,
-          entry_date: {
-            gte: startDate,
-            lte: endDate,
-          },
+          header: { status: "POSTED", entryDate: { gte: startDate, lte: endDate } },
         },
-        select: {
-          debit: true,
-          credit: true,
-        },
+        select: { debit: true, credit: true },
       },
     },
   });
 
   const categoryTotals = expenses.map((account) => {
-    const totalRaw = account.journal_entries.reduce(
+    const totalRaw = account.journalLines.reduce(
       (sum, entry) => sum + Number(entry.debit) - Number(entry.credit),
       0,
     );
@@ -369,15 +359,14 @@ export async function getSummaryCards(
   { startDate, endDate }: DateRange,
 ) {
   // Revenue
-  const revenue = await prisma.journal_entries.aggregate({
+  const revenue = await prisma.journalLine.aggregate({
     where: {
-      accounts: {
+      account: {
         company_id,
         account_type: "REVENUE",
         is_active: true,
       },
-      is_posted: true,
-      entry_date: { gte: startDate, lte: endDate },
+      header: { status: "POSTED", entryDate: { gte: startDate, lte: endDate } },
     },
     _sum: {
       credit: true,
@@ -386,15 +375,14 @@ export async function getSummaryCards(
   });
 
   // Purchases/Expenses
-  const purchases = await prisma.journal_entries.aggregate({
+  const purchases = await prisma.journalLine.aggregate({
     where: {
-      accounts: {
+      account: {
         company_id,
         account_category: "INVENTORY",
         is_active: true,
       },
-      is_posted: true,
-      entry_date: { gte: startDate, lte: endDate },
+      header: { status: "POSTED", entryDate: { gte: startDate, lte: endDate } },
     },
     _sum: {
       debit: true,
@@ -403,15 +391,15 @@ export async function getSummaryCards(
   });
 
   // Debts (assuming you have customer accounts or AR)
-  const unreceived = await prisma.journal_entries.aggregate({
+  const unreceived = await prisma.journalLine.aggregate({
     where: {
-      accounts: {
+      account: {
         company_id,
         account_type: "ASSET",
         account_category: "ACCOUNTS_RECEIVABLE",
         is_active: true,
       },
-      is_posted: true,
+      header: { status: "POSTED" },
     },
     _sum: {
       debit: true,

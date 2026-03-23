@@ -11,6 +11,7 @@ import { currencyConfig } from "@/currency/config";
 import { cookies } from "next/headers";
 import { CurrencyProvider } from "@/components/CurrencyProvider";
 import Providers from "./providers";
+import ChatbotWidget from "@/components/ChatbotWidget";
 
 export const metadata: Metadata = {
   title: "IMS - نظام إدارة المخزون | Inventory Management System",
@@ -375,6 +376,7 @@ export default async function RootLayout({
               >
                 <CurrencyProvider currency={currencyConfig[currencyKey]}>
                   {children}
+                  {/* <ChatbotWidget /> */}
                   <Analytics />
                   <SpeedInsights />
                   <Toaster />

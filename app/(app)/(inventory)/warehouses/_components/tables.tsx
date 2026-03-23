@@ -18,6 +18,12 @@ import ImportWarehouse from "@/components/uploadwarehouse";
 type ProductClientProps = {
   products: any[];
   total: number;
+  warehouseLimit: {
+    limit: number | null;
+    used: number;
+    remaining: number | null;
+    atLimit: boolean;
+  } | null;
   formData: {
     warehouses: { id: string; name: string }[];
     categories: { id: string; name: string }[];
@@ -31,6 +37,7 @@ type ProductClientProps = {
 export default function WarehouseTable({
   products,
   total,
+  warehouseLimit,
   formData,
 }: ProductClientProps) {
   const {
@@ -64,7 +71,7 @@ export default function WarehouseTable({
         <Calendar22 />
         <SearchInput placeholder={"بحث "} paramKey={"product"} />
 
-        <WarehouseForm />
+        <WarehouseForm warehouseLimit={warehouseLimit} />
       </div>
 
       <DataTable

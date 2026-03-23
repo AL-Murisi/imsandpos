@@ -17,6 +17,7 @@ type prop = {
   description?: string;
   children: ReactNode;
   style: any;
+  disabled?: boolean;
 };
 export default function Dailogreuse({
   open,
@@ -26,11 +27,14 @@ export default function Dailogreuse({
   description,
   children,
   style,
+  disabled = false,
 }: prop) {
   return (
     <Dialog open={open} onOpenChange={setOpen} modal={false}>
       <DialogTrigger asChild>
-        <Button variant="outline">{btnLabl}</Button>
+        <Button variant="outline" disabled={disabled}>
+          {btnLabl}
+        </Button>
       </DialogTrigger>
       <DialogContent className={`${style}`} dir="rtl">
         <DialogHeader>

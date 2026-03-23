@@ -8,11 +8,12 @@ import {
   Clock,
   EditIcon,
   Power,
+  Trash2,
 } from "lucide-react";
 
 import CustomDialog from "@/components/common/Dailog";
 import { Badge } from "@/components/ui/badge";
-import { updateUsers } from "@/lib/actions/users";
+import { deleteUser, updateUsers } from "@/lib/actions/users";
 import { useAuth } from "@/lib/context/AuthContext";
 import { userSchema } from "@/lib/zod";
 import { z } from "zod";
@@ -204,6 +205,23 @@ export const columns: ColumnDef<User>[] = [
               <Power className="h-4 w-4" />
             </Button>
           )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 text-red-600 hover:bg-red-100"
+            onClick={async () => {
+              if (userr.id === user.userId) return;
+              const ok = window.confirm("هل تريد حذف المستخدم؟");
+              if (!ok) return;
+              await deleteUser(userr.id, user.companyId);
+            }}
+            disabled={userr.id === user.userId}
+            title={
+              userr.id === user.userId ? "لا يمكن حذف المستخدم الحالي" : "حذف"
+            }
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
           {/* <Changerole /> */}
         </div>
       );

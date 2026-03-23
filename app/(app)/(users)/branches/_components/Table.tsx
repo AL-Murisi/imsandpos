@@ -30,9 +30,20 @@ type Props = {
       id: string;
     }[];
   }>;
+  branchLimit: {
+    limit: number | null;
+    used: number;
+    remaining: number | null;
+    atLimit: boolean;
+  } | null;
 };
 
-export default function SalesPointTable({ salespoint, total, role }: Props) {
+export default function SalesPointTable({
+  salespoint,
+  total,
+  role,
+  branchLimit,
+}: Props) {
   const {
     pagination,
     sorting,
@@ -56,7 +67,7 @@ export default function SalesPointTable({ salespoint, total, role }: Props) {
       {" "}
       {/* Add dir="rtl" for proper RTL layout */}
       <DataTable
-        search={<POSForm users={user} />}
+        search={<POSForm users={user} branchLimit={branchLimit} />}
         data={salespoints}
         columns={posColumns}
         initialPageSize={pagination.pageSize}

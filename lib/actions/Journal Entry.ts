@@ -274,12 +274,14 @@ export async function getProfitAndLoss(
       is_active: true,
     },
     include: {
-      journal_entries: {
+      journalLines: {
         where: {
-          is_posted: true,
-          entry_date: {
-            gte: startDate,
-            lte: endDate,
+          header: {
+            status: "POSTED",
+            entryDate: {
+              gte: startDate,
+              lte: endDate,
+            },
           },
         },
       },
@@ -293,12 +295,14 @@ export async function getProfitAndLoss(
       is_active: true,
     },
     include: {
-      journal_entries: {
+      journalLines: {
         where: {
-          is_posted: true,
-          entry_date: {
-            gte: startDate,
-            lte: endDate,
+          header: {
+            status: "POSTED",
+            entryDate: {
+              gte: startDate,
+              lte: endDate,
+            },
           },
         },
       },
@@ -307,14 +311,14 @@ export async function getProfitAndLoss(
 
   // Calculate totals
   const totalRevenue = revenue.reduce((sum, account) => {
-    const accountTotal = account.journal_entries.reduce((accSum, entry) => {
+    const accountTotal = account.journalLines.reduce((accSum, entry) => {
       return accSum + Number(entry.credit) - Number(entry.debit);
     }, 0);
     return sum + accountTotal;
   }, 0);
 
   const totalExpenses = expenses.reduce((sum, account) => {
-    const accountTotal = account.journal_entries.reduce((accSum, entry) => {
+    const accountTotal = account.journalLines.reduce((accSum, entry) => {
       return accSum + Number(entry.debit) - Number(entry.credit);
     }, 0);
     return sum + accountTotal;
@@ -325,14 +329,14 @@ export async function getProfitAndLoss(
   return {
     revenue: revenue.map((acc) => ({
       name: acc.account_name_en,
-      amount: acc.journal_entries.reduce(
+      amount: acc.journalLines.reduce(
         (sum, e) => sum + Number(e.credit) - Number(e.debit),
         0,
       ),
     })),
     expenses: expenses.map((acc) => ({
       name: acc.account_name_en,
-      amount: acc.journal_entries.reduce(
+      amount: acc.journalLines.reduce(
         (sum, e) => sum + Number(e.debit) - Number(e.credit),
         0,
       ),
@@ -354,12 +358,12 @@ export async function getBalanceSheet(asOfDate: Date) {
       throw new Error("Unauthorized");
     }
     // 1️⃣ Fetch balances per account
-    const rows = await prisma.journal_entries.groupBy({
-      by: ["account_id"],
+    const rows = await prisma.journalLine.groupBy({
+      by: ["accountId"],
       where: {
-        company_id: session.companyId,
-        entry_date: { lte: endDate },
-        accounts: {
+        companyId: session.companyId,
+        header: { entryDate: { lte: endDate } },
+        account: {
           account_type: {
             in: ["ASSET", "LIABILITY", "EQUITY"],
           },
@@ -372,7 +376,7 @@ export async function getBalanceSheet(asOfDate: Date) {
     });
 
     // 2️⃣ Fetch account metadata
-    const accountIds = rows.map((r) => r.account_id);
+    const accountIds = rows.map((r) => r.accountId);
 
     const accounts = await prisma.accounts.findMany({
       where: {
@@ -389,7 +393,7 @@ export async function getBalanceSheet(asOfDate: Date) {
 
     // 3️⃣ Map balances
     const mapped = rows.map((r) => {
-      const acc = accounts.find((a) => a.id === r.account_id)!;
+      const acc = accounts.find((a) => a.id === r.accountId)!;
       const balance = Number(r._sum.debit || 0) - Number(r._sum.credit || 0);
 
       return {
@@ -468,10 +472,9 @@ export async function getTrialBalance(companyId: string, asOfDate: Date) {
       is_active: true,
     },
     include: {
-      journal_entries: {
+      journalLines: {
         where: {
-          is_posted: true,
-          entry_date: { lte: asOfDate },
+          header: { status: "POSTED", entryDate: { lte: asOfDate } },
         },
       },
     },
@@ -482,11 +485,11 @@ export async function getTrialBalance(companyId: string, asOfDate: Date) {
   let totalCredits = 0;
 
   const trialBalance = accounts.map((account) => {
-    const debitSum = account.journal_entries.reduce(
+    const debitSum = account.journalLines.reduce(
       (sum, e) => sum + Number(e.debit),
       0,
     );
-    const creditSum = account.journal_entries.reduce(
+    const creditSum = account.journalLines.reduce(
       (sum, e) => sum + Number(e.credit),
       0,
     );
@@ -542,7 +545,7 @@ function serializeData<T>(data: T): T {
 }
 export async function getJournalEntries(
   account_id?: string,
-  isPosted: boolean = false,
+  isPosted?: string,
   from?: string,
   to?: string,
   page: number = 1,
@@ -552,16 +555,15 @@ export async function getJournalEntries(
   console.log(account_id);
   const company = await getSession();
   if (!company) return [];
-  const whereClause: Prisma.journal_entriesWhereInput = {
-    company_id: company.companyId,
-    is_posted: isPosted,
-    account_id: account_id,
+  const whereClause: Prisma.JournalHeaderWhereInput = {
+    companyId: company.companyId,
+    ...(isPosted ? { status: isPosted } : {}),
   };
   const fromatDate = from ? new Date(from).toISOString() : undefined;
   const toDate = to ? new Date(to).toISOString() : undefined;
 
   if (fromatDate || toDate) {
-    whereClause.created_at = {
+    whereClause.entryDate = {
       ...(fromatDate && {
         gte: fromatDate,
       }),
@@ -571,68 +573,83 @@ export async function getJournalEntries(
     };
   }
 
-  const total = await prisma.journal_entries.count({
-    where: { company_id: company.companyId },
-  });
-  const entries = await prisma.journal_entries.findMany({
+  if (account_id) {
+    whereClause.lines = {
+      some: {
+        accountId: account_id,
+      },
+    };
+  }
+
+  const total = await prisma.journalHeader.count({ where: whereClause });
+  const entries = await prisma.journalHeader.findMany({
     where: whereClause,
     select: {
       id: true,
 
-      entry_number: true,
-      entry_date: true,
+      entryNumber: true,
+      entryDate: true,
       description: true,
-      debit: true,
-      credit: true,
-      is_posted: true,
-      created_by: true,
-      is_automated: true,
-      reference_type: true,
-      fiscal_period: true,
-      currency_code: true,
-      accounts: {
+      lines: {
+        ...(account_id
+          ? { where: { accountId: account_id } }
+          : {}),
         select: {
-          account_code: true,
-          account_name_en: true,
+          debit: true,
+          currencyCode: true,
+          credit: true,
+          memo: true,
+          account: {
+            select: {
+              account_code: true,
+              account_name_en: true,
+              account_name_ar: true,
+            },
+          },
         },
       },
-      posted_by: true,
-      users_journal_entries_created_byTousers: {
-        select: { name: true, email: true },
-      },
-      users_journal_entries_updated_byTousers: {
+      status: true,
+      createdBy: true,
+      referenceType: true,
+
+      createdUser: {
         select: { name: true, email: true },
       },
     },
     skip: page * pageSize,
     take: pageSize,
-    orderBy: {
-      created_at: "desc", // ✅ Order latest first
-    },
+    orderBy: sort?.length
+      ? { [sort[0].id]: sort[0].desc ? "desc" : "asc" }
+      : { entryDate: "desc" as const }, // ✅ Order latest first
   });
-  const userIds = entries
-    .map((e) => e.posted_by)
-    .filter((id): id is string => id !== null); // 👈 type guard
-  const users = await prisma.user.findMany({
-    where: { id: { in: userIds } },
-    select: { id: true, name: true, email: true },
-  });
+  // const userIds = entries
+  //   .map((e) => e.posted_by)
+  //   .filter((id): id is string => id !== null); // 👈 type guard
+  // const users = await prisma.user.findMany({
+  //   where: { id: { in: userIds } },
+  //   select: { id: true, name: true, email: true },
+  // });
 
   // 👇 حوّل أي قيم رقمية إلى أرقام حقيقية
   const data = entries.map((entry) => ({
-    ...entry,
-    debit: Number(entry.debit) || 0,
-    credit: Number(entry.credit) || 0,
+    id: entry.id,
+    entryNumber: entry.entryNumber,
+    entryDate: entry.entryDate,
+    description: entry.description,
+    status: entry.status,
+    referenceType: entry.referenceType,
+    createdBy: entry.createdBy,
+    createdUser: entry.createdUser,
+    lines: entry.lines,
+    debit: entry.lines.reduce(
+      (sum, line) => sum + Number(line.debit || 0),
+      0,
+    ),
+    credit: entry.lines.reduce(
+      (sum, line) => sum + Number(line.credit || 0),
+      0,
+    ),
     total,
-    posted_by: entry.posted_by
-      ? users.find((u) => u.id === entry.posted_by) || null
-      : null,
-    updatedBy: entry.users_journal_entries_updated_byTousers
-      ? {
-          name: entry.users_journal_entries_updated_byTousers.name,
-          email: entry.users_journal_entries_updated_byTousers.email,
-        }
-      : null,
   }));
 
   return data;
@@ -642,66 +659,65 @@ export async function getJournalEntrie(account_id?: string) {
   const company = await getSession();
   if (!company) return [];
 
-  const total = await prisma.journal_entries.count({
-    where: { company_id: company.companyId },
+  const total = await prisma.journalLine.count({
+    where: { companyId: company.companyId },
   });
-  const entries = await prisma.journal_entries.findMany({
-    where: { account_id: account_id, company_id: company.companyId },
+
+  const lines = await prisma.journalLine.findMany({
+    where: {
+      companyId: company.companyId,
+      ...(account_id ? { accountId: account_id } : {}),
+    },
     select: {
       id: true,
-
-      entry_number: true,
-      entry_date: true,
-      description: true,
       debit: true,
       credit: true,
-      is_posted: true,
-      created_by: true,
-      is_automated: true,
-      reference_type: true,
-      fiscal_period: true,
-      accounts: {
+      currencyCode: true,
+      memo: true,
+      account: {
         select: {
           account_code: true,
           account_name_en: true,
+          account_name_ar: true,
         },
       },
-      posted_by: true,
-      users_journal_entries_created_byTousers: {
-        select: { name: true, email: true },
-      },
-      users_journal_entries_updated_byTousers: {
-        select: { name: true, email: true },
+      header: {
+        select: {
+          entryNumber: true,
+          entryDate: true,
+          description: true,
+          status: true,
+          referenceType: true,
+          createdUser: { select: { name: true, email: true } },
+        },
       },
     },
+    orderBy: { header: { entryDate: "desc" } },
+  });
 
-    orderBy: {
-      created_at: "desc", // ✅ Order latest first
+  const data = lines.map((line) => ({
+    id: line.id,
+    entry_number: line.header.entryNumber,
+    entry_date: line.header.entryDate,
+    description: line.memo || line.header.description || "",
+    debit: Number(line.debit) || 0,
+    credit: Number(line.credit) || 0,
+    is_posted: line.header.status === "POSTED",
+    is_automated: Boolean(line.header.referenceType),
+    reference_type: line.header.referenceType,
+    reference_id: null,
+    fiscal_period: null,
+    accounts: {
+      account_code: line.account.account_code,
+      account_name_ar: line.account.account_name_ar,
+      account_name_en: line.account.account_name_en,
     },
-  });
-  const userIds = entries
-    .map((e) => e.posted_by)
-    .filter((id): id is string => id !== null); // 👈 type guard
-  const users = await prisma.user.findMany({
-    where: { id: { in: userIds } },
-    select: { id: true, name: true, email: true },
-  });
-
-  // 👇 حوّل أي قيم رقمية إلى أرقام حقيقية
-  const data = entries.map((entry) => ({
-    ...entry,
-    debit: Number(entry.debit) || 0,
-    credit: Number(entry.credit) || 0,
+    posted_by: null,
+    users_journal_entries_created_byTousers: line.header.createdUser
+      ? { name: line.header.createdUser.name, email: line.header.createdUser.email }
+      : null,
+    users_journal_entries_updated_byTousers: null,
     total,
-    posted_by: entry.posted_by
-      ? users.find((u) => u.id === entry.posted_by) || null
-      : null,
-    updatedBy: entry.users_journal_entries_updated_byTousers
-      ? {
-          name: entry.users_journal_entries_updated_byTousers.name,
-          email: entry.users_journal_entries_updated_byTousers.email,
-        }
-      : null,
   }));
 
   return data;
@@ -726,19 +742,20 @@ export async function getAccountLedger(
     throw new Error("Account not found");
   }
 
-  const dateFilter: any = { is_posted: true };
+  const dateFilter: any = { status: "POSTED" };
   if (startDate || endDate) {
-    dateFilter.entry_date = {};
-    if (startDate) dateFilter.entry_date.gte = startDate;
-    if (endDate) dateFilter.entry_date.lte = endDate;
+    dateFilter.entryDate = {};
+    if (startDate) dateFilter.entryDate.gte = startDate;
+    if (endDate) dateFilter.entryDate.lte = endDate;
   }
 
-  const entries = await prisma.journal_entries.findMany({
+  const entries = await prisma.journalLine.findMany({
     where: {
-      account_id: id,
-      ...dateFilter,
+      accountId: id,
+      header: dateFilter,
     },
-    // orderBy: { entry_date: "asc" },
+    include: { header: true },
+    // orderBy: { header: { entryDate: "asc" } },
   });
 
   let runningBalance = Number(account.opening_balance) || 0;
@@ -749,11 +766,11 @@ export async function getAccountLedger(
     runningBalance += debit - credit;
 
     return {
-      date: entry.entry_date,
-      entryNumber: entry.entry_number,
-      description: entry.description,
-      referenceType: entry.reference_type,
-      referenceId: entry.reference_id,
+      date: entry.header.entryDate,
+      entryNumber: entry.header.entryNumber,
+      description: entry.memo || entry.header.description,
+      referenceType: entry.header.referenceType,
+      referenceId: entry.header.referenceId,
       debit,
       credit,
       balance: runningBalance,
@@ -775,16 +792,17 @@ export async function getLatestJournalEntries(accountId: string) {
   const companyId = await getSession();
   console.log(accountId);
   if (!companyId) return;
-  const entries = await prisma.journal_entries.findMany({
+  const entries = await prisma.journalLine.findMany({
     where: {
-      company_id: companyId.companyId,
-      account_id: accountId,
-      is_posted: true,
+      companyId: companyId.companyId,
+      accountId,
+      header: { status: "POSTED" },
     },
-    orderBy: { entry_date: "desc" },
+    orderBy: { header: { entryDate: "desc" } },
     take: 5,
     include: {
-      accounts: true,
+      account: true,
+      header: true,
     },
   });
 
@@ -798,14 +816,14 @@ export async function getLatestJournalEntries(accountId: string) {
 
     return {
       id: entry.id,
-      date: entry.entry_date,
-      description: entry.description || "",
+      date: entry.header.entryDate,
+      description: entry.memo || entry.header.description || "",
       debit,
       credit,
       balance: runningBalance,
       account: {
-        code: entry.accounts.account_code,
-        name: entry.accounts.account_name_en,
+        code: entry.account.account_code,
+        name: entry.account.account_name_en,
       },
     };
   });
@@ -820,15 +838,14 @@ export async function UpateJournalEntriesPosting(
   try {
     const { companyId, userId } = await getUserCompany();
 
-    const updatePost = await prisma.journal_entries.updateMany({
+    const updatePost = await prisma.journalHeader.updateMany({
       where: {
-        company_id: companyId,
-        entry_number: { in: entry_numbers },
+        companyId,
+        entryNumber: { in: entry_numbers },
       },
       data: {
-        is_posted: is_posted,
-        updated_by: userId,
-        posted_by: userId,
+        status: is_posted ? "POSTED" : "DRAFT",
+        updatedAt: new Date(),
       },
     });
 

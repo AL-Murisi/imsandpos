@@ -17,6 +17,7 @@ import { getActiveFiscalYears, validateFiscalYear } from "./fiscalYear";
 import { PaymentState } from "@/components/common/ReusablePayment";
 import { getNextVoucherNumber } from "./cashier";
 import { sendRoleBasedNotification } from "@/lib/push-notifications";
+import { canCreateSubscriptionResource } from "./subscription";
 function serializeData<T>(data: T): T {
   if (data === null || data === undefined) return data;
   if (typeof data !== "object") return data;
@@ -1572,6 +1573,16 @@ export async function createWarehouse(
     email,
   } = parsed.data;
   try {
+    const warehouseCapacity = await canCreateSubscriptionResource(
+      companyId,
+      "warehouses",
+    );
+    if (!warehouseCapacity.allowed) {
+      throw new Error(
+        `تم الوصول إلى الحد الأقصى للمخازن (${warehouseCapacity.usage.used}/${warehouseCapacity.usage.limit})`,
+      );
+    }
+
     const warehouse = await prisma.warehouse.create({
       data: {
         companyId,

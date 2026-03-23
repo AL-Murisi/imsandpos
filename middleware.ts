@@ -53,6 +53,7 @@ const publicRoutes = new Set([
   "/login",
   "/signup",
   "/landing",
+  "/invite",
   "/manifest.json",
   "/createcompanybyemail",
   "/unauthorized",
@@ -134,20 +135,50 @@ export default async function middleware(req: NextRequest) {
   const authToken = await getToken(params);
   const userRoles = sanitizeRoles(authToken?.roles);
   const isAuthenticated = Boolean(authToken?.userId || authToken?.email);
+  const isTokenActive =
+    authToken?.userActive !== false && authToken?.companyActive !== false;
+  const subscriptionEndsAt =
+    typeof authToken?.subscriptionEndsAt === "string"
+      ? new Date(authToken.subscriptionEndsAt)
+      : authToken?.subscriptionEndsAt instanceof Date
+        ? authToken.subscriptionEndsAt
+        : null;
+  const isSubscriptionActive =
+    authToken?.subscriptionActive !== false &&
+    (!subscriptionEndsAt || subscriptionEndsAt.getTime() >= Date.now());
+  const subscriptionRoute = "/settings/subscription";
+
+  if (isAuthenticated && !isTokenActive) {
+    return NextResponse.redirect(new URL("/login", req.nextUrl));
+  }
 
   if (isAuthenticated && authRoutes.has(path)) {
     return safeRedirect(req, getDefaultRedirectForRole(userRoles));
   }
-
-  if (path === "/" && isAuthenticated) {
-    return safeRedirect(req, getDefaultRedirectForRole(userRoles));
+  if (path === "/") {
+    if (isAuthenticated) {
+      return safeRedirect(req, getDefaultRedirectForRole(userRoles));
+    } else {
+      return safeRedirect(req, "/landing"); // or "/landing"
+    }
   }
 
   if (!isAuthenticated && !isPublicRoute) {
     return NextResponse.redirect(new URL("/login", req.nextUrl));
   }
 
+  if (
+    isAuthenticated &&
+    !isSubscriptionActive &&
+    path !== subscriptionRoute
+  ) {
+    return safeRedirect(req, subscriptionRoute);
+  }
+
   if (isAuthenticated) {
+    if (path === subscriptionRoute) {
+      return NextResponse.next();
+    }
     const requiredRoles = getRequiredRoles(path);
     if (
       requiredRoles &&

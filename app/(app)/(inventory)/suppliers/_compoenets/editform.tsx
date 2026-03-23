@@ -39,7 +39,8 @@ import { Button } from "@/components/ui/button";
 import Dailogreuse from "@/components/common/dailogreuse";
 import { CreateSupplierInput, CreateSupplierSchema } from "@/lib/zod";
 import { Check } from "lucide-react";
-import { currencyOptions } from "@/lib/actions/currnciesOptions";
+import { fallbackCurrencyOptions } from "@/lib/actions/currnciesOptions";
+import { useCurrencyOptions } from "@/hooks/useCurrencyOptions";
 import { useCompany } from "@/hooks/useCompany";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -47,6 +48,8 @@ export function EditSupplierForm({ supplier }: any) {
   const [loading, setLoading] = useState(false);
   const { company } = useCompany();
   const basCurrncy = company?.base_currency;
+  const { options } = useCurrencyOptions();
+  const currencyOptions = options.length ? options : fallbackCurrencyOptions;
 
   const form = useForm<CreateSupplierInput>({
     resolver: zodResolver(CreateSupplierSchema),

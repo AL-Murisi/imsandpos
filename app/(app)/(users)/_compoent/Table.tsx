@@ -23,9 +23,27 @@ type ProductClientProps = {
   users: any[];
   total: number;
   role: { id: string; name: string }[];
+  userLimit: {
+    limit: number | null;
+    used: number;
+    remaining: number | null;
+    atLimit: boolean;
+  } | null;
+  cashierLimit: {
+    limit: number | null;
+    used: number;
+    remaining: number | null;
+    atLimit: boolean;
+  } | null;
 };
 
-export default function UserClinet({ users, total, role }: ProductClientProps) {
+export default function UserClinet({
+  users,
+  total,
+  role,
+  userLimit,
+  cashierLimit,
+}: ProductClientProps) {
   const {
     pagination,
     sorting,
@@ -54,7 +72,7 @@ export default function UserClinet({ users, total, role }: ProductClientProps) {
             <SearchInput placeholder={"بحث"} paramKey={"users"} />{" "}
             {/* Translate placeholder */}
             <SelectField options={role} paramKey="role" placeholder="الفئة" />
-            <UserForm />
+            <UserForm userLimit={userLimit} cashierLimit={cashierLimit} />
           </div>
         }
         data={users}

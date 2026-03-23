@@ -38,18 +38,34 @@ const providers = [
           email: true,
           name: true,
           password: true,
+          isActive: true,
           companyId: true,
+          company: { select: { isActive: true } },
           roles: { include: { role: true } },
+          userInvites: {
+            where: { usedAt: null, expiresAt: { gt: new Date() } },
+            select: { id: true },
+          },
         },
       });
 
-      if (!user || !user.password || user.password !== password) {
+      if (
+        !user ||
+        !user.password ||
+        user.password !== password ||
+        !user.isActive ||
+        !user.company?.isActive ||
+        user.userInvites.length > 0
+      ) {
         return null;
       }
 
       const roles = user.roles
         .map((r) => r.role.name?.trim().toLowerCase())
         .filter(Boolean);
+      const subscription = await ensureTrialSubscription(user.companyId);
+      const subscriptionEndsAt = subscription?.endsAt ?? null;
+      const subscriptionActive = isSubscriptionActive(subscription);
       return {
         id: user.id,
         email: user.email,
@@ -57,10 +73,49 @@ const providers = [
         companyId: user.companyId,
         roles,
         userId: user.id,
+        isActive: user.isActive,
+        companyActive: user.company?.isActive ?? false,
+        subscriptionActive,
+        subscriptionEndsAt,
       } as any;
     },
   }),
 ];
+
+function isSubscriptionActive(subscription: {
+  isActive: boolean;
+  status: string;
+  endsAt: Date | null;
+} | null) {
+  if (!subscription) return false;
+  if (!subscription.isActive) return false;
+  if (subscription.status !== "ACTIVE") return false;
+  if (subscription.endsAt && subscription.endsAt.getTime() < Date.now()) {
+    return false;
+  }
+  return true;
+}
+
+async function ensureTrialSubscription(companyId: string) {
+  const existing = await prisma.subscription.findFirst({
+    where: { companyId },
+    orderBy: { createdAt: "desc" },
+  });
+  if (existing) return existing;
+
+  const startsAt = new Date();
+  const endsAt = new Date(startsAt.getTime() + 7 * 24 * 60 * 60 * 1000);
+  return await prisma.subscription.create({
+    data: {
+      companyId,
+      plan: "TRIAL",
+      status: "ACTIVE",
+      startsAt,
+      endsAt,
+      isActive: true,
+    },
+  });
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   secret:
@@ -72,11 +127,55 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   providers,
   callbacks: {
+    async signIn({ user, account }) {
+      if (account?.provider && account.provider !== "credentials") {
+        const email =
+          typeof user?.email === "string" ? user.email.trim().toLowerCase() : "";
+        if (!email) return false;
+
+        const appUser = await prisma.user.findUnique({
+          where: { email },
+          select: {
+            isActive: true,
+            company: { select: { isActive: true } },
+            companyId: true,
+            userInvites: {
+              where: { usedAt: null, expiresAt: { gt: new Date() } },
+              select: { id: true },
+            },
+          },
+        });
+
+        if (
+          !appUser ||
+          !appUser.isActive ||
+          !appUser.company?.isActive ||
+          appUser.userInvites.length > 0
+        ) {
+          return false;
+        }
+        await ensureTrialSubscription(appUser.companyId);
+      }
+      return true;
+    },
     async jwt({ token, user }) {
       if (user) {
         token.userId = (user as any).userId ?? user.id;
         token.companyId = (user as any).companyId;
         token.roles = (user as any).roles ?? [];
+        token.userActive =
+          typeof (user as any).isActive === "boolean"
+            ? (user as any).isActive
+            : true;
+        token.companyActive =
+          typeof (user as any).companyActive === "boolean"
+            ? (user as any).companyActive
+            : true;
+        token.subscriptionActive =
+          typeof (user as any).subscriptionActive === "boolean"
+            ? (user as any).subscriptionActive
+            : true;
+        token.subscriptionEndsAt = (user as any).subscriptionEndsAt ?? null;
       }
 
       // If we already have the core fields, avoid hitting the DB on every request.
@@ -93,6 +192,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             select: {
               id: true,
               companyId: true,
+              isActive: true,
+              company: { select: { isActive: true } },
               roles: { include: { role: true } },
             },
           });
@@ -100,9 +201,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           if (appUser) {
             token.userId = appUser.id;
             token.companyId = appUser.companyId;
+            token.userActive = appUser.isActive;
+            token.companyActive = appUser.company?.isActive ?? false;
             token.roles = appUser.roles
               .map((r) => r.role.name?.trim().toLowerCase())
               .filter(Boolean);
+            const subscription = await ensureTrialSubscription(appUser.companyId);
+            token.subscriptionActive = isSubscriptionActive(subscription);
+            token.subscriptionEndsAt = subscription?.endsAt ?? null;
           }
         } catch (error) {
           // If DB is unavailable, keep the existing token instead of failing session.
@@ -117,6 +223,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         (session.user as any).userId = token.userId;
         (session.user as any).companyId = token.companyId;
         (session.user as any).roles = token.roles ?? [];
+        (session.user as any).isActive = token.userActive ?? true;
+        (session.user as any).companyActive = token.companyActive ?? true;
+        (session.user as any).subscriptionActive =
+          token.subscriptionActive ?? true;
+        (session.user as any).subscriptionEndsAt =
+          token.subscriptionEndsAt ?? null;
       }
       return session;
     },

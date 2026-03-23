@@ -21,7 +21,20 @@ type Role = {
   name: string;
 };
 
-export default function UserForm() {
+type LimitInfo = {
+  limit: number | null;
+  used: number;
+  remaining: number | null;
+  atLimit: boolean;
+} | null;
+
+export default function UserForm({
+  userLimit,
+  cashierLimit,
+}: {
+  userLimit?: LimitInfo;
+  cashierLimit?: LimitInfo;
+}) {
   const [roles, setRoles] = useState<Role[]>([]);
   const [branch, setBranch] = useState<Role[]>([]);
   const [open, setOpen] = useState(false);
@@ -47,6 +60,7 @@ export default function UserForm() {
   });
   const { user } = useAuth();
   if (!user) return;
+  const isUserLimitReached = userLimit?.atLimit ?? false;
   // Load roles on mount
   useEffect(() => {
     if (!open) return;
@@ -68,8 +82,19 @@ export default function UserForm() {
 
   const selectedRoleObj = roles.find((r) => r.id === selectedRole);
   const isCashier = selectedRoleObj?.name === "cashier";
+  const isCashierLimitReached = isCashier && (cashierLimit?.atLimit ?? false);
 
   const onSubmit = async (data: UserInput) => {
+    if (isUserLimitReached) {
+      toast.error("تم الوصول إلى الحد الأقصى للمستخدمين في الخطة الحالية");
+      return;
+    }
+
+    if (isCashierLimitReached) {
+      toast.error("تم الوصول إلى الحد الأقصى للكاشير في الخطة الحالية");
+      return;
+    }
+
     setIsSubmitting(true);
 
     setOpen(true);
@@ -82,7 +107,11 @@ export default function UserForm() {
       return;
     }
 
-    toast.success("✅ تمت إضافة المستخدم بنجاح");
+    if (result.warning) {
+      toast.warning(result.warning);
+    } else {
+      toast.success("User created successfully");
+    }
     setOpen(false);
     setIsSubmitting(false);
     reset();
@@ -95,9 +124,15 @@ export default function UserForm() {
       btnLabl={"إضافة مستخدم"}
       style="w-sm"
       description="أدخل تفاصيل المنتج واحفظه"
+      disabled={isUserLimitReached}
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" dir="rtl">
         <div className="grid gap-4">
+          {isUserLimitReached && (
+            <p className="text-sm text-red-500">
+              تم الوصول إلى الحد الأقصى للمستخدمين في الاشتراك.
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-4">
             {/* Email */}
             <div className="grid gap-2">
@@ -148,6 +183,11 @@ export default function UserForm() {
             {errors.roleId && (
               <p className="text-xs text-red-500">{errors.roleId.message}</p>
             )}
+            {isCashierLimitReached && (
+              <p className="text-xs text-red-500">
+                تم الوصول إلى الحد الأقصى للكاشير في الاشتراك.
+              </p>
+            )}
             {isCashier && (
               <div className="grid gap-2">
                 <Label>الفرع</Label>
@@ -169,7 +209,7 @@ export default function UserForm() {
         <div className="flex justify-end">
           <Button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || isUserLimitReached || isCashierLimitReached}
             className="min-w-[120px] bg-green-600 hover:bg-green-700"
           >
             {isSubmitting ? "جاري الحفظ..." : "حفظ "}

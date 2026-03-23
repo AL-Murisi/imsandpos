@@ -1,7 +1,6 @@
-"use client";
+﻿"use client";
 
 import { Button } from "@/components/ui/button";
-// استبدل بالمسار الصحيح
 import { useState } from "react";
 import { toast } from "sonner";
 import { UpateJournalEntriesPosting } from "@/lib/actions/Journal Entry";
@@ -9,7 +8,7 @@ import { setRowSelection } from "@/lib/slices/table";
 import { useAppDispatch } from "@/lib/store";
 
 interface BulkPostButtonProps {
-  selectedEntries: { entry_number: string }[];
+  selectedEntries: { entryNumber: string }[];
   onSuccess?: () => void;
 }
 
@@ -18,7 +17,6 @@ export function BulkPostButton({
   onSuccess,
 }: BulkPostButtonProps) {
   const dispatch = useAppDispatch();
-  const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleBulkPost = async () => {
@@ -28,7 +26,7 @@ export function BulkPostButton({
       return;
     }
     setIsSubmitting(true);
-    const entryNumbers = selectedEntries.map((e) => e.entry_number);
+    const entryNumbers = selectedEntries.map((e) => e.entryNumber);
     const result = await UpateJournalEntriesPosting(entryNumbers, true);
 
     if (result.success) {

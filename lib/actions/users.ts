@@ -3,6 +3,9 @@ import prisma from "@/lib/prisma";
 import { CreateUserSchema, UpdateUserSchema } from "@/lib/zod";
 import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { randomBytes } from "crypto";
+import { sendUserInviteEmail } from "@/lib/email";
+import { canCreateSubscriptionResource } from "./subscription";
 
 export async function updateUsers(
   isActive: boolean,
@@ -31,6 +34,24 @@ export async function deleteCustomer(supplierId: string, companyId: string) {
   } catch (error) {
     console.error("Failed to delete customer:", error);
     throw error;
+  }
+}
+
+export async function deleteUser(userId: string, companyId: string) {
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      await tx.userRole.deleteMany({ where: { userId } });
+      await tx.userInvite.deleteMany({ where: { userId } });
+      await tx.pushSubscription.deleteMany({ where: { userId } });
+      return await tx.user.delete({
+        where: { id: userId, companyId },
+      });
+    });
+    revalidatePath("/users");
+    return { success: true, user: result };
+  } catch (error) {
+    console.error("Failed to delete user:", error);
+    return { success: false, error: "Failed to delete user" };
   }
 }
 
@@ -110,8 +131,40 @@ export async function createUser(form: any, companyId: string) {
 
   const { email, name, phoneNumber, password, roleId, branchId } = parsed.data;
   const normalizedEmail = email.trim().toLowerCase();
+  const finalPassword =
+    typeof password === "string" && password.length > 0
+      ? password
+      : randomBytes(16).toString("hex");
 
   try {
+    const userCapacity = await canCreateSubscriptionResource(companyId, "users");
+    if (!userCapacity.allowed) {
+      return {
+        error: `تم الوصول إلى الحد الأقصى للمستخدمين (${userCapacity.usage.used}/${userCapacity.usage.limit})`,
+      };
+    }
+
+    const selectedRole = await prisma.role.findUnique({
+      where: { id: roleId },
+      select: { name: true },
+    });
+
+    if (!selectedRole) {
+      return { error: "Role not found" };
+    }
+
+    if (selectedRole.name === "cashier") {
+      const cashierCapacity = await canCreateSubscriptionResource(
+        companyId,
+        "cashiers",
+      );
+      if (!cashierCapacity.allowed) {
+        return {
+          error: `تم الوصول إلى الحد الأقصى للكاشير (${cashierCapacity.usage.used}/${cashierCapacity.usage.limit})`,
+        };
+      }
+    }
+
     const existingUser = await prisma.user.findUnique({
       where: { email: normalizedEmail },
     });
@@ -126,7 +179,7 @@ export async function createUser(form: any, companyId: string) {
         email: normalizedEmail,
         name,
         phoneNumber,
-        password,
+        password: finalPassword,
         ...(branchId && { branchId }),
       },
     });
@@ -137,6 +190,42 @@ export async function createUser(form: any, companyId: string) {
         roleId,
       },
     });
+
+    const token = randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 48);
+
+    await prisma.userInvite.create({
+      data: {
+        companyId,
+        userId: user.id,
+        email: normalizedEmail,
+        token,
+        expiresAt,
+      },
+    });
+
+    const company = await prisma.company.findUnique({
+      where: { id: companyId },
+      select: { name: true, logoUrl: true },
+    });
+
+    try {
+      await sendUserInviteEmail({
+        email: normalizedEmail,
+        name,
+        token,
+        companyName: company?.name ?? null,
+        companyLogoUrl: company?.logoUrl ?? null,
+      });
+    } catch (error) {
+      console.error("Failed to send invite email:", error);
+      revalidatePath("/users");
+      return {
+        success: true,
+        user,
+        warning: "User created but invite email failed",
+      };
+    }
 
     revalidatePath("/users");
     return { success: true, user };

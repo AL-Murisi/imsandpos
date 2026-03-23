@@ -35,7 +35,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { SelectField } from "@/components/common/selectproduct";
-import { currencyOptions } from "@/lib/actions/currnciesOptions";
+import { fallbackCurrencyOptions } from "@/lib/actions/currnciesOptions";
+import { useCurrencyOptions } from "@/hooks/useCurrencyOptions";
 
 const CompanySignupSchema = z
   .object({
@@ -62,6 +63,8 @@ type FormValues = z.infer<typeof CompanySignupSchema>;
 export default function CompanySignup() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const { options } = useCurrencyOptions();
+  const currencyOptions = options.length ? options : fallbackCurrencyOptions;
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
