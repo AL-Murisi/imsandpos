@@ -1,29 +1,22 @@
 ﻿"use client";
 
-import { useState, useTransition } from "react";
-import { toast } from "sonner";
+import Dailogreuse from "@/components/common/dailogreuse";
+import { DataTable } from "@/components/common/ReusbleTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import Dailogreuse from "@/components/common/dailogreuse";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { DataTable } from "@/components/common/ReusbleTable";
 import { useTablePrams } from "@/hooks/useTableParams";
-import { ColumnDef } from "@tanstack/react-table";
 import {
   createCurrency,
-  updateCurrency,
   deleteCurrency,
-  enableCompanyCurrency,
   disableCompanyCurrency,
+  enableCompanyCurrency,
   setCompanyBaseCurrency,
+  updateCurrency,
 } from "@/lib/actions/currencies";
+import { ColumnDef } from "@tanstack/react-table";
+import { useState, useTransition } from "react";
+import { toast } from "sonner";
 
 type CurrencyItem = {
   code: string;
@@ -172,7 +165,9 @@ export default function CurrenciesClient({
           <Button
             size="sm"
             variant="outline"
-            onClick={() => handleToggleCompany(row.original.code, row.original.enabled)}
+            onClick={() =>
+              handleToggleCompany(row.original.code, row.original.enabled)
+            }
             disabled={isPending}
           >
             {row.original.enabled ? "تعطيل" : "تفعيل"}
@@ -213,7 +208,7 @@ export default function CurrenciesClient({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">العملات</h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             إدارة العملات وربطها بالشركة
           </p>
         </div>
@@ -240,13 +235,25 @@ export default function CurrenciesClient({
             </div>
             <div className="grid gap-2">
               <Label htmlFor="decimals">عدد الكسور</Label>
-              <Input id="decimals" name="decimals" type="number" min={0} max={6} />
+              <Input
+                id="decimals"
+                name="decimals"
+                type="number"
+                min={0}
+                max={6}
+              />
             </div>
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setOpenCreate(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpenCreate(false)}
+              >
                 إلغاء
               </Button>
-              <Button type="submit" disabled={isPending}>حفظ</Button>
+              <Button type="submit" disabled={isPending}>
+                حفظ
+              </Button>
             </div>
           </form>
         </Dailogreuse>
@@ -267,57 +274,57 @@ export default function CurrenciesClient({
         highet="h-[60vh]"
       />
 
-      <Dialog open={openEdit} onOpenChange={setOpenEdit}>
-        <DialogContent dir="rtl" className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>تعديل العملة</DialogTitle>
-            <DialogDescription>تعديل بيانات العملة</DialogDescription>
-          </DialogHeader>
-          {editing && (
-            <form action={handleEdit} className="space-y-4">
-              <div className="grid gap-2">
-                <Label>الرمز</Label>
-                <Input value={editing.code} disabled />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="name">الاسم</Label>
-                <Input id="name" name="name" defaultValue={editing.name} />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="symbol">الرمز</Label>
-                <Input
-                  id="symbol"
-                  name="symbol"
-                  defaultValue={editing.symbol || ""}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="decimals">عدد الكسور</Label>
-                <Input
-                  id="decimals"
-                  name="decimals"
-                  type="number"
-                  min={0}
-                  max={6}
-                  defaultValue={editing.decimals ?? 2}
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setOpenEdit(false)}
-                >
-                  إلغاء
-                </Button>
-                <Button type="submit" disabled={isPending}>
-                  حفظ
-                </Button>
-              </div>
-            </form>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* <Dailogreuse
+        open={openEdit}
+        setOpen={setOpenEdit}
+        style="sm:max-w-md"
+        btnLabl="تعديل العملة"
+        description="تعديل بيانات العملة"
+      >
+        {editing && (
+          <form action={handleEdit} className="space-y-4">
+            <div className="grid gap-2">
+              <Label>الرمز</Label>
+              <Input value={editing.code} disabled />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="name">الاسم</Label>
+              <Input id="name" name="name" defaultValue={editing.name} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="symbol">الرمز</Label>
+              <Input
+                id="symbol"
+                name="symbol"
+                defaultValue={editing.symbol || ""}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="decimals">عدد الكسور</Label>
+              <Input
+                id="decimals"
+                name="decimals"
+                type="number"
+                min={0}
+                max={6}
+                defaultValue={editing.decimals ?? 2}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpenEdit(false)}
+              >
+                إلغاء
+              </Button>
+              <Button type="submit" disabled={isPending}>
+                حفظ
+              </Button>
+            </div>
+          </form>
+        )}
+      </Dailogreuse> */}
     </div>
   );
 }

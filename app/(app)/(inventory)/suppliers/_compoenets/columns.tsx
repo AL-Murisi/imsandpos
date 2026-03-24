@@ -9,7 +9,6 @@ import {
   Clock,
   MoreHorizontal,
   Trash,
-  Edit2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -24,21 +23,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { deleteCustomer } from "@/lib/actions/users";
 import { useAuth } from "@/lib/context/AuthContext";
-import { Edit, Trash2 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { useState } from "react";
 
+import Dailogreuse from "@/components/common/dailogreuse";
 import { Badge } from "@/components/ui/badge";
 import dynamic from "next/dynamic";
-import SupplierForm from "@/components/forms/supplierform";
-import { EditSupplierForm } from "./editform";
 import { useRouter } from "next/navigation";
+import { EditSupplierForm } from "./editform";
 
 const PaymentEditForm = dynamic(
   () => import("./form").then((m) => m.PaymentEditForm),
@@ -325,22 +316,15 @@ export const paymentColumns: ColumnDef<any>[] = [
       const payment = row.original;
 
       return (
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" variant="outline">
-              <Edit className="h-4 w-4" />
-            </Button>
-          </DialogTrigger>
-          <DialogContent dir="rtl">
-            <DialogHeader>
-              <DialogTitle>تعديل الدفعة</DialogTitle>
-            </DialogHeader>
-            <PaymentEditForm
-              payment={payment}
-              action={() => setIsOpen(false)}
-            />
-          </DialogContent>
-        </Dialog>
+        <Dailogreuse
+          btnLabl="تعديل الدفعة "
+          titel="  تعديل الدفعة"
+          style="sm:max-w-4xl"
+          open={isOpen}
+          setOpen={setIsOpen}
+        >
+          <PaymentEditForm payment={payment} action={() => setIsOpen(false)} />
+        </Dailogreuse>
       );
     },
   },

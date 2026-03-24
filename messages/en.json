@@ -19,6 +19,8 @@
 
   "menu": {
     "home": "Home",
+    "companyinfo": "Company Information",
+
     "company": "Company Profile",
     "users": "User List",
     "userManagement": "User Management",

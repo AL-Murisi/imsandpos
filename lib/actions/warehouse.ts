@@ -43,6 +43,72 @@ function serializeData<T>(data: T): T {
 
   return plainObj;
 }
+
+async function getDefaultAccountMap(
+  tx: any,
+  companyId: string,
+): Promise<Map<string, string>> {
+  const mappings = await tx.account_mappings.findMany({
+    where: { company_id: companyId, is_default: true },
+    select: { mapping_type: true, account_id: true },
+  });
+
+  return new Map<string, string>(
+    mappings.map((m: any) => [String(m.mapping_type), String(m.account_id)]),
+  );
+}
+
+function resolveSettlementAccount(
+  accountMap: Map<string, string>,
+  paymentMethod?: string | null,
+) {
+  if (paymentMethod === "bank") {
+    return accountMap.get("bank") || accountMap.get("cash");
+  }
+  return accountMap.get("cash");
+}
+
+function buildWarehouseJournalLine(
+  companyId: string,
+  accountId: string,
+  memo: string,
+  debitBase: number,
+  creditBase: number,
+  options: {
+    currency?: string | null;
+    baseCurrency?: string | null;
+    exchangeRate?: number | null;
+    foreignAmount?: number | null;
+  } = {},
+) {
+  const { currency, baseCurrency, exchangeRate, foreignAmount } = options;
+  const baseValue = debitBase > 0 ? debitBase : creditBase;
+  const useForeign =
+    Boolean(currency) &&
+    Boolean(baseCurrency) &&
+    currency !== baseCurrency &&
+    Boolean(exchangeRate) &&
+    exchangeRate !== 1;
+
+  return {
+    companyId,
+    accountId,
+    debit: debitBase,
+    credit: creditBase,
+    memo,
+    ...(useForeign
+      ? {
+          currencyCode: currency,
+          exchangeRate,
+          foreignAmount:
+            foreignAmount ?? Number((baseValue / Number(exchangeRate)).toFixed(2)),
+          baseAmount: baseValue,
+        }
+      : {
+          currencyCode: baseCurrency || currency || undefined,
+        }),
+  };
+}
 export type InventoryUpdateWithTrackingInput = z.infer<
   typeof InventoryUpdateWithTrackingSchema
 >;
@@ -65,7 +131,7 @@ interface ExtendedInventoryUpdateData {
   maxStockLevel?: number;
   status?: string;
   warehouseId: string;
-  lastStockTake?: string | Date; // 💡 FIX: Allow Date object or string for compatibility with form input/default values
+  lastStockTake?: string | Date; // ðŸ’¡ FIX: Allow Date object or string for compatibility with form input/default values
   bankId?: string;
   transferNumber?: string;
   currency_code?: string;
@@ -75,7 +141,7 @@ interface ExtendedInventoryUpdateData {
 function generateArabicPurchaseReceiptNumber(lastNumber: number) {
   const padded = String(lastNumber).padStart(5, "0"); // 00001
   const year = new Date().getFullYear();
-  return `مشتريات-${year}-${padded}Q`; // مشتريات-2025-00001
+  return `Ù…Ø´ØªØ±ÙŠØ§Øª-${year}-${padded}Q`; // Ù…Ø´ØªØ±ÙŠØ§Øª-2025-00001
 }
 
 export async function updateInventory(
@@ -106,7 +172,7 @@ export async function updateInventory(
     } = data;
 
     // ============================================
-    // 1️⃣ PARALLEL FETCH: Inventory + Supplier
+    // 1ï¸âƒ£ PARALLEL FETCH: Inventory + Supplier
     // ============================================
     const [currentInventory, supplierExists] = await Promise.all([
       prisma.inventory.findFirst({
@@ -140,22 +206,22 @@ export async function updateInventory(
     ]);
 
     if (!currentInventory) {
-      throw new Error("سجل المخزون غير موجود");
+      throw new Error("Ø³Ø¬Ù„ Ø§Ù„Ù…Ø®Ø²ÙˆÙ† ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯");
     }
 
     const product = currentInventory.product;
     const supplierId = providedSupplierId || product.supplierId;
 
     if (updateType === "supplier" && !supplierId) {
-      throw new Error("يجب تحديد المورد");
+      throw new Error("ÙŠØ¬Ø¨ ØªØ­Ø¯ÙŠØ¯ Ø§Ù„Ù…ÙˆØ±Ø¯");
     }
 
     if (updateType === "supplier" && !supplierExists) {
-      throw new Error("المورد غير موجود");
+      throw new Error("Ø§Ù„Ù…ÙˆØ±Ø¯ ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯");
     }
 
     // ============================================
-    // 2️⃣ HELPER FUNCTIONS & CALCULATIONS
+    // 2ï¸âƒ£ HELPER FUNCTIONS & CALCULATIONS
     // ============================================
     const unitsPerPacket = product.unitsPerPacket || 1;
     const packetsPerCarton = product.packetsPerCarton || 1;
@@ -169,10 +235,10 @@ export async function updateInventory(
     const nextNumber = currentInventory.receiptNo
       ? parseInt(currentInventory.receiptNo.match(/(\d+)$/)?.[1] || "0") + 1
       : 1;
-    const receiptNo = `مشتريات-${new Date().getFullYear()}-${String(nextNumber).padStart(5, "0")}Q-${Date.now()}`;
+    const receiptNo = `Ù…Ø´ØªØ±ÙŠØ§Øª-${new Date().getFullYear()}-${String(nextNumber).padStart(5, "0")}Q-${Date.now()}`;
 
     // ============================================
-    // 3️⃣ DETERMINE TARGET INVENTORY
+    // 3ï¸âƒ£ DETERMINE TARGET INVENTORY
     // ============================================
     let inventoryTarget;
     if (targetWarehouseId === currentInventory.warehouseId) {
@@ -203,7 +269,7 @@ export async function updateInventory(
     }
 
     // ============================================
-    // 4️⃣ CALCULATE FINAL QUANTITIES
+    // 4ï¸âƒ£ CALCULATE FINAL QUANTITIES
     // ============================================
     const finalAvailableQty =
       inventoryTarget.availableQuantity + availableUnits;
@@ -215,7 +281,7 @@ export async function updateInventory(
     else if (finalAvailableQty < finalReorderLevel) calculatedStatus = "low";
 
     // ============================================
-    // 5️⃣ TRANSACTION: CREATE PURCHASE & UPDATE INVENTORY
+    // 5ï¸âƒ£ TRANSACTION: CREATE PURCHASE & UPDATE INVENTORY
     // ============================================
     const result = await prisma.$transaction(
       async (tx) => {
@@ -277,7 +343,7 @@ export async function updateInventory(
                   amount: paymentAmount,
                   paymentMethod,
                   status: "paid",
-                  notes: notes || "دفعة مشتريات",
+                  notes: notes || "Ø¯ÙØ¹Ø© Ù…Ø´ØªØ±ÙŠØ§Øª",
                 },
               }),
             );
@@ -333,12 +399,12 @@ export async function updateInventory(
                   productId: product.id,
                   warehouseId: inventoryTarget.warehouseId,
                   userId,
-                  movementType: stockDifference > 0 ? "وارد" : "صادر",
+                  movementType: stockDifference > 0 ? "ÙˆØ§Ø±Ø¯" : "ØµØ§Ø¯Ø±",
                   quantity: Math.abs(stockDifference),
-                  reason: updateData.reason || "تم_استلام_المورد",
+                  reason: updateData.reason || "ØªÙ…_Ø§Ø³ØªÙ„Ø§Ù…_Ø§Ù„Ù…ÙˆØ±Ø¯",
                   notes:
                     notes ||
-                    `${supplierId ? "المخزون من المورد" : "تحديث المخزون"}`,
+                    `${supplierId ? "Ø§Ù„Ù…Ø®Ø²ÙˆÙ† Ù…Ù† Ø§Ù„Ù…ÙˆØ±Ø¯" : "ØªØ­Ø¯ÙŠØ« Ø§Ù„Ù…Ø®Ø²ÙˆÙ†"}`,
                   quantityBefore: inventoryTarget.stockQuantity,
                   quantityAfter: finalStockQty,
                 },
@@ -381,10 +447,10 @@ export async function updateInventory(
 
             action:
               updateType === "supplier"
-                ? "تم_استلام_مخزون_المورد"
-                : "تم_تحديث_المخزون",
-            details: `المنتج: ${product.name}, المخزون النهائي: ${finalStockQty}${
-              paymentAmount ? `, الدفع: ${paymentAmount}` : ""
+                ? "ØªÙ…_Ø§Ø³ØªÙ„Ø§Ù…_Ù…Ø®Ø²ÙˆÙ†_Ø§Ù„Ù…ÙˆØ±Ø¯"
+                : "ØªÙ…_ØªØ­Ø¯ÙŠØ«_Ø§Ù„Ù…Ø®Ø²ÙˆÙ†",
+            details: `Ø§Ù„Ù…Ù†ØªØ¬: ${product.name}, Ø§Ù„Ù…Ø®Ø²ÙˆÙ† Ø§Ù„Ù†Ù‡Ø§Ø¦ÙŠ: ${finalStockQty}${
+              paymentAmount ? `, Ø§Ù„Ø¯ÙØ¹: ${paymentAmount}` : ""
             }`,
           },
         });
@@ -412,10 +478,10 @@ export async function updateInventory(
 
     return { success: true, data: result.updatedInventory };
   } catch (error) {
-    console.error("خطأ في تحديث المخزون:", error);
+    console.error("Ø®Ø·Ø£ ÙÙŠ ØªØ­Ø¯ÙŠØ« Ø§Ù„Ù…Ø®Ø²ÙˆÙ†:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "فشل تحديث المخزون",
+      error: error instanceof Error ? error.message : "ÙØ´Ù„ ØªØ­Ø¯ÙŠØ« Ø§Ù„Ù…Ø®Ø²ÙˆÙ†",
     };
   }
 }
@@ -674,7 +740,14 @@ export async function processPurchaseReturn(
     let purchaseReturn;
     const result = await prisma.$transaction(
       async (tx) => {
-        // 1. Get original purchase and item
+        const accountMap = await getDefaultAccountMap(tx, companyId);
+        const inventoryAccount = accountMap.get("inventory");
+        const payableAccount = accountMap.get("accounts_payable");
+        const settlementAccount = resolveSettlementAccount(
+          accountMap,
+          paymentMethod,
+        );
+
         const originalPurchase = await tx.invoice.findUnique({
           where: { id: purchaseId, companyId },
           include: {
@@ -684,7 +757,7 @@ export async function processPurchaseReturn(
                 product: {
                   select: {
                     id: true,
-                    sellingUnits: true, // 🆕 Get selling units
+                    sellingUnits: true,
                   },
                 },
               },
@@ -701,7 +774,19 @@ export async function processPurchaseReturn(
         });
 
         if (!originalPurchase) {
-          throw new Error("الشراء الأصلي غير موجود");
+          throw new Error("عملية الشراء الأصلية غير موجودة");
+        }
+
+        if (!inventoryAccount || !payableAccount) {
+          throw new Error(
+            "Missing required account mappings for purchase return journal entry",
+          );
+        }
+
+        if (refundAmount > 0 && !settlementAccount) {
+          throw new Error(
+            "Missing settlement account mapping for purchase return refund",
+          );
         }
 
         if (originalPurchase.items.length === 0) {
@@ -714,7 +799,6 @@ export async function processPurchaseReturn(
         const productId = product.id;
         const supplierId = supplier?.id;
 
-        // 2. Get inventory
         const inventory = await tx.inventory.findUnique({
           where: {
             companyId_productId_warehouseId: {
@@ -734,8 +818,6 @@ export async function processPurchaseReturn(
           throw new Error("سجل المخزون غير موجود");
         }
 
-        // 3. Convert return quantity to base units
-
         const sellingUnits = (product.sellingUnits as any[]) || [];
         const selectedUnit = sellingUnits.find(
           (u: any) => u.name === returnUnit,
@@ -746,67 +828,49 @@ export async function processPurchaseReturn(
           sellingUnits,
         );
 
-        // Validate: Can't return more than what's in stock
         if (returnQuantityInUnits > inventory.stockQuantity) {
           throw new Error(
             `لا يمكن إرجاع كمية أكبر من المخزون الحالي (${inventory.stockQuantity})`,
           );
         }
 
-        // Validate: Can't return more than originally purchased
-        // const originalPurchasedInUnits = convertToBaseUnits(
-        //   purchaseItem.quantity,
-        //   returnUnit,
-        //   product.unitsPerPacket || 1,
-        //   product.packetsPerCarton || 1,
-        // );
-
-        // if (returnQuantityInUnits > originalPurchasedInUnits) {
-        //   throw new Error(
-        //     `لا يمكن إرجاع كمية أكبر من الكمية المشتراة الأصلية (${purchaseItem.quantity})`,
-        //   );
-        // }
-
-        // 4. Calculate return cost (ALWAYS POSITIVE)
         const returnTotalCost = returnQuantity * unitCost;
+        const payableReduction = Math.max(0, returnTotalCost - refundAmount);
+        const returnInvoiceNumber = `${originalPurchase.invoiceNumber}-RET-${Date.now()}`;
 
-        // 5. Calculate outstanding balance adjustments
-        const amountDue = Number(originalPurchase.amountDue || 0);
-        let outstandingDecrease = 0;
-        if (refundAmount > 0) {
-          outstandingDecrease = Math.min(amountDue, refundAmount);
-        } else {
-          // If no refund, reduce outstanding by return cost
-          outstandingDecrease = Math.min(amountDue, returnTotalCost);
-        }
-
-        // 6. Create purchase return record (POSITIVE VALUES)
-        purchaseReturn = await tx.invoice.update({
-          where: { id: purchaseId },
+        purchaseReturn = await tx.invoice.create({
           data: {
             companyId,
+            invoiceNumber: returnInvoiceNumber,
+            cashierId: userId,
+            branchId,
+            warehouseId,
             supplierId,
             sale_type: "RETURN_PURCHASE",
             totalAmount: returnTotalCost,
             amountPaid: refundAmount,
             amountDue: 0,
             status: "completed",
-            // Link to original purchase
+            currencyCode: currency || baseCurrency || "",
+            exchangeRate,
+            baseAmount,
+            foreignAmount:
+              currency && baseCurrency && currency !== baseCurrency
+                ? refundAmount
+                : undefined,
+            items: {
+              create: {
+                companyId,
+                productId,
+                quantity: returnQuantity,
+                price: unitCost,
+                unit: returnUnit,
+                totalPrice: returnTotalCost,
+              },
+            },
           },
         });
 
-        // 7. Create purchase item for return (POSITIVE QUANTITY)
-        await tx.invoiceItem.update({
-          where: { id: purchaseItemId, companyId },
-          data: {
-            quantity: returnQuantity,
-            price: unitCost,
-            unit: returnUnit,
-            totalPrice: returnTotalCost,
-          },
-        });
-
-        // 8. Update inventory (DECREASE stock)
         const newStockQty = inventory.stockQuantity - returnQuantityInUnits;
         const newAvailableQty =
           inventory.availableQuantity - returnQuantityInUnits;
@@ -831,7 +895,6 @@ export async function processPurchaseReturn(
           },
         });
 
-        // 9. Record stock movement
         await tx.stockMovement.create({
           data: {
             companyId,
@@ -851,7 +914,6 @@ export async function processPurchaseReturn(
           },
         });
 
-        // 10. Handle refund payment if any
         if (refundAmount > 0 && paymentMethod) {
           const aggregate = await tx.financialTransaction.aggregate({
             where: {
@@ -863,15 +925,14 @@ export async function processPurchaseReturn(
             },
           });
 
-          // 2. حساب الرقم التالي
           const lastNumber = aggregate._max.voucherNumber || 0;
           const nextNumber = lastNumber + 1;
           await tx.financialTransaction.create({
             data: {
               companyId,
               supplierId,
-              currencyCode: "",
-              invoiceId: originalPurchase.id,
+              currencyCode: currency || baseCurrency || "",
+              invoiceId: purchaseReturn.id,
               branchId,
               type: "PAYMENT",
               purchaseId: purchaseReturn.id,
@@ -879,13 +940,19 @@ export async function processPurchaseReturn(
               userId: userId,
               status: "paid",
               amount: refundAmount,
+              exchangeRate,
+              baseAmount,
+              foreignAmount:
+                currency && baseCurrency && currency !== baseCurrency
+                  ? refundAmount
+                  : undefined,
               paymentMethod,
+              referenceNumber: transferNumber,
               notes: reason || `استرداد مبلغ من المورد - فاتورة ${purchaseId}`,
             },
           });
         }
 
-        // 11. Update supplier balance
         await tx.supplier.update({
           where: { id: supplierId },
           data: {
@@ -903,38 +970,92 @@ export async function processPurchaseReturn(
             outstandingBalance: {
               set: Math.max(
                 0,
-                Number(supplier?.outstandingBalance) - outstandingDecrease,
+                Number(supplier?.outstandingBalance) - payableReduction,
               ),
             },
           },
         });
-        await tx.journalEvent.create({
-          data: {
-            companyId: companyId,
-            eventType: "purchase",
-            status: "pending",
-            entityType: "return-purchase",
-            payload: {
-              companyId,
-              branchId,
-              supplierId,
-              purchase: purchaseReturn,
-              userId,
-              type: "return-purchase",
-              paymentDetails: {
-                exchangeRate: exchangeRate,
-                amountFC: refundAmount,
-                amountBase: baseAmount,
 
-                paymentMethod: paymentMethod,
-                currency_code: currency,
-                refrenceNumber: transferNumber,
-                baseCurrency: baseCurrency,
+        const entryYear = new Date().getFullYear();
+        const entryNumber = `JE-${entryYear}-${Date.now()}-${Math.floor(
+          Math.random() * 1000,
+        )}`;
+        const desc = `Purchase return: ${purchaseReturn.invoiceNumber}`;
+        const journalLines: any[] = [];
+
+        if (refundAmount > 0 && settlementAccount) {
+          journalLines.push(
+            buildWarehouseJournalLine(
+              companyId,
+              settlementAccount,
+              `${desc} - refund`,
+              refundAmount,
+              0,
+              {
+                currency,
+                baseCurrency,
+                exchangeRate,
+                foreignAmount:
+                  currency && baseCurrency && currency !== baseCurrency
+                    ? refundAmount
+                    : undefined,
               },
+            ),
+          );
+        }
+
+        if (payableReduction > 0) {
+          journalLines.push(
+            buildWarehouseJournalLine(
+              companyId,
+              payableAccount,
+              `${desc} - payable reversal`,
+              payableReduction,
+              0,
+              {
+                currency,
+                baseCurrency,
+                exchangeRate,
+              },
+            ),
+          );
+        }
+
+        journalLines.push(
+          buildWarehouseJournalLine(
+            companyId,
+            inventoryAccount,
+            `${desc} - inventory`,
+            0,
+            returnTotalCost,
+            {
+              currency,
+              baseCurrency,
+              exchangeRate,
             },
-            processed: false,
+          ),
+        );
+
+        await tx.journalHeader.create({
+          data: {
+            companyId,
+            entryNumber,
+            description: desc,
+            branchId,
+            referenceType: "purchase_return",
+            referenceId: purchaseReturn.id,
+            entryDate: new Date(),
+            status: "POSTED",
+            createdBy: userId,
+            lines: {
+              create: journalLines.map((line) => ({
+                ...line,
+                companyId,
+              })),
+            },
           },
         });
+
         return {
           success: true,
           message: "تم إرجاع المشتريات بنجاح",
@@ -988,7 +1109,7 @@ export async function getPurchaseReturnData(
   companyId: string,
 ) {
   try {
-    // 1️⃣ Fetch Purchase + Supplier + Items + Product
+    // 1ï¸âƒ£ Fetch Purchase + Supplier + Items + Product
     const purchase = await prisma.invoice.findFirst({
       where: { id: purchaseId, companyId },
       include: {
@@ -1020,25 +1141,25 @@ export async function getPurchaseReturnData(
     });
 
     if (!purchase) {
-      return { success: false, message: "لم يتم العثور على المشتريات" };
+      return { success: false, message: "Ù„Ù… ÙŠØªÙ… Ø§Ù„Ø¹Ø«ÙˆØ± Ø¹Ù„Ù‰ Ø§Ù„Ù…Ø´ØªØ±ÙŠØ§Øª" };
     }
 
     const item = purchase.items[0];
 
     if (!item) {
-      return { success: false, message: "لا توجد منتجات في هذه المشتريات" };
+      return { success: false, message: "Ù„Ø§ ØªÙˆØ¬Ø¯ Ù…Ù†ØªØ¬Ø§Øª ÙÙŠ Ù‡Ø°Ù‡ Ø§Ù„Ù…Ø´ØªØ±ÙŠØ§Øª" };
     }
     function calculateStockByUnit(baseQuantity: number, units: any[]) {
       const stockByUnit: Record<string, number> = {};
 
-      // نفترض أن المصفوفة مرتبة من الأصغر (Base) إلى الأكبر
-      // أو نقوم بالبحث عن المعاملات
+      // Ù†ÙØªØ±Ø¶ Ø£Ù† Ø§Ù„Ù…ØµÙÙˆÙØ© Ù…Ø±ØªØ¨Ø© Ù…Ù† Ø§Ù„Ø£ØµØºØ± (Base) Ø¥Ù„Ù‰ Ø§Ù„Ø£ÙƒØ¨Ø±
+      // Ø£Ùˆ Ù†Ù‚ÙˆÙ… Ø¨Ø§Ù„Ø¨Ø­Ø« Ø¹Ù† Ø§Ù„Ù…Ø¹Ø§Ù…Ù„Ø§Øª
       units.forEach((unit) => {
         if (unit.isBase) {
           stockByUnit[unit.id] = baseQuantity;
         } else {
-          // إذا كان الكرتون يحتوي على 10 حبات، نقسم الكمية الأساسية على 10
-          // ملاحظة: تأكد من أن unitsPerParent تعبر عن التحويل من القاعدة
+          // Ø¥Ø°Ø§ ÙƒØ§Ù† Ø§Ù„ÙƒØ±ØªÙˆÙ† ÙŠØ­ØªÙˆÙŠ Ø¹Ù„Ù‰ 10 Ø­Ø¨Ø§ØªØŒ Ù†Ù‚Ø³Ù… Ø§Ù„ÙƒÙ…ÙŠØ© Ø§Ù„Ø£Ø³Ø§Ø³ÙŠØ© Ø¹Ù„Ù‰ 10
+          // Ù…Ù„Ø§Ø­Ø¸Ø©: ØªØ£ÙƒØ¯ Ù…Ù† Ø£Ù† unitsPerParent ØªØ¹Ø¨Ø± Ø¹Ù† Ø§Ù„ØªØ­ÙˆÙŠÙ„ Ù…Ù† Ø§Ù„Ù‚Ø§Ø¹Ø¯Ø©
           stockByUnit[unit.id] = Number(
             (baseQuantity / unit.unitsPerParent).toFixed(2),
           );
@@ -1047,7 +1168,7 @@ export async function getPurchaseReturnData(
 
       return stockByUnit;
     }
-    // 2️⃣ Fetch inventory for the product
+    // 2ï¸âƒ£ Fetch inventory for the product
     const inventory = await prisma.inventory.findFirst({
       where: {
         companyId,
@@ -1060,15 +1181,15 @@ export async function getPurchaseReturnData(
     const sellingUnits = (item.product.sellingUnits as any[]) || [];
     const stockByUnit = calculateStockByUnit(currentStock, sellingUnits);
 
-    // التحقق من حالة البيع:
-    // إذا كانت الكمية في المخزن أقل من الكمية التي تم شراؤها في هذا الفاتورة
-    // فهذا يعني أن جزءاً منها قد تم بيعه (أو تم التصرف فيه)
-    const originalPurchaseQty = Number(item.quantity); // الكمية عند الشراء
-    const hasBeenSold = currentStock < originalPurchaseQty; // 3️⃣ Get available quantity (base unit)
+    // Ø§Ù„ØªØ­Ù‚Ù‚ Ù…Ù† Ø­Ø§Ù„Ø© Ø§Ù„Ø¨ÙŠØ¹:
+    // Ø¥Ø°Ø§ ÙƒØ§Ù†Øª Ø§Ù„ÙƒÙ…ÙŠØ© ÙÙŠ Ø§Ù„Ù…Ø®Ø²Ù† Ø£Ù‚Ù„ Ù…Ù† Ø§Ù„ÙƒÙ…ÙŠØ© Ø§Ù„ØªÙŠ ØªÙ… Ø´Ø±Ø§Ø¤Ù‡Ø§ ÙÙŠ Ù‡Ø°Ø§ Ø§Ù„ÙØ§ØªÙˆØ±Ø©
+    // ÙÙ‡Ø°Ø§ ÙŠØ¹Ù†ÙŠ Ø£Ù† Ø¬Ø²Ø¡Ø§Ù‹ Ù…Ù†Ù‡Ø§ Ù‚Ø¯ ØªÙ… Ø¨ÙŠØ¹Ù‡ (Ø£Ùˆ ØªÙ… Ø§Ù„ØªØµØ±Ù ÙÙŠÙ‡)
+    const originalPurchaseQty = Number(item.quantity); // Ø§Ù„ÙƒÙ…ÙŠØ© Ø¹Ù†Ø¯ Ø§Ù„Ø´Ø±Ø§Ø¡
+    const hasBeenSold = currentStock < originalPurchaseQty; // 3ï¸âƒ£ Get available quantity (base unit)
 
     const supplierdata = serializeData(purchase.supplier);
     const products = serializeData(item.product);
-    // 6️⃣ Final Return Object
+    // 6ï¸âƒ£ Final Return Object
     return {
       success: true,
       data: {
@@ -1094,16 +1215,16 @@ export async function getPurchaseReturnData(
         },
 
         inventory: {
-          stockByUnit, // سيعيد {"unit-1": 13, "unit-176...": 1.3}
+          stockByUnit, // Ø³ÙŠØ¹ÙŠØ¯ {"unit-1": 13, "unit-176...": 1.3}
           currentStockInBaseUnit: currentStock,
           isPartiallySold: hasBeenSold,
-          maxReturnableQty: Math.min(currentStock, originalPurchaseQty), // لا يمكن إرجاع أكثر مما هو موجود فعلياً
+          maxReturnableQty: Math.min(currentStock, originalPurchaseQty), // Ù„Ø§ ÙŠÙ…ÙƒÙ† Ø¥Ø±Ø¬Ø§Ø¹ Ø£ÙƒØ«Ø± Ù…Ù…Ø§ Ù‡Ùˆ Ù…ÙˆØ¬ÙˆØ¯ ÙØ¹Ù„ÙŠØ§Ù‹
         },
       },
     };
   } catch (error) {
     console.error("Error loading purchase return data", error);
-    return { success: false, message: "حدث خطأ في الخادم" };
+    return { success: false, message: "Ø­Ø¯Ø« Ø®Ø·Ø£ ÙÙŠ Ø§Ù„Ø®Ø§Ø¯Ù…" };
   }
 }
 
@@ -1203,8 +1324,8 @@ export async function adjustStock(
             targetRoles: ["admin", "cashier", "manager_wh"],
           },
           {
-            title: "تنبيه انخفاض المخزون",
-            body: `${inventory.product.name} في ${inventory.warehouse.name} وصل إلى ${newAvailableQuantity} (حد إعادة الطلب ${inventory.reorderLevel})`,
+            title: "ØªÙ†Ø¨ÙŠÙ‡ Ø§Ù†Ø®ÙØ§Ø¶ Ø§Ù„Ù…Ø®Ø²ÙˆÙ†",
+            body: `${inventory.product.name} ÙÙŠ ${inventory.warehouse.name} ÙˆØµÙ„ Ø¥Ù„Ù‰ ${newAvailableQuantity} (Ø­Ø¯ Ø¥Ø¹Ø§Ø¯Ø© Ø§Ù„Ø·Ù„Ø¨ ${inventory.reorderLevel})`,
             url: "/inventory",
             tag: `low-stock-${productId}-${warehouseId}-${new Date().toISOString().split("T")[0]}`,
           },
@@ -1430,7 +1551,7 @@ export async function getInventoryById(
             name: true,
             sku: true,
             costPrice: true,
-            sellingUnits: true, // 🆕
+            sellingUnits: true, // ðŸ†•
             supplier: { select: { id: true, name: true } },
           },
         },
@@ -1473,21 +1594,21 @@ export async function getInventoryById(
     if (lowStockItems.length > 0) {
       const dayKey = new Date().toISOString().split("T")[0];
       const idKey = Array.from(new Set(lowStockItemIds)).sort().join("-");
-      // إرسال الإشعار بدون await لمنع البطء
+      // Ø¥Ø±Ø³Ø§Ù„ Ø§Ù„Ø¥Ø´Ø¹Ø§Ø± Ø¨Ø¯ÙˆÙ† await Ù„Ù…Ù†Ø¹ Ø§Ù„Ø¨Ø·Ø¡
       sendRoleBasedNotification(
         {
           companyId,
           targetRoles: ["admin", "cashier", "manager_wh"],
         },
         {
-          title: "⚠️ تنبيه انخفاض المخزون",
-          body: `يوجد ${lowStockItems.length} منتجات وصلت للحد الأدنى: ${lowStockItems.slice(0, 3).join("، ")}${lowStockItems.length > 3 ? "..." : ""}`,
+          title: "âš ï¸ ØªÙ†Ø¨ÙŠÙ‡ Ø§Ù†Ø®ÙØ§Ø¶ Ø§Ù„Ù…Ø®Ø²ÙˆÙ†",
+          body: `ÙŠÙˆØ¬Ø¯ ${lowStockItems.length} Ù…Ù†ØªØ¬Ø§Øª ÙˆØµÙ„Øª Ù„Ù„Ø­Ø¯ Ø§Ù„Ø£Ø¯Ù†Ù‰: ${lowStockItems.slice(0, 3).join("ØŒ ")}${lowStockItems.length > 3 ? "..." : ""}`,
           url: "/inventory",
           tag: `low-stock-summary-${companyId}-${dayKey}-${idKey}`,
         },
       ).catch((err) => console.error("Notification Error:", err));
     }
-    // 🆕 Convert base units to all selling units
+    // ðŸ†• Convert base units to all selling units
     const convertedInventory = inventory.map((item) => {
       const sellingUnits = (item.product.sellingUnits as any[]) || [];
       const baseStock = item.stockQuantity;
@@ -1579,7 +1700,7 @@ export async function createWarehouse(
     );
     if (!warehouseCapacity.allowed) {
       throw new Error(
-        `تم الوصول إلى الحد الأقصى للمخازن (${warehouseCapacity.usage.used}/${warehouseCapacity.usage.limit})`,
+        `ØªÙ… Ø§Ù„ÙˆØµÙˆÙ„ Ø¥Ù„Ù‰ Ø§Ù„Ø­Ø¯ Ø§Ù„Ø£Ù‚ØµÙ‰ Ù„Ù„Ù…Ø®Ø§Ø²Ù† (${warehouseCapacity.usage.used}/${warehouseCapacity.usage.limit})`,
       );
     }
 
@@ -1624,7 +1745,7 @@ export async function updateWarehouse(id: string, input: WarehouseInput) {
     return { success: true, warehouse };
   } catch (error) {
     console.error("Failed to update warehouse:", error);
-    return { success: false, error: "حدث خطأ أثناء تحديث المستودع" };
+    return { success: false, error: "Ø­Ø¯Ø« Ø®Ø·Ø£ Ø£Ø«Ù†Ø§Ø¡ ØªØ­Ø¯ÙŠØ« Ø§Ù„Ù…Ø³ØªÙˆØ¯Ø¹" };
   }
 }
 
@@ -1638,7 +1759,7 @@ export async function deleteWarehouse(id: string) {
     return { success: true };
   } catch (error) {
     console.error("Failed to delete warehouse:", error);
-    return { success: false, error: "حدث خطأ أثناء حذف المستودع" };
+    return { success: false, error: "Ø­Ø¯Ø« Ø®Ø·Ø£ Ø£Ø«Ù†Ø§Ø¡ Ø­Ø°Ù Ø§Ù„Ù…Ø³ØªÙˆØ¯Ø¹" };
   }
 }
 
@@ -1648,7 +1769,7 @@ export interface InventoryUpdateDatas {
   warehouseId: string;
   updateType: "manual" | "supplier";
 
-  // 🆕 Selling Unit Info
+  // ðŸ†• Selling Unit Info
   selectedUnitId: string; // Which unit is being updated
   quantity: number; // Quantity in the selected unit
 
@@ -1682,14 +1803,14 @@ export async function updateMultipleInventories(
     if (!companyId || !userId) {
       return {
         success: false,
-        error: "معرف الشركة ومعرف المستخدم مطلوبان",
+        error: "Ù…Ø¹Ø±Ù Ø§Ù„Ø´Ø±ÙƒØ© ÙˆÙ…Ø¹Ø±Ù Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù… Ù…Ø·Ù„ÙˆØ¨Ø§Ù†",
       };
     }
 
     if (!updatesData || updatesData.length === 0) {
       return {
         success: false,
-        error: "يجب إضافة تحديث واحد على الأقل",
+        error: "ÙŠØ¬Ø¨ Ø¥Ø¶Ø§ÙØ© ØªØ­Ø¯ÙŠØ« ÙˆØ§Ø­Ø¯ Ø¹Ù„Ù‰ Ø§Ù„Ø£Ù‚Ù„",
       };
     }
 
@@ -1700,21 +1821,21 @@ export async function updateMultipleInventories(
       if (!update.productId || !update.warehouseId) {
         return {
           success: false,
-          error: `التحديث ${i + 1}: المنتج والمستودع مطلوبان`,
+          error: `Ø§Ù„ØªØ­Ø¯ÙŠØ« ${i + 1}: Ø§Ù„Ù…Ù†ØªØ¬ ÙˆØ§Ù„Ù…Ø³ØªÙˆØ¯Ø¹ Ù…Ø·Ù„ÙˆØ¨Ø§Ù†`,
         };
       }
 
       if (!update.selectedUnitId) {
         return {
           success: false,
-          error: `التحديث ${i + 1}: يجب اختيار وحدة البيع`,
+          error: `Ø§Ù„ØªØ­Ø¯ÙŠØ« ${i + 1}: ÙŠØ¬Ø¨ Ø§Ø®ØªÙŠØ§Ø± ÙˆØ­Ø¯Ø© Ø§Ù„Ø¨ÙŠØ¹`,
         };
       }
 
       if (!update.quantity || update.quantity <= 0) {
         return {
           success: false,
-          error: `التحديث ${i + 1}: الكمية يجب أن تكون أكبر من صفر`,
+          error: `Ø§Ù„ØªØ­Ø¯ÙŠØ« ${i + 1}: Ø§Ù„ÙƒÙ…ÙŠØ© ÙŠØ¬Ø¨ Ø£Ù† ØªÙƒÙˆÙ† Ø£ÙƒØ¨Ø± Ù…Ù† ØµÙØ±`,
         };
       }
 
@@ -1722,14 +1843,14 @@ export async function updateMultipleInventories(
         if (!update.supplierId || !update.unitCost || update.unitCost <= 0) {
           return {
             success: false,
-            error: `التحديث ${i + 1}: المورد وسعر الوحدة مطلوبان للتحديثات من المورد`,
+            error: `Ø§Ù„ØªØ­Ø¯ÙŠØ« ${i + 1}: Ø§Ù„Ù…ÙˆØ±Ø¯ ÙˆØ³Ø¹Ø± Ø§Ù„ÙˆØ­Ø¯Ø© Ù…Ø·Ù„ÙˆØ¨Ø§Ù† Ù„Ù„ØªØ­Ø¯ÙŠØ«Ø§Øª Ù…Ù† Ø§Ù„Ù…ÙˆØ±Ø¯`,
           };
         }
 
         // if ((update.paymentAmount || 0) > totalCost) {
         //   return {
         //     success: false,
-        //     error: `التحديث ${i + 1}: مبلغ الدفع أكبر من التكلفة الإجمالية`,
+        //     error: `Ø§Ù„ØªØ­Ø¯ÙŠØ« ${i + 1}: Ù…Ø¨Ù„Øº Ø§Ù„Ø¯ÙØ¹ Ø£ÙƒØ¨Ø± Ù…Ù† Ø§Ù„ØªÙƒÙ„ÙØ© Ø§Ù„Ø¥Ø¬Ù…Ø§Ù„ÙŠØ©`,
         //   };
         // }
       }
@@ -1743,6 +1864,9 @@ export async function updateMultipleInventories(
     // Process all updates in a transaction
     const result = await prisma.$transaction(
       async (tx) => {
+        const accountMap = await getDefaultAccountMap(tx, companyId);
+        const inventoryAccount = accountMap.get("inventory");
+        const payableAccount = accountMap.get("accounts_payable");
         const updatedInventories = [];
         const createdPurchases = [];
         const stockMovements = [];
@@ -1756,7 +1880,7 @@ export async function updateMultipleInventories(
                 id: true,
                 name: true,
                 sku: true,
-                sellingUnits: true, // 🆕 Get selling units
+                sellingUnits: true, // ðŸ†• Get selling units
                 supplierId: true,
               },
             }),
@@ -1770,10 +1894,10 @@ export async function updateMultipleInventories(
           ]);
 
           if (!product) {
-            throw new Error(`المنتج غير موجود: ${updateData.productId}`);
+            throw new Error(`Ø§Ù„Ù…Ù†ØªØ¬ ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯: ${updateData.productId}`);
           }
 
-          // 🆕 Parse selling units
+          // ðŸ†• Parse selling units
           const sellingUnits = (product.sellingUnits as any[]) || [];
           const selectedUnit = sellingUnits.find(
             (u: any) => u.id === updateData.selectedUnitId,
@@ -1781,11 +1905,11 @@ export async function updateMultipleInventories(
 
           if (!selectedUnit) {
             throw new Error(
-              `الوحدة المحددة غير موجودة: ${updateData.selectedUnitId}`,
+              `Ø§Ù„ÙˆØ­Ø¯Ø© Ø§Ù„Ù…Ø­Ø¯Ø¯Ø© ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯Ø©: ${updateData.selectedUnitId}`,
             );
           }
 
-          // 🆕 Convert to base units
+          // ðŸ†• Convert to base units
           const stockUnits = convertToBaseUnits(
             updateData.quantity,
             selectedUnit,
@@ -1798,7 +1922,7 @@ export async function updateMultipleInventories(
             ? parseInt(currentInventory.receiptNo.match(/(\d+)$/)?.[1] || "0") +
               1
             : 1;
-          const receiptNo = `مشتريات-${new Date().getFullYear()}-${String(nextNumber).padStart(5, "0")}`;
+          const receiptNo = `Ù…Ø´ØªØ±ÙŠØ§Øª-${new Date().getFullYear()}-${String(nextNumber).padStart(5, "0")}`;
 
           // Get or create inventory record
           let inventory = currentInventory;
@@ -1864,7 +1988,7 @@ export async function updateMultipleInventories(
                     type: TransactionType.PAYMENT,
                     status: "paid",
                     paymentMethod: updateData.payment?.paymentMethod ?? "cash",
-                    notes: updateData.notes || "دفعة مشتريات",
+                    notes: updateData.notes || "Ø¯ÙØ¹Ø© Ù…Ø´ØªØ±ÙŠØ§Øª",
                   }
                 : undefined;
 
@@ -1895,7 +2019,7 @@ export async function updateMultipleInventories(
             //     price: updateData.unitCost,
             //     totalPrice: totalCost,
             //     unit: selectedUnit.name,
-            //     // 🆕 Store unit information
+            //     // ðŸ†• Store unit information
             //     // unitId: selectedUnit.id,
             //     // unitName: selectedUnit.name,
             //   },
@@ -1925,7 +2049,7 @@ export async function updateMultipleInventories(
             //       type: "PAYMENT",
             //       status: "paid",
             //       paymentMethod: updateData.payment.paymentMethod,
-            //       notes: updateData.notes || "دفعة مشتريات",
+            //       notes: updateData.notes || "Ø¯ÙØ¹Ø© Ù…Ø´ØªØ±ÙŠØ§Øª",
             //     },
             //   });
             //   supplierPaymentId = supplierPayment.id;
@@ -1942,33 +2066,96 @@ export async function updateMultipleInventories(
               },
             });
 
-            // Create journal event
-            await tx.journalEvent.create({
+            const settlementAccount = resolveSettlementAccount(
+              accountMap,
+              updateData.payment?.paymentMethod,
+            );
+
+            if (!inventoryAccount || !payableAccount) {
+              throw new Error(
+                "Missing required account mappings for purchase journal entry",
+              );
+            }
+
+            if (paid > 0 && !settlementAccount) {
+              throw new Error(
+                "Missing settlement account mapping for purchase payment",
+              );
+            }
+
+            const entryYear = new Date().getFullYear();
+            const entryNumber = `JE-${entryYear}-${Date.now()}-${Math.floor(
+              Math.random() * 1000,
+            )}`;
+            const desc = `Purchase invoice: ${purchase.invoiceNumber}`;
+            const purchaseLines: any[] = [
+              buildWarehouseJournalLine(
+                companyId,
+                inventoryAccount,
+                desc,
+                totalCost,
+                0,
+                {
+                  currency: updateData.payment?.selectedCurrency || "",
+                  baseCurrency: updateData.baseCurrency,
+                  exchangeRate: updateData.payment?.exchangeRate,
+                  foreignAmount: updateData.payment?.amountFC,
+                },
+              ),
+            ];
+
+            if (paid > 0 && settlementAccount) {
+              purchaseLines.push(
+                buildWarehouseJournalLine(
+                  companyId,
+                  settlementAccount,
+                  `${desc} - payment`,
+                  0,
+                  paid,
+                  {
+                    currency: updateData.payment?.selectedCurrency || "",
+                    baseCurrency: updateData.baseCurrency,
+                    exchangeRate: updateData.payment?.exchangeRate,
+                    foreignAmount: updateData.payment?.amountFC,
+                  },
+                ),
+              );
+            }
+
+            if (outstanding > 0) {
+              purchaseLines.push(
+                buildWarehouseJournalLine(
+                  companyId,
+                  payableAccount,
+                  `${desc} - payable`,
+                  0,
+                  outstanding,
+                  {
+                    currency: updateData.payment?.selectedCurrency || "",
+                    baseCurrency: updateData.baseCurrency,
+                    exchangeRate: updateData.payment?.exchangeRate,
+                  },
+                ),
+              );
+            }
+
+            await tx.journalHeader.create({
               data: {
                 companyId,
-                eventType: "purchase",
-                status: "pending",
-                entityType: "purchase",
-                payload: {
-                  companyId,
-                  supplierId: updateData.supplierId,
-                  purchase: purchase,
-                  userId,
-                  branchId: updateData.branchId,
-                  type: "purchase",
-                  paymentDetails: {
-                    exchangeRate: updateData.payment?.exchangeRate,
-                    amountFC: updateData.payment?.amountFC,
-                    bankId: updateData.payment?.accountId,
-                    amountBase: updateData.payment?.amountBase,
-                    paymentId: supplierPaymentId,
-                    paymentMethod: updateData.payment?.paymentMethod,
-                    currency_code: updateData.payment?.selectedCurrency || "",
-                    refrenceNumber: updateData.payment?.transferNumber,
-                    baseCurrency: updateData.baseCurrency,
-                  },
+                entryNumber,
+                description: desc,
+                branchId: updateData.branchId,
+                referenceType: "purchase",
+                referenceId: purchase.id,
+                entryDate: new Date(),
+                status: "POSTED",
+                createdBy: userId,
+                lines: {
+                  create: purchaseLines.map((line) => ({
+                    ...line,
+                    companyId,
+                  })),
                 },
-                processed: false,
               },
             });
           }
@@ -2002,18 +2189,18 @@ export async function updateMultipleInventories(
                 productId: product.id,
                 warehouseId: updateData.warehouseId,
                 userId,
-                movementType: "وارد للمخزن",
+                movementType: "ÙˆØ§Ø±Ø¯ Ù„Ù„Ù…Ø®Ø²Ù†",
                 quantity: Math.abs(stockDifference),
                 reason:
                   updateData.updateType === "supplier"
-                    ? "تم استلام المورد"
-                    : updateData.reason || "تحديث يدوي",
+                    ? "ØªÙ… Ø§Ø³ØªÙ„Ø§Ù… Ø§Ù„Ù…ÙˆØ±Ø¯"
+                    : updateData.reason || "ØªØ­Ø¯ÙŠØ« ÙŠØ¯ÙˆÙŠ",
                 notes:
                   updateData.notes ||
-                  `${updateData.updateType === "supplier" ? "المخزون من المورد" : "تحديث المخزون"}`,
+                  `${updateData.updateType === "supplier" ? "Ø§Ù„Ù…Ø®Ø²ÙˆÙ† Ù…Ù† Ø§Ù„Ù…ÙˆØ±Ø¯" : "ØªØ­Ø¯ÙŠØ« Ø§Ù„Ù…Ø®Ø²ÙˆÙ†"}`,
                 quantityBefore: inventory.stockQuantity,
                 quantityAfter: finalStockQty,
-                // 🆕 Store unit information
+                // ðŸ†• Store unit information
                 // unitId: selectedUnit.id,
                 // unitName: selectedUnit.name,
               },
@@ -2032,8 +2219,8 @@ export async function updateMultipleInventories(
             companyId,
             userAgent: typeof window !== "undefined" ? navigator.userAgent : "",
 
-            action: "تحديث مخزون ",
-            details: `تم تحديث ${updatesData.length} سجل مخزون. إجمالي الوحدات: ${totalUnits}`,
+            action: "ØªØ­Ø¯ÙŠØ« Ù…Ø®Ø²ÙˆÙ† ",
+            details: `ØªÙ… ØªØ­Ø¯ÙŠØ« ${updatesData.length} Ø³Ø¬Ù„ Ù…Ø®Ø²ÙˆÙ†. Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„ÙˆØ­Ø¯Ø§Øª: ${totalUnits}`,
           },
         });
 
@@ -2056,18 +2243,18 @@ export async function updateMultipleInventories(
       count: result.updatedInventories.length,
       inventories: result.updatedInventories,
       purchases: result.createdPurchases,
-      message: `تم تحديث ${result.updatedInventories.length} سجل مخزون بنجاح`,
+      message: `ØªÙ… ØªØ­Ø¯ÙŠØ« ${result.updatedInventories.length} Ø³Ø¬Ù„ Ù…Ø®Ø²ÙˆÙ† Ø¨Ù†Ø¬Ø§Ø­`,
     };
   } catch (error) {
     console.error("Error updating multiple inventory:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "فشل تحديث المخزون",
+      error: error instanceof Error ? error.message : "ÙØ´Ù„ ØªØ­Ø¯ÙŠØ« Ø§Ù„Ù…Ø®Ø²ÙˆÙ†",
     };
   }
 }
 
-// 🆕 Helper function to convert to base units
+// ðŸ†• Helper function to convert to base units
 function convertToBaseUnits(
   quantity: number,
   selectedUnit: any,
@@ -2090,7 +2277,7 @@ function convertToBaseUnits(
   return quantity * multiplier;
 }
 
-// 🆕 Helper function to convert from base units to any unit
+// ðŸ†• Helper function to convert from base units to any unit
 export async function convertFromBaseUnits(
   baseQuantity: number,
   targetUnitId: string,

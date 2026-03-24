@@ -9,6 +9,62 @@ import { sendRoleBasedNotification } from "@/lib/push-notifications";
 
 type CustomerPayments = Record<string, number>;
 
+async function getDebtAccountMap(
+  tx: any,
+  companyId: string,
+): Promise<Map<string, string>> {
+  const mappings = await tx.account_mappings.findMany({
+    where: { company_id: companyId, is_default: true },
+    select: { mapping_type: true, account_id: true },
+  });
+
+  return new Map<string, string>(
+    mappings.map((m: any) => [String(m.mapping_type), String(m.account_id)]),
+  );
+}
+
+function buildDebtJournalLine(
+  companyId: string,
+  accountId: string,
+  memo: string,
+  debitBase: number,
+  creditBase: number,
+  options: {
+    currency?: string | null;
+    baseCurrency?: string | null;
+    exchangeRate?: number | null;
+    foreignAmount?: number | null;
+  } = {},
+) {
+  const { currency, baseCurrency, exchangeRate, foreignAmount } = options;
+  const baseValue = debitBase > 0 ? debitBase : creditBase;
+  const useForeign =
+    Boolean(currency) &&
+    Boolean(baseCurrency) &&
+    currency !== baseCurrency &&
+    Boolean(exchangeRate) &&
+    exchangeRate !== 1;
+
+  return {
+    companyId,
+    accountId,
+    debit: debitBase,
+    credit: creditBase,
+    memo,
+    ...(useForeign
+      ? {
+          currencyCode: currency,
+          exchangeRate,
+          foreignAmount:
+            foreignAmount ?? Number((baseValue / Number(exchangeRate)).toFixed(2)),
+          baseAmount: baseValue,
+        }
+      : {
+          currencyCode: baseCurrency || currency || undefined,
+        }),
+  };
+}
+
 async function sendPaymentNotifications(
   companyId: string,
   customerTotals: CustomerPayments,
@@ -301,6 +357,17 @@ export async function updateSalesBulk(
 
   const result = await prisma.$transaction(
     async (tx) => {
+      const accountMap = await getDebtAccountMap(tx, companyId);
+      const receivableAccount = accountMap.get("accounts_receivable");
+      const settlementAccount =
+        paymentDetails.paymentMethod === "bank"
+          ? accountMap.get("bank") || accountMap.get("cash")
+          : accountMap.get("cash");
+
+      if (!receivableAccount || !settlementAccount) {
+        throw new Error("Missing required account mappings for debt payment");
+      }
+
       // 1ï¸âƒ£ Fetch sales
       const sales = await tx.invoice.findMany({
         where: { id: { in: saleIds }, companyId },
@@ -381,6 +448,13 @@ export async function updateSalesBulk(
       for (let i = 0; i < paymentsToCreate.length; i++) {
         const p = paymentsToCreate[i];
         const voucherNumber = voucherNumbers[i];
+        const foreignAmountForPayment =
+          paymentDetails.currencyCode !== paymentDetails.basCurrncy
+            ? paymentDetails.amountFC
+              ? (p.amount / (paymentDetails.baseAmount || paymentAmount)) *
+                paymentDetails.amountFC
+              : p.amount
+            : undefined;
 
         const payment = await tx.financialTransaction.create({
           data: {
@@ -402,6 +476,8 @@ export async function updateSalesBulk(
                 : p.amount,
             currencyCode: paymentDetails.currencyCode,
             exchangeRate: paymentDetails.exchange_rate,
+            foreignAmount: foreignAmountForPayment,
+            baseAmount: p.amount,
             status: "completed",
             notes: `تسديد دين للفاتورة رقم ${p.invoiceNumber}`,
             createdAt: new Date(),
@@ -409,26 +485,53 @@ export async function updateSalesBulk(
         });
         createdPayments.push(payment);
 
-        // Create journal event
-        await tx.journalEvent.create({
+        const entryYear = new Date().getFullYear();
+        const entryNumber = `JE-${entryYear}-${Date.now()}-${Math.floor(
+          Math.random() * 1000,
+        )}`;
+        const desc = `Debt payment for invoice: ${p.invoiceNumber}`;
+
+        await tx.journalHeader.create({
           data: {
             companyId,
-            eventType: "payment",
-            entityType: "outstanding_payment",
-            status: "pending",
-            payload: {
-              companyId,
-              payment: {
-                id: payment.id,
-                saleId: p.saleId,
-                customerId: p.customerId,
-                amount: paymentDetails.baseAmount,
-                branchId,
-                paymentDetails: paymentDetails || {},
-              },
-              cashierId,
+            entryNumber,
+            description: desc,
+            branchId,
+            referenceType: "outstanding_payment",
+            referenceId: payment.id,
+            entryDate: new Date(),
+            status: "POSTED",
+            createdBy: cashierId,
+            lines: {
+              create: [
+                buildDebtJournalLine(
+                  companyId,
+                  settlementAccount,
+                  `${desc} - receipt`,
+                  p.amount,
+                  0,
+                  {
+                    currency: paymentDetails.currencyCode,
+                    baseCurrency: paymentDetails.basCurrncy,
+                    exchangeRate: paymentDetails.exchange_rate,
+                    foreignAmount: foreignAmountForPayment,
+                  },
+                ),
+                buildDebtJournalLine(
+                  companyId,
+                  receivableAccount,
+                  `${desc} - receivable`,
+                  0,
+                  p.amount,
+                  {
+                    currency: paymentDetails.currencyCode,
+                    baseCurrency: paymentDetails.basCurrncy,
+                    exchangeRate: paymentDetails.exchange_rate,
+                    foreignAmount: foreignAmountForPayment,
+                  },
+                ),
+              ],
             },
-            processed: false,
           },
         });
       }

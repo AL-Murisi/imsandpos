@@ -2,6 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/session";
+import { revalidatePath } from "next/cache";
 
 type LimitResource = "branches" | "cashiers" | "warehouses" | "users";
 
@@ -20,7 +21,10 @@ type SubscriptionUsage = {
   users: ResourceUsage;
 };
 
-function buildUsage(limit: number | null | undefined, used: number): ResourceUsage {
+function buildUsage(
+  limit: number | null | undefined,
+  used: number,
+): ResourceUsage {
   const normalizedLimit = typeof limit === "number" ? limit : null;
 
   return {
@@ -155,12 +159,44 @@ export async function renewSubscription(days: number = 30) {
   return { success: true, subscription: updated };
 }
 
-
-const PLAN_DEFS: Record<string, { days: number; maxBranches?: number; maxCashiers?: number; maxWarehouses?: number; maxUsers?: number; }> = {
-  TRIAL: { days: 7, maxBranches: 1, maxCashiers: 1, maxWarehouses: 1, maxUsers: 2 },
-  BASIC: { days: 30, maxBranches: 1, maxCashiers: 2, maxWarehouses: 1, maxUsers: 5 },
-  ADVANCE: { days: 90, maxBranches: 3, maxCashiers: 5, maxWarehouses: 3, maxUsers: 15 },
-  PRO: { days: 180, maxBranches: 10, maxCashiers: 20, maxWarehouses: 10, maxUsers: 50 },
+const PLAN_DEFS: Record<
+  string,
+  {
+    days: number;
+    maxBranches?: number;
+    maxCashiers?: number;
+    maxWarehouses?: number;
+    maxUsers?: number;
+  }
+> = {
+  TRIAL: {
+    days: 7,
+    maxBranches: 1,
+    maxCashiers: 1,
+    maxWarehouses: 1,
+    maxUsers: 2,
+  },
+  BASIC: {
+    days: 30,
+    maxBranches: 1,
+    maxCashiers: 2,
+    maxWarehouses: 1,
+    maxUsers: 5,
+  },
+  ADVANCE: {
+    days: 90,
+    maxBranches: 3,
+    maxCashiers: 5,
+    maxWarehouses: 3,
+    maxUsers: 15,
+  },
+  PRO: {
+    days: 180,
+    maxBranches: 10,
+    maxCashiers: 20,
+    maxWarehouses: 10,
+    maxUsers: 50,
+  },
 };
 
 export async function setSubscriptionPlan(plan: string) {
@@ -190,7 +226,9 @@ export async function setSubscriptionPlan(plan: string) {
     latest?.endsAt && latest.endsAt.getTime() > now.getTime()
       ? latest.endsAt
       : now;
-  const newEndsAt = new Date(baseDate.getTime() + def.days * 24 * 60 * 60 * 1000);
+  const newEndsAt = new Date(
+    baseDate.getTime() + def.days * 24 * 60 * 60 * 1000,
+  );
 
   if (!latest) {
     const created = await prisma.subscription.create({
@@ -223,6 +261,6 @@ export async function setSubscriptionPlan(plan: string) {
       maxUsers: def.maxUsers,
     },
   });
-
+  revalidatePath("/subscription");
   return { success: true, subscription: updated };
 }

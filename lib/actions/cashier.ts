@@ -731,8 +731,8 @@ export async function processReturn(data: any, companyId: string) {
     branchId,
     returnNumber,
     reason,
-
     items,
+    totalReturn,
     returnToCustomer,
     baseCurrency,
     exchangeRate,
@@ -741,22 +741,23 @@ export async function processReturn(data: any, companyId: string) {
     paymentMethod,
   } = data;
 
-  // Filter only items with quantity > 0
   const returnItems = items.filter((item: any) => item.quantity > 0);
   if (returnItems.length === 0) {
-    return { success: false, message: "لا توجد منتجات للإرجاع" };
+    return { success: false, message: "?? ???? ?????? ???????" };
   }
+
+  await validateFiscalYear(companyId);
 
   const result = await prisma.$transaction(
     async (tx) => {
-      // 1. Get original sale with all needed data
       const originalSale = await tx.invoice.findUnique({
         where: { id: saleId },
         select: {
+          id: true,
           invoiceNumber: true,
           amountDue: true,
           customerId: true,
-          transactions: { select: { status: true } },
+          warehouseId: true,
           items: {
             select: {
               id: true,
@@ -768,7 +769,7 @@ export async function processReturn(data: any, companyId: string) {
                   id: true,
                   name: true,
                   costPrice: true,
-                  sellingUnits: true, // 🆕
+                  sellingUnits: true,
                 },
               },
             },
@@ -777,151 +778,104 @@ export async function processReturn(data: any, companyId: string) {
       });
 
       if (!originalSale) {
-        throw new Error("عملية البيع غير موجودة");
+        throw new Error("????? ????? ??? ??????");
       }
 
-      // const nextNumber = String(formattedNumber).padStart(5, "0");
-      const originalNumber = returnNumber;
-      const randomNumber = Math.floor(Math.random() * 90 + 10); // يولد رقماً بين 10 و 99
-      const returnNumberWithArabic =
-        originalNumber.replace("بيع", "مرتجع") + randomNumber;
-      const originalSaleAmountDue = originalSale.amountDue?.toNumber() || 0;
-
-      // 2. Create maps and helper functions
+      const originalNumber = returnNumber || originalSale.invoiceNumber;
+      const returnNumberWithArabic = `${originalNumber.replace("???", "?????")}-${Date.now()}`;
+      const originalSaleAmountDue = Number(originalSale.amountDue || 0);
       const saleItemsMap = new Map(
         originalSale.items.map((item) => [item.productId, item]),
       );
 
-      let returnSubtotal = 0;
+      let returnSubtotal =
+        typeof totalReturn === "number" && Number.isFinite(totalReturn)
+          ? totalReturn
+          : 0;
       let returnTotalCOGS = 0;
 
-      // 4. Fetch all inventories in one query
-      const warehouseIds = returnItems.map((item: any) => item.warehouseId);
       const productIds = returnItems.map((item: any) => item.productId);
-
       const inventories = await tx.inventory.findMany({
         where: {
           companyId,
           productId: { in: productIds },
-          // warehouseId: { in: warehouseIds },
         },
       });
 
       const inventoryMap = new Map(
-        inventories.map((inv) => [`${inv.productId}-${inv.warehouseId}`, inv]),
+        inventories.map((inv) => [
+          `${inv.productId}-${inv.warehouseId}`,
+          inv,
+        ]),
       );
-      const saleItem = saleItemsMap.get(returnItems.productId)!;
 
-      const invoiceItemsData = returnItems.map((item: any) => ({
-        companyId,
-        productId: item.id,
-        unit: item.selectedUnitName,
-        quantity: item.selectedQty,
-        price: saleItem.price,
-        totalPrice: saleItem.price.toNumber() * item.quantity,
-        // If you need warehouse info at the item level:
-        // warehouseId: item.warehouseId
-      }));
-      // 5. Create return sale record
-      const returnSale = await tx.invoice.update({
-        where: {
-          id: saleId,
-          companyId,
-        },
-        data: {
-          companyId,
-
-          invoiceNumber: returnNumberWithArabic,
-          customerId: originalSale.customerId,
-          cashierId,
-          sale_type: "RETURN_SALE",
-          status: "completed",
-
-          totalAmount: returnToCustomer,
-          amountPaid: returnToCustomer,
-          amountDue: 0,
-          items: { update: invoiceItemsData },
-        },
-      });
-
-      // 6. Prepare batch operations
-      const returnSaleItemsData = [];
-      const stockMovementsData = [];
-      const inventoryUpdatesPromises = [];
+      const invoiceItemsData: any[] = [];
+      const stockMovementsData: any[] = [];
+      const inventoryUpdatesPromises: Prisma.PrismaPromise<any>[] = [];
 
       for (const returnItem of returnItems) {
-        const saleItem = saleItemsMap.get(returnItem.productId)!;
+        const saleItem = saleItemsMap.get(returnItem.productId);
+        if (!saleItem) {
+          throw new Error(
+            `????? ${returnItem.name} ??? ????? ?? ?????? ????? ???????`,
+          );
+        }
+
+        if (returnItem.quantity > saleItem.quantity.toNumber()) {
+          throw new Error(
+            `???? ??????? ????? ${returnItem.name} ???? ?? ?????? ???????`,
+          );
+        }
+
         const product = saleItem.product;
         const sellingUnits = (product.sellingUnits as any[]) || [];
-
-        // 🆕 Convert to base units using selling units structure
         const quantityInUnits = toBaseQty(
           returnItem.quantity,
           returnItem.selectedUnitId,
           sellingUnits,
         );
         const costPerBaseUnit = product.costPrice.toNumber();
-
-        // 3. حساب إجمالي التكلفة لهذا السطر باستخدام baseQty
-        // (مثلاً: 880 حبة * 1 حبة تكلفة)
         const lineCOGS = quantityInUnits * costPerBaseUnit;
-
-        // 4. إضافة الناتج للإجمالي الكلي للمبيعات
         returnTotalCOGS += lineCOGS;
+
+        if (!(typeof totalReturn === "number" && Number.isFinite(totalReturn))) {
+          returnSubtotal += saleItem.price.toNumber() * returnItem.quantity;
+        }
+
         const inventoryKey = `${returnItem.productId}-${returnItem.warehouseId}`;
         const inventory = inventoryMap.get(inventoryKey);
 
         if (!inventory) {
-          throw new Error(`المخزون غير موجود للمنتج ${returnItem.name}`);
+          throw new Error(`??????? ??? ????? ?????? ${returnItem.name}`);
         }
 
         const newStock = inventory.stockQuantity + quantityInUnits;
         const newAvailable = inventory.availableQuantity + quantityInUnits;
 
-        // 🆕 Get selected unit info
-        const selectedUnit = sellingUnits.find(
-          (u: any) => u.id === returnItem.selectedUnitId,
-        );
+        invoiceItemsData.push({
+          companyId,
+          productId: returnItem.productId,
+          quantity: returnItem.quantity,
+          unit: returnItem.selectedUnitName,
+          price: saleItem.price,
+          totalPrice: saleItem.price.toNumber() * returnItem.quantity,
+        });
 
-        // Prepare return sale item
-        returnSaleItemsData.push(
-          tx.invoiceItem.update({
-            where: {
-              id: originalSale.items.find(
-                (si) => si.productId === returnItem.productId,
-              )!.id,
-            },
-            data: {
-              companyId,
-
-              invoiceId: returnSale.id,
-              productId: returnItem.productId,
-              quantity: returnItem.quantity,
-              unit: returnItem.selectedUnitName, // 🆕 Unit name instead of type
-              price: saleItem.price,
-              totalPrice: saleItem.price.toNumber() * returnItem.quantity,
-            },
-          }),
-          // 🆕 Store unit information
-        );
-        // Prepare stock movement
         stockMovementsData.push({
           companyId,
           productId: returnItem.productId,
           warehouseId: returnItem.warehouseId,
           userId: cashierId,
-          movementType: "مرتجع",
+          movementType: "?????",
           quantity: quantityInUnits,
-          reason: reason ?? "إرجاع بيع",
+          reason: reason ?? "????? ???",
           quantityBefore: inventory.stockQuantity,
           quantityAfter: newStock,
-          referenceType: "إرجاع",
-          referenceId: returnSale.id,
+          referenceType: "?????",
+          referenceId: saleId,
           notes: reason || undefined,
-          // 🆕 Store unit information
         });
 
-        // Prepare inventory update
         inventoryUpdatesPromises.push(
           tx.inventory.update({
             where: {
@@ -945,39 +899,57 @@ export async function processReturn(data: any, companyId: string) {
         );
       }
 
+      returnSubtotal = Number(returnSubtotal.toFixed(2));
+
+      const returnSale = await tx.invoice.create({
+        data: {
+          companyId,
+          invoiceNumber: returnNumberWithArabic,
+          customerId: originalSale.customerId,
+          cashierId,
+          branchId,
+          warehouseId: returnItems[0]?.warehouseId ?? originalSale.warehouseId,
+          sale_type: "RETURN_SALE",
+          status: returnToCustomer > 0 ? "paid" : "completed",
+          totalAmount: returnSubtotal,
+          amountPaid: returnToCustomer,
+          amountDue: 0,
+          currencyCode: currency,
+          exchangeRate,
+          foreignAmount,
+          baseAmount: returnSubtotal,
+          items: {
+            create: invoiceItemsData,
+          },
+        },
+      });
+
+      stockMovementsData.forEach((movement) => {
+        movement.referenceId = returnSale.id;
+      });
+
       await Promise.all([
         tx.stockMovement.createMany({ data: stockMovementsData }),
-        ...returnSaleItemsData,
         ...inventoryUpdatesPromises,
       ]);
 
-      // 7. Handle customer balance updates
-      const customerUpdatePromises = [];
+      const customerOperations: Prisma.PrismaPromise<any>[] = [];
+      const returnAgainstReceivable = Math.min(
+        originalSaleAmountDue,
+        Math.max(0, returnSubtotal - returnToCustomer),
+      );
 
-      if (customerId) {
-        if (
-          originalSale.transactions[0].status === "unpaid" ||
-          originalSale.transactions[0].status === "partial"
-        ) {
-          const amountToDeduct = Math.min(
-            returnSubtotal,
-            originalSale.amountDue?.toNumber() || 0,
-          );
-
-          if (amountToDeduct > 0) {
-            customerUpdatePromises.push(
-              tx.customer.update({
-                where: { id: customerId, companyId },
-                data: {
-                  outstandingBalance: { decrement: amountToDeduct },
-                },
-              }),
-            );
-          }
-        }
+      if (customerId && returnAgainstReceivable > 0) {
+        customerOperations.push(
+          tx.customer.update({
+            where: { id: customerId, companyId },
+            data: {
+              outstandingBalance: { decrement: returnAgainstReceivable },
+            },
+          }),
+        );
       }
 
-      // 8. Create payment record
       if (returnToCustomer > 0) {
         const voucherNumber = await getNextVoucherNumber(
           companyId,
@@ -985,7 +957,7 @@ export async function processReturn(data: any, companyId: string) {
           tx,
         );
 
-        customerUpdatePromises.push(
+        customerOperations.push(
           tx.financialTransaction.create({
             data: {
               companyId,
@@ -998,58 +970,146 @@ export async function processReturn(data: any, companyId: string) {
               paymentMethod: paymentMethod || "cash",
               type: "PAYMENT",
               amount: returnToCustomer,
-              status: "completed",
-              notes: reason || "إرجاع بيع",
+              status: "paid",
+              notes: reason || "????? ???",
             },
           }),
         );
       }
 
-      if (customerUpdatePromises.length > 0) {
-        await Promise.all(customerUpdatePromises);
+      if (customerOperations.length > 0) {
+        await Promise.all(customerOperations);
       }
 
-      // 9. Create journal event for return
-      const refundFromAR = Math.min(
-        returnToCustomer,
-        originalSaleAmountDue || 0,
-      );
-      const refundFromCashBank = returnToCustomer - refundFromAR;
+      const mappings = await tx.account_mappings.findMany({
+        where: { company_id: companyId, is_default: true },
+        select: { mapping_type: true, account_id: true },
+      });
 
-      await tx.journalEvent.create({
-        data: {
-          companyId: companyId,
-          eventType: "return",
-          status: "pending",
-          entityType: "sale_return",
-          payload: {
-            companyId,
-            customerId,
-            cashierId,
-            returnNumber,
+      const accountMap = new Map(
+        mappings.map((mapping) => [mapping.mapping_type, mapping.account_id]),
+      );
+      const cash = accountMap.get("cash");
+      const ar = accountMap.get("accounts_receivable");
+      const revenue = accountMap.get("sales_revenue");
+      const inventory = accountMap.get("inventory");
+      const cogs = accountMap.get("cogs");
+
+      if (!cash || !ar || !revenue || !inventory || !cogs) {
+        throw new Error(
+          "Missing required account mappings for return sales journal entry",
+        );
+      }
+
+      const entryYear = new Date().getFullYear();
+      const entryNumber = `JE-${entryYear}-${Date.now()}-${Math.floor(
+        Math.random() * 1000,
+      )}`;
+      const desc = `Sales return: ${returnSale.invoiceNumber} / original ${originalSale.invoiceNumber}`;
+      const isForeign =
+        currency &&
+        baseCurrency &&
+        currency !== baseCurrency &&
+        exchangeRate &&
+        exchangeRate !== 1;
+
+      const toForeignAmount = (baseValue: number) => {
+        if (!isForeign || !exchangeRate) return null;
+        return Number((baseValue / exchangeRate).toFixed(2));
+      };
+
+      const createLine = (
+        accountId: string,
+        memo: string,
+        debitBase: number,
+        creditBase: number,
+        useForeign: boolean,
+      ) => {
+        const baseValue = debitBase > 0 ? debitBase : creditBase;
+        return {
+          companyId,
+          accountId,
+          debit: debitBase,
+          credit: creditBase,
+          memo,
+          ...(useForeign
+            ? {
+                currencyCode: currency,
+                exchangeRate,
+                foreignAmount: toForeignAmount(baseValue),
+                baseAmount: baseValue,
+              }
+            : {
+                currencyCode: baseCurrency,
+              }),
+        };
+      };
+
+      const journalLines: any[] = [
+        createLine(revenue, desc, returnSubtotal, 0, Boolean(isForeign)),
+      ];
+
+      if (returnToCustomer > 0) {
+        journalLines.push(
+          createLine(
+            cash,
+            `${desc} - refund`,
+            0,
             returnToCustomer,
+            Boolean(isForeign),
+          ),
+        );
+      }
+
+      if (returnAgainstReceivable > 0) {
+        journalLines.push(
+          createLine(
+            ar,
+            `${desc} - receivable reversal`,
+            0,
+            returnAgainstReceivable,
+            Boolean(isForeign),
+          ),
+        );
+      }
+
+      if (returnTotalCOGS > 0) {
+        journalLines.push(
+          createLine(
+            inventory,
+            `${desc} - inventory`,
             returnTotalCOGS,
-            refundFromAR,
-            refundFromCashBank,
-            returnSaleId: returnSale.id,
-            paymentMethod: paymentMethod || "cash",
-            branchId,
-            ...(currency !== baseCurrency && {
-              foreignAmount: foreignAmount, // المبلغ بالدولار مثلاً
-              exchangeRate: exchangeRate,
-              foreignCurrency: currency,
-            }),
-            baseCurrency,
-            reason,
+            0,
+            false,
+          ),
+          createLine(cogs, `${desc} - cogs`, 0, returnTotalCOGS, false),
+        );
+      }
+
+      await tx.journalHeader.create({
+        data: {
+          companyId,
+          entryNumber,
+          description: desc,
+          branchId,
+          referenceType: "sale_return",
+          referenceId: returnSale.id,
+          entryDate: new Date(),
+          status: "POSTED",
+          createdBy: cashierId,
+          lines: {
+            create: journalLines.map((line) => ({
+              ...line,
+              companyId,
+            })),
           },
-          processed: false,
         },
       });
 
       const cleanReturnSale = JSON.parse(JSON.stringify(returnSale));
       return {
         success: true,
-        message: "تم إرجاع البيع بنجاح",
+        message: "?? ????? ????? ?????",
         cleanReturnSale,
         returnSubtotal,
         returnTotalCOGS,

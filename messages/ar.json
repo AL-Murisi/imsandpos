@@ -19,8 +19,9 @@
 
   "menu": {
     "home": "الرئيسية",
+    "companyinfo": "معلومات الشركة",
     "company": "بيانات الشركة",
-    "users": "قائمة المستخدمين",
+    "users": "المستخدمين",
     "userManagement": "إدارة المستخدمين",
     "branches": "الفروع",
     "userActivities": "سجل النشاطات",

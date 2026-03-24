@@ -41,7 +41,7 @@ export async function sendUserInviteEmail(params: {
   const safeCompany = params.companyName || "نظام إدارة المخزون";
   const logoBlock = params.companyLogoUrl
     ? `<div style="text-align:center; margin-bottom:16px;">
-         <img src="${params.companyLogoUrl}" alt="${safeCompany}" style="max-width:120px; max-height:120px; object-fit:contain;" />
+         <img src="${params.companyLogoUrl}" alt="${safeCompany}" style="max-width:120px; max-height:120px; object-fit:contain; border-radius:40%" />
        </div>`
     : "";
   const html = `
@@ -49,7 +49,7 @@ export async function sendUserInviteEmail(params: {
     ${logoBlock}
     <h2 style="text-align:center;">مرحباً بك في ${safeCompany}</h2>
     <p>مرحباً ${params.name ?? ""}،</p>
-    <p>تمت دعوتك للانضمام إلى حساب الشركة.</p>
+    <p> تمت دعوتك للانضمام إلى حساب الشركة .</p>
     <p>اضغط على الزر بالأسفل لتعيين كلمة المرور وتسجيل الدخول:</p>
     <p style="text-align:center;">
       <a href="${inviteUrl}" style="display: inline-block; padding: 12px 20px; background: #2563eb; color: #fff; text-decoration: none; border-radius: 6px;">قبول الدعوة</a>
@@ -62,7 +62,7 @@ export async function sendUserInviteEmail(params: {
   await transporter.sendMail({
     from: EMAIL_FROM,
     to: params.email,
-    subject: `دعوة للانضمام إلى ${safeCompany}`,
+    subject: ` دعوة من نظام اي ام اس  للانضمام  إلى  ${safeCompany}`,
     html,
   });
 }

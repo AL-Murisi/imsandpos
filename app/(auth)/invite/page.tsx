@@ -10,7 +10,9 @@ export default function InvitePage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const token = searchParams.get("token") || "";
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -23,8 +25,16 @@ export default function InvitePage() {
       setError("Invalid invite link");
       return;
     }
+    if (!email.includes("@")) {
+      setError("Enter the invited email address");
+      return;
+    }
     if (password.length < 8) {
       setError("Password must be at least 8 characters");
+      return;
+    }
+    if (confirmPassword !== password) {
+      setError("Passwords do not match");
       return;
     }
 
@@ -33,7 +43,7 @@ export default function InvitePage() {
       const res = await fetch("/api/auth/invite/accept", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, password }),
+        body: JSON.stringify({ token, email, password, confirmPassword }),
       });
 
       if (!res.ok) {
@@ -54,9 +64,9 @@ export default function InvitePage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#0a0f1d] px-4 text-white">
       <div className="w-full max-w-md rounded-2xl border border-gray-800 bg-[#111827]/80 p-6 shadow-xl">
-        <h1 className="mb-2 text-2xl font-bold">Accept Invite</h1>
+        <h1 className="mb-2 text-2xl font-bold"> قبول دعوه الانضمام</h1>
         <p className="mb-6 text-sm text-gray-400">
-          Set your password to activate your account.
+          اكتب البريد المدعو وكلمه السر مرتين من اجل تنشيط حسابك بشكل امن
         </p>
 
         {error && (
@@ -72,13 +82,38 @@ export default function InvitePage() {
 
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="email">البريد الالكتروني</Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="name@company.com"
+              autoComplete="email"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="password">كلمه السر</Label>
             <Input
               id="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="********"
+              autoComplete="new-password"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="confirmPassword">تأكيد كلمه السر</Label>
+            <Input
+              id="confirmPassword"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="********"
+              autoComplete="new-password"
             />
           </div>
 
@@ -87,7 +122,7 @@ export default function InvitePage() {
             disabled={loading}
             className="w-full bg-blue-600 hover:bg-blue-700"
           >
-            {loading ? "Saving..." : "Activate Account"}
+            {loading ? "حفظ..." : "تنشيط حسابك "}
           </Button>
         </form>
       </div>

@@ -23,6 +23,9 @@ import {
   User,
   Users,
   Wallet,
+  Building,
+  InfoIcon,
+  BriefcaseBusiness,
 } from "lucide-react";
 import Image from "next/image";
 
@@ -80,12 +83,32 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       icon: () => <Home className="text-indigo-600" />,
       roles: ["manager_wh"],
     },
-
     {
-      title: t("company"),
-      url: "/company",
-      icon: () => <Users className="text-blue-600" />,
+      title: t("companyinfo"),
+      icon: () => <BriefcaseBusiness className="text-shadow-rose-500" />, // Boxes = Inventory
       roles: ["admin"],
+      isDropdown: true,
+
+      subItems: [
+        {
+          title: t("company"),
+          url: "/company",
+          icon: <Building className="text-blue-600" />,
+          roles: ["admin"],
+        },
+        {
+          title: t("users"),
+          url: "/user",
+          icon: <Users className="text-blue-600" />,
+          roles: ["admin"],
+        },
+        {
+          title: t("branches"),
+          url: "/branches",
+          icon: <Building2 className="text-blue-600" />,
+          roles: ["admin"],
+        },
+      ],
     },
 
     {

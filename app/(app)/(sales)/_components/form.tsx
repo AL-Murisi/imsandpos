@@ -4,23 +4,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-import { updateSales } from "@/lib/actions/debtSells";
+import Dailogreuse from "@/components/common/dailogreuse";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
-import { useAuth } from "@/lib/context/AuthContext";
 import { useFormatter } from "@/hooks/usePrice";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { updateSales } from "@/lib/actions/debtSells";
+import { useAuth } from "@/lib/context/AuthContext";
 import { useState } from "react";
-import Dailogreuse from "@/components/common/dailogreuse";
+import { toast } from "sonner";
 
 // This schema needs to be defined for the payment input
 // Example: Create a new schema like PaymentAmountSchema

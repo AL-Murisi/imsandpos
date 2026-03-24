@@ -15,6 +15,10 @@ const roleSet = new Set<string>(KNOWN_ROLES);
 
 const routePermissions: ReadonlyArray<{ prefix: string; roles: Role[] }> = [
   { prefix: "/settings", roles: ["admin"] },
+
+  { prefix: "/settings/currencies", roles: ["admin"] },
+  { prefix: "/settings/subscription", roles: ["admin"] },
+
   { prefix: "/company", roles: ["admin"] },
   { prefix: "/user", roles: ["admin"] },
   { prefix: "/branches", roles: ["admin"] },
@@ -167,11 +171,7 @@ export default async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL("/login", req.nextUrl));
   }
 
-  if (
-    isAuthenticated &&
-    !isSubscriptionActive &&
-    path !== subscriptionRoute
-  ) {
+  if (isAuthenticated && !isSubscriptionActive && path !== subscriptionRoute) {
     return safeRedirect(req, subscriptionRoute);
   }
 

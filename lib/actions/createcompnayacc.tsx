@@ -3,6 +3,8 @@
 import prisma from "@/lib/prisma";
 import { getSession } from "../session";
 import { revalidatePath } from "next/cache";
+import { randomBytes } from "crypto";
+import { sendUserInviteEmail } from "@/lib/email";
 
 interface CreateCompanyInput {
   name: string;
@@ -34,6 +36,10 @@ export async function createCompany(data: CreateCompanyInput) {
   } = data;
   email = email.trim().toLowerCase();
   adminEmail = adminEmail.trim().toLowerCase();
+  const invitePassword =
+    typeof adminPassword === "string" && adminPassword.length > 0
+      ? adminPassword
+      : randomBytes(16).toString("hex");
 
   try {
     // 1️⃣ Check if company already exists
@@ -152,15 +158,36 @@ export async function createCompany(data: CreateCompanyInput) {
           email: adminEmail,
           name: adminName,
           phoneNumber: phone,
-          password: adminPassword || null,
+          password: invitePassword,
           supabaseId,
-          isActive: true,
+          isActive: false,
         },
       });
+    } else if (user.companyId !== company.id) {
+      return {
+        success: false,
+        message: "Admin email is already linked to another company",
+      };
     } else if (supabaseId && !user.supabaseId) {
       user = await prisma.user.update({
         where: { id: user.id },
-        data: { supabaseId },
+        data: {
+          supabaseId,
+          isActive: false,
+          name: adminName,
+          phoneNumber: phone,
+          password: invitePassword,
+        },
+      });
+    } else {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          name: adminName,
+          phoneNumber: phone,
+          password: invitePassword,
+          isActive: false,
+        },
       });
     }
 
@@ -179,6 +206,38 @@ export async function createCompany(data: CreateCompanyInput) {
           roleId: adminRole.id,
         },
       });
+    }
+
+    await prisma.userInvite.deleteMany({
+      where: {
+        userId: user.id,
+        usedAt: null,
+      },
+    });
+
+    const token = randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 48);
+
+    await prisma.userInvite.create({
+      data: {
+        companyId: company.id,
+        userId: user.id,
+        email: adminEmail,
+        token,
+        expiresAt,
+      },
+    });
+
+    try {
+      await sendUserInviteEmail({
+        email: adminEmail,
+        name: adminName,
+        token,
+        companyName: company.name,
+        companyLogoUrl: company.logoUrl ?? null,
+      });
+    } catch (error) {
+      console.error("Failed to send company admin invite:", error);
     }
 
     return { success: true, company, admin: user };

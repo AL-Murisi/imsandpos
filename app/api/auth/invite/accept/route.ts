@@ -5,10 +5,21 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const token = typeof body?.token === "string" ? body.token : "";
+    const email =
+      typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
     const password = typeof body?.password === "string" ? body.password : "";
+    const confirmPassword =
+      typeof body?.confirmPassword === "string" ? body.confirmPassword : "";
 
-    if (!token || password.length < 8) {
+    if (!token || !email || password.length < 8 || confirmPassword.length < 8) {
       return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+    }
+
+    if (password !== confirmPassword) {
+      return NextResponse.json(
+        { error: "Passwords do not match" },
+        { status: 400 },
+      );
     }
 
     const invite = await prisma.userInvite.findFirst({
@@ -27,7 +38,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!invite.user.isActive || !invite.company.isActive) {
+    if (invite.email.trim().toLowerCase() !== email) {
+      return NextResponse.json(
+        { error: "Invitation email does not match" },
+        { status: 400 },
+      );
+    }
+
+    if (!invite.company.isActive) {
       return NextResponse.json(
         { error: "Account is inactive" },
         { status: 403 },
@@ -37,7 +55,7 @@ export async function POST(req: NextRequest) {
     await prisma.$transaction([
       prisma.user.update({
         where: { id: invite.userId },
-        data: { password },
+        data: { password, isActive: true },
       }),
       prisma.userInvite.update({
         where: { id: invite.id },
