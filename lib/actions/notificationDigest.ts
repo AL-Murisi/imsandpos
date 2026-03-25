@@ -15,7 +15,12 @@ async function ensureDigestTable() {
         last_sent_at timestamptz NOT NULL DEFAULT now(),
         PRIMARY KEY (company_id, digest_type, sent_date, digest_key)
       );
-    `).then(() => undefined);
+    `)
+      .then(() => undefined)
+      .catch((error) => {
+        ensurePromise = null;
+        throw error;
+      });
   }
 
   return ensurePromise;
@@ -26,21 +31,26 @@ export async function shouldSendNotificationDigest(
   digestType: string,
   digestKey: string,
 ) {
-  await ensureDigestTable();
+  try {
+    await ensureDigestTable();
 
-  const rows = await prisma.$queryRaw<Array<{ inserted: number }>>`
-    INSERT INTO notification_digests (
-      company_id,
-      digest_type,
-      sent_date,
-      digest_key,
-      last_sent_at
-    )
-    VALUES (${companyId}, ${digestType}, CURRENT_DATE, ${digestKey}, now())
-    ON CONFLICT (company_id, digest_type, sent_date, digest_key)
-    DO NOTHING
-    RETURNING 1 AS inserted
-  `;
+    const rows = await prisma.$queryRaw<Array<{ inserted: number }>>`
+      INSERT INTO notification_digests (
+        company_id,
+        digest_type,
+        sent_date,
+        digest_key,
+        last_sent_at
+      )
+      VALUES (${companyId}, ${digestType}, CURRENT_DATE, ${digestKey}, now())
+      ON CONFLICT (company_id, digest_type, sent_date, digest_key)
+      DO NOTHING
+      RETURNING 1 AS inserted
+    `;
 
-  return rows.length > 0;
+    return rows.length > 0;
+  } catch (error) {
+    console.error("Notification digest guard failed; sending anyway.", error);
+    return true;
+  }
 }
