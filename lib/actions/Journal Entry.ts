@@ -634,13 +634,19 @@ export async function getJournalEntries(
   const data = entries.map((entry) => ({
     id: entry.id,
     entryNumber: entry.entryNumber,
-    entryDate: entry.entryDate,
+    entryDate: entry.entryDate.toISOString(),
     description: entry.description,
     status: entry.status,
     referenceType: entry.referenceType,
     createdBy: entry.createdBy,
     createdUser: entry.createdUser,
-    lines: entry.lines,
+    lines: entry.lines.map((line) => ({
+      debit: Number(line.debit || 0),
+      credit: Number(line.credit || 0),
+      currencyCode: line.currencyCode,
+      memo: line.memo,
+      account: line.account,
+    })),
     debit: entry.lines.reduce(
       (sum, line) => sum + Number(line.debit || 0),
       0,
@@ -652,7 +658,7 @@ export async function getJournalEntries(
     total,
   }));
 
-  return data;
+  return serializeData(data);
 }
 export async function getJournalEntrie(account_id?: string) {
   console.log(account_id);

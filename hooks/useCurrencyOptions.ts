@@ -9,30 +9,69 @@ export type CurrencyOption = {
   decimals?: number | null;
 };
 
+let currencyOptionsCache: CurrencyOption[] | null = null;
+let currencyOptionsPromise: Promise<CurrencyOption[]> | null = null;
+
+async function loadCurrencyOptions(): Promise<CurrencyOption[]> {
+  if (currencyOptionsCache) {
+    return currencyOptionsCache;
+  }
+
+  if (!currencyOptionsPromise) {
+    currencyOptionsPromise = fetch("/api/currencies", {
+      method: "GET",
+      credentials: "same-origin",
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          throw new Error("Failed to load currencies");
+        }
+
+        const data = await res.json();
+        const options = Array.isArray(data.options) ? data.options : [];
+        currencyOptionsCache = options;
+        return options;
+      })
+      .finally(() => {
+        currencyOptionsPromise = null;
+      });
+  }
+
+  return currencyOptionsPromise;
+}
+
 export function useCurrencyOptions() {
   const [options, setOptions] = useState<CurrencyOption[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!currencyOptionsCache);
 
   useEffect(() => {
     let mounted = true;
-    const load = async () => {
-      try {
-        const res = await fetch("/api/currencies");
-        if (!res.ok) throw new Error("Failed to load currencies");
-        const data = await res.json();
+
+    if (currencyOptionsCache) {
+      setOptions(currencyOptionsCache);
+      setLoading(false);
+      return () => {
+        mounted = false;
+      };
+    }
+
+    loadCurrencyOptions()
+      .then((data) => {
         if (mounted) {
-          setOptions(data.options || []);
+          setOptions(data);
         }
-      } catch (err) {
+      })
+      .catch(() => {
         if (mounted) {
           setOptions([]);
         }
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
+      })
+      .finally(() => {
+        if (mounted) {
+          setLoading(false);
+        }
+      });
 
-    load();
     return () => {
       mounted = false;
     };

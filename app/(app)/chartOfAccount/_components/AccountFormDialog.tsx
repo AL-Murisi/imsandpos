@@ -40,7 +40,7 @@ const DEFAULT_ACCOUNTS_TEMPLATE = [
   // ASSETS (1000-1999)
   {
     code: "1000",
-    name: "Ø§Ù„Ø£ØµÙˆÙ„",
+    name: "الأصول",
     type: "ASSET",
     category: "OTHER_ASSETS",
     parent: null,
@@ -48,7 +48,7 @@ const DEFAULT_ACCOUNTS_TEMPLATE = [
   },
   {
     code: "1100",
-    name: "Ø§Ù„Ø£ØµÙˆÙ„ Ø§Ù„Ù…ØªØ¯Ø§ÙˆÙ„Ø©",
+    name: "الأصول المتداولة",
     type: "ASSET",
     category: "OTHER_CURRENT_ASSETS",
     parent: "1000",
@@ -56,7 +56,7 @@ const DEFAULT_ACCOUNTS_TEMPLATE = [
   },
   {
     code: "1110",
-    name: "Ø§Ù„Ù†Ù‚Ø¯",
+    name: "النقد",
     type: "ASSET",
     category: "CASH",
     parent: "1100",
@@ -65,7 +65,7 @@ const DEFAULT_ACCOUNTS_TEMPLATE = [
   },
   {
     code: "1120",
-    name: "Ø§Ù„Ø¨Ù†ÙˆÙƒ",
+    name: "البنوك",
     type: "ASSET",
     category: "BANK",
     parent: "1100",
@@ -74,7 +74,7 @@ const DEFAULT_ACCOUNTS_TEMPLATE = [
   },
   {
     code: "1130",
-    name: "Ø§Ù„Ø°Ù…Ù… Ø§Ù„Ù…Ø¯ÙŠÙ†Ø©",
+    name: "الذمم المدينة",
     type: "ASSET",
     category: "ACCOUNTS_RECEIVABLE",
     parent: "1100",
@@ -83,7 +83,7 @@ const DEFAULT_ACCOUNTS_TEMPLATE = [
   },
   {
     code: "1140",
-    name: "Ø§Ù„Ù…Ø®Ø²ÙˆÙ†",
+    name: "المخزون",
     type: "ASSET",
     category: "INVENTORY",
     parent: "1100",
@@ -92,7 +92,7 @@ const DEFAULT_ACCOUNTS_TEMPLATE = [
   },
   {
     code: "1200",
-    name: "Ø§Ù„Ø£ØµÙˆÙ„ Ø§Ù„Ø«Ø§Ø¨ØªØ©",
+    name: "الأصول الثابتة",
     type: "ASSET",
     category: "FIXED_ASSETS",
     parent: "1000",
@@ -100,7 +100,7 @@ const DEFAULT_ACCOUNTS_TEMPLATE = [
   },
   {
     code: "1210",
-    name: "Ø§Ù„Ù…Ø¨Ø§Ù†ÙŠ",
+    name: "المباني",
     type: "ASSET",
     category: "FIXED_ASSETS",
     parent: "1200",
@@ -108,7 +108,7 @@ const DEFAULT_ACCOUNTS_TEMPLATE = [
   },
   {
     code: "1220",
-    name: "Ø§Ù„Ù…Ø¹Ø¯Ø§Øª",
+    name: "المعدات",
     type: "ASSET",
     category: "FIXED_ASSETS",
     parent: "1200",
@@ -116,7 +116,7 @@ const DEFAULT_ACCOUNTS_TEMPLATE = [
   },
   {
     code: "1230",
-    name: "Ø§Ù„Ø£Ø«Ø§Ø«",
+    name: "الأثاث",
     type: "ASSET",
     category: "FIXED_ASSETS",
     parent: "1200",
@@ -126,7 +126,7 @@ const DEFAULT_ACCOUNTS_TEMPLATE = [
   // LIABILITIES (2000-2999)
   {
     code: "2000",
-    name: "Ø§Ù„Ø®ØµÙˆÙ…",
+    name: "الخصوم",
     type: "LIABILITY",
     category: "OTHER_CURRENT_LIABILITIES",
     parent: null,
@@ -134,7 +134,7 @@ const DEFAULT_ACCOUNTS_TEMPLATE = [
   },
   {
     code: "2100",
-    name: "Ø§Ù„Ø®ØµÙˆÙ… Ø§Ù„Ù…ØªØ¯Ø§ÙˆÙ„Ø©",
+    name: "الخصوم المتداولة",
     type: "LIABILITY",
     category: "OTHER_CURRENT_LIABILITIES",
     parent: "2000",
@@ -142,7 +142,7 @@ const DEFAULT_ACCOUNTS_TEMPLATE = [
   },
   {
     code: "2110",
-    name: "Ø§Ù„Ø°Ù…Ù… Ø§Ù„Ø¯Ø§Ø¦Ù†Ø©",
+    name: "الذمم الدائنة",
     type: "LIABILITY",
     category: "ACCOUNTS_PAYABLE",
     parent: "2100",
@@ -151,7 +151,7 @@ const DEFAULT_ACCOUNTS_TEMPLATE = [
   },
   {
     code: "2130",
-    name: "Ù‚Ø±ÙˆØ¶ Ù‚ØµÙŠØ±Ø© Ø§Ù„Ø£Ø¬Ù„",
+    name: "قروض قصيرة الأجل",
     type: "LIABILITY",
     category: "SHORT_TERM_LOANS",
     parent: "2100",
@@ -159,7 +159,7 @@ const DEFAULT_ACCOUNTS_TEMPLATE = [
   },
   {
     code: "2140",
-    name: "Ø¶Ø±ÙŠØ¨Ø© Ù…Ø¨ÙŠØ¹Ø§Øª Ù…Ø³ØªØ­Ù‚Ø©",
+    name: "ضريبة مبيعات مستحقة",
     type: "LIABILITY",
     category: "SALES_TAX_PAYABLE",
     parent: "2100",
@@ -168,7 +168,7 @@ const DEFAULT_ACCOUNTS_TEMPLATE = [
   },
   {
     code: "2150",
-    name: "Ø±ÙˆØ§ØªØ¨ Ù…Ø³ØªØ­Ù‚Ø©",
+    name: "رواتب مستحقة",
     type: "LIABILITY",
     category: "ACCRUED_EXPENSES",
     parent: "2100",
@@ -177,7 +177,7 @@ const DEFAULT_ACCOUNTS_TEMPLATE = [
   },
   {
     code: "2200",
-    name: "Ø§Ù„Ø®ØµÙˆÙ… Ø·ÙˆÙŠÙ„Ø© Ø§Ù„Ø£Ø¬Ù„",
+    name: "الخصوم طويلة الأجل",
     type: "LIABILITY",
     category: "LONG_TERM_LIABILITIES",
     parent: "2000",
@@ -187,7 +187,7 @@ const DEFAULT_ACCOUNTS_TEMPLATE = [
   // EQUITY (3000-3999)
   {
     code: "3000",
-    name: "Ø­Ù‚ÙˆÙ‚ Ø§Ù„Ù…Ù„ÙƒÙŠØ©",
+    name: "حقوق الملكية",
     type: "EQUITY",
     category: "OWNER_EQUITY",
     parent: null,
@@ -195,7 +195,7 @@ const DEFAULT_ACCOUNTS_TEMPLATE = [
   },
   {
     code: "3100",
-    name: "Ø±Ø£Ø³ Ø§Ù„Ù…Ø§Ù„",
+    name: "رأس المال",
     type: "EQUITY",
     category: "OWNER_EQUITY",
     parent: "3000",
@@ -203,7 +203,7 @@ const DEFAULT_ACCOUNTS_TEMPLATE = [
   },
   {
     code: "3200",
-    name: "Ø§Ù„Ø£Ø±Ø¨Ø§Ø­ Ø§Ù„Ù…Ø­ØªØ¬Ø²Ø©",
+    name: "الأرباح المحتجزة",
     type: "EQUITY",
     category: "RETAINED_EARNINGS",
     parent: "3000",
@@ -212,7 +212,7 @@ const DEFAULT_ACCOUNTS_TEMPLATE = [
   },
   {
     code: "3300",
-    name: "Ø§Ù„Ù…Ø³Ø­ÙˆØ¨Ø§Øª",
+    name: "المسحوبات",
     type: "EQUITY",
     category: "DRAWINGS",
     parent: "3000",
@@ -222,7 +222,7 @@ const DEFAULT_ACCOUNTS_TEMPLATE = [
   // REVENUE (4000-4999)
   {
     code: "4000",
-    name: "Ø§Ù„Ø¥ÙŠØ±Ø§Ø¯Ø§Øª",
+    name: "الإيرادات",
     type: "REVENUE",
     category: "SALES_REVENUE",
     parent: null,
@@ -230,7 +230,7 @@ const DEFAULT_ACCOUNTS_TEMPLATE = [
   },
   {
     code: "4100",
-    name: "Ø¥ÙŠØ±Ø§Ø¯Ø§Øª Ø§Ù„Ù…Ø¨ÙŠØ¹Ø§Øª",
+    name: "إيرادات المبيعات",
     type: "REVENUE",
     category: "SALES_REVENUE",
     parent: "4000",
@@ -239,7 +239,7 @@ const DEFAULT_ACCOUNTS_TEMPLATE = [
   },
   {
     code: "4200",
-    name: "Ø¥ÙŠØ±Ø§Ø¯Ø§Øª Ø§Ù„Ø®Ø¯Ù…Ø§Øª",
+    name: "إيرادات الخدمات",
     type: "REVENUE",
     category: "SERVICE_REVENUE",
     parent: "4000",
@@ -248,7 +248,7 @@ const DEFAULT_ACCOUNTS_TEMPLATE = [
   },
   {
     code: "4300",
-    name: "Ø¥ÙŠØ±Ø§Ø¯Ø§Øª Ø£Ø®Ø±Ù‰",
+    name: "إيرادات أخرى",
     type: "REVENUE",
     category: "OTHER_INCOME",
     parent: "4000",
@@ -258,7 +258,7 @@ const DEFAULT_ACCOUNTS_TEMPLATE = [
   // EXPENSES (5000-5999)
   {
     code: "5000",
-    name: "Ø§Ù„Ù…ØµØ±ÙˆÙØ§Øª",
+    name: "المصروفات",
     type: "EXPENSE",
     category: "OPERATING_EXPENSES",
     parent: null,
@@ -266,7 +266,7 @@ const DEFAULT_ACCOUNTS_TEMPLATE = [
   },
   {
     code: "5100",
-    name: "ØªÙƒÙ„ÙØ© Ø§Ù„Ø¨Ø¶Ø§Ø¹Ø© Ø§Ù„Ù…Ø¨Ø§Ø¹Ø©",
+    name: "تكلفة البضاعة المباعة",
     type: "EXPENSE",
     category: "COST_OF_GOODS_SOLD",
     parent: "5000",
@@ -275,7 +275,7 @@ const DEFAULT_ACCOUNTS_TEMPLATE = [
   },
   {
     code: "5200",
-    name: "Ù…ØµØ§Ø±ÙŠÙ Ø§Ù„ØªØ´ØºÙŠÙ„",
+    name: "مصاريف التشغيل",
     type: "EXPENSE",
     category: "OPERATING_EXPENSES",
     parent: "5000",
@@ -283,7 +283,7 @@ const DEFAULT_ACCOUNTS_TEMPLATE = [
   },
   {
     code: "5210",
-    name: "Ø§Ù„Ø¥ÙŠØ¬Ø§Ø±",
+    name: "الإيجار",
     type: "EXPENSE",
     category: "OPERATING_EXPENSES",
     parent: "5200",
@@ -291,7 +291,7 @@ const DEFAULT_ACCOUNTS_TEMPLATE = [
   },
   {
     code: "5220",
-    name: "Ø§Ù„ÙƒÙ‡Ø±Ø¨Ø§Ø¡ ÙˆØ§Ù„Ù…Ø§Ø¡",
+    name: "الكهرباء والماء",
     type: "EXPENSE",
     category: "OPERATING_EXPENSES",
     parent: "5200",
@@ -299,7 +299,7 @@ const DEFAULT_ACCOUNTS_TEMPLATE = [
   },
   {
     code: "5230",
-    name: "Ø§Ù„Ø§ØªØµØ§Ù„Ø§Øª",
+    name: "الاتصالات",
     type: "EXPENSE",
     category: "OPERATING_EXPENSES",
     parent: "5200",
@@ -307,7 +307,7 @@ const DEFAULT_ACCOUNTS_TEMPLATE = [
   },
   {
     code: "5300",
-    name: "Ù…ØµØ§Ø±ÙŠÙ Ø§Ù„Ø±ÙˆØ§ØªØ¨",
+    name: "مصاريف الرواتب",
     type: "EXPENSE",
     category: "PAYROLL_EXPENSES",
     parent: "5000",
@@ -316,7 +316,7 @@ const DEFAULT_ACCOUNTS_TEMPLATE = [
   },
   {
     code: "5400",
-    name: "Ù…ØµØ§Ø±ÙŠÙ Ø¥Ø¯Ø§Ø±ÙŠØ©",
+    name: "مصاريف إدارية",
     type: "EXPENSE",
     category: "ADMINISTRATIVE_EXPENSES",
     parent: "5000",
@@ -324,7 +324,7 @@ const DEFAULT_ACCOUNTS_TEMPLATE = [
   },
   {
     code: "5500",
-    name: "Ù…ØµØ§Ø±ÙŠÙ Ø£Ø®Ø±Ù‰",
+    name: "مصاريف أخرى",
     type: "EXPENSE",
     category: "OTHER_EXPENSES",
     parent: "5000",
@@ -364,54 +364,52 @@ export default function AccountFormDialog({
   const { options } = useCurrencyOptions();
   const currencyOptions = options.length ? options : fallbackCurrencyOptions;
 
-  
-
   const accountTypes = [
-    { id: "ASSET", name: "Ø£ØµÙˆÙ„" },
-    { id: "LIABILITY", name: "Ø®ØµÙˆÙ…" },
-    { id: "EQUITY", name: "Ø­Ù‚ÙˆÙ‚ Ù…Ù„ÙƒÙŠØ©" },
-    { id: "REVENUE", name: "Ø¥ÙŠØ±Ø§Ø¯Ø§Øª" },
-    { id: "EXPENSE", name: "Ù…ØµØ±ÙˆÙØ§Øª" },
+    { id: "ASSET", name: "أصول" },
+    { id: "LIABILITY", name: "خصوم" },
+    { id: "EQUITY", name: "حقوق ملكية" },
+    { id: "REVENUE", name: "إيرادات" },
+    { id: "EXPENSE", name: "مصروفات" },
   ];
 
   const accountCategories = [
-    { id: "CASH", name: "Ù†Ù‚Ø¯", type: "ASSET" },
-    { id: "BANK", name: "Ø¨Ù†ÙˆÙƒ", type: "ASSET" },
-    { id: "ACCOUNTS_RECEIVABLE", name: "Ø°Ù…Ù… Ù…Ø¯ÙŠÙ†Ø©", type: "ASSET" },
-    { id: "INVENTORY", name: "Ù…Ø®Ø²ÙˆÙ†", type: "ASSET" },
-    { id: "FIXED_ASSETS", name: "Ø£ØµÙˆÙ„ Ø«Ø§Ø¨ØªØ©", type: "ASSET" },
-    { id: "OTHER_CURRENT_ASSETS", name: "Ø£ØµÙˆÙ„ Ù…ØªØ¯Ø§ÙˆÙ„Ø© Ø£Ø®Ø±Ù‰", type: "ASSET" },
-    { id: "OTHER_ASSETS", name: "Ø£ØµÙˆÙ„ Ø£Ø®Ø±Ù‰", type: "ASSET" },
-    { id: "ACCOUNTS_PAYABLE", name: "Ø°Ù…Ù… Ø¯Ø§Ø¦Ù†Ø©", type: "LIABILITY" },
-    { id: "CREDIT_CARD", name: "Ø¨Ø·Ø§Ù‚Ø© Ø§Ø¦ØªÙ…Ø§Ù†", type: "LIABILITY" },
-    { id: "SHORT_TERM_LOANS", name: "Ù‚Ø±ÙˆØ¶ Ù‚ØµÙŠØ±Ø© Ø§Ù„Ø£Ø¬Ù„", type: "LIABILITY" },
-    { id: "SALES_TAX_PAYABLE", name: "Ø¶Ø±ÙŠØ¨Ø© Ù…Ø¨ÙŠØ¹Ø§Øª Ù…Ø³ØªØ­Ù‚Ø©", type: "LIABILITY" },
-    { id: "ACCRUED_EXPENSES", name: "Ù…ØµØ§Ø±ÙŠÙ Ù…Ø³ØªØ­Ù‚Ø©", type: "LIABILITY" },
+    { id: "CASH", name: "نقد", type: "ASSET" },
+    { id: "BANK", name: "بنوك", type: "ASSET" },
+    { id: "ACCOUNTS_RECEIVABLE", name: "ذمم مدينة", type: "ASSET" },
+    { id: "INVENTORY", name: "مخزون", type: "ASSET" },
+    { id: "FIXED_ASSETS", name: "أصول ثابتة", type: "ASSET" },
+    { id: "OTHER_CURRENT_ASSETS", name: "أصول متداولة أخرى", type: "ASSET" },
+    { id: "OTHER_ASSETS", name: "أصول أخرى", type: "ASSET" },
+    { id: "ACCOUNTS_PAYABLE", name: "ذمم دائنة", type: "LIABILITY" },
+    { id: "CREDIT_CARD", name: "بطاقة ائتمان", type: "LIABILITY" },
+    { id: "SHORT_TERM_LOANS", name: "قروض قصيرة الأجل", type: "LIABILITY" },
+    { id: "SALES_TAX_PAYABLE", name: "ضريبة مبيعات مستحقة", type: "LIABILITY" },
+    { id: "ACCRUED_EXPENSES", name: "مصاريف مستحقة", type: "LIABILITY" },
     {
       id: "OTHER_CURRENT_LIABILITIES",
-      name: "Ø®ØµÙˆÙ… Ù…ØªØ¯Ø§ÙˆÙ„Ø© Ø£Ø®Ø±Ù‰",
+      name: "خصوم متداولة أخرى",
       type: "LIABILITY",
     },
     {
       id: "LONG_TERM_LIABILITIES",
-      name: "Ø®ØµÙˆÙ… Ø·ÙˆÙŠÙ„Ø© Ø§Ù„Ø£Ø¬Ù„",
+      name: "خصوم طويلة الأجل",
       type: "LIABILITY",
     },
-    { id: "OWNER_EQUITY", name: "Ø±Ø£Ø³ Ø§Ù„Ù…Ø§Ù„", type: "EQUITY" },
-    { id: "RETAINED_EARNINGS", name: "Ø£Ø±Ø¨Ø§Ø­ Ù…Ø­ØªØ¬Ø²Ø©", type: "EQUITY" },
-    { id: "DRAWINGS", name: "Ù…Ø³Ø­ÙˆØ¨Ø§Øª", type: "EQUITY" },
-    { id: "SALES_REVENUE", name: "Ø¥ÙŠØ±Ø§Ø¯Ø§Øª Ù…Ø¨ÙŠØ¹Ø§Øª", type: "REVENUE" },
-    { id: "SERVICE_REVENUE", name: "Ø¥ÙŠØ±Ø§Ø¯Ø§Øª Ø®Ø¯Ù…Ø§Øª", type: "REVENUE" },
-    { id: "OTHER_INCOME", name: "Ø¥ÙŠØ±Ø§Ø¯Ø§Øª Ø£Ø®Ø±Ù‰", type: "REVENUE" },
+    { id: "OWNER_EQUITY", name: "رأس المال", type: "EQUITY" },
+    { id: "RETAINED_EARNINGS", name: "أرباح محتجزة", type: "EQUITY" },
+    { id: "DRAWINGS", name: "مسحوبات", type: "EQUITY" },
+    { id: "SALES_REVENUE", name: "إيرادات مبيعات", type: "REVENUE" },
+    { id: "SERVICE_REVENUE", name: "إيرادات خدمات", type: "REVENUE" },
+    { id: "OTHER_INCOME", name: "إيرادات أخرى", type: "REVENUE" },
     {
       id: "COST_OF_GOODS_SOLD",
-      name: "ØªÙƒÙ„ÙØ© Ø§Ù„Ø¨Ø¶Ø§Ø¹Ø© Ø§Ù„Ù…Ø¨Ø§Ø¹Ø©",
+      name: "تكلفة البضاعة المباعة",
       type: "EXPENSE",
     },
-    { id: "OPERATING_EXPENSES", name: "Ù…ØµØ§Ø±ÙŠÙ ØªØ´ØºÙŠÙ„ÙŠØ©", type: "EXPENSE" },
-    { id: "PAYROLL_EXPENSES", name: "Ù…ØµØ§Ø±ÙŠÙ Ø±ÙˆØ§ØªØ¨", type: "EXPENSE" },
-    { id: "ADMINISTRATIVE_EXPENSES", name: "Ù…ØµØ§Ø±ÙŠÙ Ø¥Ø¯Ø§Ø±ÙŠØ©", type: "EXPENSE" },
-    { id: "OTHER_EXPENSES", name: "Ù…ØµØ§Ø±ÙŠÙ Ø£Ø®Ø±Ù‰", type: "EXPENSE" },
+    { id: "OPERATING_EXPENSES", name: "مصاريف تشغيلية", type: "EXPENSE" },
+    { id: "PAYROLL_EXPENSES", name: "مصاريف رواتب", type: "EXPENSE" },
+    { id: "ADMINISTRATIVE_EXPENSES", name: "مصاريف إدارية", type: "EXPENSE" },
+    { id: "OTHER_EXPENSES", name: "مصاريف أخرى", type: "EXPENSE" },
   ];
 
   // Form for bulk mode - FIX: Use Controller for better performance
@@ -466,7 +464,7 @@ export default function AccountFormDialog({
         setParentAccounts(result?.data || []);
       } catch (error) {
         console.error("Error fetching parents:", error);
-        toast.error("ÙØ´Ù„ ÙÙŠ ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ø­Ø³Ø§Ø¨Ø§Øª Ø§Ù„Ø±Ø¦ÙŠØ³ÙŠØ©");
+        toast.error("فشل في تحميل الحسابات الرئيسية");
       } finally {
         setIsLoadingParents(false);
       }
@@ -513,7 +511,7 @@ export default function AccountFormDialog({
     resetBulk({ accounts: formattedAccounts });
     setIsBulkMode(true);
     toast.success(
-      `ØªÙ… ØªØ­Ù…ÙŠÙ„ ${formattedAccounts.length} Ø­Ø³Ø§Ø¨ Ø§ÙØªØ±Ø§Ø¶ÙŠ. ÙŠÙ…ÙƒÙ†Ùƒ ØªØ¹Ø¯ÙŠÙ„Ù‡Ù… Ø§Ù„Ø¢Ù†`,
+      `تم تحميل ${formattedAccounts.length} حساب افتراضي. يمكنك تعديلها الآن`,
     );
   };
 
@@ -523,7 +521,7 @@ export default function AccountFormDialog({
       if (acc.currency_code && acc.currency_code !== companyBaseCurrency) {
         return {
           type: "error",
-          message: `Ø§Ù„Ø­Ø³Ø§Ø¨Ø§Øª Ø§Ù„Ø±Ø¦ÙŠØ³ÙŠØ© ÙŠØ¬Ø¨ Ø£Ù† ØªØ³ØªØ®Ø¯Ù… Ø§Ù„Ø¹Ù…Ù„Ø© Ø§Ù„Ø£Ø³Ø§Ø³ÙŠØ© (${companyBaseCurrency})`,
+          message: `الحسابات الرئيسية يجب أن تستخدم العملة الأساسية (${companyBaseCurrency})`,
         };
       }
     } else {
@@ -531,7 +529,7 @@ export default function AccountFormDialog({
       if (parent?.currency_code && acc.currency_code !== parent.currency_code) {
         return {
           type: "error",
-          message: `ÙŠØ¬Ø¨ Ù…Ø·Ø§Ø¨Ù‚Ø© Ø¹Ù…Ù„Ø© Ø§Ù„Ø­Ø³Ø§Ø¨ Ø§Ù„Ø£Ø¨ (${parent.currency_code})`,
+          message: `يجب مطابقة عملة الحساب الأب (${parent.currency_code})`,
         };
       }
     }
@@ -563,7 +561,7 @@ export default function AccountFormDialog({
       }
 
       if (!result?.success) {
-        toast.error(result?.error || "Ø­Ø¯Ø« Ø®Ø·Ø£ Ø£Ø«Ù†Ø§Ø¡ Ø­ÙØ¸ Ø§Ù„Ø­Ø³Ø§Ø¨");
+        toast.error(result?.error || "حدث خطأ أثناء حفظ الحساب");
         return;
       }
 
@@ -573,7 +571,7 @@ export default function AccountFormDialog({
       onSuccess?.();
     } catch (error) {
       console.error("Submit error:", error);
-      toast.error("Ø­Ø¯Ø« Ø®Ø·Ø£ Ø£Ø«Ù†Ø§Ø¡ Ø­ÙØ¸ Ø§Ù„Ø­Ø³Ø§Ø¨");
+      toast.error("حدث خطأ أثناء حفظ الحساب");
     } finally {
       setIsSubmitting(false);
     }
@@ -605,7 +603,7 @@ export default function AccountFormDialog({
         });
         results.push(result);
         if (!result?.success) {
-          toast.error(`ÙØ´Ù„ ÙÙŠ Ø¥Ù†Ø´Ø§Ø¡ ${acc.account_code}: ${result?.error}`);
+          toast.error(`فشل في إنشاء ${acc.account_code}: ${result?.error}`);
         }
       }
 
@@ -614,7 +612,7 @@ export default function AccountFormDialog({
 
       if (successCount > 0) {
         toast.success(
-          `ØªÙ… Ø¥Ù†Ø´Ø§Ø¡ ${successCount} Ø­Ø³Ø§Ø¨ Ø¨Ù†Ø¬Ø§Ø­${failCount > 0 ? ` (ÙØ´Ù„ ${failCount})` : ""}`,
+          `تم إنشاء ${successCount} حساب بنجاح${failCount > 0 ? ` (فشل ${failCount})` : ""}`,
         );
         setOpen(false);
         resetBulk({ accounts: [] });
@@ -623,7 +621,7 @@ export default function AccountFormDialog({
       }
     } catch (error) {
       console.error("Bulk submit error:", error);
-      toast.error("Ø­Ø¯Ø« Ø®Ø·Ø£ Ø£Ø«Ù†Ø§Ø¡ Ø­ÙØ¸ Ø§Ù„Ø­Ø³Ø§Ø¨Ø§Øª");
+      toast.error("حدث خطأ أثناء حفظ الحسابات");
     } finally {
       setIsSubmitting(false);
     }
@@ -660,7 +658,7 @@ export default function AccountFormDialog({
         mode === "create" ? (
           <div className="flex items-center gap-2">
             <Plus className="h-4 w-4" />
-            Ø¥Ø¶Ø§ÙØ© Ø­Ø³Ø§Ø¨ Ø¬Ø¯ÙŠØ¯
+            إضافة حساب جديد
           </div>
         ) : (
           <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
@@ -671,10 +669,10 @@ export default function AccountFormDialog({
       style="sm:max-w-6xl max-h-[90vh]"
       titel={
         isBulkMode
-          ? "Ø¥Ø¶Ø§ÙØ© Ø­Ø³Ø§Ø¨Ø§Øª Ù…ØªØ¹Ø¯Ø¯Ø©"
+          ? "إضافة حسابات متعددة"
           : mode === "create"
-            ? "Ø¥Ø¶Ø§ÙØ© Ø­Ø³Ø§Ø¨ Ø¬Ø¯ÙŠØ¯"
-            : "ØªØ¹Ø¯ÙŠÙ„ Ø§Ù„Ø­Ø³Ø§Ø¨"
+            ? "إضافة حساب جديد"
+            : "تعديل الحساب"
       }
     >
       <div className="space-y-4" dir="rtl">
@@ -685,8 +683,8 @@ export default function AccountFormDialog({
               <Sparkles className="h-4 w-4 text-blue-600" />
               <AlertDescription className="flex items-center justify-between">
                 <span className="text-sm text-blue-900">
-                  Ù‡Ù„ ØªØ­ØªØ§Ø¬ Ø¥Ù„Ù‰ Ù…Ø³Ø§Ø¹Ø¯Ø©ØŸ Ù‚Ù… Ø¨ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ù‚Ø§Ù„Ø¨ Ø§Ù„Ø§ÙØªØ±Ø§Ø¶ÙŠ ÙˆØ¹Ø¯Ù‘Ù„Ù‡ Ø­Ø³Ø¨
-                  Ø­Ø§Ø¬ØªÙƒ
+                  هل تحتاج إلى مساعدة؟ قم بتحميل القالب الافتراضي وعدله حسب
+                  حاجتك
                 </span>
                 <Button
                   type="button"
@@ -697,7 +695,7 @@ export default function AccountFormDialog({
                   className="border-blue-300 text-blue-700"
                 >
                   <Sparkles className="ml-2 h-4 w-4" />
-                  ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ù‚Ø§Ù„Ø¨ Ø§Ù„Ø§ÙØªØ±Ø§Ø¶ÙŠ
+                  تحميل القالب الافتراضي
                 </Button>
               </AlertDescription>
             </Alert>
@@ -710,7 +708,7 @@ export default function AccountFormDialog({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <h3 className="text-lg font-semibold">
-                  {fields.length} Ø­Ø³Ø§Ø¨ Ø¬Ø§Ù‡Ø² Ù„Ù„Ù…Ø±Ø§Ø¬Ø¹Ø©
+                  {fields.length} حساب جاهز للمراجعة
                 </h3>
                 <Button
                   type="button"
@@ -719,7 +717,7 @@ export default function AccountFormDialog({
                   onClick={addEmptyAccount}
                 >
                   <Plus className="ml-2 h-4 w-4" />
-                  Ø¥Ø¶Ø§ÙØ© Ø­Ø³Ø§Ø¨
+                  إضافة حساب
                 </Button>
               </div>
               <Button
@@ -731,7 +729,7 @@ export default function AccountFormDialog({
                   resetBulk({ accounts: [] });
                 }}
               >
-                Ø§Ù„Ø±Ø¬ÙˆØ¹ Ù„Ù„ÙˆØ¶Ø¹ Ø§Ù„ÙØ±Ø¯ÙŠ
+                الرجوع للوضع الفردي
               </Button>
             </div>
 
@@ -769,7 +767,7 @@ export default function AccountFormDialog({
                       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
                         {/* Account Code - Using Controller */}
                         <div>
-                          <Label className="text-xs">Ø±Ù…Ø² Ø§Ù„Ø­Ø³Ø§Ø¨</Label>
+                          <Label className="text-xs">رمز الحساب</Label>
                           <Controller
                             name={`accounts.${index}.account_code`}
                             control={control}
@@ -781,7 +779,7 @@ export default function AccountFormDialog({
 
                         {/* Account Name - Using Controller */}
                         <div>
-                          <Label className="text-xs">Ø§Ø³Ù… Ø§Ù„Ø­Ø³Ø§Ø¨</Label>
+                          <Label className="text-xs">اسم الحساب</Label>
                           <Controller
                             name={`accounts.${index}.account_name_en`}
                             control={control}
@@ -793,7 +791,7 @@ export default function AccountFormDialog({
 
                         {/* Account Type */}
                         <div>
-                          <Label className="text-xs">Ø§Ù„Ù†ÙˆØ¹</Label>
+                          <Label className="text-xs">النوع</Label>
                           <Controller
                             name={`accounts.${index}.account_type`}
                             control={control}
@@ -819,7 +817,7 @@ export default function AccountFormDialog({
 
                         {/* Category */}
                         <div>
-                          <Label className="text-xs">Ø§Ù„ÙØ¦Ø©</Label>
+                          <Label className="text-xs">الفئة</Label>
                           <Controller
                             name={`accounts.${index}.account_category`}
                             control={control}
@@ -845,7 +843,7 @@ export default function AccountFormDialog({
 
                         {/* Currency */}
                         <div>
-                          <Label className="text-xs">Ø§Ù„Ø¹Ù…Ù„Ø©</Label>
+                          <Label className="text-xs">العملة</Label>
                           <Controller
                             name={`accounts.${index}.currency_code`}
                             control={control}
@@ -860,7 +858,9 @@ export default function AccountFormDialog({
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="none">Ù„Ø§ Ø¹Ù…Ù„Ø©</SelectItem>
+                                  <SelectItem value="none">
+                                    لا عملة
+                                  </SelectItem>
                                   {currencyOptions.map((curr) => (
                                     <SelectItem key={curr.id} value={curr.id}>
                                       {curr.name}
@@ -874,7 +874,9 @@ export default function AccountFormDialog({
 
                         {/* Opening Balance */}
                         <div>
-                          <Label className="text-xs">Ø§Ù„Ø±ØµÙŠØ¯ Ø§Ù„Ø§ÙØªØªØ§Ø­ÙŠ</Label>
+                          <Label className="text-xs">
+                            الرصيد الافتتاحي
+                          </Label>
                           <Controller
                             name={`accounts.${index}.opening_balance`}
                             control={control}
@@ -896,7 +898,9 @@ export default function AccountFormDialog({
 
                         {/* Level */}
                         <div>
-                          <Label className="text-xs">Ù…Ø³ØªÙˆÙ‰ Ø§Ù„Ø­Ø³Ø§Ø¨</Label>
+                          <Label className="text-xs">
+                            مستوى الحساب
+                          </Label>
                           <Controller
                             name={`accounts.${index}.level`}
                             control={control}
@@ -915,7 +919,9 @@ export default function AccountFormDialog({
 
                         {/* Parent ID */}
                         <div>
-                          <Label className="text-xs">ÙƒÙˆØ¯ Ø§Ù„Ø­Ø³Ø§Ø¨ Ø§Ù„Ø£Ø¨</Label>
+                          <Label className="text-xs">
+                            كود الحساب الأب
+                          </Label>
                           <Controller
                             name={`accounts.${index}.parent_id`}
                             control={control}
@@ -944,7 +950,7 @@ export default function AccountFormDialog({
                             )}
                           />
                           <Label className="cursor-pointer text-xs">
-                            Ø§Ù„Ø³Ù…Ø§Ø­ Ø¨Ø¥Ø¯Ø®Ø§Ù„ Ù‚ÙŠÙˆØ¯ ÙŠØ¯ÙˆÙŠØ©
+                            السماح بإدخال قيود يدوية
                           </Label>
                         </div>
                       </div>
@@ -964,13 +970,15 @@ export default function AccountFormDialog({
                   resetBulk({ accounts: [] });
                 }}
               >
-                Ø¥Ù„ØºØ§Ø¡
+                إلغاء
               </Button>
               <Button
                 onClick={handleSubmit(onBulkSubmit)}
                 disabled={isSubmitting || fields.length === 0}
               >
-                {isSubmitting ? "Ø¬Ø§Ø±ÙŠ Ø§Ù„Ø­ÙØ¸..." : `Ø¥Ù†Ø´Ø§Ø¡ ${fields.length} Ø­Ø³Ø§Ø¨`}
+                {isSubmitting
+                  ? "جاري الحفظ..."
+                  : `إنشاء ${fields.length} حساب`}
               </Button>
             </div>
           </div>
@@ -988,10 +996,10 @@ export default function AccountFormDialog({
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="grid gap-2">
-                <Label htmlFor="account_code">Ø±Ù…Ø² Ø§Ù„Ø­Ø³Ø§Ø¨ *</Label>
+                <Label htmlFor="account_code">رمز الحساب *</Label>
                 <Input
                   id="account_code"
-                  placeholder="Ù…Ø«Ø§Ù„: 1011"
+                  placeholder="مثال: 1011"
                   {...register("account_code")}
                 />
                 {errors.account_code && (
@@ -1002,22 +1010,22 @@ export default function AccountFormDialog({
               </div>
 
               <div className="grid gap-2">
-                <Label>Ù†ÙˆØ¹ Ø§Ù„Ø­Ø³Ø§Ø¨ *</Label>
+                <Label>نوع الحساب *</Label>
                 <SelectField
                   value={watch("account_type")}
                   action={(value: string) =>
                     setValue("account_type", value as any)
                   }
-                  placeholder="Ø§Ø®ØªØ± Ù†ÙˆØ¹ Ø§Ù„Ø­Ø³Ø§Ø¨"
+                  placeholder="اختر نوع الحساب"
                   options={accountTypes}
                 />
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="account_name_en">Ø§Ø³Ù… Ø§Ù„Ø­Ø³Ø§Ø¨ *</Label>
+                <Label htmlFor="account_name_en">اسم الحساب *</Label>
                 <Input
                   id="account_name_en"
-                  placeholder="Ù…Ø«Ø§Ù„: Ø§Ù„Ù†Ù‚Ø¯ ÙÙŠ Ø§Ù„ØµÙ†Ø¯ÙˆÙ‚"
+                  placeholder="مثال: النقد في الصندوق"
                   {...register("account_name_en")}
                 />
                 {errors.account_name_en && (
@@ -1028,7 +1036,7 @@ export default function AccountFormDialog({
               </div>
 
               <div className="grid gap-2">
-                <Label>Ø§Ù„ÙØ¦Ø© *</Label>
+                <Label>الفئة *</Label>
                 <SelectField
                   options={accountCategories.filter(
                     (cat) => cat.type === watch("account_type"),
@@ -1037,12 +1045,12 @@ export default function AccountFormDialog({
                   action={(value: string) =>
                     setValue("account_category", value)
                   }
-                  placeholder="Ø§Ø®ØªØ± Ø§Ù„ÙØ¦Ø©"
+                  placeholder="اختر الفئة"
                 />
               </div>
 
               <div className="grid gap-2">
-                <Label>Ø§Ù„Ø­Ø³Ø§Ø¨ Ø§Ù„Ø£Ø¨</Label>
+                <Label>الحساب الأب</Label>
                 <Select
                   value={watch("parent_id") || "none"}
                   onValueChange={(value) =>
@@ -1054,13 +1062,13 @@ export default function AccountFormDialog({
                     <SelectValue
                       placeholder={
                         isLoadingParents
-                          ? "Ø¬Ø§Ø±ÙŠ Ø§Ù„ØªØ­Ù…ÙŠÙ„..."
-                          : "Ù„Ø§ ÙŠÙˆØ¬Ø¯ (Ø­Ø³Ø§Ø¨ Ø±Ø¦ÙŠØ³ÙŠ)"
+                          ? "جاري التحميل..."
+                          : "لا يوجد (حساب رئيسي)"
                       }
                     />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">Ù„Ø§ ÙŠÙˆØ¬Ø¯ (Ø­Ø³Ø§Ø¨ Ø±Ø¦ÙŠØ³ÙŠ)</SelectItem>
+                    <SelectItem value="none">لا يوجد (حساب رئيسي)</SelectItem>
                     {parentAccounts
                       .filter((p) => p.account_type === watch("account_type"))
                       .map((acc) => (
@@ -1074,7 +1082,7 @@ export default function AccountFormDialog({
               </div>
 
               <div className="grid gap-2">
-                <Label>Ø§Ù„Ø¹Ù…Ù„Ø©</Label>
+                <Label>العملة</Label>
                 <Select
                   value={watch("currency_code") || "none"}
                   onValueChange={(value) =>
@@ -1082,10 +1090,10 @@ export default function AccountFormDialog({
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Ù„Ø§ Ø¹Ù…Ù„Ø©" />
+                    <SelectValue placeholder="لا عملة" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">Ù„Ø§ Ø¹Ù…Ù„Ø©</SelectItem>
+                    <SelectItem value="none">لا عملة</SelectItem>
                     {currencyOptions.map((curr) => (
                       <SelectItem key={curr.id} value={curr.id}>
                         {curr.name}
@@ -1097,7 +1105,7 @@ export default function AccountFormDialog({
 
               {mode === "create" && (
                 <div className="grid gap-2">
-                  <Label htmlFor="opening_balance">Ø§Ù„Ø±ØµÙŠØ¯ Ø§Ù„Ø§ÙØªØªØ§Ø­ÙŠ</Label>
+                  <Label htmlFor="opening_balance">الرصيد الافتتاحي</Label>
                   <Input
                     id="opening_balance"
                     type="number"
@@ -1106,16 +1114,16 @@ export default function AccountFormDialog({
                     {...register("opening_balance", { valueAsNumber: true })}
                   />
                   <p className="text-xs text-gray-500">
-                    Ø³ÙŠØªÙ… Ø¥Ù†Ø´Ø§Ø¡ Ù‚ÙŠØ¯ Ø§ÙØªØªØ§Ø­ÙŠ ØªÙ„Ù‚Ø§Ø¦ÙŠØ§Ù‹ Ø¥Ø°Ø§ ÙƒØ§Ù† Ø§Ù„Ø±ØµÙŠØ¯ ØºÙŠØ± ØµÙØ±
+                    سيتم إنشاء قيد افتتاحي تلقائياً إذا كان الرصيد غير صفر
                   </p>
                 </div>
               )}
 
               <div className="col-span-1 grid gap-2 md:col-span-2">
-                <Label htmlFor="description">Ø§Ù„ÙˆØµÙ</Label>
+                <Label htmlFor="description">الوصف</Label>
                 <Textarea
                   id="description"
-                  placeholder="ÙˆØµÙ ØªÙØµÙŠÙ„ÙŠ Ù„Ù„Ø­Ø³Ø§Ø¨..."
+                  placeholder="وصف تفصيلي للحساب..."
                   rows={3}
                   {...register("description")}
                 />
@@ -1134,12 +1142,12 @@ export default function AccountFormDialog({
                     htmlFor="allow_manual_entry"
                     className="cursor-pointer"
                   >
-                    Ø§Ù„Ø³Ù…Ø§Ø­ Ø¨Ø¥Ø¯Ø®Ø§Ù„ Ù‚ÙŠÙˆØ¯ ÙŠØ¯ÙˆÙŠØ© Ù„Ù‡Ø°Ø§ Ø§Ù„Ø­Ø³Ø§Ø¨
+                    السماح بإدخال قيود يدوية لهذا الحساب
                   </Label>
                 </div>
                 <p className="mt-1 mr-6 text-xs text-gray-500">
-                  Ø¥Ø°Ø§ ÙƒØ§Ù† ØºÙŠØ± Ù…ÙØ¹Ù„ØŒ Ø³ÙŠÙ‚Ø¨Ù„ Ø§Ù„Ø­Ø³Ø§Ø¨ ÙÙ‚Ø· Ø§Ù„Ù‚ÙŠÙˆØ¯ Ø§Ù„ØªÙ„Ù‚Ø§Ø¦ÙŠØ© Ù…Ù†
-                  Ø§Ù„Ù…Ø¹Ø§Ù…Ù„Ø§Øª
+                  إذا كان غير مفعل، سيقبل الحساب فقط القيود التلقائية من
+                  المعاملات
                 </p>
               </div>
             </div>
@@ -1153,17 +1161,17 @@ export default function AccountFormDialog({
                   resetSingle();
                 }}
               >
-                Ø¥Ù„ØºØ§Ø¡
+                إلغاء
               </Button>
               <Button
                 onClick={handleSingleSubmit(onSingleSubmit)}
                 disabled={isSubmitting}
               >
                 {isSubmitting
-                  ? "Ø¬Ø§Ø±ÙŠ Ø§Ù„Ø­ÙØ¸..."
+                  ? "جاري الحفظ..."
                   : mode === "create"
-                    ? "Ø¥Ù†Ø´Ø§Ø¡ Ø§Ù„Ø­Ø³Ø§Ø¨"
-                    : "Ø­ÙØ¸ Ø§Ù„ØªØºÙŠÙŠØ±Ø§Øª"}
+                    ? "إنشاء الحساب"
+                    : "حفظ التغييرات"}
               </Button>
             </div>
           </div>
@@ -1172,4 +1180,3 @@ export default function AccountFormDialog({
     </Dailogreuse>
   );
 }
-

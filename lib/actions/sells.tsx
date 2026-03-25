@@ -155,7 +155,7 @@ export async function FetchDebtSales(
     ...sale,
     saleItems: sale.items.map((item) => ({
       ...item,
-      quantity: Prisma.Decimal(item.quantity),
+      quantity: Number(item.quantity),
       unitPrice: Number(item.price),
       unit: item.unit,
       warehouse: item.product.warehouse?.name || "بدون مستودع",
@@ -215,19 +215,24 @@ export async function FetchCustomerDebtReport(
     orderBy: { invoiceDate: "desc" },
   });
 
-  return sales.map((sale) => ({
-    ...sale,
-    totalAmount: sale.totalAmount.toString(),
-    amountPaid: sale.amountPaid.toString(),
-    amountDue: sale.amountDue.toString(),
-    saleDate: sale.invoiceDate.toISOString(),
-    saleItems: sale.items.map((item) => ({
-      ...item,
-      sellingUnit: item.unit.toString(),
-      unitPrice: item.price.toString(),
-      totalPrice: item.totalPrice.toString(),
+  return serializeData(
+    sales.map((sale) => ({
+      ...sale,
+      saleNumber: sale.invoiceNumber,
+      totalAmount: Number(sale.totalAmount),
+      amountPaid: Number(sale.amountPaid),
+      amountDue: Number(sale.amountDue),
+      saleDate: sale.invoiceDate.toISOString(),
+      saleItems: sale.items.map((item) => ({
+        ...item,
+        quantity: Number(item.quantity),
+        price: Number(item.price),
+        sellingUnit: item.unit.toString(),
+        unitPrice: Number(item.price),
+        totalPrice: Number(item.totalPrice),
+      })),
     })),
-  }));
+  );
 }
 
 // app/actions/sells.ts

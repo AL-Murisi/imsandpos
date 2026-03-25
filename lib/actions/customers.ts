@@ -168,7 +168,7 @@ export async function getCustomerById(
 
     const total = await prisma.customer.count({ where: { companyId } });
 
-    return { result, total }; // ✅ this is an array now
+    return { result: serializeData(result), total }; // ✅ this is an array now
   } catch (error) {
     throw error;
   }

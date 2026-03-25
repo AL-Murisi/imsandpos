@@ -17,6 +17,7 @@ import { SellingUnit } from "../zod";
 import { console } from "inspector";
 import { stat } from "fs";
 import { sendRoleBasedNotification } from "../push-notifications";
+import { shouldSendNotificationDigest } from "./notificationDigest";
 
 type CartItem = {
   id: string;
@@ -678,16 +679,29 @@ export async function getAllActiveProductsForSale(
       .filter(Boolean)
       .join(" و ");
 
-    // لا نستخدم await هنا لكي لا ينتظر الكاشير
-    sendRoleBasedNotification(
-      { companyId, targetRoles: ["admin", "cashier", "manager_wh"] },
-      {
-        title: "⚠️ تنبيه صلاحية المنتجات",
-        body: `يوجد ${totalIssues} منتجات تحتاج انتباهك: ${bodyText}`,
-        url: "/products",
-        tag: `expiry-summary-${companyId}-${new Date().toISOString().split("T")[0]}`, // إشعار واحد يومياً
-      },
-    ).catch((err) => console.error("Notification Error:", err));
+    const digestKey = [
+      `expired:${[...new Set(expiredAlready)].sort().join("|")}`,
+      `soon:${[...new Set(expiringSoon)].sort().join("|")}`,
+    ].join(";");
+
+    const shouldSend = await shouldSendNotificationDigest(
+      companyId,
+      "expiry-summary",
+      digestKey,
+    );
+
+    if (shouldSend) {
+      // لا نستخدم await هنا لكي لا ينتظر الكاشير
+      sendRoleBasedNotification(
+        { companyId, targetRoles: ["admin", "cashier", "manager_wh"] },
+        {
+          title: "⚠️ تنبيه صلاحية المنتجات",
+          body: `يوجد ${totalIssues} منتجات تحتاج انتباهك: ${bodyText}`,
+          url: "/products",
+          tag: `expiry-summary-${companyId}-${new Date().toISOString().split("T")[0]}`,
+        },
+      ).catch((err) => console.error("Notification Error:", err));
+    }
   }
   // --- نهاية منطق الصلاحية ---
   return activeProducts.map((product) => {

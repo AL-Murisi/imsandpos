@@ -56,7 +56,8 @@ function buildDebtJournalLine(
           currencyCode: currency,
           exchangeRate,
           foreignAmount:
-            foreignAmount ?? Number((baseValue / Number(exchangeRate)).toFixed(2)),
+            foreignAmount ??
+            Number((baseValue / Number(exchangeRate)).toFixed(2)),
           baseAmount: baseValue,
         }
       : {
@@ -150,6 +151,14 @@ export async function updateSales(
   if (!companyId) return;
 
   const updatedSale = await prisma.$transaction(async (tx) => {
+    const accountMap = await getDebtAccountMap(tx, companyId);
+    const receivableAccount = accountMap.get("accounts_receivable");
+    const settlementAccount = accountMap.get("cash");
+
+    if (!receivableAccount || !settlementAccount) {
+      throw new Error("Missing required account mappings for debt payment");
+    }
+
     // 1ï¸âƒ£ Fetch current sale
     const sale = await tx.invoice.findUnique({
       where: { id: saleId, cashierId, companyId },
@@ -211,30 +220,45 @@ export async function updateSales(
         paymentMethod: "cash",
         amount: paymentAmount,
         status: "completed",
-        notes: `Payment for Sale ${saleId}`,
+        notes: "دفع للمبيعات رقم ${saleId}",
         createdAt: new Date(),
+        baseAmount: paymentAmount,
       },
     });
 
-    // 6ï¸âƒ£ CREATE JOURNAL EVENT
-    await tx.journalEvent.create({
+    const entryYear = new Date().getFullYear();
+    const entryNumber = `JE-${entryYear}-${Date.now()}-${Math.floor(
+      Math.random() * 1000,
+    )}`;
+    const desc = "سداد دين للمبيعات رقم: ${saleId}";
+    await tx.journalHeader.create({
       data: {
-        companyId: companyId,
-        eventType: "payment",
-        entityType: "outstanding_payment",
-        status: "pending",
-        payload: {
-          companyId,
-          payment: {
-            id: payment.id,
-            saleId: saleId,
-            customerId: customerId,
-            amount: payment.amount,
-            paymentMethod: payment.paymentMethod,
-          },
-          cashierId,
+        companyId,
+        entryNumber,
+        description: desc,
+        referenceType: "سداد دين للمبيعات",
+        referenceId: payment.id,
+        entryDate: new Date(),
+        status: "POSTED",
+        createdBy: cashierId,
+        lines: {
+          create: [
+            buildDebtJournalLine(
+              companyId,
+              settlementAccount,
+              `${desc} - receipt`,
+              paymentAmount,
+              0,
+            ),
+            buildDebtJournalLine(
+              companyId,
+              receivableAccount,
+              `${desc} - receivable`,
+              0,
+              paymentAmount,
+            ),
+          ],
         },
-        processed: false,
       },
     });
 
@@ -535,6 +559,7 @@ export async function updateSalesBulk(
           },
         });
       }
+      revalidatePath("/customer");
 
       // 6ï¸âƒ£ Update customer balances
       await Promise.all(
@@ -567,7 +592,6 @@ export async function updateSalesBulk(
     );
   }
 
-  revalidatePath("/customer");
   return result;
 }
 
@@ -599,6 +623,17 @@ export async function payOutstandingOnly(
 
   const result = await prisma.$transaction(
     async (tx) => {
+      const accountMap = await getDebtAccountMap(tx, companyId);
+      const receivableAccount = accountMap.get("accounts_receivable");
+      const settlementAccount =
+        paymentDetails.paymentMethod === "bank"
+          ? accountMap.get("bank") || accountMap.get("cash")
+          : accountMap.get("cash");
+
+      if (!receivableAccount || !settlementAccount) {
+        throw new Error("Missing required account mappings for debt payment");
+      }
+
       // 1ï¸âƒ£ Get next voucher number (only ONE call - this is fine)
       const voucherNumber = await getNextVoucherNumber(
         companyId,
@@ -620,9 +655,13 @@ export async function payOutstandingOnly(
           paymentMethod: paymentDetails.paymentMethod,
           amount: paymentAmount,
           exchangeRate: paymentDetails.exchangeRate,
+          foreignAmount:
+            paymentDetails.currencyCode !== paymentDetails.basCurrncy
+              ? paymentDetails.amountFC || paymentAmount
+              : undefined,
+          baseAmount: paymentDetails.baseAmount || paymentAmount,
           status: "completed",
-          notes:
-            "ØªØ³Ø¯ÙŠØ¯ Ø±ØµÙŠØ¯ Ù…Ø³ØªØ­Ù‚ ØºÙŠØ± Ù…Ø±ØªØ¨Ø· Ø¨ÙØ§ØªÙˆØ±Ø©",
+          notes: "تسديد رصيد مستحق غير مرتبط بفاتورة",
           createdAt: new Date(),
         },
       });
@@ -637,25 +676,52 @@ export async function payOutstandingOnly(
         },
       });
 
-      // 4ï¸âƒ£ Create journal event
-      await tx.journalEvent.create({
+      const entryYear = new Date().getFullYear();
+      const entryNumber = `JE-${entryYear}-${Date.now()}-${Math.floor(
+        Math.random() * 1000,
+      )}`;
+      const desc = `Outstanding balance payment: ${customerId}`;
+
+      await tx.journalHeader.create({
         data: {
           companyId,
-          eventType: "payment-outstanding",
-          entityType: "outstanding",
-          status: "pending",
-          processed: false,
-          payload: {
-            companyId,
-            payment: {
-              id: payment.id,
-              saleId: null,
-              customerId,
-              amount: paymentDetails.baseAmount,
-              branchId,
-              paymentDetails: paymentDetails || {},
-            },
-            cashierId,
+          entryNumber,
+          description: desc,
+          branchId,
+          referenceType: "outstanding_payment",
+          referenceId: payment.id,
+          entryDate: new Date(),
+          status: "POSTED",
+          createdBy: cashierId,
+          lines: {
+            create: [
+              buildDebtJournalLine(
+                companyId,
+                settlementAccount,
+                `${desc} - receipt`,
+                paymentDetails.baseAmount || paymentAmount,
+                0,
+                {
+                  currency: paymentDetails.currencyCode,
+                  baseCurrency: paymentDetails.basCurrncy,
+                  exchangeRate: paymentDetails.exchangeRate,
+                  foreignAmount: paymentDetails.amountFC,
+                },
+              ),
+              buildDebtJournalLine(
+                companyId,
+                receivableAccount,
+                `${desc} - receivable`,
+                0,
+                paymentDetails.baseAmount || paymentAmount,
+                {
+                  currency: paymentDetails.currencyCode,
+                  baseCurrency: paymentDetails.basCurrncy,
+                  exchangeRate: paymentDetails.exchangeRate,
+                  foreignAmount: paymentDetails.amountFC,
+                },
+              ),
+            ],
           },
         },
       });
@@ -678,7 +744,7 @@ export async function payOutstandingOnly(
     await sendPaymentNotifications(
       companyId,
       { [result.customerId]: result.paymentBaseAmount },
-      "ØªØ³Ø¯ÙŠØ¯ Ø±ØµÙŠØ¯",
+      "تسديد رصيد",
     );
   }
 

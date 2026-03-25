@@ -8,5 +8,12 @@ export async function GET() {
   }
 
   const options = await listCurrencyOptions();
-  return Response.json({ options });
+  return Response.json(
+    { options },
+    {
+      headers: {
+        "Cache-Control": "private, max-age=300, stale-while-revalidate=600",
+      },
+    },
+  );
 }

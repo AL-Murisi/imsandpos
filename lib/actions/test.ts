@@ -105,6 +105,19 @@ export async function getCustomerStatement(
       select: { id: true },
     });
     const invoiceIdList = invoiceIds.map((i) => i.id);
+    const paymentIds = await prisma.financialTransaction.findMany({
+      where: {
+        companyId,
+        customerId,
+      },
+      select: { id: true },
+    });
+    const paymentIdList = paymentIds.map((p) => p.id);
+    const customerReferenceIds = [
+      customerId,
+      ...invoiceIdList,
+      ...paymentIdList,
+    ];
 
     // 2️⃣ الرصيد الافتتاحي قبل الفترة
     const [openingLines, openingJournalEntries] = await Promise.all([
@@ -113,7 +126,7 @@ export async function getCustomerStatement(
           companyId,
           accountId: arAccount,
           header: {
-            referenceId: { in: invoiceIdList },
+            referenceId: { in: customerReferenceIds },
             entryDate: { lt: fromDate },
           },
         },
@@ -126,7 +139,7 @@ export async function getCustomerStatement(
         where: {
           company_id: companyId,
           account_id: arAccount,
-          reference_id: customerId,
+          reference_id: { in: customerReferenceIds },
           entry_date: { lt: fromDate },
         },
         select: { debit: true, credit: true },
@@ -150,7 +163,7 @@ export async function getCustomerStatement(
           companyId,
           accountId: arAccount,
           header: {
-            referenceId: { in: invoiceIdList },
+            referenceId: { in: customerReferenceIds },
             entryDate: { gte: fromDate, lte: toDate },
           },
         },
@@ -163,7 +176,7 @@ export async function getCustomerStatement(
         where: {
           company_id: companyId,
           account_id: arAccount,
-          reference_id: customerId,
+          reference_id: { in: customerReferenceIds },
           entry_date: { gte: fromDate, lte: toDate },
         },
         orderBy: { entry_date: "asc" },
@@ -573,13 +586,29 @@ export async function getSupplierStatement(
     }
 
     // 2️⃣ الرصيد الافتتاحي قبل الفترة
+    const supplierInvoiceIds = await prisma.invoice.findMany({
+      where: { companyId, supplierId },
+      select: { id: true },
+    });
+
+    const supplierPaymentIds = await prisma.financialTransaction.findMany({
+      where: { companyId, supplierId },
+      select: { id: true },
+    });
+
+    const supplierReferenceIds = [
+      supplierId,
+      ...supplierInvoiceIds.map((invoice) => invoice.id),
+      ...supplierPaymentIds.map((payment) => payment.id),
+    ];
+
     const [openingEntries, openingJournalEntries] = await Promise.all([
       prisma.journalLine.findMany({
         where: {
           companyId,
           accountId: apAccount,
           header: {
-            referenceId: supplierId,
+            referenceId: { in: supplierReferenceIds },
             entryDate: { lt: fromDate },
           },
         },
@@ -592,7 +621,7 @@ export async function getSupplierStatement(
         where: {
           company_id: companyId,
           account_id: apAccount,
-          reference_id: supplierId,
+          reference_id: { in: supplierReferenceIds },
           entry_date: { lt: fromDate },
         },
         select: { debit: true, credit: true },
@@ -616,7 +645,7 @@ export async function getSupplierStatement(
           companyId,
           accountId: apAccount,
           header: {
-            referenceId: supplierId,
+            referenceId: { in: supplierReferenceIds },
             entryDate: { gte: fromDate, lte: toDate },
           },
         },
@@ -629,7 +658,7 @@ export async function getSupplierStatement(
         where: {
           company_id: companyId,
           account_id: apAccount,
-          reference_id: supplierId,
+          reference_id: { in: supplierReferenceIds },
           entry_date: { gte: fromDate, lte: toDate },
         },
         orderBy: { entry_date: "asc" },

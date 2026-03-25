@@ -18,6 +18,7 @@ import { PaymentState } from "@/components/common/ReusablePayment";
 import { getNextVoucherNumber } from "./cashier";
 import { sendRoleBasedNotification } from "@/lib/push-notifications";
 import { canCreateSubscriptionResource } from "./subscription";
+import { shouldSendNotificationDigest } from "./notificationDigest";
 function serializeData<T>(data: T): T {
   if (data === null || data === undefined) return data;
   if (typeof data !== "object") return data;
@@ -285,16 +286,29 @@ export async function updateInventory(
     // ============================================
     const result = await prisma.$transaction(
       async (tx) => {
+        const accountMap = await getDefaultAccountMap(tx, companyId);
+        const inventoryAccount = accountMap.get("inventory");
+        const payableAccount = accountMap.get("accounts_payable");
+        const settlementAccount = resolveSettlementAccount(
+          accountMap,
+          paymentMethod,
+        );
         let purchase = null;
         let purchaseId: string | null = null;
         let purchaseItemId: string | null = null;
         let supplierPaymentId: string | null = null;
+        let purchaseTotalCost = 0;
+        let purchasePaid = 0;
+        let purchaseDue = 0;
 
         // Create purchase if from supplier
         if (updateType === "supplier" && inputCartons && unitCost) {
           const totalCost = inputCartons * unitCost;
           const paid = paymentAmount ?? 0;
           const due = totalCost - paid;
+          purchaseTotalCost = totalCost;
+          purchasePaid = paid;
+          purchaseDue = due;
 
           purchase = await tx.invoice.create({
             data: {
@@ -410,34 +424,76 @@ export async function updateInventory(
                 },
               })
             : Promise.resolve(null);
-        const journalEvent = tx.journalEvent.create({
-          data: {
-            companyId: companyId,
-            eventType: "purchase",
-            status: "pending",
-            entityType: "purchase",
-            payload: {
-              companyId,
-
-              supplierId,
-              purchase: purchase,
-              userId,
-              type: "purchase",
-
-              paymentDetails: {
-                bankId: bankId,
-                referenceNumber: transferNumber ?? "", // Fixed typo from 'refrenceNumber'
-                exchangeRate: exchangeRate ?? undefined,
-                amountFC: amountFC ?? undefined,
-                amountBase: paymentAmount ?? 0,
-                paymentMethod: paymentMethod || "",
-                paymentId: supplierPaymentId ?? "",
-                currency_code: currency_code,
-              },
-            },
-            processed: false,
-          },
-        });
+        const journalHeaderPromise =
+          purchase && inventoryAccount && payableAccount
+            ? tx.journalHeader.create({
+                data: {
+                  companyId,
+                  entryNumber: `JE-${new Date().getFullYear()}-${Date.now()}-${Math.floor(
+                    Math.random() * 1000,
+                  )}`,
+                  description: `Purchase invoice: ${purchase.invoiceNumber || purchase.id}`,
+                  referenceType: "purchase",
+                  referenceId: purchase.id,
+                  entryDate: new Date(),
+                  status: "POSTED",
+                  createdBy: userId,
+                  lines: {
+                    create: [
+                      buildWarehouseJournalLine(
+                        companyId,
+                        inventoryAccount,
+                        "Purchase inventory",
+                        purchaseTotalCost,
+                        0,
+                        {
+                          currency: currency_code,
+                          baseCurrency: currency_code,
+                          exchangeRate,
+                          foreignAmount: amountFC,
+                        },
+                      ),
+                      ...(purchasePaid > 0 && settlementAccount
+                        ? [
+                            buildWarehouseJournalLine(
+                              companyId,
+                              settlementAccount,
+                              "Purchase payment",
+                              0,
+                              purchasePaid,
+                              {
+                                currency: currency_code,
+                                baseCurrency: currency_code,
+                                exchangeRate,
+                                foreignAmount: amountFC,
+                              },
+                            ),
+                          ]
+                        : []),
+                      ...(purchaseDue > 0
+                        ? [
+                            buildWarehouseJournalLine(
+                              companyId,
+                              payableAccount,
+                              "Purchase payable",
+                              0,
+                              purchaseDue,
+                              {
+                                currency: currency_code,
+                                baseCurrency: currency_code,
+                                exchangeRate,
+                              },
+                            ),
+                          ]
+                        : []),
+                    ].map((line) => ({
+                      ...line,
+                      companyId,
+                    })),
+                  },
+                },
+              })
+            : Promise.resolve(null);
         // Record activity log
         const activityLogPromise = tx.activityLogs.create({
           data: {
@@ -459,7 +515,7 @@ export async function updateInventory(
         await Promise.all([
           stockMovementPromise,
           activityLogPromise,
-          journalEvent,
+          journalHeaderPromise,
         ]);
 
         return {
@@ -1591,7 +1647,7 @@ export async function getInventoryById(
       }
     });
 
-    if (lowStockItems.length > 0) {
+    if (false && lowStockItems.length > 0) {
       const dayKey = new Date().toISOString().split("T")[0];
       const idKey = Array.from(new Set(lowStockItemIds)).sort().join("-");
       // Ø¥Ø±Ø³Ø§Ù„ Ø§Ù„Ø¥Ø´Ø¹Ø§Ø± Ø¨Ø¯ÙˆÙ† await Ù„Ù…Ù†Ø¹ Ø§Ù„Ø¨Ø·Ø¡
@@ -1609,6 +1665,31 @@ export async function getInventoryById(
       ).catch((err) => console.error("Notification Error:", err));
     }
     // ðŸ†• Convert base units to all selling units
+    if (lowStockItems.length > 0) {
+      const dayKey = new Date().toISOString().split("T")[0];
+      const idKey = Array.from(new Set(lowStockItemIds)).sort().join("-");
+      const shouldSend = await shouldSendNotificationDigest(
+        companyId,
+        "low-stock-summary",
+        idKey,
+      );
+
+      if (shouldSend) {
+        sendRoleBasedNotification(
+          {
+            companyId,
+            targetRoles: ["admin", "cashier", "manager_wh"],
+          },
+          {
+            title: "⚠️ تنبيه انخفاض المخزون",
+            body: `يوجد ${lowStockItems.length} منتجات وصلت للحد الأدنى: ${lowStockItems.slice(0, 3).join("، ")}${lowStockItems.length > 3 ? "..." : ""}`,
+            url: "/inventory",
+            tag: `low-stock-summary-${companyId}-${dayKey}-${idKey}`,
+          },
+        ).catch((err) => console.error("Notification Error:", err));
+      }
+    }
+
     const convertedInventory = inventory.map((item) => {
       const sellingUnits = (item.product.sellingUnits as any[]) || [];
       const baseStock = item.stockQuantity;
@@ -1988,7 +2069,7 @@ export async function updateMultipleInventories(
                     type: TransactionType.PAYMENT,
                     status: "paid",
                     paymentMethod: updateData.payment?.paymentMethod ?? "cash",
-                    notes: updateData.notes || "Ø¯ÙØ¹Ø© Ù…Ø´ØªØ±ÙŠØ§Øª",
+                    notes: updateData.notes || "دفعة مشتريات",
                   }
                 : undefined;
 
@@ -2189,20 +2270,17 @@ export async function updateMultipleInventories(
                 productId: product.id,
                 warehouseId: updateData.warehouseId,
                 userId,
-                movementType: "ÙˆØ§Ø±Ø¯ Ù„Ù„Ù…Ø®Ø²Ù†",
+                movementType: "وارد للمخزن",
                 quantity: Math.abs(stockDifference),
                 reason:
                   updateData.updateType === "supplier"
-                    ? "ØªÙ… Ø§Ø³ØªÙ„Ø§Ù… Ø§Ù„Ù…ÙˆØ±Ø¯"
-                    : updateData.reason || "ØªØ­Ø¯ÙŠØ« ÙŠØ¯ÙˆÙŠ",
+                    ? "تم استلام المورد"
+                    : updateData.reason || "تحديث يدوي",
                 notes:
                   updateData.notes ||
-                  `${updateData.updateType === "supplier" ? "Ø§Ù„Ù…Ø®Ø²ÙˆÙ† Ù…Ù† Ø§Ù„Ù…ÙˆØ±Ø¯" : "ØªØ­Ø¯ÙŠØ« Ø§Ù„Ù…Ø®Ø²ÙˆÙ†"}`,
+                  `${updateData.updateType === "supplier" ? "المخزون من المورد" : "تحديث المخزون"}`,
                 quantityBefore: inventory.stockQuantity,
                 quantityAfter: finalStockQty,
-                // ðŸ†• Store unit information
-                // unitId: selectedUnit.id,
-                // unitName: selectedUnit.name,
               },
             });
             stockMovements.push(movement);
@@ -2218,9 +2296,8 @@ export async function updateMultipleInventories(
             userId,
             companyId,
             userAgent: typeof window !== "undefined" ? navigator.userAgent : "",
-
-            action: "ØªØ­Ø¯ÙŠØ« Ù…Ø®Ø²ÙˆÙ† ",
-            details: `ØªÙ… ØªØ­Ø¯ÙŠØ« ${updatesData.length} Ø³Ø¬Ù„ Ù…Ø®Ø²ÙˆÙ†. Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„ÙˆØ­Ø¯Ø§Øª: ${totalUnits}`,
+            action: "تحديث مخزون",
+            details: `تم تحديث ${updatesData.length} سجل مخزون. إجمالي الوحدات: ${totalUnits}`,
           },
         });
 
@@ -2243,13 +2320,13 @@ export async function updateMultipleInventories(
       count: result.updatedInventories.length,
       inventories: result.updatedInventories,
       purchases: result.createdPurchases,
-      message: `ØªÙ… ØªØ­Ø¯ÙŠØ« ${result.updatedInventories.length} Ø³Ø¬Ù„ Ù…Ø®Ø²ÙˆÙ† Ø¨Ù†Ø¬Ø§Ø­`,
+      message: `تم تحديث ${result.updatedInventories.length} سجل مخزون بنجاح`,
     };
   } catch (error) {
     console.error("Error updating multiple inventory:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "ÙØ´Ù„ ØªØ­Ø¯ÙŠØ« Ø§Ù„Ù…Ø®Ø²ÙˆÙ†",
+      error: error instanceof Error ? error.message : "فشل تحديث المخزون",
     };
   }
 }
