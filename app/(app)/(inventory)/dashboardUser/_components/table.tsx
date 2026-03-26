@@ -1,10 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -73,17 +68,15 @@ function InventoryStatusTable({
   rows: InventoryRow[];
 }) {
   return (
-    <Card className="border-0 bg-white/90 shadow-sm">
+    <Card className="min-w-0 border-0 shadow-sm">
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg font-semibold text-slate-900">
-          {title}
-        </CardTitle>
-        <p className="text-sm text-slate-500">{description}</p>
+        <CardTitle className="text-lg font-semibold">{title}</CardTitle>
+        <p className="text-sm">{description}</p>
       </CardHeader>
-      <CardContent>
+      <CardContent className="min-w-0">
         <div className="overflow-x-auto">
-          <Table className="min-w-full">
-            <TableHeader className="bg-slate-50 shadow-none">
+          <Table className="min-w-[680px]">
+            <TableHeader className="shadow-none">
               <TableRow>
                 <TableHead className="text-right">الصنف</TableHead>
                 <TableHead className="text-right">المخزن</TableHead>
@@ -99,10 +92,8 @@ function InventoryStatusTable({
                   <TableRow key={row.id}>
                     <TableCell>
                       <div className="space-y-1">
-                        <div className="font-medium text-slate-900">
-                          {row.productName}
-                        </div>
-                        <div className="text-xs text-slate-500">{row.sku}</div>
+                        <div className="font-medium">{row.productName}</div>
+                        <div className="text-xs">{row.sku}</div>
                       </div>
                     </TableCell>
                     <TableCell>{row.warehouseName}</TableCell>
@@ -116,7 +107,7 @@ function InventoryStatusTable({
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-8 text-center text-slate-500">
+                  <TableCell colSpan={6} className="py-8 text-center">
                     لا توجد أصناف للعرض.
                   </TableCell>
                 </TableRow>
@@ -131,19 +122,19 @@ function InventoryStatusTable({
 
 function MovementTable({ rows }: { rows: MovementRow[] }) {
   return (
-    <Card className="border-0 bg-white/90 shadow-sm">
+    <Card className="min-w-0 border-0 shadow-sm">
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg font-semibold text-slate-900">
+        <CardTitle className="text-lg font-semibold">
           آخر حركات المخزون
         </CardTitle>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm">
           أحدث نشاطات المخزن بين الاستلام والتحديثات على المخزون.
         </p>
       </CardHeader>
-      <CardContent>
+      <CardContent className="min-w-0">
         <div className="overflow-x-auto">
-          <Table className="min-w-full">
-            <TableHeader className="bg-slate-50 shadow-none">
+          <Table className="min-w-[680px]">
+            <TableHeader className="-none">
               <TableRow>
                 <TableHead className="text-right">الصنف</TableHead>
                 <TableHead className="text-right">المخزن</TableHead>
@@ -159,10 +150,8 @@ function MovementTable({ rows }: { rows: MovementRow[] }) {
                   <TableRow key={row.id}>
                     <TableCell>
                       <div className="space-y-1">
-                        <div className="font-medium text-slate-900">
-                          {row.productName}
-                        </div>
-                        <div className="text-xs text-slate-500">{row.sku}</div>
+                        <div className="font-medium">{row.productName}</div>
+                        <div className="text-xs">{row.sku}</div>
                       </div>
                     </TableCell>
                     <TableCell>{row.warehouseName}</TableCell>
@@ -174,7 +163,7 @@ function MovementTable({ rows }: { rows: MovementRow[] }) {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-8 text-center text-slate-500">
+                  <TableCell colSpan={6} className="py-8 text-center">
                     لا توجد حركات مسجلة بعد.
                   </TableCell>
                 </TableRow>
@@ -193,7 +182,7 @@ export default function InventoryTables({
   movementRows,
 }: InventoryTablesProps) {
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       <InventoryStatusTable
         title="أصناف تحتاج تزويد عاجل"
         description="الأصناف التي وصلت إلى حد إعادة الطلب أو أقل وتحتاج تدخل المخزن."

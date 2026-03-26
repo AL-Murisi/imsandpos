@@ -66,6 +66,11 @@ export async function getWarehouseDashboardData() {
             reorderLevel: true,
             maxStockLevel: true,
             lastStockTake: true,
+            product: {
+              select: {
+                expiredAt: true,
+              },
+            },
           },
         },
       },
@@ -79,22 +84,23 @@ export async function getWarehouseDashboardData() {
         reorderLevel: true,
         maxStockLevel: true,
         updatedAt: true,
-        warehouse: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
         product: {
           select: {
             id: true,
             name: true,
             sku: true,
+            expiredAt: true,
             supplier: {
               select: {
                 name: true,
               },
             },
+          },
+        },
+        warehouse: {
+          select: {
+            id: true,
+            name: true,
           },
         },
       },

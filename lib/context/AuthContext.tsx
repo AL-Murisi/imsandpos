@@ -27,7 +27,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 function getDefaultRedirectForRole(roles: string[] = []): string {
   const normalizedRoles = roles.map((r) => r.trim().toLowerCase());
-  if (normalizedRoles.includes("admin")) return "/salesDashboard";
+  if (normalizedRoles.includes("admin")) return "/company";
   if (normalizedRoles.includes("cashier")) return "/salesDashboard";
   if (normalizedRoles.includes("manager_wh")) return "/dashboardUser";
   if (normalizedRoles.includes("supplier")) return "/supplier/orders";

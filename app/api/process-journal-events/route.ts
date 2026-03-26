@@ -1317,7 +1317,18 @@ async function createExpenseJournalEntries({
 }) {
   const fy = await getActiveFiscalYears();
   if (!fy) return;
-  // 🔎 Fetch default accounts
+
+  const existingHeader = await prisma.journalHeader.findFirst({
+    where: {
+      companyId,
+      referenceType: "expense",
+      referenceId: expense.id,
+    },
+    select: { id: true },
+  });
+
+  if (existingHeader) return;
+
   const mappings = await prisma.account_mappings.findMany({
     where: { company_id: companyId, is_default: true },
   });
@@ -1332,8 +1343,6 @@ async function createExpenseJournalEntries({
     "accounts_payable",
   );
 
-  // Determine credit account
-
   let creditAccountId: string;
 
   switch (expense.paymentMethod) {
@@ -1347,107 +1356,78 @@ async function createExpenseJournalEntries({
       creditAccountId = cash;
   }
 
-  const entry_number = `EXP-${Date.now()}`;
-  const createEntry = (
+  const entryYear = new Date().getFullYear();
+  const entryNumber = `JE-${entryYear}-${Date.now()}-${Math.floor(
+    Math.random() * 1000,
+  )}`;
+  const memo =
+    expense.description +
+    (expense.referenceNumber ? ` - ${expense.referenceNumber}` : "");
+
+  const createLine = (
     accountId: string,
-    description: string,
     debitBase: number,
     creditBase: number,
-    suffix: string,
-    refId: string,
-    refType: string,
-    isCogsRelated: boolean = false,
   ) => {
-    const baseAmountValue = debitBase > 0 ? debitBase : creditBase;
     const isForeign =
       expense.currency_code &&
       expense.currency_code !== expense.basCurrncy &&
       expense.exchangeRate &&
       expense.exchangeRate !== 1;
 
-    const useForeign = isForeign && !isCogsRelated;
+    const baseAmountValue =
+      debitBase > 0
+        ? debitBase
+        : creditBase || expense.baseAmount || expense.amount;
 
     return {
-      company_id: companyId,
-      entry_date: new Date(),
-      fiscal_period: fy.period_name,
-      created_by: userId,
-      is_automated: true,
-      branch_id: expense.branchId,
-      account_id: accountId,
-      description,
-      entry_number: entry_number + suffix,
-      reference_id: refId,
-      reference_type: refType,
+      companyId,
+      accountId,
       debit: debitBase,
       credit: creditBase,
-
-      ...(useForeign
+      memo,
+      ...(isForeign
         ? {
-            currency_code: expense.currency_code,
-            foreign_amount: expense.amountFC,
-            exchange_rate: expense.exchangeRate,
-            base_amount: expense.baseAmount,
+            currencyCode: expense.currency_code,
+            foreignAmount: expense.amountFC ?? baseAmountValue,
+            exchangeRate: expense.exchangeRate,
+            baseAmount: baseAmountValue,
           }
         : {
-            currency_code: expense.basCurrncy,
+            currencyCode: expense.basCurrncy,
+            baseAmount: baseAmountValue,
           }),
     };
   };
-  const entries: any[] = [];
-  entries.push(
-    createEntry(
-      expense.accountId,
 
-      expense.description +
-        (expense.referenceNumber ? ` - ${expense.referenceNumber}` : ""),
-      expense.baseAmount,
-      0,
-
-      "EXPC-",
-      expense.id,
-      "مصاريف",
-    ),
-    createEntry(
-      creditAccountId,
-
-      expense.description +
-        (expense.referenceNumber ? ` - ${expense.referenceNumber}` : ""),
-      0,
-      expense.baseAmount,
-      "EXPR-",
-      expense.id,
-      "مصاريف",
-    ),
-  );
-  // const entries = [
-  //   // 1️⃣ Debit Expense Account (Electricity / Salary / Rent)
-  //   {
-  //     company_id: companyId,
-
-  //     entry_number: `${entryNumber}-1`,
-  //     created_by: userId,
-  //     is_automated: true,
-  //   },
-
-  //   // 2️⃣ Credit Cash / Bank / Payable
-  //   {
-  //     company_id: companyId,
-
-  //     entry_number: `${entryNumber}-2`,
-  //     created_by: userId,
-  //     is_automated: true,
-  //   },
-  // ];
+  const journalLines = [
+    createLine(expense.accountId, expense.baseAmount, 0),
+    createLine(creditAccountId, 0, expense.baseAmount),
+  ];
 
   await prisma.$transaction(async (tx) => {
-    await tx.journal_entries.createMany({ data: entries });
+    await tx.journalHeader.create({
+      data: {
+        companyId,
+        entryNumber,
+        description: memo,
+        branchId: expense.branchId,
+        referenceType: "expense",
+        referenceId: expense.id,
+        entryDate: new Date(expense.expenseDate),
+        status: "POSTED",
+        createdBy: userId,
+        lines: {
+          create: journalLines,
+        },
+      },
+    });
 
-    for (const entry of entries) {
-      const delta = entry.debit - entry.credit;
+    for (const line of journalLines) {
+      const delta = Number(line.debit) - Number(line.credit);
 
       await tx.accounts.update({
-        where: { id: entry.account_id },
+        where: { id: line.accountId },
         data: {
           balance: {
             increment: delta,

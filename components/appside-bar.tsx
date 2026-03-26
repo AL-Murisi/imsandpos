@@ -77,12 +77,44 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       icon: () => <Home className="text-indigo-600" />,
       roles: ["admin"],
     },
+
     {
       title: "لوحة المخزن",
       url: "/dashboardUser",
       icon: () => <Home className="text-indigo-600" />,
-      roles: ["admin", "manager_wh"],
+      roles: ["manager_wh"],
     },
+    {
+      title: t("manageInventory"),
+      url: "/inventory",
+      icon: () => <PackageSearch className="h-4 w-4 text-green-600" />,
+      roles: ["manager_wh"],
+    },
+    {
+      title: t("categories"),
+      url: "/categories",
+      icon: () => <FolderKanban className="h-4 w-4 text-purple-600" />,
+      roles: ["manager_wh"],
+    },
+    {
+      title: t("warehouses"),
+      url: "/warehouses",
+      icon: () => <Building2 className="h-4 w-4 text-cyan-600" />,
+      roles: ["manager_wh"],
+    },
+    {
+      title: t("products"),
+      url: "/products",
+      icon: () => <Package className="h-4 w-4 text-emerald-600" />,
+      roles: ["manager_wh"],
+    },
+    {
+      title: t("suppliers"),
+      url: "/suppliers",
+      icon: () => <Handshake className="h-4 w-4 text-orange-600" />,
+      roles: ["manager_wh"],
+    },
+
     {
       title: t("companyinfo"),
       icon: () => <BriefcaseBusiness className="text-shadow-rose-500" />, // Boxes = Inventory
@@ -114,39 +146,45 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     {
       title: t("inventory"),
       icon: () => <Package className="text-yellow-600" />, // Boxes = Inventory
-      roles: ["admin", "manager_wh"],
+      roles: ["admin"],
       isDropdown: true,
 
       subItems: [
         {
+          title: "لوحة المخزن",
+          url: "/dashboardUser",
+          icon: <Home className="text-indigo-600" />,
+          roles: ["admin"],
+        },
+        {
           title: t("manageInventory"),
           url: "/inventory",
           icon: <PackageSearch className="h-4 w-4 text-green-600" />,
-          roles: ["admin", "manager_wh"],
+          roles: ["admin"],
         },
         {
           title: t("categories"),
           url: "/categories",
           icon: <FolderKanban className="h-4 w-4 text-purple-600" />,
-          roles: ["admin", "manager_wh"],
+          roles: ["admin"],
         },
         {
           title: t("warehouses"),
           url: "/warehouses",
           icon: <Building2 className="h-4 w-4 text-cyan-600" />,
-          roles: ["admin", "manager_wh"],
+          roles: ["admin"],
         },
         {
           title: t("products"),
           url: "/products",
           icon: <Package className="h-4 w-4 text-emerald-600" />,
-          roles: ["admin", "manager_wh"],
+          roles: ["admin"],
         },
         {
           title: t("suppliers"),
           url: "/suppliers",
           icon: <Handshake className="h-4 w-4 text-orange-600" />,
-          roles: ["admin", "manager_wh"],
+          roles: ["admin"],
         },
       ],
     },
@@ -506,11 +544,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 {/* Currency */}
-                <SidebarMenuItem>
+                {/* <SidebarMenuItem>
                   <SidebarMenuButton asChild className="hover:bg-orange-300/20">
                     <CurrencySwitcher />
                   </SidebarMenuButton>
-                </SidebarMenuItem>
+                </SidebarMenuItem> */}
                 {/* Theme */}
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild className="hover:bg-orange-300/20">

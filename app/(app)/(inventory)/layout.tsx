@@ -17,6 +17,11 @@ export default async function StocksLayout({
 
   const navItems: NavItem[] = [
     {
+      label: "الرئيسيه",
+      href: "/dashboardUser",
+      roles: ["admin", "manager_wh"],
+    },
+    {
       label: "المخزون",
       href: "/inventory",
       roles: ["admin", "manager_wh"],

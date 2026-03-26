@@ -58,7 +58,10 @@ function WarehouseCardSkeleton() {
 
 export default function Loading() {
   return (
-    <div className="h-[88vh] space-y-6 overflow-hidden p-3 md:p-4" dir="rtl">
+    <div
+      className="min-h-[calc(94dvh-3rem)] space-y-6 overflow-x-hidden p-3 pb-24 md:p-4 md:pb-6"
+      dir="rtl"
+    >
       <section className="overflow-hidden rounded-[28px] bg-[#0b142a] p-5 text-white shadow-lg md:p-7">
         <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
           <div className="space-y-4">
@@ -88,7 +91,7 @@ export default function Loading() {
         ))}
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1.45fr_1fr]">
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
         <div className="space-y-6">
           <div className="rounded-xl border bg-white/90 p-5 shadow-sm">
             <div className="space-y-2 pb-4">

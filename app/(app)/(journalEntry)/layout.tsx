@@ -36,6 +36,11 @@ export default function StocksLayout({
       href: "/voucher",
       roles: ["admin", "accountant"],
     },
+    {
+      label: "المصاريف",
+      href: "/expenses",
+      roles: ["admin", "accountant"],
+    },
   ];
 
   const visibleItems = navItems.filter((item) => hasAnyRole(item.roles));

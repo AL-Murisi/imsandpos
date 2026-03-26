@@ -12,10 +12,11 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getWarehouseDashboardData } from "@/lib/actions/warehouseDashboard";
 import Cards from "./cards";
-import WarehouseStatusChart from "./barchart";
+import WarehouseStatusChart from "./barchart-expiry";
 import InventoryTables from "./table";
 
 const headerColor = "#0b142a";
+const THREE_MONTHS_DAYS = 90;
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat("en-US").format(value);
@@ -30,6 +31,14 @@ function formatRelativeDate(date: string | Date | null) {
   if (days <= 0) return "تم التحديث اليوم";
   if (days === 1) return "تم التحديث أمس";
   return `تم التحديث قبل ${days} يوم`;
+}
+
+function toDateKey(value: string | Date) {
+  const date = new Date(value);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 export default async function Chart() {
@@ -48,6 +57,11 @@ export default async function Chart() {
     recentPurchaseCount,
   } = result.data;
 
+  const todayKey = toDateKey(new Date());
+  const expiringSoonLimitKey = toDateKey(
+    new Date(Date.now() + THREE_MONTHS_DAYS * 24 * 60 * 60 * 1000),
+  );
+
   const inventoryTotals = inventories.reduce(
     (acc, item) => {
       acc.totalStock += item.stockQuantity;
@@ -65,6 +79,15 @@ export default async function Chart() {
         acc.healthy += 1;
       }
 
+      if (item.product?.expiredAt) {
+        const expiryKey = toDateKey(item.product.expiredAt);
+        if (expiryKey <= todayKey) {
+          acc.expired += 1;
+        } else if (expiryKey <= expiringSoonLimitKey) {
+          acc.expiringSoon += 1;
+        }
+      }
+
       return acc;
     },
     {
@@ -74,6 +97,8 @@ export default async function Chart() {
       lowStock: 0,
       outOfStock: 0,
       healthy: 0,
+      expired: 0,
+      expiringSoon: 0,
     },
   );
 
@@ -112,6 +137,15 @@ export default async function Chart() {
       (sum, entry) => sum + entry.stockQuantity,
       0,
     );
+    const expiredItems = warehouseItem.inventory.filter((entry) => {
+      if (!entry.product?.expiredAt) return false;
+      return toDateKey(entry.product.expiredAt) <= todayKey;
+    }).length;
+    const expiringSoonItems = warehouseItem.inventory.filter((entry) => {
+      if (!entry.product?.expiredAt) return false;
+      const expiryKey = toDateKey(entry.product.expiredAt);
+      return expiryKey > todayKey && expiryKey <= expiringSoonLimitKey;
+    }).length;
     const lowItems = warehouseItem.inventory.filter(
       (entry) =>
         entry.availableQuantity > 0 &&
@@ -154,6 +188,8 @@ export default async function Chart() {
       location: warehouseItem.location,
       totalItems,
       totalStock,
+      expiredItems,
+      expiringSoonItems,
       lowItems,
       outItems,
       utilization,
@@ -207,14 +243,14 @@ export default async function Chart() {
     {
       title: "المخازن النشطة",
       value: formatNumber(warehouses.length),
-      subtitle: "إجمالي المخازن المتابعة حالياً",
+      subtitle: "إجمالي المخازن المتابعة حاليًا",
       icon: Warehouse,
       tone: "sky" as const,
     },
     {
       title: "الوحدات المتاحة",
       value: formatNumber(inventoryTotals.totalAvailable),
-      subtitle: `${formatNumber(inventoryTotals.totalReserved)} وحدة محجوزة حالياً`,
+      subtitle: `${formatNumber(inventoryTotals.totalReserved)} وحدة محجوزة حاليًا`,
       icon: Boxes,
       tone: "emerald" as const,
     },
@@ -228,6 +264,13 @@ export default async function Chart() {
       tone: "amber" as const,
     },
     {
+      title: "قريب من الانتهاء",
+      value: formatNumber(inventoryTotals.expiringSoon),
+      subtitle: `${formatNumber(inventoryTotals.expired)} صنف منتهي`,
+      icon: PackageSearch,
+      tone: "amber" as const,
+    },
+    {
       title: "مشتريات آخر 30 يوم",
       value: formatNumber(recentPurchaseCount),
       subtitle: `${formatNumber(totalPurchaseDue)} رصيد مستحق للمشتريات`,
@@ -237,21 +280,21 @@ export default async function Chart() {
   ];
 
   return (
-    <ScrollArea className="h-[calc(94vh-3rem)]" dir="rtl">
-      <div className="space-y-6 p-3 md:p-4">
+    <ScrollArea className="h-[calc(94dvh-3rem)]" dir="rtl">
+      <div className="space-y-6 overflow-x-hidden p-3 pb-24 md:p-4 md:pb-6">
         <section
           className="overflow-hidden rounded-[28px] border border-white/10 text-white shadow-lg"
           style={{
             background: `linear-gradient(135deg, ${headerColor} 0%, #132347 55%, #18325f 100%)`,
           }}
         >
-          <div className="grid gap-6 p-5 md:p-7 lg:grid-cols-[1.6fr_1fr]">
-            <div className="space-y-4">
-              <Badge className="bg-white/12 text-white hover:bg-white/12">
+          <div className="grid gap-6 p-4 md:p-7 lg:grid-cols-[1.6fr_1fr]">
+            <div className="min-w-0 space-y-4">
+              <Badge className="w-fit max-w-full bg-white/12 text-white hover:bg-white/12">
                 لوحة مدير المخزن
               </Badge>
               <div className="space-y-2">
-                <h2 className="text-2xl font-semibold md:text-3xl">
+                <h2 className="text-xl font-semibold md:text-3xl">
                   ملخص سريع لحالة المخزن
                 </h2>
                 <p className="max-w-2xl text-sm leading-6 text-slate-200 md:text-base">
@@ -259,20 +302,20 @@ export default async function Chart() {
                   وآخر حركات المخزون من شاشة واحدة مختصرة وواضحة.
                 </p>
               </div>
-              <div className="flex flex-wrap gap-3 text-sm text-slate-100">
-                <div className="rounded-full border border-white/15 bg-white/8 px-3 py-1.5">
+              <div className="flex flex-wrap gap-2 text-sm text-slate-100 md:gap-3">
+                <div className="max-w-full rounded-full border border-white/15 bg-white/8 px-3 py-1.5 text-xs sm:text-sm">
                   {formatNumber(inventoryTotals.healthy)} سجل مخزون بحالة جيدة
                 </div>
-                <div className="rounded-full border border-white/15 bg-white/8 px-3 py-1.5">
+                <div className="max-w-full rounded-full border border-white/15 bg-white/8 px-3 py-1.5 text-xs sm:text-sm">
                   {formatNumber(activeSuppliers)} مورد نشط
                 </div>
-                <div className="rounded-full border border-white/15 bg-white/8 px-3 py-1.5">
+                <div className="max-w-full rounded-full border border-white/15 bg-white/8 px-3 py-1.5 text-xs sm:text-sm">
                   قيمة المشتريات {formatNumber(totalPurchaseValue)}
                 </div>
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+            <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-1">
               <div className="rounded-2xl border border-white/12 bg-white/8 p-4 backdrop-blur-sm">
                 <div className="mb-3 flex items-center justify-between">
                   <span className="text-sm text-slate-200">جاهزية المخزون</span>
@@ -307,7 +350,7 @@ export default async function Chart() {
 
         <Cards items={statCards} />
 
-        <div className="grid gap-6 xl:grid-cols-[1.45fr_1fr]">
+        <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
           <WarehouseStatusChart data={chartData} warehouses={warehouseCards} />
           <InventoryTables
             urgentItems={urgentItems}

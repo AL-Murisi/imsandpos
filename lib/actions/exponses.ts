@@ -116,9 +116,47 @@ export async function getExpensesByCompany(
       where: { company_id: companyId, id: { in: validAccountIds } },
       select: { id: true, account_name_en: true },
     });
+    const expenseIds = expenses.map((expense) => expense.id);
+    const journalHeaders = expenseIds.length
+      ? await prisma.journalHeader.findMany({
+          where: {
+            companyId,
+            referenceType: "expense",
+            referenceId: { in: expenseIds },
+          },
+          select: {
+            id: true,
+            entryNumber: true,
+            entryDate: true,
+            status: true,
+            referenceId: true,
+            lines: {
+              select: {
+                id: true,
+                debit: true,
+                credit: true,
+                currencyCode: true,
+                baseAmount: true,
+                memo: true,
+                account: {
+                  select: {
+                    id: true,
+                    account_code: true,
+                    account_name_en: true,
+                    account_name_ar: true,
+                  },
+                },
+              },
+            },
+          },
+        })
+      : [];
     // Serialize and transform data
     const serialized = expenses.map((expense) => {
       const account = accounts.find((a) => a.id === expense.account_id);
+      const journalHeader = journalHeaders.find(
+        (header) => header.referenceId === expense.id,
+      );
 
       return {
         id: expense.id,
@@ -140,6 +178,23 @@ export async function getExpensesByCompany(
               id: expense.users.id,
               name: expense.users.name,
               email: expense.users.email,
+            }
+          : null,
+        journalHeader: journalHeader
+          ? {
+              id: journalHeader.id,
+              entryNumber: journalHeader.entryNumber,
+              entryDate: journalHeader.entryDate,
+              status: journalHeader.status,
+              lines: journalHeader.lines.map((line) => ({
+                id: line.id,
+                debit: line.debit,
+                credit: line.credit,
+                currencyCode: line.currencyCode,
+                baseAmount: line.baseAmount,
+                memo: line.memo,
+                account: line.account,
+              })),
             }
           : null,
         createdAt: expense.created_at,

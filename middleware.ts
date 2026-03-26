@@ -88,7 +88,7 @@ function sanitizeRoles(value: unknown): Role[] {
 }
 
 function getDefaultRedirectForRole(roles: Role[]): string {
-  if (roles.includes("admin")) return "/salesDashboard";
+  if (roles.includes("admin")) return "/company";
   if (roles.includes("cashier")) return "/salesDashboard";
   if (roles.includes("manager_wh")) return "/dashboardUser";
   if (roles.includes("supplier")) return "/supplier/orders";
@@ -188,7 +188,12 @@ export default async function middleware(req: NextRequest) {
     }
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+  // These headers protect against common attacks
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("X-Frame-Options", "DENY");
+  response.headers.set("X-XSS-Protection", "1; mode=block");
+  return response;
 }
 
 export const config = {

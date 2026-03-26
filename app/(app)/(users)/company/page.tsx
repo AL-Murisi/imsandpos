@@ -24,5 +24,10 @@ export default async function User({ searchParams }: Users) {
   if (!user) return;
   const company = await getCompany();
 
-  return <UpdateCompanyForm company={company?.data} />;
+  return (
+    <div className="p-3">
+      {" "}
+      <UpdateCompanyForm company={company?.data} />
+    </div>
+  );
 }

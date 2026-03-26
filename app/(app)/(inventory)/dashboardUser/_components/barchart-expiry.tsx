@@ -73,8 +73,15 @@ export default function WarehouseStatusChart({
         <CardContent>
           <div className="h-[320px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data} margin={{ top: 16, right: 12, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+              <BarChart
+                data={data}
+                margin={{ top: 16, right: 12, left: 0, bottom: 0 }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  stroke="#e2e8f0"
+                />
                 <XAxis
                   dataKey="name"
                   tickLine={false}
@@ -107,36 +114,53 @@ export default function WarehouseStatusChart({
 
       <div className="grid min-w-0 gap-4 md:grid-cols-2">
         {warehouses.map((warehouse) => (
-          <Card key={warehouse.id} className="min-w-0 border-0 bg-white/90 shadow-sm">
+          <Card
+            key={warehouse.id}
+            className="min-w-0 border-0 bg-white/90 shadow-sm"
+          >
             <CardContent className="space-y-4 p-5">
               <div className="flex flex-col items-start justify-between gap-3 sm:flex-row">
                 <div className="min-w-0">
                   <h3 className="truncate text-base font-semibold text-slate-900">
                     {warehouse.name}
                   </h3>
-                  <p className="break-words text-sm text-slate-500">{warehouse.location}</p>
+                  <p className="break-words text-sm text-slate-500">
+                    {warehouse.location}
+                  </p>
                 </div>
                 <span className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
                   {warehouse.totalItems} صنف
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
                 <div className="rounded-2xl bg-slate-50 p-3">
                   <div className="text-slate-500">الوحدات</div>
                   <div className="mt-1 text-lg font-semibold text-slate-900">
                     {warehouse.totalStock}
                   </div>
                 </div>
+                <div className="rounded-2xl bg-rose-50 p-3">
+                  <div className="text-rose-700">منتهي</div>
+                  <div className="mt-1 text-lg font-semibold text-rose-900">
+                    {warehouse.expiredItems}
+                  </div>
+                </div>
                 <div className="rounded-2xl bg-amber-50 p-3">
-                  <div className="text-amber-700">مخزون منخفض</div>
+                  <div className="text-amber-700">قريب من الانتهاء</div>
                   <div className="mt-1 text-lg font-semibold text-amber-900">
+                    {warehouse.expiringSoonItems}
+                  </div>
+                </div>
+                <div className="rounded-2xl bg-emerald-50 p-3">
+                  <div className="text-emerald-700">مخزون منخفض</div>
+                  <div className="mt-1 text-lg font-semibold text-emerald-900">
                     {warehouse.lowItems}
                   </div>
                 </div>
-                <div className="rounded-2xl bg-rose-50 p-3">
-                  <div className="text-rose-700">نافد</div>
-                  <div className="mt-1 text-lg font-semibold text-rose-900">
+                <div className="rounded-2xl bg-slate-50 p-3 sm:col-span-2">
+                  <div className="text-slate-500">الأصناف غير المتاحة</div>
+                  <div className="mt-1 text-lg font-semibold text-slate-900">
                     {warehouse.outItems}
                   </div>
                 </div>
@@ -151,7 +175,10 @@ export default function WarehouseStatusChart({
                 </div>
                 <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
                   <div
-                    className={cn("h-full rounded-full", getUtilizationTone(warehouse.utilization))}
+                    className={cn(
+                      "h-full rounded-full",
+                      getUtilizationTone(warehouse.utilization),
+                    )}
                     style={{ width: `${warehouse.utilization}%` }}
                   />
                 </div>

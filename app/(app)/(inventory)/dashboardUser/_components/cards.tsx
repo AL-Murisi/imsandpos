@@ -19,7 +19,10 @@ type CardItem = {
   tone: Tone;
 };
 
-const toneStyles: Record<Tone, { shell: string; iconWrap: string; icon: string }> = {
+const toneStyles: Record<
+  Tone,
+  { shell: string; iconWrap: string; icon: string }
+> = {
   sky: {
     shell: "border-sky-100 bg-linear-to-br from-white to-sky-50/80",
     iconWrap: "bg-sky-100",
@@ -48,7 +51,7 @@ interface CardsProps {
 
 export default function Cards({ items }: CardsProps) {
   return (
-    <section className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
+    <section className="grid min-w-0 gap-4 sm:grid-cols-2 2xl:grid-cols-5">
       {items.map((item) => {
         const Icon = item.icon;
         const tone = toneStyles[item.tone];
@@ -56,20 +59,20 @@ export default function Cards({ items }: CardsProps) {
         return (
           <Card
             key={item.title}
-            className={cn("gap-0 border shadow-sm", tone.shell)}
+            className={cn("min-w-0 gap-0 border shadow-sm", tone.shell)}
           >
-            <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
-              <div className="space-y-1">
-                <CardDescription className="text-xs uppercase tracking-[0.18em] text-slate-500">
+            <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 pb-4">
+              <div className="min-w-0 space-y-1">
+                <CardDescription className="text-xs tracking-[0.08em] text-slate-500">
                   {item.title}
                 </CardDescription>
-                <CardTitle className="text-3xl font-semibold text-slate-900">
+                <CardTitle className="text-2xl font-semibold text-slate-900 sm:text-3xl">
                   {item.value}
                 </CardTitle>
               </div>
               <div
                 className={cn(
-                  "flex h-11 w-11 items-center justify-center rounded-2xl",
+                  "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl",
                   tone.iconWrap,
                 )}
               >
@@ -77,7 +80,9 @@ export default function Cards({ items }: CardsProps) {
               </div>
             </CardHeader>
             <CardContent className="pt-0">
-              <p className="text-sm leading-6 text-slate-600">{item.subtitle}</p>
+              <p className="text-sm leading-6 break-words text-slate-600">
+                {item.subtitle}
+              </p>
             </CardContent>
           </Card>
         );

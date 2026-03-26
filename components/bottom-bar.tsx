@@ -40,6 +40,15 @@ export function BottomBar() {
             <span>المبيعات</span>
           </Link>
         )}{" "}
+        {canAccess(["manager_wh"]) && (
+          <Link
+            href="/dashboardUser"
+            className="flex flex-col items-center text-xs"
+          >
+            <Home size={22} />
+            <span>الرئيسيه</span>
+          </Link>
+        )}{" "}
         {canAccess([
           "admin",
           "cashier",
