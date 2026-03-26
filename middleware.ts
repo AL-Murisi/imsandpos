@@ -35,7 +35,7 @@ const routePermissions: ReadonlyArray<{ prefix: string; roles: Role[] }> = [
   { prefix: "/brand", roles: ["admin", "manager_wh"] },
   { prefix: "/suppliers", roles: ["admin", "manager_wh"] },
   { prefix: "/warehouses", roles: ["admin", "manager_wh"] },
-  { prefix: "/dashboardUser", roles: ["manager_wh", "admin"] },
+  { prefix: "/dashboardUser", roles: ["admin", "manager_wh"] },
 
   { prefix: "/journal", roles: ["admin", "accountant"] },
   { prefix: "/menualjournal", roles: ["admin", "accountant"] },

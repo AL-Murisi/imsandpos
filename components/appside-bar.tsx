@@ -78,10 +78,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       roles: ["admin"],
     },
     {
-      title: t("home"),
+      title: "لوحة المخزن",
       url: "/dashboardUser",
       icon: () => <Home className="text-indigo-600" />,
-      roles: ["manager_wh"],
+      roles: ["admin", "manager_wh"],
     },
     {
       title: t("companyinfo"),

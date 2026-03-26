@@ -16,7 +16,7 @@ export default function Appheader() {
   const menuItems = [
     // --- الرئيسية ---
     { title: t("home"), url: "/dashboard" },
-    { title: t("home"), url: "/dashboardUser" },
+    { title: "لوحة المخزن", url: "/dashboardUser" },
 
     // --- إدارة المستخدمين والشركة (Users & Company) ---
     { title: t("company"), url: "/company" },

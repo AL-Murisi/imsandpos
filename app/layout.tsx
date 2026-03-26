@@ -34,6 +34,7 @@ export const metadata: Metadata = {
     "نظام كاشير",
     "إدارة المبيعات",
   ],
+
   manifest: "/manifest.json",
   applicationName: "IMS",
   icons: {
