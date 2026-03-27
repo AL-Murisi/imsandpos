@@ -1,4 +1,5 @@
-import { z } from "zod";
+﻿import { z } from "zod";
+
 export const CreateCustomerSchema = z.object({
   name: z.string().min(1, "اسم العميل مطلوب"),
   email: z
@@ -9,8 +10,7 @@ export const CreateCustomerSchema = z.object({
     .or(z.literal("")),
   preferred_currency: z
     .array(z.string())
-    .min(1, "يجب إضافة وحدة بيع واحدة على الأقل"),
-
+    .min(1, "يجب اختيار عملة واحدة على الأقل"),
   phoneNumber: z.string().optional(),
   address: z.string().optional(),
   city: z.string().optional(),
@@ -21,6 +21,7 @@ export const CreateCustomerSchema = z.object({
   taxId: z.string().optional(),
   outstandingBalance: z.number().default(0).optional(),
   balance: z.number().default(0).optional(),
-  creditLimit: z.number().positive().optional(),
+  creditLimit: z.number().positive("حد الدين يجب أن يكون أكبر من صفر").optional(),
 });
+
 export type CreateCustomer = z.infer<typeof CreateCustomerSchema>;
