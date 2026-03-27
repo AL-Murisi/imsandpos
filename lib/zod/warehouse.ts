@@ -30,3 +30,9 @@ export const CreateWarehouseSchema = z.object({
 });
 
 export type WarehouseInput = z.infer<typeof CreateWarehouseSchema>;
+
+export const UpdateWarehouseSchema = CreateWarehouseSchema.omit({
+  branchId: true,
+});
+
+export type UpdateWarehouseInput = z.infer<typeof UpdateWarehouseSchema>;

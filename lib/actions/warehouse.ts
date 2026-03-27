@@ -11,6 +11,8 @@ import {
   CashierSchema,
   CreateWarehouseSchema,
   InventoryUpdateWithTrackingSchema,
+  UpdateWarehouseSchema,
+  UpdateWarehouseInput,
   WarehouseInput,
 } from "@/lib/zod";
 import { getActiveFiscalYears, validateFiscalYear } from "./fiscalYear";
@@ -1808,8 +1810,8 @@ export async function createWarehouse(
   }
 }
 
-export async function updateWarehouse(id: string, input: WarehouseInput) {
-  const parsed = CreateWarehouseSchema.safeParse(input);
+export async function updateWarehouse(id: string, input: UpdateWarehouseInput) {
+  const parsed = UpdateWarehouseSchema.safeParse(input);
   if (!parsed.success) {
     throw new Error("Invalid warehouse data");
   }

@@ -62,7 +62,9 @@ export async function getCashierDashboardData() {
 
   const [
     todaySales,
+    todayReturns,
     todayReceipts,
+    todayPayments,
     recentSales,
     statusCounts,
     weeklySales,
@@ -77,6 +79,15 @@ export async function getCashierDashboardData() {
       _sum: { totalAmount: true, amountDue: true, amountPaid: true },
       _count: { id: true },
     }),
+    prisma.invoice.aggregate({
+      where: {
+        ...invoiceScope,
+        sale_type: "RETURN_SALE",
+        invoiceDate: { gte: start, lte: end },
+      },
+      _sum: { totalAmount: true, amountDue: true, amountPaid: true },
+      _count: { id: true },
+    }),
     prisma.financialTransaction.aggregate({
       where: {
         ...transactionScope,
@@ -86,14 +97,24 @@ export async function getCashierDashboardData() {
       _sum: { amount: true },
       _count: { id: true },
     }),
+    prisma.financialTransaction.aggregate({
+      where: {
+        ...transactionScope,
+        type: "PAYMENT",
+        createdAt: { gte: start, lte: end },
+      },
+      _sum: { amount: true },
+      _count: { id: true },
+    }),
     prisma.invoice.findMany({
       where: {
         ...invoiceScope,
-        sale_type: "SALE",
+        sale_type: { in: ["SALE", "RETURN_SALE"] },
       },
       select: {
         id: true,
         invoiceNumber: true,
+        sale_type: true,
         totalAmount: true,
         amountPaid: true,
         amountDue: true,
@@ -185,7 +206,9 @@ export async function getCashierDashboardData() {
     data: serializeData({
       scope: isAdmin ? "company" : "cashier",
       todaySales,
+      todayReturns,
       todayReceipts,
+      todayPayments,
       recentSales,
       statusCounts: {
         paid: statusCounts[0],

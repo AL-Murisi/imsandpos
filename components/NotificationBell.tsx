@@ -1,10 +1,14 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
-import { registerAndSubscribe, notificationUnsupported } from "@/hooks/Push";
+import {
+  getExistingSubscription,
+  notificationUnsupported,
+  registerAndSubscribe,
+} from "@/hooks/Push";
 import { toast } from "sonner";
-import { Bell, BellOff, Loader2 } from "lucide-react"; // Import icons
-import { Button } from "@/components/ui/button"; // Assuming you have a UI button
+import { Bell, BellOff, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export default function PushNotificationManager() {
@@ -23,13 +27,9 @@ export default function PushNotificationManager() {
         }
 
         if (Notification.permission === "granted") {
-          const registration = await navigator.serviceWorker.ready;
-          if (registration) {
-            const existingSubscription =
-              await registration.pushManager.getSubscription();
-            if (existingSubscription) {
-              setSubscription(existingSubscription);
-            }
+          const existingSubscription = await getExistingSubscription();
+          if (existingSubscription) {
+            setSubscription(existingSubscription);
           }
         }
       } catch (error) {
@@ -43,10 +43,7 @@ export default function PushNotificationManager() {
   }, []);
 
   async function handleToggle() {
-    const isSubscribed = !!subscription;
-
-    // Logic for Subscribing
-    if (!isSubscribed) {
+    if (!subscription) {
       try {
         setIsLoading(true);
         const permission = await Notification.requestPermission();
@@ -63,32 +60,31 @@ export default function PushNotificationManager() {
       } finally {
         setIsLoading(false);
       }
+
+      return;
     }
-    // Logic for Unsubscribing
-    else {
-      if (!subscription) return;
-      try {
-        setIsLoading(true);
-        await subscription.unsubscribe();
 
-        await fetch("/api/web-push/subscription", {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ endpoint: subscription.endpoint }),
-        });
+    try {
+      setIsLoading(true);
+      await subscription.unsubscribe();
 
-        setSubscription(null);
-        toast.success("تم إلغاء الإشعارات");
-      } catch (error) {
-        console.error("[PushManager] Failed to unsubscribe:", error);
-        toast.error("فشل إلغاء الإشعارات");
-      } finally {
-        setIsLoading(false);
-      }
+      await fetch("/api/web-push/subscription", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endpoint: subscription.endpoint }),
+      });
+
+      setSubscription(null);
+      toast.success("تم إلغاء الإشعارات");
+    } catch (error) {
+      console.error("[PushManager] Failed to unsubscribe:", error);
+      toast.error("فشل إلغاء الإشعارات");
+    } finally {
+      setIsLoading(false);
     }
   }
 
-  if (unsupported) return null; // Or show a disabled state
+  if (unsupported) return null;
 
   return (
     <div className="flex items-center gap-3">

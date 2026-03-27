@@ -160,9 +160,9 @@ export const debtSaleColumns: ColumnDef<any>[] = [
     header: "نوع العملية",
     cell: ({ row }) => {
       const type = row.getValue("sale_type") as string;
-      const label = type === "return" ? "إرجاع" : type === "SALE" ? "بيع" : "-";
+      const label = type === "RETURN_SALE" ? "إرجاع" : type === "SALE" ? "بيع" : "-";
       const color =
-        type === "return"
+        type === "RETURN_SALE"
           ? "bg-red-100 text-red-800"
           : "bg-green-100 text-green-800";
 
@@ -177,7 +177,7 @@ export const debtSaleColumns: ColumnDef<any>[] = [
       const reason = row.original.reason; // ← reason
 
       // Only show reason if NOT a return sale
-      if (type !== "return") return "—";
+      if (type !== "RETURN_SALE") return "—";
 
       return reason ? reason : "—";
     },
@@ -287,3 +287,4 @@ export const debtSaleColumns: ColumnDef<any>[] = [
     },
   },
 ];
+

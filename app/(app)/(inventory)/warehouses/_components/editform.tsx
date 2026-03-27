@@ -4,7 +4,10 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { CreateWarehouseSchema, WarehouseInput } from "@/lib/zod/warehouse";
+import {
+  UpdateWarehouseInput,
+  UpdateWarehouseSchema,
+} from "@/lib/zod/warehouse";
 import { updateWarehouse, deleteWarehouse } from "@/lib/actions/warehouse";
 
 import { Input } from "@/components/ui/input";
@@ -33,8 +36,8 @@ export function WarehouseUpdateDialog({
 }: WarehouseUpdateDialogProps) {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
-  const form = useForm<WarehouseInput>({
-    resolver: zodResolver(CreateWarehouseSchema),
+  const form = useForm<UpdateWarehouseInput>({
+    resolver: zodResolver(UpdateWarehouseSchema),
     defaultValues: {
       name: warehouse?.name || "",
       location: warehouse?.location || "",
@@ -50,7 +53,7 @@ export function WarehouseUpdateDialog({
 
   const { register, handleSubmit, reset } = form;
 
-  const onSubmit = async (data: WarehouseInput) => {
+  const onSubmit = async (data: UpdateWarehouseInput) => {
     if (!warehouse?.id) return toast.error("معرف المستودع مفقود");
 
     setLoading(true);

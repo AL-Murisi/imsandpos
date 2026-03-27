@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   Area,
@@ -25,7 +25,7 @@ export default function CashierTrendChart({ data }: { data: TrendItem[] }) {
           اتجاه المبيعات خلال 7 أيام
         </CardTitle>
         <p className="text-sm text-slate-500">
-          متابعة حركة التحصيل والمبيعات اليومية بشكل سريع.
+          متابعة حركة المبيعات اليومية بشكل سريع خلال آخر سبعة أيام.
         </p>
       </CardHeader>
       <CardContent>

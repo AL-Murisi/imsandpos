@@ -757,7 +757,7 @@ export async function processReturn(data: any, companyId: string) {
 
   const returnItems = items.filter((item: any) => item.quantity > 0);
   if (returnItems.length === 0) {
-    return { success: false, message: "?? ???? ?????? ???????" };
+    return { success: false, message: "لم يتم تحديد أي صنف للإرجاع" };
   }
 
   await validateFiscalYear(companyId);
@@ -792,11 +792,42 @@ export async function processReturn(data: any, companyId: string) {
       });
 
       if (!originalSale) {
-        throw new Error("????? ????? ??? ??????");
+        throw new Error("فاتورة البيع غير موجودة");
       }
 
+      const originalSaleReturnPrefix = `${originalSale.invoiceNumber.replace("بيع", "مرتجع")}-`;
+      const existingReturnSales = await tx.invoice.findMany({
+        where: {
+          companyId,
+          sale_type: "RETURN_SALE",
+          invoiceNumber: {
+            startsWith: originalSaleReturnPrefix,
+          },
+        },
+        select: {
+          id: true,
+          items: {
+            select: {
+              productId: true,
+              quantity: true,
+            },
+          },
+        },
+      });
+
+      const returnedQuantityMap = new Map<string, number>();
+      existingReturnSales.forEach((returnSale) => {
+        returnSale.items.forEach((item) => {
+          returnedQuantityMap.set(
+            item.productId,
+            (returnedQuantityMap.get(item.productId) || 0) +
+              Number(item.quantity),
+          );
+        });
+      });
+
       const originalNumber = returnNumber || originalSale.invoiceNumber;
-      const returnNumberWithArabic = `${originalNumber.replace("???", "?????")}-${Date.now()}`;
+      const returnNumberWithArabic = `${originalNumber.replace("بيع", "مرتجع")}-${Date.now()}`;
       const originalSaleAmountDue = Number(originalSale.amountDue || 0);
       const saleItemsMap = new Map(
         originalSale.items.map((item) => [item.productId, item]),
@@ -831,13 +862,30 @@ export async function processReturn(data: any, companyId: string) {
         const saleItem = saleItemsMap.get(returnItem.productId);
         if (!saleItem) {
           throw new Error(
-            `????? ${returnItem.name} ??? ????? ?? ?????? ????? ???????`,
+            `الصنف ${returnItem.name} غير موجود في فاتورة البيع الأصلية`,
           );
         }
 
         if (returnItem.quantity > saleItem.quantity.toNumber()) {
           throw new Error(
-            `???? ??????? ????? ${returnItem.name} ???? ?? ?????? ???????`,
+            `كمية الإرجاع للصنف ${returnItem.name} أكبر من الكمية المباعة`,
+          );
+        }
+
+        const alreadyReturnedQty =
+          returnedQuantityMap.get(returnItem.productId) || 0;
+        const remainingReturnableQty =
+          saleItem.quantity.toNumber() - alreadyReturnedQty;
+
+        if (remainingReturnableQty <= 0) {
+          throw new Error(
+            `تم إرجاع كامل الكمية سابقًا للصنف ${returnItem.name}`,
+          );
+        }
+
+        if (returnItem.quantity > remainingReturnableQty) {
+          throw new Error(
+            `الكمية المتبقية القابلة للإرجاع للصنف ${returnItem.name} هي ${remainingReturnableQty} فقط`,
           );
         }
 
@@ -860,7 +908,7 @@ export async function processReturn(data: any, companyId: string) {
         const inventory = inventoryMap.get(inventoryKey);
 
         if (!inventory) {
-          throw new Error(`??????? ??? ????? ?????? ${returnItem.name}`);
+          throw new Error(`لا يوجد مخزون مرتبط بالصنف ${returnItem.name}`);
         }
 
         const newStock = inventory.stockQuantity + quantityInUnits;
@@ -880,12 +928,12 @@ export async function processReturn(data: any, companyId: string) {
           productId: returnItem.productId,
           warehouseId: returnItem.warehouseId,
           userId: cashierId,
-          movementType: "?????",
+          movementType: "مرتجع بيع",
           quantity: quantityInUnits,
-          reason: reason ?? "????? ???",
+          reason: reason ?? "مرتجع بيع",
           quantityBefore: inventory.stockQuantity,
           quantityAfter: newStock,
-          referenceType: "?????",
+          referenceType: "مرتجع",
           referenceId: saleId,
           notes: reason || undefined,
         });
@@ -985,7 +1033,7 @@ export async function processReturn(data: any, companyId: string) {
               type: "PAYMENT",
               amount: returnToCustomer,
               status: "paid",
-              notes: reason || "????? ???",
+              notes: reason || "مرتجع بيع",
             },
           }),
         );
@@ -1123,7 +1171,7 @@ export async function processReturn(data: any, companyId: string) {
       const cleanReturnSale = JSON.parse(JSON.stringify(returnSale));
       return {
         success: true,
-        message: "?? ????? ????? ?????",
+        message: "تمت معالجة المرتجع بنجاح",
         cleanReturnSale,
         returnSubtotal,
         returnTotalCOGS,

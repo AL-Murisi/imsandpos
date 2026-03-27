@@ -10,21 +10,70 @@ export function notificationUnsupported(): boolean {
   return unsupported;
 }
 
-// IMPORTANT: Must match the output file from next-pwa
-const SERVICE_WORKER_FILE_PATH = "/swcustom.js";
+const SERVICE_WORKER_TIMEOUT_MS = 12000;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function getActiveServiceWorkerRegistration(): Promise<ServiceWorkerRegistration> {
+  const existingRegistration = await navigator.serviceWorker.getRegistration();
+
+  if (existingRegistration?.active) {
+    return existingRegistration;
+  }
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => {
+      reject(new Error("Timed out while waiting for the service worker"));
+    }, SERVICE_WORKER_TIMEOUT_MS);
+  });
+
+  const registration = await Promise.race([
+    navigator.serviceWorker.ready,
+    timeoutPromise,
+  ]);
+
+  if (!registration.active && registration.installing) {
+    await Promise.race([
+      new Promise<void>((resolve, reject) => {
+        const worker = registration.installing;
+        if (!worker) {
+          resolve();
+          return;
+        }
+
+        worker.addEventListener("statechange", () => {
+          if (worker.state === "activated") {
+            resolve();
+          }
+          if (worker.state === "redundant") {
+            reject(new Error("Service worker became redundant"));
+          }
+        });
+      }),
+      timeoutPromise,
+    ]);
+  }
+
+  return registration;
+}
+
+export async function getExistingSubscription(): Promise<PushSubscription | null> {
+  const registration = await getActiveServiceWorkerRegistration();
+  return registration.pushManager.getSubscription();
+}
+
 export async function registerAndSubscribe(
   onSubscribe: (subs: PushSubscription | null) => void,
 ): Promise<void> {
   try {
     console.log("[Push] Registering service worker...");
-    const registration = await navigator.serviceWorker.ready;
-
-    // Wait for the service worker to be ready
-    await navigator.serviceWorker.ready;
+    const registration = await getActiveServiceWorkerRegistration();
     console.log("[Push] Service worker ready");
 
     // Small delay to ensure SW is fully active (important for iOS)
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await delay(500);
 
     await subscribe(registration, onSubscribe);
   } catch (e) {

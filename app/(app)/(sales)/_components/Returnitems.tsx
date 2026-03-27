@@ -442,7 +442,7 @@ export function ReturnForm({ sale }: { sale: any }) {
                     </td>
 
                     <td className="p-3 text-center">
-                      {field.unitPrice.toFixed(2)} ر.س
+                      {field.unitPrice.toFixed(2)}{" "}
                     </td>
 
                     <td className="p-3 text-center">
