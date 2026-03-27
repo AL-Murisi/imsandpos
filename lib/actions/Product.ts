@@ -323,7 +323,9 @@ export async function fetchProduct(
 
     return {
       products: formattedProducts,
-      totalCount: formattedProducts.length,
+      totalCount: await prisma.product.count({
+        where: combinedWhere,
+      }),
     };
   } catch (error) {
     console.error("Error fetching products:", error);

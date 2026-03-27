@@ -15,6 +15,8 @@ type DashboardProps = {
     supplierId?: string;
     warehouseId?: string;
     categoryId?: string;
+    expiryStatus?: string;
+    stockStatus?: string;
   }>;
 };
 
@@ -30,6 +32,8 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
     supplierId,
     warehouseId,
     categoryId,
+    expiryStatus,
+    stockStatus,
   } = param || {};
   const user = await getSession();
   if (!user) return;
@@ -40,6 +44,42 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
     warehouseId,
     categoryId,
   };
+
+  const endOfToday = new Date();
+  endOfToday.setHours(23, 59, 59, 999);
+
+  const thirtyDaysLater = new Date();
+  thirtyDaysLater.setDate(thirtyDaysLater.getDate() + 30);
+  thirtyDaysLater.setHours(23, 59, 59, 999);
+
+  if (expiryStatus === "expired") {
+    where.expiredAt = { lte: endOfToday };
+  } else if (expiryStatus === "expiring-soon") {
+    where.expiredAt = {
+      gt: endOfToday,
+      lte: thirtyDaysLater,
+    };
+  } else if (expiryStatus === "attention") {
+    where.OR = [
+      { expiredAt: { lte: endOfToday } },
+      {
+        expiredAt: {
+          gt: endOfToday,
+          lte: thirtyDaysLater,
+        },
+      },
+    ];
+  }
+
+  if (stockStatus === "out_of_stock") {
+    where.inventory = {
+      some: {
+        availableQuantity: {
+          lte: 0,
+        },
+      },
+    };
+  }
 
   const parsedSort = sort
     ? [

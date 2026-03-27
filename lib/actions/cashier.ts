@@ -1,4 +1,4 @@
-// app/actions/cashier.ts
+﻿// app/actions/cashier.ts
 "use server";
 
 import prisma from "@/lib/prisma";
@@ -61,9 +61,9 @@ function toBaseQty(
 }
 export async function generateSaleNumber(companyId: string): Promise<string> {
   const currentYear = new Date().getFullYear();
-  const prefix = `-${currentYear}-بيع`;
+  const prefix = `-${currentYear}-Ø¨ÙŠØ¹`;
 
-  // 1. نجلب كل أرقام الفواتير التي تنتهي بنفس الصيغة لهذه الشركة
+  // 1. Ù†Ø¬Ù„Ø¨ ÙƒÙ„ Ø£Ø±Ù‚Ø§Ù… Ø§Ù„ÙÙˆØ§ØªÙŠØ± Ø§Ù„ØªÙŠ ØªÙ†ØªÙ‡ÙŠ Ø¨Ù†ÙØ³ Ø§Ù„ØµÙŠØºØ© Ù„Ù‡Ø°Ù‡ Ø§Ù„Ø´Ø±ÙƒØ©
   const allInvoices = await prisma.invoice.findMany({
     where: {
       companyId,
@@ -79,7 +79,7 @@ export async function generateSaleNumber(companyId: string): Promise<string> {
   let nextNumber = 1;
 
   if (allInvoices.length > 0) {
-    // 2. نستخرج الجزء الرقمي (الأول) ونحوله إلى أرقام صحيحة
+    // 2. Ù†Ø³ØªØ®Ø±Ø¬ Ø§Ù„Ø¬Ø²Ø¡ Ø§Ù„Ø±Ù‚Ù…ÙŠ (Ø§Ù„Ø£ÙˆÙ„) ÙˆÙ†Ø­ÙˆÙ„Ù‡ Ø¥Ù„Ù‰ Ø£Ø±Ù‚Ø§Ù… ØµØ­ÙŠØ­Ø©
     const sequenceNumbers = allInvoices
       .map((inv) => {
         const parts = inv.invoiceNumber.split("-");
@@ -87,13 +87,13 @@ export async function generateSaleNumber(companyId: string): Promise<string> {
       })
       .filter((num) => !isNaN(num));
 
-    // 3. نأخذ أكبر رقم موجود ونضيف عليه 1
+    // 3. Ù†Ø£Ø®Ø° Ø£ÙƒØ¨Ø± Ø±Ù‚Ù… Ù…ÙˆØ¬ÙˆØ¯ ÙˆÙ†Ø¶ÙŠÙ Ø¹Ù„ÙŠÙ‡ 1
     if (sequenceNumbers.length > 0) {
       nextNumber = Math.max(...sequenceNumbers) + 1;
     }
   }
 
-  // 4. التنسيق بـ 6 خانات
+  // 4. Ø§Ù„ØªÙ†Ø³ÙŠÙ‚ Ø¨Ù€ 6 Ø®Ø§Ù†Ø§Øª
   const formattedNumber = nextNumber.toString().padStart(6, "0");
   return `${formattedNumber}${prefix}`;
 }
@@ -159,7 +159,7 @@ export async function generateSaleNumberSafe(
   const nextNumber = Number(result[0]?.next_number || 1);
   const formattedNumber = nextNumber.toString().padStart(6, "0");
 
-  return `${formattedNumber}-${prefix}-بيع`;
+  return `${formattedNumber}-${prefix}-Ø¨ÙŠØ¹`;
 }
 
 /**
@@ -228,7 +228,7 @@ export async function processSale(data: any, companyId: string) {
         async (tx) => {
           let status: string;
           if (baseAmount >= totalAfterDiscount) {
-            status = "paid"; // تم التعديل من === إلى =
+            status = "paid"; // ØªÙ… Ø§Ù„ØªØ¹Ø¯ÙŠÙ„ Ù…Ù† === Ø¥Ù„Ù‰ =
           } else if (baseAmount > 0 && baseAmount < totalAfterDiscount) {
             status = "partial";
           } else {
@@ -251,7 +251,7 @@ export async function processSale(data: any, companyId: string) {
             );
 
             if (!inventory) {
-              throw new Error(`المنتج ${item.name} غير متوفر في هذا المستودع`);
+              throw new Error(`Ø§Ù„Ù…Ù†ØªØ¬ ${item.name} ØºÙŠØ± Ù…ØªÙˆÙØ± ÙÙŠ Ù‡Ø°Ø§ Ø§Ù„Ù…Ø³ØªÙˆØ¯Ø¹`);
             }
 
             // Convert requested qty to base unit (e.g., 1 Box -> 12 Pieces)
@@ -264,7 +264,7 @@ export async function processSale(data: any, companyId: string) {
             // Check if requested quantity exceeds available quantity
             if (requestedBaseQty > inventory.availableQuantity) {
               throw new Error(
-                `كمية غير كافية للمنتج: ${item.name}. المتوفر: ${inventory.availableQuantity}, المطلوب (بالوحدة الأساسية): ${requestedBaseQty}`,
+                `ÙƒÙ…ÙŠØ© ØºÙŠØ± ÙƒØ§ÙÙŠØ© Ù„Ù„Ù…Ù†ØªØ¬: ${item.name}. Ø§Ù„Ù…ØªÙˆÙØ±: ${inventory.availableQuantity}, Ø§Ù„Ù…Ø·Ù„ÙˆØ¨ (Ø¨Ø§Ù„ÙˆØ­Ø¯Ø© Ø§Ù„Ø£Ø³Ø§Ø³ÙŠØ©): ${requestedBaseQty}`,
               );
             }
           }
@@ -298,7 +298,7 @@ export async function processSale(data: any, companyId: string) {
                   type: TransactionType.RECEIPT,
                   amount: receivedAmount,
                   status: "paid",
-                  notes: `دفعة مبيعات للفاتورة رقم: ${invoiceNo}`,
+                  notes: `Ø¯ÙØ¹Ø© Ù…Ø¨ÙŠØ¹Ø§Øª Ù„Ù„ÙØ§ØªÙˆØ±Ø© Ø±Ù‚Ù…: ${invoiceNo}`,
                 }
               : undefined;
 
@@ -332,7 +332,7 @@ export async function processSale(data: any, companyId: string) {
             },
           });
           // ==========================================
-          // 2️⃣ Fetch inventory per PRODUCT + UNIT
+          // 2ï¸âƒ£ Fetch inventory per PRODUCT + UNIT
 
           const invMap = new Map(
             inventoryUnits.map((i) => [`${i.productId}-${i.warehouseId}`, i]),
@@ -343,14 +343,14 @@ export async function processSale(data: any, companyId: string) {
           const inventoryUpdates: any[] = [];
           let returnTotalCOGS = 0;
           // ==========================================
-          // 3️⃣ Process each cart line
+          // 3ï¸âƒ£ Process each cart line
           // ==========================================
           for (const item of cart) {
             const inventoryKey = `${item.id}-${item.warehouseId}`;
             const inventory = invMap.get(inventoryKey);
 
             if (!inventory) {
-              throw new Error(`لا يوجد مخزون للمنتج ${item.name}`);
+              throw new Error(`Ù„Ø§ ÙŠÙˆØ¬Ø¯ Ù…Ø®Ø²ÙˆÙ† Ù„Ù„Ù…Ù†ØªØ¬ ${item.name}`);
             }
 
             const baseQty = toBaseQty(
@@ -359,15 +359,15 @@ export async function processSale(data: any, companyId: string) {
               item.sellingUnits,
             );
             const costPerBaseUnit = inventory.product.costPrice.toNumber();
-            // 3. حساب إجمالي التكلفة لهذا السطر باستخدام baseQty
-            // (مثلاً: 880 حبة * 1 حبة تكلفة)
+            // 3. Ø­Ø³Ø§Ø¨ Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„ØªÙƒÙ„ÙØ© Ù„Ù‡Ø°Ø§ Ø§Ù„Ø³Ø·Ø± Ø¨Ø§Ø³ØªØ®Ø¯Ø§Ù… baseQty
+            // (Ù…Ø«Ù„Ø§Ù‹: 880 Ø­Ø¨Ø© * 1 Ø­Ø¨Ø© ØªÙƒÙ„ÙØ©)
             const lineCOGS = baseQty * costPerBaseUnit;
             // io.emit("refresh");
 
-            // 4. إضافة الناتج للإجمالي الكلي للمبيعات
+            // 4. Ø¥Ø¶Ø§ÙØ© Ø§Ù„Ù†Ø§ØªØ¬ Ù„Ù„Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„ÙƒÙ„ÙŠ Ù„Ù„Ù…Ø¨ÙŠØ¹Ø§Øª
             returnTotalCOGS += lineCOGS;
             console.log("lineCOGS", lineCOGS);
-            // 🟢 Sale Item (بالوحدة المختارة)
+            // ðŸŸ¢ Sale Item (Ø¨Ø§Ù„ÙˆØ­Ø¯Ø© Ø§Ù„Ù…Ø®ØªØ§Ø±Ø©)
             saleItems.push({
               companyId,
               invoiceId: sale.id,
@@ -381,12 +381,12 @@ export async function processSale(data: any, companyId: string) {
               totalPrice: item.selectedQty * item.selectedUnitPrice,
             });
 
-            // 🟢 Stock Movement (بالوحدة الأساسية)
+            // ðŸŸ¢ Stock Movement (Ø¨Ø§Ù„ÙˆØ­Ø¯Ø© Ø§Ù„Ø£Ø³Ø§Ø³ÙŠØ©)
             stockMovements.push({
               companyId,
               productId: item.id,
               warehouseId: item.warehouseId,
-              movementType: "صادر بيع",
+              movementType: "ØµØ§Ø¯Ø± Ø¨ÙŠØ¹",
               quantity: baseQty,
               quantityBefore: inventory.stockQuantity,
               quantityAfter: inventory.stockQuantity - baseQty,
@@ -403,7 +403,7 @@ export async function processSale(data: any, companyId: string) {
           }
 
           // ==========================================
-          // 4️⃣ Execute DB Operations
+          // 4ï¸âƒ£ Execute DB Operations
           // ==========================================
           await Promise.all([
             // tx.invoiceItem.createMany({ data: saleItems }),
@@ -423,7 +423,7 @@ export async function processSale(data: any, companyId: string) {
           );
 
           // ==========================================
-          // 5️⃣ Customer balance update
+          // 5ï¸âƒ£ Customer balance update
           // ==========================================
           if (customer?.id) {
             const delta = totalAfterDiscount - receivedAmount;
@@ -440,7 +440,7 @@ export async function processSale(data: any, companyId: string) {
           }
           revalidatePath("/cashiercontrol");
           // ==========================================
-          // 7️⃣ Journal Header + Lines (sync)
+          // 7ï¸âƒ£ Journal Header + Lines (sync)
           // ==========================================
           const [mappings, fy] = await Promise.all([
             tx.account_mappings.findMany({
@@ -667,17 +667,17 @@ export async function getAllActiveProductsForSale(
     }
   });
 
-  // إرسال إشعار واحد ملخص في الخلفية (بدون await)
+  // Ø¥Ø±Ø³Ø§Ù„ Ø¥Ø´Ø¹Ø§Ø± ÙˆØ§Ø­Ø¯ Ù…Ù„Ø®Øµ ÙÙŠ Ø§Ù„Ø®Ù„ÙÙŠØ© (Ø¨Ø¯ÙˆÙ† await)
   if (expiredAlready.length > 0 || expiringSoon.length > 0) {
     const totalIssues = expiredAlready.length + expiringSoon.length;
     const bodyText = [
-      expiredAlready.length > 0 ? `منتهية (${expiredAlready.length})` : "",
+      expiredAlready.length > 0 ? `Ù…Ù†ØªÙ‡ÙŠØ© (${expiredAlready.length})` : "",
       expiringSoon.length > 0
-        ? `توشك على الانتهاء (${expiringSoon.length})`
+        ? `ØªÙˆØ´Ùƒ Ø¹Ù„Ù‰ Ø§Ù„Ø§Ù†ØªÙ‡Ø§Ø¡ (${expiringSoon.length})`
         : "",
     ]
       .filter(Boolean)
-      .join(" و ");
+      .join(" Ùˆ ");
 
     const digestKey = [
       `expired:${[...new Set(expiredAlready)].sort().join("|")}`,
@@ -691,19 +691,19 @@ export async function getAllActiveProductsForSale(
     );
 
     if (shouldSend) {
-      // لا نستخدم await هنا لكي لا ينتظر الكاشير
+      // Ù„Ø§ Ù†Ø³ØªØ®Ø¯Ù… await Ù‡Ù†Ø§ Ù„ÙƒÙŠ Ù„Ø§ ÙŠÙ†ØªØ¸Ø± Ø§Ù„ÙƒØ§Ø´ÙŠØ±
       sendRoleBasedNotification(
         { companyId, targetRoles: ["admin", "cashier", "manager_wh"] },
         {
           title: "⚠️ تنبيه صلاحية المنتجات",
           body: `يوجد ${totalIssues} منتجات تحتاج انتباهك: ${bodyText}`,
-          url: "/products",
+          url: "/products?expiryStatus=attention",
           tag: `expiry-summary-${companyId}-${new Date().toISOString().split("T")[0]}`,
         },
       ).catch((err) => console.error("Notification Error:", err));
     }
   }
-  // --- نهاية منطق الصلاحية ---
+  // --- Ù†Ù‡Ø§ÙŠØ© Ù…Ù†Ø·Ù‚ Ø§Ù„ØµÙ„Ø§Ø­ÙŠØ© ---
   return activeProducts.map((product) => {
     const sellingUnits = (product.sellingUnits as SellingUnit[]) || [];
     const availableUnits = product.inventory[0]?.availableQuantity ?? 0;
@@ -712,12 +712,12 @@ export async function getAllActiveProductsForSale(
     const availableStock: Record<string, number> = {};
 
     sellingUnits.forEach((unit) => {
-      // بما أن unitsPerParent تمثل عدد الوحدات الأساسية داخل هذه الوحدة
-      // نقسم الإجمالي (baseStock) على المعامل الخاص بالوحدة مباشرة
+      // Ø¨Ù…Ø§ Ø£Ù† unitsPerParent ØªÙ…Ø«Ù„ Ø¹Ø¯Ø¯ Ø§Ù„ÙˆØ­Ø¯Ø§Øª Ø§Ù„Ø£Ø³Ø§Ø³ÙŠØ© Ø¯Ø§Ø®Ù„ Ù‡Ø°Ù‡ Ø§Ù„ÙˆØ­Ø¯Ø©
+      // Ù†Ù‚Ø³Ù… Ø§Ù„Ø¥Ø¬Ù…Ø§Ù„ÙŠ (baseStock) Ø¹Ù„Ù‰ Ø§Ù„Ù…Ø¹Ø§Ù…Ù„ Ø§Ù„Ø®Ø§Øµ Ø¨Ø§Ù„ÙˆØ­Ø¯Ø© Ù…Ø¨Ø§Ø´Ø±Ø©
       if (unit.unitsPerParent > 0) {
         availableStock[unit.id] = Math.floor(baseStock / unit.unitsPerParent);
       } else {
-        // لتجنب القسمة على صفر في حال وجود خطأ في البيانات
+        // Ù„ØªØ¬Ù†Ø¨ Ø§Ù„Ù‚Ø³Ù…Ø© Ø¹Ù„Ù‰ ØµÙØ± ÙÙŠ Ø­Ø§Ù„ ÙˆØ¬ÙˆØ¯ Ø®Ø·Ø£ ÙÙŠ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª
         availableStock[unit.id] = unit.isbase ? baseStock : 0;
       }
     });
@@ -732,7 +732,7 @@ export async function getAllActiveProductsForSale(
       warehousename: warehouseMap.get(product.warehouseId) ?? "",
       barcode: product.barcode ?? "",
 
-      sellingMode: product.type ?? "", // ✅ Optional: helpful for debugging
+      sellingMode: product.type ?? "", // âœ… Optional: helpful for debugging
     };
   });
 }
@@ -757,7 +757,7 @@ export async function processReturn(data: any, companyId: string) {
 
   const returnItems = items.filter((item: any) => item.quantity > 0);
   if (returnItems.length === 0) {
-    return { success: false, message: "لم يتم تحديد أي صنف للإرجاع" };
+    return { success: false, message: "Ù„Ù… ÙŠØªÙ… ØªØ­Ø¯ÙŠØ¯ Ø£ÙŠ ØµÙ†Ù Ù„Ù„Ø¥Ø±Ø¬Ø§Ø¹" };
   }
 
   await validateFiscalYear(companyId);
@@ -792,10 +792,10 @@ export async function processReturn(data: any, companyId: string) {
       });
 
       if (!originalSale) {
-        throw new Error("فاتورة البيع غير موجودة");
+        throw new Error("ÙØ§ØªÙˆØ±Ø© Ø§Ù„Ø¨ÙŠØ¹ ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯Ø©");
       }
 
-      const originalSaleReturnPrefix = `${originalSale.invoiceNumber.replace("بيع", "مرتجع")}-`;
+      const originalSaleReturnPrefix = `${originalSale.invoiceNumber.replace("Ø¨ÙŠØ¹", "Ù…Ø±ØªØ¬Ø¹")}-`;
       const existingReturnSales = await tx.invoice.findMany({
         where: {
           companyId,
@@ -827,7 +827,7 @@ export async function processReturn(data: any, companyId: string) {
       });
 
       const originalNumber = returnNumber || originalSale.invoiceNumber;
-      const returnNumberWithArabic = `${originalNumber.replace("بيع", "مرتجع")}-${Date.now()}`;
+      const returnNumberWithArabic = `${originalNumber.replace("Ø¨ÙŠØ¹", "Ù…Ø±ØªØ¬Ø¹")}-${Date.now()}`;
       const originalSaleAmountDue = Number(originalSale.amountDue || 0);
       const saleItemsMap = new Map(
         originalSale.items.map((item) => [item.productId, item]),
@@ -862,13 +862,13 @@ export async function processReturn(data: any, companyId: string) {
         const saleItem = saleItemsMap.get(returnItem.productId);
         if (!saleItem) {
           throw new Error(
-            `الصنف ${returnItem.name} غير موجود في فاتورة البيع الأصلية`,
+            `Ø§Ù„ØµÙ†Ù ${returnItem.name} ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯ ÙÙŠ ÙØ§ØªÙˆØ±Ø© Ø§Ù„Ø¨ÙŠØ¹ Ø§Ù„Ø£ØµÙ„ÙŠØ©`,
           );
         }
 
         if (returnItem.quantity > saleItem.quantity.toNumber()) {
           throw new Error(
-            `كمية الإرجاع للصنف ${returnItem.name} أكبر من الكمية المباعة`,
+            `ÙƒÙ…ÙŠØ© Ø§Ù„Ø¥Ø±Ø¬Ø§Ø¹ Ù„Ù„ØµÙ†Ù ${returnItem.name} Ø£ÙƒØ¨Ø± Ù…Ù† Ø§Ù„ÙƒÙ…ÙŠØ© Ø§Ù„Ù…Ø¨Ø§Ø¹Ø©`,
           );
         }
 
@@ -879,13 +879,13 @@ export async function processReturn(data: any, companyId: string) {
 
         if (remainingReturnableQty <= 0) {
           throw new Error(
-            `تم إرجاع كامل الكمية سابقًا للصنف ${returnItem.name}`,
+            `ØªÙ… Ø¥Ø±Ø¬Ø§Ø¹ ÙƒØ§Ù…Ù„ Ø§Ù„ÙƒÙ…ÙŠØ© Ø³Ø§Ø¨Ù‚Ù‹Ø§ Ù„Ù„ØµÙ†Ù ${returnItem.name}`,
           );
         }
 
         if (returnItem.quantity > remainingReturnableQty) {
           throw new Error(
-            `الكمية المتبقية القابلة للإرجاع للصنف ${returnItem.name} هي ${remainingReturnableQty} فقط`,
+            `Ø§Ù„ÙƒÙ…ÙŠØ© Ø§Ù„Ù…ØªØ¨Ù‚ÙŠØ© Ø§Ù„Ù‚Ø§Ø¨Ù„Ø© Ù„Ù„Ø¥Ø±Ø¬Ø§Ø¹ Ù„Ù„ØµÙ†Ù ${returnItem.name} Ù‡ÙŠ ${remainingReturnableQty} ÙÙ‚Ø·`,
           );
         }
 
@@ -908,7 +908,7 @@ export async function processReturn(data: any, companyId: string) {
         const inventory = inventoryMap.get(inventoryKey);
 
         if (!inventory) {
-          throw new Error(`لا يوجد مخزون مرتبط بالصنف ${returnItem.name}`);
+          throw new Error(`Ù„Ø§ ÙŠÙˆØ¬Ø¯ Ù…Ø®Ø²ÙˆÙ† Ù…Ø±ØªØ¨Ø· Ø¨Ø§Ù„ØµÙ†Ù ${returnItem.name}`);
         }
 
         const newStock = inventory.stockQuantity + quantityInUnits;
@@ -928,12 +928,12 @@ export async function processReturn(data: any, companyId: string) {
           productId: returnItem.productId,
           warehouseId: returnItem.warehouseId,
           userId: cashierId,
-          movementType: "مرتجع بيع",
+          movementType: "Ù…Ø±ØªØ¬Ø¹ Ø¨ÙŠØ¹",
           quantity: quantityInUnits,
-          reason: reason ?? "مرتجع بيع",
+          reason: reason ?? "Ù…Ø±ØªØ¬Ø¹ Ø¨ÙŠØ¹",
           quantityBefore: inventory.stockQuantity,
           quantityAfter: newStock,
-          referenceType: "مرتجع",
+          referenceType: "Ù…Ø±ØªØ¬Ø¹",
           referenceId: saleId,
           notes: reason || undefined,
         });
@@ -1033,7 +1033,7 @@ export async function processReturn(data: any, companyId: string) {
               type: "PAYMENT",
               amount: returnToCustomer,
               status: "paid",
-              notes: reason || "مرتجع بيع",
+              notes: reason || "Ù…Ø±ØªØ¬Ø¹ Ø¨ÙŠØ¹",
             },
           }),
         );
@@ -1171,7 +1171,7 @@ export async function processReturn(data: any, companyId: string) {
       const cleanReturnSale = JSON.parse(JSON.stringify(returnSale));
       return {
         success: true,
-        message: "تمت معالجة المرتجع بنجاح",
+        message: "ØªÙ…Øª Ù…Ø¹Ø§Ù„Ø¬Ø© Ø§Ù„Ù…Ø±ØªØ¬Ø¹ Ø¨Ù†Ø¬Ø§Ø­",
         cleanReturnSale,
         returnSubtotal,
         returnTotalCOGS,
@@ -1187,3 +1187,4 @@ export async function processReturn(data: any, companyId: string) {
   revalidatePath("/sells");
   return result;
 }
+

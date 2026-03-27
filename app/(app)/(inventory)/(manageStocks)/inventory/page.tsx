@@ -22,6 +22,7 @@ type DashboardProps = {
     warehouseId?: string;
     categoryId?: string;
     tab?: string;
+    stockStatus?: string;
   }>;
 };
 
@@ -40,6 +41,7 @@ export default async function manageStocks({ searchParams }: DashboardProps) {
     warehouseId,
     categoryId,
     tab,
+    stockStatus,
   } = params || {};
 
   const currentTab = tab ?? "inventory";
@@ -49,6 +51,12 @@ export default async function manageStocks({ searchParams }: DashboardProps) {
   const where: Prisma.InventoryWhereInput = {
     warehouseId,
   };
+
+  if (stockStatus === "low") {
+    where.status = "low";
+  } else if (stockStatus === "out_of_stock") {
+    where.status = "out_of_stock";
+  }
   const user = await getSession();
   if (!user) return;
   const parsedSort: SortingState = ParsedSort(sort);
