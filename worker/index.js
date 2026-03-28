@@ -82,6 +82,23 @@
 self.__WB_MANIFEST = self.__WB_MANIFEST || [];
 if (self.workbox && self.workbox.precaching) {
   self.workbox.precaching.precacheAndRoute(self.__WB_MANIFEST);
+  self.workbox.precaching.cleanupOutdatedCaches();
+}
+
+if (self.workbox && self.workbox.routing) {
+  self.workbox.routing.setCatchHandler(async ({ request }) => {
+    if (request.destination === "document") {
+      const offlineResponse = await caches.match("/offline.html", {
+        ignoreSearch: true,
+      });
+
+      if (offlineResponse) {
+        return offlineResponse;
+      }
+    }
+
+    return Response.error();
+  });
 }
 
 self.addEventListener("install", () => {
