@@ -8,7 +8,6 @@ import { SelectField } from "@/components/common/selectproduct";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { BankForm, BankSchema } from "@/lib/zod";
-import { z } from "zod";
 import { createBank, getbanks, updateBank } from "@/lib/actions/banks";
 import { useAuth } from "@/lib/context/AuthContext";
 import { toast } from "sonner";
@@ -34,29 +33,31 @@ export default function BankFormDialog({
     handleSubmit,
     setValue,
     watch,
-    reset,
     formState: { errors },
   } = useForm<BankForm>({
     resolver: zodResolver(BankSchema),
     defaultValues: {
       name: bank?.name ?? "",
       accountId: bank?.accountId ?? "",
-      preferred_currency: bank?.preferred_currency ?? "",
+      preferred_currency: bank?.preferred_currency ?? [],
       branch: bank?.branch ?? "",
       accountNumber: bank?.accountNumber ?? "",
       iban: bank?.iban ?? "",
       swiftCode: bank?.swiftCode ?? "",
     },
   });
+
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { company } = useCompany();
   const basCurrncy = company?.base_currency;
   const { options } = useCurrencyOptions();
   const currencyOptions = options.length ? options : fallbackCurrencyOptions;
+
   const [bankOptions, setBankOptions] = useState<
     { id: string; name: string }[]
   >(banks ?? []);
+
   useEffect(() => {
     if (!open) return;
     if (!banks) {
@@ -65,11 +66,13 @@ export default function BankFormDialog({
       });
     }
   }, [open, banks]);
+
   useEffect(() => {
-    if (basCurrncy) {
+    if (basCurrncy && mode === "create") {
       setValue("preferred_currency", [basCurrncy]);
     }
-  }, [basCurrncy, setValue]);
+  }, [basCurrncy, setValue, mode]);
+
   const onSubmit = async (data: BankForm) => {
     setIsSubmitting(true);
     const res =
@@ -81,51 +84,51 @@ export default function BankFormDialog({
       setIsSubmitting(false);
       toast.error(res.error);
     } else {
-      toast.success("ØªÙ… Ø§Ù„Ø­ÙØ¸ Ø¨Ù†Ø¬Ø§Ø­");
+      toast.success("تم الحفظ بنجاح");
       setIsSubmitting(false);
+      setOpen(false);
     }
   };
-  
+
   return (
     <Dialogreuse
-      btnLabl={mode === "create" ? "Ø¥Ø¶Ø§ÙØ© Ø¨Ù†Ùƒ" : "ØªØ¹Ø¯ÙŠÙ„"}
-      titel="Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø¨Ù†Ùƒ"
+      btnLabl={mode === "create" ? "إضافة بنك" : "تعديل"}
+      titel="بيانات البنك"
       open={open}
       setOpen={setOpen}
       style="sm:max-w-6xl"
     >
-      {" "}
       <ScrollArea className="max-h-[85vh]" dir="rtl">
-        <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4">
-          <div className="grid gap-4">
-            <Label>Ø§Ø³Ù… Ø§Ù„Ø¨Ù†Ùƒ</Label>
+        <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 p-4">
+          <div className="grid gap-2">
+            <Label>اسم البنك</Label>
             <Input {...register("name")} />
           </div>
 
-          <div className="grid gap-4">
-            <Label>Ø§Ù„ÙØ±Ø¹</Label>
+          <div className="grid gap-2">
+            <Label>الفرع</Label>
             <Input {...register("branch")} />
           </div>
 
-          <div className="grid gap-4">
-            <Label>Ø±Ù‚Ù… Ø§Ù„Ø­Ø³Ø§Ø¨</Label>
+          <div className="grid gap-2">
+            <Label>رقم الحساب</Label>
             <Input {...register("accountNumber")} />
           </div>
 
-          <div className="grid gap-4">
+          <div className="grid gap-2">
             <Label>IBAN</Label>
             <Input {...register("iban")} />
           </div>
 
-          <div className="grid gap-4">
+          <div className="grid gap-2">
             <Label>SWIFT</Label>
             <Input {...register("swiftCode")} />
           </div>
+
           <div className="grid gap-3">
-            <Label className="text-right">Ø§Ù„Ø¹Ù…Ù„Ø§Øª Ø§Ù„Ù…Ø³Ù…ÙˆØ­Ø©</Label>
+            <Label className="text-right">العملات المسموحة</Label>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
               {currencyOptions.map((option) => {
-                // Check if this currency is currently in the array
                 const isSelected = watch("preferred_currency")?.includes(
                   option.id,
                 );
@@ -136,8 +139,8 @@ export default function BankFormDialog({
                     onClick={() => {
                       const currentValues = watch("preferred_currency") || [];
                       const newValues = isSelected
-                        ? currentValues.filter((v: string) => v !== option.id) // Remove if already there
-                        : [...currentValues, option.id]; // Add if not there
+                        ? currentValues.filter((v: string) => v !== option.id)
+                        : [...currentValues, option.id];
 
                       setValue("preferred_currency", newValues, {
                         shouldValidate: true,
@@ -147,19 +150,18 @@ export default function BankFormDialog({
                       isSelected
                         ? "border-primary bg-primary/10 text-primary shadow-sm"
                         : "bg-gray border-gray-200 hover:border-gray-300"
-                    } `}
+                    }`}
                   >
-                    {/* The "Tick" Icon */}
                     <div
-                      className={`flex h-4 w-4 items-center justify-center rounded-sm border ${isSelected ? "bg-primary border-primary" : "border-gray-300"} `}
+                      className={`flex h-4 w-4 items-center justify-center rounded-sm border ${
+                        isSelected
+                          ? "bg-primary border-primary"
+                          : "border-gray-300"
+                      }`}
                     >
                       {isSelected && <Check className="h-3 w-3 text-white" />}
                     </div>
-
                     <span className="font-medium">{option.name}</span>
-                    {/* <span className="text-muted-foreground text-xs">
-                               ({option.name})
-                             </span> */}
                   </div>
                 );
               })}
@@ -170,13 +172,9 @@ export default function BankFormDialog({
               </p>
             )}
           </div>
-          <div className="grid gap-4">
-            <Label>Ø§Ù„Ø­Ø³Ø§Ø¨ Ø§Ù„Ù…Ø­Ø§Ø³Ø¨ÙŠ</Label>
-            {/* <SelectField
-            options={banks ?? []}
-            value={watch("accountId")}
-            action={(v) => setValue("accountId", v)}
-          /> */}
+
+          <div className="grid gap-2">
+            <Label>الحساب المحاسبي</Label>
             <SelectField
               options={bankOptions}
               value={watch("accountId")}
@@ -185,11 +183,10 @@ export default function BankFormDialog({
           </div>
 
           <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Ø¬Ø§Ø±ÙŠ Ø§Ù„Ø­ÙØ¸..." : "Ø­ÙØ¸"}
+            {isSubmitting ? "جاري الحفظ..." : "حفظ"}
           </Button>
         </form>
       </ScrollArea>
     </Dialogreuse>
   );
 }
-

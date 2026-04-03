@@ -5,6 +5,8 @@ import {
   getExistingSubscription,
   notificationUnsupported,
   registerAndSubscribe,
+  unsubscribeNotifications,
+  type NotificationSubscriptionState,
 } from "@/hooks/Push";
 import { toast } from "sonner";
 import { Bell, BellOff, Loader2 } from "lucide-react";
@@ -13,9 +15,8 @@ import { cn } from "@/lib/utils";
 
 export default function PushNotificationManager() {
   const [unsupported, setUnsupported] = useState(false);
-  const [subscription, setSubscription] = useState<PushSubscription | null>(
-    null,
-  );
+  const [subscription, setSubscription] =
+    useState<NotificationSubscriptionState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -49,8 +50,18 @@ export default function PushNotificationManager() {
         const permission = await Notification.requestPermission();
 
         if (permission === "granted") {
-          await registerAndSubscribe(setSubscription);
-          toast.success("تم تفعيل الإشعارات");
+          const result = await registerAndSubscribe(setSubscription);
+
+          if (result?.provider === "fcm" && result.token) {
+            toast.success(`FCM Token: ${result.token}`);
+          } else if (result?.provider === "fcm" && result.debugMessage) {
+            toast.error(
+              `فشل Firebase: ${result.debugMessage}`,
+              { duration: 8000 },
+            );
+          } else {
+            toast.error("لم يتم إنشاء توكن Firebase");
+          }
         } else {
           toast.error("تم رفض إذن الإشعارات");
         }
@@ -66,13 +77,7 @@ export default function PushNotificationManager() {
 
     try {
       setIsLoading(true);
-      await subscription.unsubscribe();
-
-      await fetch("/api/web-push/subscription", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ endpoint: subscription.endpoint }),
-      });
+      await unsubscribeNotifications(subscription);
 
       setSubscription(null);
       toast.success("تم إلغاء الإشعارات");

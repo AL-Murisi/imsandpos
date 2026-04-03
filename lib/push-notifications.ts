@@ -1,5 +1,10 @@
-import webpush from "web-push";
 import prisma from "@/lib/prisma";
+import { getFirebaseMessaging } from "@/lib/firebase/admin";
+import {
+  deletePushDeviceTokensByTokens,
+  findPushDeviceTokens,
+  type PushDeviceTokenRecord,
+} from "@/lib/firebase/device-tokens";
 
 type PushRecipientOptions = {
   companyId: string;
@@ -47,83 +52,99 @@ export async function sendRoleBasedNotification(
   recipients: PushRecipientOptions,
   message: PushMessage,
 ) {
-  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-  const privateKey = process.env.VAPID_PRIVATE_KEY;
-  const subject = process.env.VAPID_SUBJECT;
-
-  if (!publicKey || !privateKey || !subject) {
-    return { total: 0, successful: 0, failed: 0 };
-  }
-
   const targetRoles = (recipients.targetRoles ?? []).map(normalizeRole);
   const explicitUserIds = recipients.targetUserIds ?? [];
-  const roleUserIds = await resolveTargetUserIds(recipients.companyId, targetRoles);
-  const targetUserIds = Array.from(new Set([...explicitUserIds, ...roleUserIds]));
-
-  const subscriptions = await prisma.pushSubscription.findMany({
-    where: {
-      company_id: recipients.companyId,
-      ...(targetUserIds.length > 0
-        ? {
-            OR: [
-              { userId: { in: targetUserIds } },
-              ...(targetRoles.length > 0 ? [{ role: { in: targetRoles } }] : []),
-            ],
-          }
-        : targetRoles.length > 0
-          ? { role: { in: targetRoles } }
-          : {}),
-    },
-  });
-
-  const deduped = Array.from(
-    new Map(subscriptions.map((sub) => [sub.endpoint, sub])).values(),
+  const roleUserIds = await resolveTargetUserIds(
+    recipients.companyId,
+    targetRoles,
   );
-  if (deduped.length === 0) {
+  const targetUserIds = Array.from(
+    new Set([...explicitUserIds, ...roleUserIds]),
+  );
+
+  const deviceTokens = await findPushDeviceTokens(
+    recipients.companyId,
+    targetUserIds,
+    targetRoles,
+  );
+  const dedupedDeviceTokens: PushDeviceTokenRecord[] = Array.from(
+    new Map(deviceTokens.map((entry) => [entry.token, entry])).values(),
+  );
+
+  if (dedupedDeviceTokens.length === 0) {
     return { total: 0, successful: 0, failed: 0 };
   }
 
-  webpush.setVapidDetails(subject, publicKey, privateKey);
+  let firebaseSuccessful = 0;
+  const firebaseMessaging = getFirebaseMessaging();
+  if (firebaseMessaging && dedupedDeviceTokens.length > 0) {
+    const firebaseResult = await firebaseMessaging.sendEachForMulticast({
+      tokens: dedupedDeviceTokens.map((entry) => entry.token),
+      data: {
+        title: message.title,
+        body: message.body,
+        url: message.url ?? "/",
+        icon: "/web-app-manifest-192x192.png",
+        badge: "/badge-72x72.png",
+        tag: message.tag ?? "ims-notification",
+      },
+      webpush: {
+        fcmOptions: {
+          link: message.url ?? "/",
+        },
+        notification: {
+          title: message.title,
+          body: message.body,
+          icon: "/web-app-manifest-192x192.png",
+          badge: "/badge-72x72.png",
+          tag: message.tag ?? "ims-notification",
+        },
+        headers: {
+          Urgency: "high",
+        },
+      },
+    });
 
-  const payload = JSON.stringify({
-    title: message.title,
-    body: message.body,
-    data: {
-      url: message.url ?? "/",
-      sound: "/sound/notification.wav",
-    },
-    tag: message.tag ?? "ims-notification",
-  });
+    firebaseSuccessful = firebaseResult.successCount;
+    const failedResponses = firebaseResult.responses.filter(
+      (response) => !response.success,
+    );
+    if (failedResponses.length > 0) {
+      console.error(
+        "[Push] Firebase send failures:",
+        failedResponses.map((response) => ({
+          code: response.error?.code ?? "unknown",
+          message: response.error?.message ?? "Unknown Firebase send error",
+        })),
+      );
+    }
 
-  const results = await Promise.all(
-    deduped.map(async (sub) => {
-      try {
-        await webpush.sendNotification(
-          {
-            endpoint: sub.endpoint,
-            keys: {
-              p256dh: sub.p256dh,
-              auth: sub.auth,
-            },
-          },
-          payload,
+    const invalidTokens = firebaseResult.responses
+      .map(
+        (response, index): { response: typeof response; token?: string } => ({
+          response,
+          token: dedupedDeviceTokens[index]?.token,
+        }),
+      )
+      .filter(({ response, token }) => {
+        if (!token) return false;
+        return (
+          response.error?.code === "messaging/registration-token-not-registered"
         );
-        return true;
-      } catch (error: any) {
-        if (error?.statusCode === 404 || error?.statusCode === 410) {
-          await prisma.pushSubscription.deleteMany({
-            where: { endpoint: sub.endpoint },
-          });
-        }
-        return false;
-      }
-    }),
-  );
+      })
+      .map(({ token }) => token)
+      .filter((token): token is string => Boolean(token));
 
-  const successful = results.filter(Boolean).length;
+    if (invalidTokens.length > 0) {
+      await deletePushDeviceTokensByTokens(invalidTokens);
+    }
+  }
+  const total = dedupedDeviceTokens.length;
+  const successful = firebaseSuccessful;
+
   return {
-    total: deduped.length,
+    total,
     successful,
-    failed: deduped.length - successful,
+    failed: total - successful,
   };
 }

@@ -1,19 +1,39 @@
+﻿import { deleteToken, getToken } from "firebase/messaging";
+import { getFirebaseMessagingClient } from "@/lib/firebase/client";
+
+export type NotificationSubscriptionState = {
+  provider: "fcm" | "webpush";
+  token?: string;
+  endpoint?: string;
+  subscription?: PushSubscription | null;
+  debugMessage?: string;
+};
+
 export function notificationUnsupported(): boolean {
-  let unsupported = false;
-  if (
-    !("serviceWorker" in navigator) ||
-    !("PushManager" in window) ||
-    !("showNotification" in ServiceWorkerRegistration.prototype)
-  ) {
-    unsupported = true;
-  }
-  return unsupported;
+  return !(
+    "serviceWorker" in navigator &&
+    "Notification" in window &&
+    "showNotification" in ServiceWorkerRegistration.prototype
+  );
 }
 
 const SERVICE_WORKER_TIMEOUT_MS = 12000;
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function readClientEnv(name: string): string | undefined {
+  const envMap: Record<string, string | undefined> = {
+    NEXT_PUBLIC_FIREBASE_VAPID_KEY: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
+  };
+
+  const raw = envMap[name];
+  if (!raw) {
+    return undefined;
+  }
+
+  return raw.trim().replace(/^['"]|['"]$/g, "");
 }
 
 async function getActiveServiceWorkerRegistration(): Promise<ServiceWorkerRegistration> {
@@ -59,132 +79,137 @@ async function getActiveServiceWorkerRegistration(): Promise<ServiceWorkerRegist
   return registration;
 }
 
-export async function getExistingSubscription(): Promise<PushSubscription | null> {
-  const registration = await getActiveServiceWorkerRegistration();
-  return registration.pushManager.getSubscription();
-}
-
-export async function registerAndSubscribe(
-  onSubscribe: (subs: PushSubscription | null) => void,
-): Promise<void> {
-  try {
-    console.log("[Push] Registering service worker...");
-    const registration = await getActiveServiceWorkerRegistration();
-    console.log("[Push] Service worker ready");
-
-    // Small delay to ensure SW is fully active (important for iOS)
-    await delay(500);
-
-    await subscribe(registration, onSubscribe);
-  } catch (e) {
-    console.error("[Push] Failed to register service worker:", e);
-    onSubscribe(null);
-  }
-}
-
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-
-  return outputArray;
-}
-
-async function subscribe(
-  registration: ServiceWorkerRegistration,
-  onSubscribe: (subs: PushSubscription | null) => void,
-): Promise<void> {
-  try {
-    console.log("[Push] Using SW:", registration);
-
-    let subscription = await registration.pushManager.getSubscription();
-
-    if (subscription) {
-      await submitSubscription(subscription);
-      onSubscribe(subscription);
-      return;
-    }
-
-    const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-    if (!vapidKey) throw new Error("Missing VAPID key");
-
-    subscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(vapidKey)
-        .buffer as ArrayBuffer,
-    });
-
-    await submitSubscription(subscription);
-
-    onSubscribe(subscription);
-  } catch (e) {
-    console.error("[Push] Subscribe error:", e);
-    onSubscribe(null);
-  }
-}
-async function submitSubscription(
-  subscription: PushSubscription,
-): Promise<void> {
-  const endpointUrl = "/api/web-push/subscription";
-
-  console.log(
-    "[Push] Submitting subscription to server:",
-    subscription.toJSON(),
-  );
-
-  const res = await fetch(endpointUrl, {
+async function submitFcmToken(token: string): Promise<void> {
+  const res = await fetch("/api/web-push/subscription", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ subscription: subscription.toJSON() }),
+    body: JSON.stringify({ fcmToken: token }),
   });
 
   if (!res.ok) {
     const errorText = await res.text();
-    console.error("[Push] Server error:", errorText);
-    throw new Error(`Failed to save subscription: ${res.statusText}`);
-  }
-
-  const result = await res.json();
-  console.log("[Push] Subscription saved on server:", result);
-}
-
-export function checkPermissionStateAndAct(
-  onSubscribe: (subs: PushSubscription | null) => void,
-): void {
-  const state: NotificationPermission = Notification.permission;
-  console.log("[Push] Current notification permission:", state);
-
-  switch (state) {
-    case "denied":
-      console.warn("[Push] Notification permission denied");
-      onSubscribe(null);
-      break;
-    case "granted":
-      console.log("[Push] Permission granted, registering...");
-      registerAndSubscribe(onSubscribe);
-      break;
-    case "default":
-      console.log("[Push] Notification permission not yet granted");
-      onSubscribe(null);
-      break;
+    throw new Error(errorText || "Failed to save FCM token");
   }
 }
 
-// Helper function to check if we're on iOS
-export function isIOS(): boolean {
-  return /iPhone|iPad|iPod/i.test(navigator.userAgent);
+async function deleteFcmToken(token: string): Promise<void> {
+  await fetch("/api/web-push/subscription", {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ fcmToken: token }),
+  });
 }
 
-// Helper function to check iOS version
-export function getIOSVersion(): number | null {
-  const match = navigator.userAgent.match(/OS (\d+)_/);
-  return match ? parseInt(match[1], 10) : null;
+export async function getExistingSubscription(): Promise<NotificationSubscriptionState | null> {
+  const registration = await getActiveServiceWorkerRegistration();
+  const messaging = await getFirebaseMessagingClient();
+  const vapidKey = readClientEnv("NEXT_PUBLIC_FIREBASE_VAPID_KEY");
+
+  if (messaging && vapidKey && Notification.permission === "granted") {
+    try {
+      const token = await getToken(messaging, {
+        vapidKey,
+        serviceWorkerRegistration: registration,
+      });
+
+      if (token) {
+        return {
+          provider: "fcm",
+          token,
+        };
+      }
+    } catch (error) {
+      console.error("[Push] Failed to get existing FCM token:", error);
+    }
+  }
+  return null;
+}
+
+export async function registerAndSubscribe(
+  onSubscribe: (subs: NotificationSubscriptionState | null) => void,
+): Promise<NotificationSubscriptionState | null> {
+  try {
+    const registration = await getActiveServiceWorkerRegistration();
+    await delay(500);
+    const messaging = await getFirebaseMessagingClient();
+    const vapidKey = readClientEnv("NEXT_PUBLIC_FIREBASE_VAPID_KEY");
+
+    console.info("[Push] Firebase messaging available:", Boolean(messaging));
+    console.info("[Push] Firebase VAPID key available:", Boolean(vapidKey));
+
+    if (messaging && vapidKey) {
+      try {
+        const token = await getToken(messaging, {
+          vapidKey,
+          serviceWorkerRegistration: registration,
+        });
+
+        if (!token) {
+          throw new Error("Failed to receive FCM token");
+        }
+
+        console.info("[Push] FCM token generated:", token);
+        await submitFcmToken(token);
+        console.info("[Push] FCM token submitted successfully");
+
+        const result = {
+          provider: "fcm" as const,
+          token,
+          debugMessage: "Firebase token generated and submitted successfully",
+        };
+        onSubscribe(result);
+        return result;
+      } catch (error) {
+        console.error(
+          "[Push] Firebase token generation/submission failed:",
+          error,
+        );
+        const result = {
+          provider: "fcm" as const,
+          debugMessage:
+            error instanceof Error ? error.message : "Unknown Firebase error",
+        };
+        onSubscribe(null);
+        return result;
+      }
+    }
+    const result = {
+      provider: "fcm" as const,
+      debugMessage: !messaging
+        ? "Firebase messaging is unavailable or unsupported on this browser/device"
+        : "NEXT_PUBLIC_FIREBASE_VAPID_KEY is missing",
+    };
+    console.warn("[Push] Firebase registration blocked:", result.debugMessage);
+    onSubscribe(null);
+    return result;
+  } catch (e) {
+    console.error("[Push] Failed to register notifications:", e);
+    onSubscribe(null);
+    return {
+      provider: "fcm",
+      debugMessage:
+        e instanceof Error ? e.message : "Unknown Firebase registration error",
+    };
+  }
+}
+
+export async function unsubscribeNotifications(
+  currentSubscription: NotificationSubscriptionState,
+): Promise<void> {
+  if (currentSubscription.provider === "fcm" && currentSubscription.token) {
+    const messaging = await getFirebaseMessagingClient();
+    if (messaging) {
+      await deleteToken(messaging);
+    }
+    await deleteFcmToken(currentSubscription.token);
+    return;
+  }
+
+  if (currentSubscription.subscription) {
+    await currentSubscription.subscription.unsubscribe();
+  }
 }

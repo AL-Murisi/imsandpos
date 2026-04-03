@@ -11,6 +11,7 @@ import IMSLoader from "@/components/loadinf";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import Appheader from "@/app/AppHeader/appheader";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
+import { useFirebaseForegroundNotifications } from "@/hooks/useFirebaseForegroundNotifications";
 import { Suspense } from "react";
 import { AppSidebar } from "@/components/appside-bar";
 import PullToRefreshCurrentPage from "@/components/refresh";
@@ -43,6 +44,7 @@ export default function ClientLayoutWrapper({
   const { user, loading, loggingOut } = useAuth();
   const pathname = usePathname();
   useOfflineSync();
+  useFirebaseForegroundNotifications();
 
   // Routes that don't need sidebar and header
   const authRoutes = ["/login", "/signup"];

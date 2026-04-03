@@ -31,6 +31,37 @@ const withPWA = require("@ducanh2912/next-pwa").default({
 
     // increase limit
     maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
+    // runtimeCaching: [
+    //   {
+    //     urlPattern: /\/api\/auth\/me$/,
+    //     handler: "StaleWhileRevalidate",
+    //     method: "GET",
+    //     options: {
+    //       cacheName: "ims-auth-me-cache",
+    //       expiration: {
+    //         maxEntries: 10,
+    //         maxAgeSeconds: 60 * 60 * 24 * 7,
+    //       },
+    //     },
+    //   },
+
+    //   {
+    //     urlPattern: ({ request, url }: { request: Request; url: URL }) =>
+    //       request.mode === "navigate" && url.origin === self.location.origin,
+
+    //     handler: "NetworkFirst",
+
+    //     options: {
+    //       cacheName: "ims-pages-cache",
+    //       networkTimeoutSeconds: 5,
+
+    //       expiration: {
+    //         maxEntries: 200,
+    //         maxAgeSeconds: 60 * 60 * 24 * 14,
+    //       },
+    //     },
+    //   },
+    // ],
   },
 
   buildExcludes: [/splash_screens\/.*/, /templates\/.*/, /wasm\/.*/],

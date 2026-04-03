@@ -1,84 +1,58 @@
-// // Workbox precache manifest injected at build time by next-pwa (injectManifest).
-// // This is required for proper install lifecycle and prevents SW install from failing.
-// self.__WB_MANIFEST = self.__WB_MANIFEST || [];
+import { getApps, initializeApp } from "firebase/app";
+import { getMessaging, onBackgroundMessage } from "firebase/messaging/sw";
 
-// self.addEventListener("install", () => {
-//   self.skipWaiting();
-// });
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+};
 
-// self.addEventListener("activate", (event) => {
-//   event.waitUntil(self.clients.claim());
-// });
+const firebaseConfigured = Boolean(
+  firebaseConfig.apiKey &&
+    firebaseConfig.projectId &&
+    firebaseConfig.messagingSenderId &&
+    firebaseConfig.appId,
+);
 
-// self.addEventListener("push", (event) => {
-//   if (!event.data) return;
+if (firebaseConfigured) {
+  try {
+    const app = getApps()[0] ?? initializeApp(firebaseConfig);
+    const messaging = getMessaging(app);
 
-//   let data;
-//   try {
-//     data = event.data.json();
-//   } catch {
-//     data = { title: "Notification", body: event.data.text(), url: "/" };
-//   }
+    onBackgroundMessage(messaging, async (payload) => {
+      const notificationTitle =
+        payload.notification?.title || payload.data?.title || "Notification";
+      const notificationOptions = {
+        body:
+          payload.notification?.body ||
+          payload.data?.body ||
+          "You have a new message. Please check it out",
+        icon:
+          payload.notification?.icon ||
+          payload.data?.icon ||
+          "/web-app-manifest-192x192.png",
+        badge: payload.data?.badge || "/badge-72x72.png",
+        data: {
+          url: payload.fcmOptions?.link || payload.data?.url || "/",
+        },
+        tag: payload.data?.tag || "ims-notification",
+      };
 
-//   const notificationOptions = {
-//     body: data.body || "",
-//     icon: data.icon || "/web-app-manifest-192x192.png",
-//     badge: data.badge || "/badge-72x72.png",
-//     data: {
-//       url: data.url || data.data?.url || "/",
-//     },
-//     tag: data.tag || "ims-notification",
-//     renotify: true,
-//   };
+      await self.registration.showNotification(
+        notificationTitle,
+        notificationOptions,
+      );
 
-//   event.waitUntil(
-//     self.registration.showNotification(
-//       data.title || "IMS",
-//       notificationOptions,
-//     ),
-//   );
-// });
+      await syncAppBadge();
+    });
+  } catch (error) {
+    console.error("[SW] Firebase messaging init failed:", error);
+  }
+}
 
-// self.addEventListener("notificationclick", (event) => {
-//   event.notification.close();
-
-//   const url = event.notification?.data?.url || "/";
-
-//   event.waitUntil(
-//     self.clients
-//       .matchAll({ type: "window", includeUncontrolled: true })
-//       .then((clients) => {
-//         for (const client of clients) {
-//           if ("focus" in client) {
-//             return client.focus();
-//           }
-//         }
-
-//         if (self.clients.openWindow) {
-//           return self.clients.openWindow(url);
-//         }
-
-//         return undefined;
-//       }),
-//   );
-// });
-
-// self.addEventListener("pushsubscriptionchange", (event) => {
-//   event.waitUntil(
-//     self.registration.pushManager
-//       .subscribe(event.oldSubscription?.options || { userVisibleOnly: true })
-//       .then((subscription) => {
-//         return fetch("/api/web-push/subscription", {
-//           method: "POST",
-//           headers: { "Content-Type": "application/json" },
-//           body: JSON.stringify({ subscription }),
-//         });
-//       })
-//       .catch(() => undefined),
-//   );
-// });
-// Workbox precache manifest injected at build time by next-pwa (injectManifest).// Workbox precache manifest injected at build time by next-pwa (injectManifest).
-// This is required for proper install lifecycle and prevents SW install from failing.
 self.__WB_MANIFEST = self.__WB_MANIFEST || [];
 if (self.workbox && self.workbox.precaching) {
   self.workbox.precaching.precacheAndRoute(self.__WB_MANIFEST);
@@ -127,44 +101,6 @@ async function syncAppBadge() {
   }
 }
 
-self.addEventListener("push", (event) => {
-  let data;
-  try {
-    if (event.data) {
-      data = event.data.json();
-    } else {
-      data = { title: "Notification", body: "", url: "/" };
-    }
-  } catch {
-    data = {
-      title: "Notification",
-      body: event.data ? event.data.text() : "",
-      url: "/",
-    };
-  }
-
-  const notificationOptions = {
-    body: data.body || "",
-    icon: data.icon || "/web-app-manifest-192x192.png",
-    badge: data.badge || "/badge-72x72.png",
-    data: {
-      url: data.url || data.data?.url || "/",
-    },
-    tag: data.tag || "ims-notification",
-    renotify: false,
-  };
-
-  event.waitUntil(
-    (async () => {
-      await self.registration.showNotification(
-        data.title || "IMS",
-        notificationOptions,
-      );
-      await syncAppBadge();
-    })(),
-  );
-});
-
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
@@ -191,20 +127,5 @@ self.addEventListener("notificationclick", (event) => {
 
       await syncAppBadge();
     })(),
-  );
-});
-
-self.addEventListener("pushsubscriptionchange", (event) => {
-  event.waitUntil(
-    self.registration.pushManager
-      .subscribe(event.oldSubscription?.options || { userVisibleOnly: true })
-      .then((subscription) => {
-        return fetch("/api/web-push/subscription", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ subscription }),
-        });
-      })
-      .catch(() => undefined),
   );
 });

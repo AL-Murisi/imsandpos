@@ -3,52 +3,33 @@
 import { useEffect, useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import {
-  checkPermissionStateAndAct,
-  registerAndSubscribe,
+  getExistingSubscription,
   notificationUnsupported,
+  registerAndSubscribe,
+  unsubscribeNotifications,
+  type NotificationSubscriptionState,
 } from "@/hooks/Push";
 import { toast } from "sonner";
 
 export function PushNotificationManager() {
   const [unsupported, setUnsupported] = useState(false);
-  const [subscription, setSubscription] = useState<PushSubscription | null>(
-    null,
-  );
+  const [subscription, setSubscription] =
+    useState<NotificationSubscriptionState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check for existing subscription on mount
   useEffect(() => {
     async function checkExistingSubscription() {
       try {
-        // Check if notifications are supported
         if (notificationUnsupported()) {
           setUnsupported(true);
-          setIsLoading(false);
           return;
         }
 
-        // Check if permission is already granted
         if (Notification.permission === "granted") {
-          // Check if service worker is registered
-          const registration = await navigator.serviceWorker.getRegistration();
-
-          if (registration) {
-            // Check if there's an existing subscription
-            const existingSubscription =
-              await registration.pushManager.getSubscription();
-
-            if (existingSubscription) {
-              console.log(
-                "[PushManager] Found existing subscription:",
-                existingSubscription.endpoint,
-              );
-              setSubscription(existingSubscription);
-            } else {
-              console.log("[PushManager] No existing subscription found");
-            }
+          const existingSubscription = await getExistingSubscription();
+          if (existingSubscription) {
+            setSubscription(existingSubscription);
           }
-        } else if (Notification.permission === "denied") {
-          console.log("[PushManager] Notification permission denied");
         }
       } catch (error) {
         console.error("[PushManager] Error checking subscription:", error);
@@ -58,25 +39,27 @@ export function PushNotificationManager() {
     }
 
     checkExistingSubscription();
-  }, []); // Only run once on mount
+  }, []);
 
   async function toggleNotifications(enabled: boolean) {
     if (enabled) {
       try {
         setIsLoading(true);
-
-        // Request permission first
         const permission = await Notification.requestPermission();
 
         if (permission === "granted") {
-          console.log("[PushManager] Permission granted, subscribing...");
+          const result = await registerAndSubscribe(setSubscription);
 
-          // This will check for existing subscription before creating a new one
-          await registerAndSubscribe(setSubscription);
-
-          toast.success("تم تفعيل الإشعارات");
+          if (result?.provider === "fcm" && result.token) {
+            toast.success(`FCM Token: ${result.token}`);
+          } else if (result?.provider === "fcm" && result.debugMessage) {
+            toast.error(`فشل Firebase: ${result.debugMessage}`, {
+              duration: 8000,
+            });
+          } else {
+            toast.error("لم يتم إنشاء توكن Firebase");
+          }
         } else {
-          console.log("[PushManager] Permission denied");
           toast.error("تم رفض إذن الإشعارات");
         }
       } catch (error) {
@@ -85,39 +68,24 @@ export function PushNotificationManager() {
       } finally {
         setIsLoading(false);
       }
-    } else {
-      // Disable notifications
-      if (subscription) {
-        try {
-          setIsLoading(true);
 
-          console.log("[PushManager] Unsubscribing from push notifications...");
+      return;
+    }
 
-          // Unsubscribe from push notifications
-          await subscription.unsubscribe();
+    if (!subscription) {
+      return;
+    }
 
-          // Delete from server
-          const response = await fetch("/api/web-push/subscription", {
-            method: "DELETE",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ endpoint: subscription.endpoint }),
-          });
-
-          if (!response.ok) {
-            throw new Error("Failed to delete subscription from server");
-          }
-
-          console.log("[PushManager] Successfully unsubscribed");
-
-          setSubscription(null);
-          toast.success("تم إلغاء الإشعارات");
-        } catch (error) {
-          console.error("[PushManager] Failed to unsubscribe:", error);
-          toast.error("فشل إلغاء الإشعارات");
-        } finally {
-          setIsLoading(false);
-        }
-      }
+    try {
+      setIsLoading(true);
+      await unsubscribeNotifications(subscription);
+      setSubscription(null);
+      toast.success("تم إلغاء الإشعارات");
+    } catch (error) {
+      console.error("[PushManager] Failed to unsubscribe:", error);
+      toast.error("فشل إلغاء الإشعارات");
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -125,7 +93,7 @@ export function PushNotificationManager() {
     <div className="flex items-center gap-3">
       <Switch
         disabled={unsupported || isLoading}
-        checked={!!subscription}
+        checked={Boolean(subscription)}
         onCheckedChange={toggleNotifications}
       />
       <span>

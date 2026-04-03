@@ -1,6 +1,18 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/session";
+import {
+  deletePushDeviceTokenByUserAndToken,
+  upsertPushDeviceToken,
+} from "@/lib/firebase/device-tokens";
+
+type SubscriptionPayload = {
+  endpoint?: string;
+  keys?: {
+    p256dh?: string;
+    auth?: string;
+  };
+};
 
 export async function POST(request: Request) {
   try {
@@ -31,31 +43,9 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { subscription } = body;
-
-    console.log(
-      "[API] Received subscription:",
-      JSON.stringify(subscription, null, 2),
-    );
-
-    if (!subscription || !subscription.endpoint) {
-      return NextResponse.json(
-        { error: "Invalid subscription - missing endpoint" },
-        { status: 400 },
-      );
-    }
-
-    // Extract keys from subscription
-    const keys = subscription.keys;
-
-    if (!keys || !keys.p256dh || !keys.auth) {
-      return NextResponse.json(
-        { error: "Invalid subscription - missing keys" },
-        { status: 400 },
-      );
-    }
-
-    console.log("[API] Saving subscription for user:", userinf.userId);
+    const subscription = body.subscription as SubscriptionPayload | undefined;
+    const fcmToken =
+      typeof body.fcmToken === "string" ? body.fcmToken.trim() : "";
 
     const rolePriority = ["admin", "manager_wh", "cashier", "accountant"];
     const normalizedRoles = user.roles
@@ -65,8 +55,37 @@ export async function POST(request: Request) {
       rolePriority.find((role) => normalizedRoles.includes(role)) ??
       normalizedRoles[0] ??
       null;
+    console.log(fcmToken);
+    if (fcmToken) {
+      const savedToken = await upsertPushDeviceToken({
+        token: fcmToken,
+        companyId: user.companyId,
+        userId: userinf.userId,
+        role: primaryRole,
+        provider: "fcm",
+      });
 
-    // Save or update subscription in database
+      return NextResponse.json({
+        message: "FCM token saved successfully",
+        token: savedToken?.token ?? fcmToken,
+      });
+    }
+
+    if (!subscription || !subscription.endpoint) {
+      return NextResponse.json(
+        { error: "Invalid subscription - missing endpoint" },
+        { status: 400 },
+      );
+    }
+
+    const keys = subscription.keys;
+    if (!keys || !keys.p256dh || !keys.auth) {
+      return NextResponse.json(
+        { error: "Invalid subscription - missing keys" },
+        { status: 400 },
+      );
+    }
+
     const savedSubscription = await prisma.pushSubscription.upsert({
       where: {
         endpoint: subscription.endpoint,
@@ -88,8 +107,6 @@ export async function POST(request: Request) {
       },
     });
 
-    console.log("[API] Subscription saved:", savedSubscription.id);
-
     return NextResponse.json({
       message: "Subscription saved successfully",
       subscription: {
@@ -109,7 +126,6 @@ export async function POST(request: Request) {
   }
 }
 
-// Delete subscription
 export async function DELETE(request: Request) {
   try {
     const userinf = await getSession();
@@ -118,18 +134,22 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { endpoint } = await request.json();
+    const { endpoint, fcmToken } = await request.json();
 
-    console.log("[API] Deleting subscription for endpoint:", endpoint);
+    if (typeof fcmToken === "string" && fcmToken.trim()) {
+      await deletePushDeviceTokenByUserAndToken(
+        userinf.userId,
+        fcmToken.trim(),
+      );
+      return NextResponse.json({ message: "FCM token deleted" });
+    }
 
     await prisma.pushSubscription.deleteMany({
       where: {
         userId: userinf.userId,
-        endpoint: endpoint,
+        endpoint,
       },
     });
-
-    console.log("[API] Subscription deleted successfully");
 
     return NextResponse.json({ message: "Subscription deleted" });
   } catch (error) {
