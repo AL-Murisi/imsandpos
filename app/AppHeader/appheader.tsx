@@ -47,6 +47,11 @@ export default function Appheader() {
     { title: t("chartOfAccount"), url: "/chartOfAccount" },
     { title: t("expenses"), url: "/expenses" },
     { title: t("customer"), url: "/customer" },
+    { title: "بوابة العميل", url: "/customer-portal" },
+    { title: "فواتير العميل", url: "/customer-portal/receipts" },
+    { title: "سندات العميل", url: "/customer-portal/vouchers" },
+    { title: "كشف حساب العميل", url: "/customer-portal/statement" },
+    { title: "تقارير العميل", url: "/customer-portal/reports" },
     { title: t("reports"), url: "/reports" },
     { title: t("settings"), url: "/settings" },
   ];

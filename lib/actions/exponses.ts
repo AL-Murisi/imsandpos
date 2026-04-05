@@ -292,6 +292,72 @@ async function getAccountMapping(companyId: string, mappingType: string) {
   return mapping.account_id;
 }
 
+async function getDefaultAccountMap(
+  tx: Prisma.TransactionClient,
+  companyId: string,
+) {
+  const mappings = await tx.account_mappings.findMany({
+    where: { company_id: companyId, is_default: true },
+    select: { mapping_type: true, account_id: true },
+  });
+
+  return new Map<string, string>(
+    mappings.map((mapping) => [mapping.mapping_type, mapping.account_id]),
+  );
+}
+
+function resolveSettlementAccount(
+  accountMap: Map<string, string>,
+  paymentMethod?: string | null,
+) {
+  if (paymentMethod === "bank") {
+    return accountMap.get("bank") || accountMap.get("cash");
+  }
+
+  return accountMap.get("cash");
+}
+
+function buildExpenseJournalLine(
+  companyId: string,
+  accountId: string,
+  memo: string,
+  debitBase: number,
+  creditBase: number,
+  options: {
+    currency?: string | null;
+    baseCurrency?: string | null;
+    exchangeRate?: number | null;
+    foreignAmount?: number | null;
+  } = {},
+) {
+  const { currency, baseCurrency, exchangeRate, foreignAmount } = options;
+  const baseValue = debitBase > 0 ? debitBase : creditBase;
+  const useForeign =
+    Boolean(currency) &&
+    Boolean(baseCurrency) &&
+    currency !== baseCurrency &&
+    Boolean(exchangeRate) &&
+    exchangeRate !== 1;
+
+  return {
+    companyId,
+    accountId,
+    debit: debitBase,
+    credit: creditBase,
+    memo,
+    ...(useForeign
+      ? {
+          currencyCode: currency,
+          exchangeRate,
+          foreignAmount,
+          baseAmount: baseValue,
+        }
+      : {
+          currencyCode: baseCurrency || currency || undefined,
+        }),
+  };
+}
+
 interface ExpenseData {
   account_id: string;
   description: string;
@@ -327,12 +393,6 @@ export async function createMultipleExpenses(
     if (!expensesData || expensesData.length === 0) {
       return { success: false, error: "يجب إضافة مصروف واحد على الأقل" };
     }
-    const isForeign =
-      expensesData[0].currency_code &&
-      expensesData[0].currency_code !== expensesData[0].basCurrncy &&
-      expensesData[0].exchangeRate &&
-      expensesData[0].exchangeRate !== 1;
-
     const aggregateexp = await prisma.expenses.aggregate({
       where: {
         company_id: companyId,
@@ -346,8 +406,9 @@ export async function createMultipleExpenses(
     // 2️⃣ تنفيذ العمليات داخل Transaction لضمان سلامة البيانات
     const result = await prisma.$transaction(async (tx) => {
       const createdExpenses = [];
-      const journalEvents = [];
+      const journalHeaders = [];
       const financialTransactions = [];
+      const accountMap = await getDefaultAccountMap(tx, companyId);
       const voucherNumber = await getNextVoucherNumber(
         companyId,
         "PAYMENT",
@@ -376,6 +437,22 @@ export async function createMultipleExpenses(
           tx,
         );
         const amount = expenseData.amountFC;
+        const baseAmount = expenseData.baseAmount ?? expenseData.amount;
+        const settlementAccount = resolveSettlementAccount(
+          accountMap,
+          expenseData.paymentMethod,
+        );
+
+        if (!expenseData.account_id) {
+          throw new Error("Expense account is required for journal entry");
+        }
+
+        if (!settlementAccount) {
+          throw new Error(
+            "Missing settlement account mapping for expense payment",
+          );
+        }
+
         //        أ - إنشاء سجل المصروف(expenses)
         const expense = await tx.expenses.create({
           data: {
@@ -413,39 +490,59 @@ export async function createMultipleExpenses(
         // ب- إنشاء المعاملة المالية المرتبطة (FinancialTransaction)
         // هذا يمثل "سند الصرف" الفعلي في الخزينة
 
-        // ج- إنشاء حدث القيد المحاسبي (JournalEvent)
-        const journalEvent = await tx.journalEvent.create({
+        const entryYear = new Date().getFullYear();
+        const entryNumber = `JE-${entryYear}-${Date.now()}-${Math.floor(
+          Math.random() * 1000,
+        )}`;
+        const journalHeader = await tx.journalHeader.create({
           data: {
             companyId,
-            eventType: "expense",
-            status: "pending",
-            entityType: "expense",
-            payload: {
-              companyId,
-              expense: {
-                id: expense.id,
-                accountId: expenseData.account_id,
-                amount: expenseData.amount,
-                paymentMethod: expenseData.paymentMethod,
-                referenceNumber: expenseData.referenceNumber,
-                description: expenseData.description,
-                expenseDate: expenseData.expense_date,
-                bankId: expenseData.bankId ?? "",
-                branchId: expenseData.branchId,
-                basCurrncy: expenseData.basCurrncy,
-                exchangeRate: expenseData.exchangeRate,
-                amountFC: expenseData.amountFC,
-                baseAmount: expenseData.baseAmount,
-                currency_code: expenseData.currency_code ?? "YER",
-              },
-              userId,
+            entryNumber,
+            description: expenseData.description,
+            branchId: expenseData.branchId,
+            referenceType: "expense",
+            referenceId: expense.id,
+            entryDate: expenseData.expense_date,
+            status: "POSTED",
+            createdBy: userId,
+            lines: {
+              create: [
+                buildExpenseJournalLine(
+                  companyId,
+                  expenseData.account_id,
+                  expenseData.description,
+                  baseAmount,
+                  0,
+                  {
+                    currency: expenseData.currency_code ?? "YER",
+                    baseCurrency: expenseData.basCurrncy,
+                    exchangeRate: expenseData.exchangeRate,
+                    foreignAmount: expenseData.amountFC,
+                  },
+                ),
+                buildExpenseJournalLine(
+                  companyId,
+                  settlementAccount,
+                  `${expenseData.description} - payment`,
+                  0,
+                  baseAmount,
+                  {
+                    currency: expenseData.currency_code ?? "YER",
+                    baseCurrency: expenseData.basCurrncy,
+                    exchangeRate: expenseData.exchangeRate,
+                    foreignAmount: expenseData.amountFC,
+                  },
+                ),
+              ].map((line) => ({
+                ...line,
+                companyId,
+              })),
             },
-            processed: false,
           },
         });
 
         createdExpenses.push(expense);
-        journalEvents.push(journalEvent);
+        journalHeaders.push(journalHeader);
       }
 
       // 3️⃣ تسجيل النشاط (Activity Log)
@@ -464,7 +561,7 @@ export async function createMultipleExpenses(
         },
       });
 
-      return { createdExpenses, journalEvents };
+      return { createdExpenses, journalHeaders };
     });
 
     revalidatePath("/expenses");

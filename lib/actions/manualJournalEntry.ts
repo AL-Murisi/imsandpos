@@ -1,7 +1,6 @@
-// lib/actions/manualJournalEntry.ts
 "use server";
 
-import prisma from "@/lib/prisma"; // Adjust import path
+import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getSession } from "../session";
 import { validateFiscalYear } from "./fiscalYear";
@@ -24,6 +23,7 @@ interface JournalEntryLine {
   customer_id?: string;
   supplier_id?: string;
 }
+
 interface SupplierPaymentDetails {
   paymentMethod: string;
   accountId: string;
@@ -47,83 +47,68 @@ export async function createManualJournalEntry({
 }) {
   try {
     await validateFiscalYear(companyId);
+
     if (!entries || entries.length < 2) {
       return {
         success: false,
-        error: "يجب أن يحتوي القيد على سطرين على الأقل",
+        error: "??? ?? ????? ????? ??? ????? ??? ?????",
       };
     }
 
     if (!generalDescription?.trim()) {
-      return { success: false, error: "يجب إدخال وصف عام للقيد" };
+      return {
+        success: false,
+        error: "??? ????? ??? ??? ?????",
+      };
     }
-    const fiscalYear = await prisma.fiscal_periods.findFirst({
-      where: {
-        is_closed: false,
-        start_date: { lte: new Date() },
-        end_date: { gte: new Date() },
-      },
-      select: { period_name: true },
-    });
 
-    // 1️⃣ Validate balance
     const totalDebit = entries.reduce(
-      (sum, e) => sum + Number(e.debit || 0),
+      (sum, entry) => sum + Number(entry.debit || 0),
       0,
     );
     const totalCredit = entries.reduce(
-      (sum, e) => sum + Number(e.credit || 0),
+      (sum, entry) => sum + Number(entry.credit || 0),
       0,
     );
 
     if (Math.abs(totalDebit - totalCredit) > 0.01) {
       return {
         success: false,
-        error: `القيد غير متوازن: المدين ${totalDebit.toFixed(
-          2,
-        )} - الدائن ${totalCredit.toFixed(2)}`,
+        error: `????? ??? ??????: ?????? ${totalDebit.toFixed(2)} - ?????? ${totalCredit.toFixed(2)}`,
       };
     }
-    const entriesToInsert = entries.map((entry) => ({
-      company_id: companyId,
-      entry_number: entry.entry_number, // make sure you generate per line
-      account_id: entry.account_id,
-      description: entry.description || generalDescription,
-      debit: Number(entry.debit || 0),
-      credit: Number(entry.credit || 0),
-      entry_date: new Date(entry.entry_date),
-      fiscal_period: fiscalYear?.period_name || null,
-      reference_type: entry.reference_type,
-      reference_id: entry.reference_id,
-      created_by: entry.created_by,
-      branch_id: entry.branch_id,
-      currency_code: entry.currency_code,
-      is_automated: false,
-    }));
 
-    // 2️⃣ Save journal event + update balances in ONE transaction
+    const firstEntry = entries[0];
+    const entryYear = new Date().getFullYear();
+    const entryNumber =
+      firstEntry?.entry_number ||
+      `JE-${entryYear}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
     await prisma.$transaction(async (tx) => {
-      // 🟢 Save journal event
-      await tx.journalEvent.create({
+      await tx.journalHeader.create({
         data: {
-          companyId: companyId,
-          eventType: "manual-journal",
-          entityType: "journal-entry",
-          status: "pending",
-
-          payload: {
-            companyId,
-            generalDescription: generalDescription,
-            entries: entriesToInsert,
-            totalDebit,
-            totalCredit,
-            createdAt: new Date(),
+          companyId,
+          entryNumber,
+          description: generalDescription,
+          branchId: firstEntry?.branch_id,
+          referenceType: firstEntry?.reference_type || "manual-journal",
+          referenceId: firstEntry?.reference_id || entryNumber,
+          entryDate: new Date(firstEntry?.entry_date || new Date()),
+          status: "POSTED",
+          createdBy: firstEntry?.created_by,
+          lines: {
+            create: entries.map((entry) => ({
+              companyId,
+              accountId: entry.account_id,
+              debit: Number(entry.debit || 0),
+              credit: Number(entry.credit || 0),
+              currencyCode: entry.currency_code || undefined,
+              memo: entry.description || generalDescription,
+            })),
           },
-          processed: false,
         },
       });
 
-      // 🟢 Update customer / supplier balances per line
       for (const entry of entries) {
         const debit = Number(entry.debit || 0);
         const credit = Number(entry.credit || 0);
@@ -152,15 +137,17 @@ export async function createManualJournalEntry({
       }
     });
 
+    revalidatePath("/journal-entry");
+
     return {
       success: true,
-      message: "تم حفظ القيد كمعلّق وتحديث أرصدة العميل/المورد",
+      message: "?? ??? ????? ???????? ?????? ????? ??????/??????",
     };
   } catch (error) {
     console.error(error);
     return {
       success: false,
-      error: "حدث خطأ أثناء حفظ القيد المحاسبي",
+      error: "??? ??? ????? ??? ????? ????????",
     };
   }
 }
@@ -173,7 +160,7 @@ export async function getSuppliers() {
   });
   return suppliers;
 }
-// Optional: Get active fiscal year helper
+
 export async function getActiveFiscalYear() {
   try {
     const fiscalYear = await prisma.fiscal_periods.findFirst({
@@ -198,7 +185,7 @@ export async function getActiveFiscalYear() {
     console.error("Error fetching fiscal year:", error);
     return {
       success: false,
-      error: "فشل في جلب السنة المالية",
+      error: "??? ?? ??? ????? ???????",
     };
   }
 }

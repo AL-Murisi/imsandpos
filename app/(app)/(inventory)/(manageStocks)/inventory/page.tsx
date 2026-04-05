@@ -53,7 +53,7 @@ export default async function manageStocks({ searchParams }: DashboardProps) {
   };
 
   if (stockStatus === "low") {
-    where.status = "low";
+    where.status = "attention";
   } else if (stockStatus === "out_of_stock") {
     where.status = "out_of_stock";
   }

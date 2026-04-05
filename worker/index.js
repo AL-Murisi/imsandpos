@@ -108,13 +108,22 @@ self.addEventListener("notificationclick", (event) => {
 
   event.waitUntil(
     (async () => {
+      const targetUrl = new URL(url, self.location.origin).href;
       const clients = await self.clients.matchAll({
         type: "window",
         includeUncontrolled: true,
       });
 
       for (const client of clients) {
-        if ("focus" in client) {
+        if (!("focus" in client)) {
+          continue;
+        }
+
+        if ("navigate" in client && client.url !== targetUrl) {
+          await client.navigate(targetUrl);
+        }
+
+        if (new URL(client.url).origin === self.location.origin) {
           await client.focus();
           await syncAppBadge();
           return;
@@ -122,7 +131,7 @@ self.addEventListener("notificationclick", (event) => {
       }
 
       if (self.clients.openWindow) {
-        await self.clients.openWindow(url);
+        await self.clients.openWindow(targetUrl);
       }
 
       await syncAppBadge();

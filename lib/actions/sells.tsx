@@ -82,6 +82,7 @@ export async function FetchDebtSales(
   if (searchQuery) {
     combinedWhere.OR = [
       { customer: { name: { contains: searchQuery, mode: "insensitive" } } },
+      { customerName: { contains: searchQuery, mode: "insensitive" } },
       {
         customer: {
           phoneNumber: { contains: searchQuery, mode: "insensitive" },
@@ -112,6 +113,7 @@ export async function FetchDebtSales(
       invoiceDate: true,
       status: true,
       customerId: true,
+      customerName: true,
       sale_type: true,
       invoiceNumber: true,
 
@@ -148,6 +150,24 @@ export async function FetchDebtSales(
     take: pageSize,
     orderBy,
   });
+  const saleInvoiceNumbers = debts
+    .filter((sale) => sale.sale_type === "SALE")
+    .map((sale) => sale.invoiceNumber);
+
+  const existingReturns =
+    saleInvoiceNumbers.length > 0
+      ? await prisma.invoice.findMany({
+          where: {
+            companyId,
+            sale_type: "RETURN_SALE",
+            invoiceNumber: { in: saleInvoiceNumbers },
+          },
+          select: { invoiceNumber: true },
+        })
+      : [];
+  const returnedInvoiceNumbers = new Set(
+    existingReturns.map((invoice) => invoice.invoiceNumber),
+  );
   const total = await prisma.invoice.count({ where: { companyId } });
 
   // await prisma.payment
@@ -170,12 +190,20 @@ export async function FetchDebtSales(
     payments: sale.transactions,
     saleDate: sale.invoiceDate.toISOString(),
     createdAt: sale.invoiceDate.toISOString(),
+    hasReturnSale: returnedInvoiceNumbers.has(sale.invoiceNumber),
     customer: sale.customer
       ? {
           ...sale.customer,
           outstandingBalance: Number(sale.customer.outstandingBalance),
         }
-      : null,
+      : sale.customerName
+        ? {
+            name: sale.customerName,
+            outstandingBalance: 0,
+            phoneNumber: null,
+            customerType: "",
+          }
+        : null,
   }));
   const serilaz = serializeData(serializedDebts);
 
@@ -390,6 +418,7 @@ export async function fetchReceipt(invoiceId: string, companyId: string) {
   const receipt = {
     id: invoice.id,
     invoiceNumber: invoice.invoiceNumber,
+    customerName: invoice.customerName,
     date: invoice.invoiceDate.toLocaleDateString("ar-EG", {
       year: "numeric",
       month: "long", // Use 'numeric' for 1, 'short' for abbreviated, or 'long' for full name
@@ -403,7 +432,13 @@ export async function fetchReceipt(invoiceId: string, companyId: string) {
           name: invoice.customer.name,
           phone: invoice.customer.phoneNumber,
         }
-      : null,
+      : invoice.customerName
+        ? {
+            id: null,
+            name: invoice.customerName,
+            phone: null,
+          }
+        : null,
 
     branch: invoice.branch,
 

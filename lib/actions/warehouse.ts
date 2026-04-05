@@ -104,7 +104,8 @@ function buildWarehouseJournalLine(
           currencyCode: currency,
           exchangeRate,
           foreignAmount:
-            foreignAmount ?? Number((baseValue / Number(exchangeRate)).toFixed(2)),
+            foreignAmount ??
+            Number((baseValue / Number(exchangeRate)).toFixed(2)),
           baseAmount: baseValue,
         }
       : {
@@ -134,18 +135,18 @@ interface ExtendedInventoryUpdateData {
   maxStockLevel?: number;
   status?: string;
   warehouseId: string;
-  lastStockTake?: string | Date; // Ã°Å¸â€™Â¡ FIX: Allow Date object or string for compatibility with form input/default values
+  lastStockTake?: string | Date; // 💡 FIX: Allow Date object or string for compatibility with form input/default values
   bankId?: string;
   transferNumber?: string;
   currency_code?: string;
   exchangeRate?: number;
   amountFC?: number;
 }
-function generateArabicPurchaseReceiptNumber(lastNumber: number) {
-  const padded = String(lastNumber).padStart(5, "0"); // 00001
-  const year = new Date().getFullYear();
-  return `Ã™â€¦Ã˜Â´Ã˜ÂªÃ˜Â±Ã™Å Ã˜Â§Ã˜Âª-${year}-${padded}Q`; // Ã™â€¦Ã˜Â´Ã˜ÂªÃ˜Â±Ã™Å Ã˜Â§Ã˜Âª-2025-00001
-}
+// function generateArabicPurchaseReceiptNumber(lastNumber: number) {
+//   const padded = String(lastNumber).padStart(5, "0"); // 00001
+//   const year = new Date().getFullYear();
+//   return `مشتريات-${year}-${padded}Q`; // مشتريات-2025-00001
+// }
 
 export async function updateInventory(
   data: ExtendedInventoryUpdateData,
@@ -175,7 +176,7 @@ export async function updateInventory(
     } = data;
 
     // ============================================
-    // 1Ã¯Â¸ÂÃ¢Æ’Â£ PARALLEL FETCH: Inventory + Supplier
+    // 1. Parallel fetch: inventory + supplier
     // ============================================
     const [currentInventory, supplierExists] = await Promise.all([
       prisma.inventory.findFirst({
@@ -209,22 +210,28 @@ export async function updateInventory(
     ]);
 
     if (!currentInventory) {
-      throw new Error("Ã˜Â³Ã˜Â¬Ã™â€ž Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â®Ã˜Â²Ã™Ë†Ã™â€  Ã˜ÂºÃ™Å Ã˜Â± Ã™â€¦Ã™Ë†Ã˜Â¬Ã™Ë†Ã˜Â¯");
+      throw new Error(
+        "سجل المخزون غير موجود",
+      );
     }
 
     const product = currentInventory.product;
     const supplierId = providedSupplierId || product.supplierId;
 
     if (updateType === "supplier" && !supplierId) {
-      throw new Error("Ã™Å Ã˜Â¬Ã˜Â¨ Ã˜ÂªÃ˜Â­Ã˜Â¯Ã™Å Ã˜Â¯ Ã˜Â§Ã™â€žÃ™â€¦Ã™Ë†Ã˜Â±Ã˜Â¯");
+      throw new Error(
+        "يجب تحديد المورد",
+      );
     }
 
     if (updateType === "supplier" && !supplierExists) {
-      throw new Error("Ã˜Â§Ã™â€žÃ™â€¦Ã™Ë†Ã˜Â±Ã˜Â¯ Ã˜ÂºÃ™Å Ã˜Â± Ã™â€¦Ã™Ë†Ã˜Â¬Ã™Ë†Ã˜Â¯");
+      throw new Error(
+        "المورد غير موجود",
+      );
     }
 
     // ============================================
-    // 2Ã¯Â¸ÂÃ¢Æ’Â£ HELPER FUNCTIONS & CALCULATIONS
+    // 2. Helper functions and calculations
     // ============================================
     const unitsPerPacket = product.unitsPerPacket || 1;
     const packetsPerCarton = product.packetsPerCarton || 1;
@@ -238,10 +245,10 @@ export async function updateInventory(
     const nextNumber = currentInventory.receiptNo
       ? parseInt(currentInventory.receiptNo.match(/(\d+)$/)?.[1] || "0") + 1
       : 1;
-    const receiptNo = `Ã™â€¦Ã˜Â´Ã˜ÂªÃ˜Â±Ã™Å Ã˜Â§Ã˜Âª-${new Date().getFullYear()}-${String(nextNumber).padStart(5, "0")}Q-${Date.now()}`;
+    const receiptNo = `مشتريات-${new Date().getFullYear()}-${String(nextNumber).padStart(5, "0")}Q-${Date.now()}`;
 
     // ============================================
-    // 3Ã¯Â¸ÂÃ¢Æ’Â£ DETERMINE TARGET INVENTORY
+    // 3. Determine target inventory
     // ============================================
     let inventoryTarget;
     if (targetWarehouseId === currentInventory.warehouseId) {
@@ -272,7 +279,7 @@ export async function updateInventory(
     }
 
     // ============================================
-    // 4Ã¯Â¸ÂÃ¢Æ’Â£ CALCULATE FINAL QUANTITIES
+    // 4. Calculate final quantities
     // ============================================
     const finalAvailableQty =
       inventoryTarget.availableQuantity + availableUnits;
@@ -284,7 +291,7 @@ export async function updateInventory(
     else if (finalAvailableQty < finalReorderLevel) calculatedStatus = "low";
 
     // ============================================
-    // 5Ã¯Â¸ÂÃ¢Æ’Â£ TRANSACTION: CREATE PURCHASE & UPDATE INVENTORY
+    // 5. Transaction: create purchase and update inventory
     // ============================================
     const result = await prisma.$transaction(
       async (tx) => {
@@ -359,7 +366,9 @@ export async function updateInventory(
                   amount: paymentAmount,
                   paymentMethod,
                   status: "paid",
-                  notes: notes || "Ã˜Â¯Ã™ÂÃ˜Â¹Ã˜Â© Ã™â€¦Ã˜Â´Ã˜ÂªÃ˜Â±Ã™Å Ã˜Â§Ã˜Âª",
+                  notes:
+                    notes ||
+                    "دفعة مشتريات",
                 },
               }),
             );
@@ -415,12 +424,17 @@ export async function updateInventory(
                   productId: product.id,
                   warehouseId: inventoryTarget.warehouseId,
                   userId,
-                  movementType: stockDifference > 0 ? "Ã™Ë†Ã˜Â§Ã˜Â±Ã˜Â¯" : "Ã˜ÂµÃ˜Â§Ã˜Â¯Ã˜Â±",
+                  movementType:
+                    stockDifference > 0
+                      ? "وارد"
+                      : "صادر",
                   quantity: Math.abs(stockDifference),
-                  reason: updateData.reason || "Ã˜ÂªÃ™â€¦_Ã˜Â§Ã˜Â³Ã˜ÂªÃ™â€žÃ˜Â§Ã™â€¦_Ã˜Â§Ã™â€žÃ™â€¦Ã™Ë†Ã˜Â±Ã˜Â¯",
+                  reason:
+                    updateData.reason ||
+                    "تم_استلام_المورد",
                   notes:
                     notes ||
-                    `${supplierId ? "Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â®Ã˜Â²Ã™Ë†Ã™â€  Ã™â€¦Ã™â€  Ã˜Â§Ã™â€žÃ™â€¦Ã™Ë†Ã˜Â±Ã˜Â¯" : "Ã˜ÂªÃ˜Â­Ã˜Â¯Ã™Å Ã˜Â« Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â®Ã˜Â²Ã™Ë†Ã™â€ "}`,
+                    `${supplierId ? "المخزون من المورد" : "تحديث المخزون"}`,
                   quantityBefore: inventoryTarget.stockQuantity,
                   quantityAfter: finalStockQty,
                 },
@@ -505,10 +519,10 @@ export async function updateInventory(
 
             action:
               updateType === "supplier"
-                ? "Ã˜ÂªÃ™â€¦_Ã˜Â§Ã˜Â³Ã˜ÂªÃ™â€žÃ˜Â§Ã™â€¦_Ã™â€¦Ã˜Â®Ã˜Â²Ã™Ë†Ã™â€ _Ã˜Â§Ã™â€žÃ™â€¦Ã™Ë†Ã˜Â±Ã˜Â¯"
-                : "Ã˜ÂªÃ™â€¦_Ã˜ÂªÃ˜Â­Ã˜Â¯Ã™Å Ã˜Â«_Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â®Ã˜Â²Ã™Ë†Ã™â€ ",
-            details: `Ã˜Â§Ã™â€žÃ™â€¦Ã™â€ Ã˜ÂªÃ˜Â¬: ${product.name}, Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â®Ã˜Â²Ã™Ë†Ã™â€  Ã˜Â§Ã™â€žÃ™â€ Ã™â€¡Ã˜Â§Ã˜Â¦Ã™Å : ${finalStockQty}${
-              paymentAmount ? `, Ã˜Â§Ã™â€žÃ˜Â¯Ã™ÂÃ˜Â¹: ${paymentAmount}` : ""
+                ? "تم_استلام_مخزون_المورد"
+                : "تم_تحديث_المخزون",
+            details: `المنتج: ${product.name}, المخزون النهائي: ${finalStockQty}${
+              paymentAmount ? `, الدفع: ${paymentAmount}` : ""
             }`,
           },
         });
@@ -536,10 +550,16 @@ export async function updateInventory(
 
     return { success: true, data: result.updatedInventory };
   } catch (error) {
-    console.error("Ã˜Â®Ã˜Â·Ã˜Â£ Ã™ÂÃ™Å  Ã˜ÂªÃ˜Â­Ã˜Â¯Ã™Å Ã˜Â« Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â®Ã˜Â²Ã™Ë†Ã™â€ :", error);
+    console.error(
+      "خطأ في تحديث المخزون:",
+      error,
+    );
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Ã™ÂÃ˜Â´Ã™â€ž Ã˜ÂªÃ˜Â­Ã˜Â¯Ã™Å Ã˜Â« Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â®Ã˜Â²Ã™Ë†Ã™â€ ",
+      error:
+        error instanceof Error
+          ? error.message
+          : "فشل تحديث المخزون",
     };
   }
 }
@@ -832,7 +852,13 @@ export async function processPurchaseReturn(
         });
 
         if (!originalPurchase) {
-          throw new Error("Ø¹Ù…Ù„ÙŠØ© Ø§Ù„Ø´Ø±Ø§Ø¡ Ø§Ù„Ø£ØµÙ„ÙŠØ© ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯Ø©");
+          throw new Error(
+            "عملية الشراء الأصلية غير موجودة",
+          );
+        }
+
+        if (originalPurchase.sale_type !== "PURCHASE") {
+          throw new Error("يمكن تنفيذ الإرجاع على فاتورة شراء فقط");
         }
 
         if (!inventoryAccount || !payableAccount) {
@@ -848,7 +874,7 @@ export async function processPurchaseReturn(
         }
 
         if (originalPurchase.items.length === 0) {
-          throw new Error("Ø¹Ù†ØµØ± Ø§Ù„Ø´Ø±Ø§Ø¡ ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯");
+          throw new Error("عنصر الشراء غير موجود");
         }
 
         const purchaseItem = originalPurchase.items[0];
@@ -856,6 +882,24 @@ export async function processPurchaseReturn(
         const supplier = originalPurchase.supplier;
         const productId = product.id;
         const supplierId = supplier?.id;
+        const returnInvoiceNumber = originalPurchase.invoiceNumber
+          .replace("مشتريات", "مرتجع")
+          .replace("شراء", "مرتجع");
+
+        const existingReturnPurchase = await tx.invoice.findFirst({
+          where: {
+            companyId,
+            sale_type: "RETURN_PURCHASE",
+            invoiceNumber: returnInvoiceNumber,
+          },
+          select: { id: true },
+        });
+
+        if (existingReturnPurchase) {
+          throw new Error(
+            "تم إرجاع هذه الفاتورة للمورد مسبقاً، لا يمكن إرجاعها مرة أخرى",
+          );
+        }
 
         const inventory = await tx.inventory.findUnique({
           where: {
@@ -873,7 +917,7 @@ export async function processPurchaseReturn(
         });
 
         if (!inventory) {
-          throw new Error("Ø³Ø¬Ù„ Ø§Ù„Ù…Ø®Ø²ÙˆÙ† ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯");
+          throw new Error("سجل المخزون غير موجود");
         }
 
         const sellingUnits = (product.sellingUnits as any[]) || [];
@@ -888,13 +932,12 @@ export async function processPurchaseReturn(
 
         if (returnQuantityInUnits > inventory.stockQuantity) {
           throw new Error(
-            `Ù„Ø§ ÙŠÙ…ÙƒÙ† Ø¥Ø±Ø¬Ø§Ø¹ ÙƒÙ…ÙŠØ© Ø£ÙƒØ¨Ø± Ù…Ù† Ø§Ù„Ù…Ø®Ø²ÙˆÙ† Ø§Ù„Ø­Ø§Ù„ÙŠ (${inventory.stockQuantity})`,
+            `لا يمكن إرجاع كمية أكبر من المخزون الحالي (${inventory.stockQuantity})`,
           );
         }
 
         const returnTotalCost = returnQuantity * unitCost;
         const payableReduction = Math.max(0, returnTotalCost - refundAmount);
-        const returnInvoiceNumber = `${originalPurchase.invoiceNumber}-RET-${Date.now()}`;
 
         purchaseReturn = await tx.invoice.create({
           data: {
@@ -959,16 +1002,16 @@ export async function processPurchaseReturn(
             productId,
             warehouseId,
             userId,
-            movementType: "ØµØ§Ø¯Ø±",
+            movementType: "صادر",
             quantity: returnQuantityInUnits,
-            reason: "Ø¥Ø±Ø¬Ø§Ø¹_Ù„Ù„Ù…ÙˆØ±Ø¯",
+            reason: "إرجاع_للمورد",
             quantityBefore: inventory.stockQuantity,
             quantityAfter: newStockQty,
             referenceType: "purchase_return",
             referenceId: purchaseReturn.id,
             notes:
               reason ||
-              `Ø¥Ø±Ø¬Ø§Ø¹ ${returnQuantity} ${returnUnit} Ù…Ù† ÙØ§ØªÙˆØ±Ø© ${purchaseId}`,
+              `إرجاع ${returnQuantity} ${returnUnit} من فاتورة ${purchaseId}`,
           },
         });
 
@@ -1006,7 +1049,9 @@ export async function processPurchaseReturn(
                   : undefined,
               paymentMethod,
               referenceNumber: transferNumber,
-              notes: reason || `Ø§Ø³ØªØ±Ø¯Ø§Ø¯ Ù…Ø¨Ù„Øº Ù…Ù† Ø§Ù„Ù…ÙˆØ±Ø¯ - ÙØ§ØªÙˆØ±Ø© ${purchaseId}`,
+              notes:
+                reason ||
+                `استرداد مبلغ من المورد - فاتورة ${purchaseId}`,
             },
           });
         }
@@ -1116,7 +1161,7 @@ export async function processPurchaseReturn(
 
         return {
           success: true,
-          message: "ØªÙ… Ø¥Ø±Ø¬Ø§Ø¹ Ø§Ù„Ù…Ø´ØªØ±ÙŠØ§Øª Ø¨Ù†Ø¬Ø§Ø­",
+          message: "تم إرجاع المشتريات بنجاح",
           purchaseReturn,
           returnAmount: returnTotalCost,
           refundAmount,
@@ -1133,15 +1178,15 @@ export async function processPurchaseReturn(
 
     return result;
   } catch (error: any) {
-    console.error("Ø®Ø·Ø£ ÙÙŠ Ø¥Ø±Ø¬Ø§Ø¹ Ø§Ù„Ù…Ø´ØªØ±ÙŠØ§Øª:", error);
+    console.error("خطأ في إرجاع المشتريات:", error);
     return {
       success: false,
-      message: error.message || "ÙØ´Ù„ ÙÙŠ Ù…Ø¹Ø§Ù„Ø¬Ø© Ø§Ù„Ø¥Ø±Ø¬Ø§Ø¹",
+      message: error.message || "فشل في معالجة الإرجاع",
     };
   }
 }
 // ============================================
-// ðŸ”„ Purchase Journal Entries with Retry
+// 🔄 Purchase Journal Entries with Retry
 // ============================================
 
 interface PurchaseReturnData {
@@ -1167,7 +1212,7 @@ export async function getPurchaseReturnData(
   companyId: string,
 ) {
   try {
-    // 1Ã¯Â¸ÂÃ¢Æ’Â£ Fetch Purchase + Supplier + Items + Product
+    // 1. Fetch purchase + supplier + items + product
     const purchase = await prisma.invoice.findFirst({
       where: { id: purchaseId, companyId },
       include: {
@@ -1199,25 +1244,53 @@ export async function getPurchaseReturnData(
     });
 
     if (!purchase) {
-      return { success: false, message: "Ã™â€žÃ™â€¦ Ã™Å Ã˜ÂªÃ™â€¦ Ã˜Â§Ã™â€žÃ˜Â¹Ã˜Â«Ã™Ë†Ã˜Â± Ã˜Â¹Ã™â€žÃ™â€° Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â´Ã˜ÂªÃ˜Â±Ã™Å Ã˜Â§Ã˜Âª" };
+      return {
+        success: false,
+        message:
+          "لم يتم العثور على المشتريات",
+      };
+    }
+
+    const returnInvoiceNumber = purchase.invoiceNumber
+      .replace("مشتريات", "مرتجع")
+      .replace("شراء", "مرتجع");
+
+    const existingReturnPurchase = await prisma.invoice.findFirst({
+      where: {
+        companyId,
+        sale_type: "RETURN_PURCHASE",
+        invoiceNumber: returnInvoiceNumber,
+      },
+      select: { id: true },
+    });
+
+    if (existingReturnPurchase) {
+      return {
+        success: false,
+        message: "تم إرجاع هذه الفاتورة للمورد مسبقاً",
+      };
     }
 
     const item = purchase.items[0];
 
     if (!item) {
-      return { success: false, message: "Ã™â€žÃ˜Â§ Ã˜ÂªÃ™Ë†Ã˜Â¬Ã˜Â¯ Ã™â€¦Ã™â€ Ã˜ÂªÃ˜Â¬Ã˜Â§Ã˜Âª Ã™ÂÃ™Å  Ã™â€¡Ã˜Â°Ã™â€¡ Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â´Ã˜ÂªÃ˜Â±Ã™Å Ã˜Â§Ã˜Âª" };
+      return {
+        success: false,
+        message:
+          "لا توجد منتجات في هذه المشتريات",
+      };
     }
     function calculateStockByUnit(baseQuantity: number, units: any[]) {
       const stockByUnit: Record<string, number> = {};
 
-      // Ã™â€ Ã™ÂÃ˜ÂªÃ˜Â±Ã˜Â¶ Ã˜Â£Ã™â€  Ã˜Â§Ã™â€žÃ™â€¦Ã˜ÂµÃ™ÂÃ™Ë†Ã™ÂÃ˜Â© Ã™â€¦Ã˜Â±Ã˜ÂªÃ˜Â¨Ã˜Â© Ã™â€¦Ã™â€  Ã˜Â§Ã™â€žÃ˜Â£Ã˜ÂµÃ˜ÂºÃ˜Â± (Base) Ã˜Â¥Ã™â€žÃ™â€° Ã˜Â§Ã™â€žÃ˜Â£Ã™Æ’Ã˜Â¨Ã˜Â±
-      // Ã˜Â£Ã™Ë† Ã™â€ Ã™â€šÃ™Ë†Ã™â€¦ Ã˜Â¨Ã˜Â§Ã™â€žÃ˜Â¨Ã˜Â­Ã˜Â« Ã˜Â¹Ã™â€  Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â¹Ã˜Â§Ã™â€¦Ã™â€žÃ˜Â§Ã˜Âª
+      // نفترض أن المصفوفة مرتبة من الأصغر (Base) إلى الأكبر
+      // أو نقوم بالبحث عن المعاملات
       units.forEach((unit) => {
         if (unit.isBase) {
           stockByUnit[unit.id] = baseQuantity;
         } else {
-          // Ã˜Â¥Ã˜Â°Ã˜Â§ Ã™Æ’Ã˜Â§Ã™â€  Ã˜Â§Ã™â€žÃ™Æ’Ã˜Â±Ã˜ÂªÃ™Ë†Ã™â€  Ã™Å Ã˜Â­Ã˜ÂªÃ™Ë†Ã™Å  Ã˜Â¹Ã™â€žÃ™â€° 10 Ã˜Â­Ã˜Â¨Ã˜Â§Ã˜ÂªÃ˜Å’ Ã™â€ Ã™â€šÃ˜Â³Ã™â€¦ Ã˜Â§Ã™â€žÃ™Æ’Ã™â€¦Ã™Å Ã˜Â© Ã˜Â§Ã™â€žÃ˜Â£Ã˜Â³Ã˜Â§Ã˜Â³Ã™Å Ã˜Â© Ã˜Â¹Ã™â€žÃ™â€° 10
-          // Ã™â€¦Ã™â€žÃ˜Â§Ã˜Â­Ã˜Â¸Ã˜Â©: Ã˜ÂªÃ˜Â£Ã™Æ’Ã˜Â¯ Ã™â€¦Ã™â€  Ã˜Â£Ã™â€  unitsPerParent Ã˜ÂªÃ˜Â¹Ã˜Â¨Ã˜Â± Ã˜Â¹Ã™â€  Ã˜Â§Ã™â€žÃ˜ÂªÃ˜Â­Ã™Ë†Ã™Å Ã™â€ž Ã™â€¦Ã™â€  Ã˜Â§Ã™â€žÃ™â€šÃ˜Â§Ã˜Â¹Ã˜Â¯Ã˜Â©
+          // إذا كان الكرتون يحتوي على 10 حبات، نقسم الكمية الأساسية على 10
+          // ملاحظة: تأكد من أن unitsPerParent تعبر عن التحويل من القاعدة
           stockByUnit[unit.id] = Number(
             (baseQuantity / unit.unitsPerParent).toFixed(2),
           );
@@ -1226,7 +1299,7 @@ export async function getPurchaseReturnData(
 
       return stockByUnit;
     }
-    // 2Ã¯Â¸ÂÃ¢Æ’Â£ Fetch inventory for the product
+    // 2. Fetch inventory for the product
     const inventory = await prisma.inventory.findFirst({
       where: {
         companyId,
@@ -1239,15 +1312,15 @@ export async function getPurchaseReturnData(
     const sellingUnits = (item.product.sellingUnits as any[]) || [];
     const stockByUnit = calculateStockByUnit(currentStock, sellingUnits);
 
-    // Ã˜Â§Ã™â€žÃ˜ÂªÃ˜Â­Ã™â€šÃ™â€š Ã™â€¦Ã™â€  Ã˜Â­Ã˜Â§Ã™â€žÃ˜Â© Ã˜Â§Ã™â€žÃ˜Â¨Ã™Å Ã˜Â¹:
-    // Ã˜Â¥Ã˜Â°Ã˜Â§ Ã™Æ’Ã˜Â§Ã™â€ Ã˜Âª Ã˜Â§Ã™â€žÃ™Æ’Ã™â€¦Ã™Å Ã˜Â© Ã™ÂÃ™Å  Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â®Ã˜Â²Ã™â€  Ã˜Â£Ã™â€šÃ™â€ž Ã™â€¦Ã™â€  Ã˜Â§Ã™â€žÃ™Æ’Ã™â€¦Ã™Å Ã˜Â© Ã˜Â§Ã™â€žÃ˜ÂªÃ™Å  Ã˜ÂªÃ™â€¦ Ã˜Â´Ã˜Â±Ã˜Â§Ã˜Â¤Ã™â€¡Ã˜Â§ Ã™ÂÃ™Å  Ã™â€¡Ã˜Â°Ã˜Â§ Ã˜Â§Ã™â€žÃ™ÂÃ˜Â§Ã˜ÂªÃ™Ë†Ã˜Â±Ã˜Â©
-    // Ã™ÂÃ™â€¡Ã˜Â°Ã˜Â§ Ã™Å Ã˜Â¹Ã™â€ Ã™Å  Ã˜Â£Ã™â€  Ã˜Â¬Ã˜Â²Ã˜Â¡Ã˜Â§Ã™â€¹ Ã™â€¦Ã™â€ Ã™â€¡Ã˜Â§ Ã™â€šÃ˜Â¯ Ã˜ÂªÃ™â€¦ Ã˜Â¨Ã™Å Ã˜Â¹Ã™â€¡ (Ã˜Â£Ã™Ë† Ã˜ÂªÃ™â€¦ Ã˜Â§Ã™â€žÃ˜ÂªÃ˜ÂµÃ˜Â±Ã™Â Ã™ÂÃ™Å Ã™â€¡)
-    const originalPurchaseQty = Number(item.quantity); // Ã˜Â§Ã™â€žÃ™Æ’Ã™â€¦Ã™Å Ã˜Â© Ã˜Â¹Ã™â€ Ã˜Â¯ Ã˜Â§Ã™â€žÃ˜Â´Ã˜Â±Ã˜Â§Ã˜Â¡
-    const hasBeenSold = currentStock < originalPurchaseQty; // 3Ã¯Â¸ÂÃ¢Æ’Â£ Get available quantity (base unit)
+    // التحقق من حالة البيع:
+    // إذا كانت الكمية في المخزن أقل من الكمية التي تم شراؤها في هذه الفاتورة
+    // فهذا يعني أن جزءا منها قد تم بيعه أو التصرف فيه
+    const originalPurchaseQty = Number(item.quantity); // الكمية عند الشراء
+    const hasBeenSold = currentStock < originalPurchaseQty; // 3. Get available quantity (base unit)
 
     const supplierdata = serializeData(purchase.supplier);
     const products = serializeData(item.product);
-    // 6Ã¯Â¸ÂÃ¢Æ’Â£ Final Return Object
+    // 6. Final return object
     return {
       success: true,
       data: {
@@ -1273,16 +1346,20 @@ export async function getPurchaseReturnData(
         },
 
         inventory: {
-          stockByUnit, // Ã˜Â³Ã™Å Ã˜Â¹Ã™Å Ã˜Â¯ {"unit-1": 13, "unit-176...": 1.3}
+          stockByUnit, // سيعيد {"unit-1": 13, "unit-176...": 1.3}
           currentStockInBaseUnit: currentStock,
           isPartiallySold: hasBeenSold,
-          maxReturnableQty: Math.min(currentStock, originalPurchaseQty), // Ã™â€žÃ˜Â§ Ã™Å Ã™â€¦Ã™Æ’Ã™â€  Ã˜Â¥Ã˜Â±Ã˜Â¬Ã˜Â§Ã˜Â¹ Ã˜Â£Ã™Æ’Ã˜Â«Ã˜Â± Ã™â€¦Ã™â€¦Ã˜Â§ Ã™â€¡Ã™Ë† Ã™â€¦Ã™Ë†Ã˜Â¬Ã™Ë†Ã˜Â¯ Ã™ÂÃ˜Â¹Ã™â€žÃ™Å Ã˜Â§Ã™â€¹
+          maxReturnableQty: Math.min(currentStock, originalPurchaseQty), // لا يمكن إرجاع أكثر مما هو موجود فعليا
         },
       },
     };
   } catch (error) {
     console.error("Error loading purchase return data", error);
-    return { success: false, message: "Ã˜Â­Ã˜Â¯Ã˜Â« Ã˜Â®Ã˜Â·Ã˜Â£ Ã™ÂÃ™Å  Ã˜Â§Ã™â€žÃ˜Â®Ã˜Â§Ã˜Â¯Ã™â€¦" };
+    return {
+      success: false,
+      message:
+        "حدث خطأ في الخادم",
+    };
   }
 }
 
@@ -1576,11 +1653,14 @@ export async function getInventoryById(
   try {
     const fromatDate = from ? new Date(from).toISOString() : undefined;
     const toDate = to ? new Date(to).toISOString() : undefined;
-
-    const combinedWhere: Prisma.InventoryWhereInput = {
+    const requestedStatus = where.status;
+    const baseWhere: Prisma.InventoryWhereInput = {
       ...where,
+      status: undefined,
       companyId,
     };
+
+    const combinedWhere: Prisma.InventoryWhereInput = baseWhere;
 
     if (searchQuery) {
       combinedWhere.OR = [
@@ -1598,8 +1678,6 @@ export async function getInventoryById(
       };
     }
 
-    const totalCount = await prisma.inventory.count({ where: combinedWhere });
-
     const inventory = await prisma.inventory.findMany({
       select: {
         id: true,
@@ -1609,7 +1687,7 @@ export async function getInventoryById(
             name: true,
             sku: true,
             costPrice: true,
-            sellingUnits: true, // Ã°Å¸â€ â€¢
+            sellingUnits: true, // 🆕
             supplier: { select: { id: true, name: true } },
           },
         },
@@ -1635,38 +1713,44 @@ export async function getInventoryById(
         updatedAt: true,
       },
       where: combinedWhere,
-      skip: page * pageSize,
-      take: pageSize,
     });
+
+    const filteredInventory = inventory.filter((item) => {
+      if (requestedStatus === "attention") {
+        return item.availableQuantity <= (item.reorderLevel || 0);
+      }
+
+      if (requestedStatus === "low") {
+        return (
+          item.availableQuantity > 0 &&
+          item.availableQuantity <= (item.reorderLevel || 0)
+        );
+      }
+
+      if (requestedStatus === "out_of_stock") {
+        return item.availableQuantity <= 0;
+      }
+
+      return true;
+    });
+
+    const totalCount = filteredInventory.length;
+    const paginatedInventory = filteredInventory.slice(
+      page * pageSize,
+      page * pageSize + pageSize,
+    );
 
     const lowStockItems: string[] = [];
     const lowStockItemIds: string[] = [];
 
-    inventory.forEach((item) => {
+    filteredInventory.forEach((item) => {
       if (item.availableQuantity <= (item.reorderLevel || 0)) {
         lowStockItems.push(item.product.name);
         lowStockItemIds.push(item.product.id);
       }
     });
 
-    if (false && lowStockItems.length > 0) {
-      const dayKey = new Date().toISOString().split("T")[0];
-      const idKey = Array.from(new Set(lowStockItemIds)).sort().join("-");
-      // Ã˜Â¥Ã˜Â±Ã˜Â³Ã˜Â§Ã™â€ž Ã˜Â§Ã™â€žÃ˜Â¥Ã˜Â´Ã˜Â¹Ã˜Â§Ã˜Â± Ã˜Â¨Ã˜Â¯Ã™Ë†Ã™â€  await Ã™â€žÃ™â€¦Ã™â€ Ã˜Â¹ Ã˜Â§Ã™â€žÃ˜Â¨Ã˜Â·Ã˜Â¡
-      sendRoleBasedNotification(
-        {
-          companyId,
-          targetRoles: ["admin", "cashier", "manager_wh"],
-        },
-        {
-          title: "Ã¢Å¡Â Ã¯Â¸Â Ã˜ÂªÃ™â€ Ã˜Â¨Ã™Å Ã™â€¡ Ã˜Â§Ã™â€ Ã˜Â®Ã™ÂÃ˜Â§Ã˜Â¶ Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â®Ã˜Â²Ã™Ë†Ã™â€ ",
-          body: `Ã™Å Ã™Ë†Ã˜Â¬Ã˜Â¯ ${lowStockItems.length} Ã™â€¦Ã™â€ Ã˜ÂªÃ˜Â¬Ã˜Â§Ã˜Âª Ã™Ë†Ã˜ÂµÃ™â€žÃ˜Âª Ã™â€žÃ™â€žÃ˜Â­Ã˜Â¯ Ã˜Â§Ã™â€žÃ˜Â£Ã˜Â¯Ã™â€ Ã™â€°: ${lowStockItems.slice(0, 3).join("Ã˜Å’ ")}${lowStockItems.length > 3 ? "..." : ""}`,
-          url: "/inventory?stockStatus=low",
-          tag: `low-stock-summary-${companyId}-${dayKey}-${idKey}`,
-        },
-      ).catch((err) => console.error("Notification Error:", err));
-    }
-    // Ã°Å¸â€ â€¢ Convert base units to all selling units
+    // 🆕 Convert base units to all selling units
     if (lowStockItems.length > 0) {
       const dayKey = new Date().toISOString().split("T")[0];
       const idKey = Array.from(new Set(lowStockItemIds)).sort().join("-");
@@ -1692,7 +1776,7 @@ export async function getInventoryById(
       }
     }
 
-    const convertedInventory = inventory.map((item) => {
+    const convertedInventory = paginatedInventory.map((item) => {
       const sellingUnits = (item.product.sellingUnits as any[]) || [];
       const baseStock = item.stockQuantity;
 
@@ -1783,7 +1867,7 @@ export async function createWarehouse(
     );
     if (!warehouseCapacity.allowed) {
       throw new Error(
-        `Ã˜ÂªÃ™â€¦ Ã˜Â§Ã™â€žÃ™Ë†Ã˜ÂµÃ™Ë†Ã™â€ž Ã˜Â¥Ã™â€žÃ™â€° Ã˜Â§Ã™â€žÃ˜Â­Ã˜Â¯ Ã˜Â§Ã™â€žÃ˜Â£Ã™â€šÃ˜ÂµÃ™â€° Ã™â€žÃ™â€žÃ™â€¦Ã˜Â®Ã˜Â§Ã˜Â²Ã™â€  (${warehouseCapacity.usage.used}/${warehouseCapacity.usage.limit})`,
+        `تم الوصول إلى الحد الأقصى للمخازن (${warehouseCapacity.usage.used}/${warehouseCapacity.usage.limit})`,
       );
     }
 
@@ -1828,7 +1912,11 @@ export async function updateWarehouse(id: string, input: UpdateWarehouseInput) {
     return { success: true, warehouse };
   } catch (error) {
     console.error("Failed to update warehouse:", error);
-    return { success: false, error: "Ã˜Â­Ã˜Â¯Ã˜Â« Ã˜Â®Ã˜Â·Ã˜Â£ Ã˜Â£Ã˜Â«Ã™â€ Ã˜Â§Ã˜Â¡ Ã˜ÂªÃ˜Â­Ã˜Â¯Ã™Å Ã˜Â« Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â³Ã˜ÂªÃ™Ë†Ã˜Â¯Ã˜Â¹" };
+    return {
+      success: false,
+      error:
+        "حدث خطأ أثناء تحديث المستودع",
+    };
   }
 }
 
@@ -1842,7 +1930,11 @@ export async function deleteWarehouse(id: string) {
     return { success: true };
   } catch (error) {
     console.error("Failed to delete warehouse:", error);
-    return { success: false, error: "Ã˜Â­Ã˜Â¯Ã˜Â« Ã˜Â®Ã˜Â·Ã˜Â£ Ã˜Â£Ã˜Â«Ã™â€ Ã˜Â§Ã˜Â¡ Ã˜Â­Ã˜Â°Ã™Â Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â³Ã˜ÂªÃ™Ë†Ã˜Â¯Ã˜Â¹" };
+    return {
+      success: false,
+      error:
+        "حدث خطأ أثناء حذف المستودع",
+    };
   }
 }
 
@@ -1852,7 +1944,7 @@ export interface InventoryUpdateDatas {
   warehouseId: string;
   updateType: "manual" | "supplier";
 
-  // Ã°Å¸â€ â€¢ Selling Unit Info
+  // 🆕 Selling Unit Info
   selectedUnitId: string; // Which unit is being updated
   quantity: number; // Quantity in the selected unit
 
@@ -1886,14 +1978,14 @@ export async function updateMultipleInventories(
     if (!companyId || !userId) {
       return {
         success: false,
-        error: "Ã™â€¦Ã˜Â¹Ã˜Â±Ã™Â Ã˜Â§Ã™â€žÃ˜Â´Ã˜Â±Ã™Æ’Ã˜Â© Ã™Ë†Ã™â€¦Ã˜Â¹Ã˜Â±Ã™Â Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â³Ã˜ÂªÃ˜Â®Ã˜Â¯Ã™â€¦ Ã™â€¦Ã˜Â·Ã™â€žÃ™Ë†Ã˜Â¨Ã˜Â§Ã™â€ ",
+        error: "معرف الشركة ومعرف المستخدم مطلوبان",
       };
     }
 
     if (!updatesData || updatesData.length === 0) {
       return {
         success: false,
-        error: "Ã™Å Ã˜Â¬Ã˜Â¨ Ã˜Â¥Ã˜Â¶Ã˜Â§Ã™ÂÃ˜Â© Ã˜ÂªÃ˜Â­Ã˜Â¯Ã™Å Ã˜Â« Ã™Ë†Ã˜Â§Ã˜Â­Ã˜Â¯ Ã˜Â¹Ã™â€žÃ™â€° Ã˜Â§Ã™â€žÃ˜Â£Ã™â€šÃ™â€ž",
+        error: "يجب إضافة تحديث واحد على الأقل",
       };
     }
 
@@ -1904,21 +1996,21 @@ export async function updateMultipleInventories(
       if (!update.productId || !update.warehouseId) {
         return {
           success: false,
-          error: `Ã˜Â§Ã™â€žÃ˜ÂªÃ˜Â­Ã˜Â¯Ã™Å Ã˜Â« ${i + 1}: Ã˜Â§Ã™â€žÃ™â€¦Ã™â€ Ã˜ÂªÃ˜Â¬ Ã™Ë†Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â³Ã˜ÂªÃ™Ë†Ã˜Â¯Ã˜Â¹ Ã™â€¦Ã˜Â·Ã™â€žÃ™Ë†Ã˜Â¨Ã˜Â§Ã™â€ `,
+          error: `التحديث ${i + 1}: المنتج والمستودع مطلوبان`,
         };
       }
 
       if (!update.selectedUnitId) {
         return {
           success: false,
-          error: `Ã˜Â§Ã™â€žÃ˜ÂªÃ˜Â­Ã˜Â¯Ã™Å Ã˜Â« ${i + 1}: Ã™Å Ã˜Â¬Ã˜Â¨ Ã˜Â§Ã˜Â®Ã˜ÂªÃ™Å Ã˜Â§Ã˜Â± Ã™Ë†Ã˜Â­Ã˜Â¯Ã˜Â© Ã˜Â§Ã™â€žÃ˜Â¨Ã™Å Ã˜Â¹`,
+          error: `التحديث ${i + 1}: يجب اختيار وحدة البيع`,
         };
       }
 
       if (!update.quantity || update.quantity <= 0) {
         return {
           success: false,
-          error: `Ã˜Â§Ã™â€žÃ˜ÂªÃ˜Â­Ã˜Â¯Ã™Å Ã˜Â« ${i + 1}: Ã˜Â§Ã™â€žÃ™Æ’Ã™â€¦Ã™Å Ã˜Â© Ã™Å Ã˜Â¬Ã˜Â¨ Ã˜Â£Ã™â€  Ã˜ÂªÃ™Æ’Ã™Ë†Ã™â€  Ã˜Â£Ã™Æ’Ã˜Â¨Ã˜Â± Ã™â€¦Ã™â€  Ã˜ÂµÃ™ÂÃ˜Â±`,
+          error: `التحديث ${i + 1}: الكمية يجب أن تكون أكبر من صفر`,
         };
       }
 
@@ -1926,23 +2018,18 @@ export async function updateMultipleInventories(
         if (!update.supplierId || !update.unitCost || update.unitCost <= 0) {
           return {
             success: false,
-            error: `Ã˜Â§Ã™â€žÃ˜ÂªÃ˜Â­Ã˜Â¯Ã™Å Ã˜Â« ${i + 1}: Ã˜Â§Ã™â€žÃ™â€¦Ã™Ë†Ã˜Â±Ã˜Â¯ Ã™Ë†Ã˜Â³Ã˜Â¹Ã˜Â± Ã˜Â§Ã™â€žÃ™Ë†Ã˜Â­Ã˜Â¯Ã˜Â© Ã™â€¦Ã˜Â·Ã™â€žÃ™Ë†Ã˜Â¨Ã˜Â§Ã™â€  Ã™â€žÃ™â€žÃ˜ÂªÃ˜Â­Ã˜Â¯Ã™Å Ã˜Â«Ã˜Â§Ã˜Âª Ã™â€¦Ã™â€  Ã˜Â§Ã™â€žÃ™â€¦Ã™Ë†Ã˜Â±Ã˜Â¯`,
+            error: `التحديث ${i + 1}: المورد وسعر الوحدة مطلوبان لتحديثات المورد`,
           };
         }
 
         // if ((update.paymentAmount || 0) > totalCost) {
         //   return {
         //     success: false,
-        //     error: `Ã˜Â§Ã™â€žÃ˜ÂªÃ˜Â­Ã˜Â¯Ã™Å Ã˜Â« ${i + 1}: Ã™â€¦Ã˜Â¨Ã™â€žÃ˜Âº Ã˜Â§Ã™â€žÃ˜Â¯Ã™ÂÃ˜Â¹ Ã˜Â£Ã™Æ’Ã˜Â¨Ã˜Â± Ã™â€¦Ã™â€  Ã˜Â§Ã™â€žÃ˜ÂªÃ™Æ’Ã™â€žÃ™ÂÃ˜Â© Ã˜Â§Ã™â€žÃ˜Â¥Ã˜Â¬Ã™â€¦Ã˜Â§Ã™â€žÃ™Å Ã˜Â©`,
+        //     error: `التحديث ${i + 1}: مبلغ الدفع أكبر من التكلفة الإجمالية`,
         //   };
         // }
       }
     }
-
-    console.log(
-      `Updating ${updatesData.length} inventory records for company:`,
-      companyId,
-    );
 
     // Process all updates in a transaction
     const result = await prisma.$transaction(
@@ -1963,7 +2050,7 @@ export async function updateMultipleInventories(
                 id: true,
                 name: true,
                 sku: true,
-                sellingUnits: true, // Ã°Å¸â€ â€¢ Get selling units
+                sellingUnits: true, // 🆕 Get selling units
                 supplierId: true,
               },
             }),
@@ -1977,10 +2064,12 @@ export async function updateMultipleInventories(
           ]);
 
           if (!product) {
-            throw new Error(`Ã˜Â§Ã™â€žÃ™â€¦Ã™â€ Ã˜ÂªÃ˜Â¬ Ã˜ÂºÃ™Å Ã˜Â± Ã™â€¦Ã™Ë†Ã˜Â¬Ã™Ë†Ã˜Â¯: ${updateData.productId}`);
+            throw new Error(
+              `المنتج غير موجود: ${updateData.productId}`,
+            );
           }
 
-          // Ã°Å¸â€ â€¢ Parse selling units
+          // 🆕 Parse selling units
           const sellingUnits = (product.sellingUnits as any[]) || [];
           const selectedUnit = sellingUnits.find(
             (u: any) => u.id === updateData.selectedUnitId,
@@ -1988,11 +2077,11 @@ export async function updateMultipleInventories(
 
           if (!selectedUnit) {
             throw new Error(
-              `Ã˜Â§Ã™â€žÃ™Ë†Ã˜Â­Ã˜Â¯Ã˜Â© Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â­Ã˜Â¯Ã˜Â¯Ã˜Â© Ã˜ÂºÃ™Å Ã˜Â± Ã™â€¦Ã™Ë†Ã˜Â¬Ã™Ë†Ã˜Â¯Ã˜Â©: ${updateData.selectedUnitId}`,
+              `الوحدة المحددة غير موجودة: ${updateData.selectedUnitId}`,
             );
           }
 
-          // Ã°Å¸â€ â€¢ Convert to base units
+          // 🆕 Convert to base units
           const stockUnits = convertToBaseUnits(
             updateData.quantity,
             selectedUnit,
@@ -2005,7 +2094,7 @@ export async function updateMultipleInventories(
             ? parseInt(currentInventory.receiptNo.match(/(\d+)$/)?.[1] || "0") +
               1
             : 1;
-          const receiptNo = `Ã™â€¦Ã˜Â´Ã˜ÂªÃ˜Â±Ã™Å Ã˜Â§Ã˜Âª-${new Date().getFullYear()}-${String(nextNumber).padStart(5, "0")}`;
+          const receiptNo = `مشتريات-${new Date().getFullYear()}-${String(nextNumber).padStart(5, "0")}`;
 
           // Get or create inventory record
           let inventory = currentInventory;
@@ -2071,7 +2160,7 @@ export async function updateMultipleInventories(
                     type: TransactionType.PAYMENT,
                     status: "paid",
                     paymentMethod: updateData.payment?.paymentMethod ?? "cash",
-                    notes: updateData.notes || "Ø¯ÙØ¹Ø© Ù…Ø´ØªØ±ÙŠØ§Øª",
+                    notes: updateData.notes || "دفعة مشتريات",
                   }
                 : undefined;
 
@@ -2102,7 +2191,7 @@ export async function updateMultipleInventories(
             //     price: updateData.unitCost,
             //     totalPrice: totalCost,
             //     unit: selectedUnit.name,
-            //     // Ã°Å¸â€ â€¢ Store unit information
+            //     // 🆕 Store unit information
             //     // unitId: selectedUnit.id,
             //     // unitName: selectedUnit.name,
             //   },
@@ -2132,7 +2221,7 @@ export async function updateMultipleInventories(
             //       type: "PAYMENT",
             //       status: "paid",
             //       paymentMethod: updateData.payment.paymentMethod,
-            //       notes: updateData.notes || "Ã˜Â¯Ã™ÂÃ˜Â¹Ã˜Â© Ã™â€¦Ã˜Â´Ã˜ÂªÃ˜Â±Ã™Å Ã˜Â§Ã˜Âª",
+            //       notes: updateData.notes || "دفعة مشتريات",
             //     },
             //   });
             //   supplierPaymentId = supplierPayment.id;
@@ -2272,15 +2361,15 @@ export async function updateMultipleInventories(
                 productId: product.id,
                 warehouseId: updateData.warehouseId,
                 userId,
-                movementType: "ÙˆØ§Ø±Ø¯ Ù„Ù„Ù…Ø®Ø²Ù†",
+                movementType: "وارد للمخزن",
                 quantity: Math.abs(stockDifference),
                 reason:
                   updateData.updateType === "supplier"
-                    ? "ØªÙ… Ø§Ø³ØªÙ„Ø§Ù… Ø§Ù„Ù…ÙˆØ±Ø¯"
-                    : updateData.reason || "ØªØ­Ø¯ÙŠØ« ÙŠØ¯ÙˆÙŠ",
+                    ? "تم استلام المورد"
+                    : updateData.reason || "تحديث يدوي",
                 notes:
                   updateData.notes ||
-                  `${updateData.updateType === "supplier" ? "Ø§Ù„Ù…Ø®Ø²ÙˆÙ† Ù…Ù† Ø§Ù„Ù…ÙˆØ±Ø¯" : "ØªØ­Ø¯ÙŠØ« Ø§Ù„Ù…Ø®Ø²ÙˆÙ†"}`,
+                  `${updateData.updateType === "supplier" ? "المخزون من المورد" : "تحديث المخزون"}`,
                 quantityBefore: inventory.stockQuantity,
                 quantityAfter: finalStockQty,
               },
@@ -2298,8 +2387,8 @@ export async function updateMultipleInventories(
             userId,
             companyId,
             userAgent: typeof window !== "undefined" ? navigator.userAgent : "",
-            action: "ØªØ­Ø¯ÙŠØ« Ù…Ø®Ø²ÙˆÙ†",
-            details: `ØªÙ… ØªØ­Ø¯ÙŠØ« ${updatesData.length} Ø³Ø¬Ù„ Ù…Ø®Ø²ÙˆÙ†. Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„ÙˆØ­Ø¯Ø§Øª: ${totalUnits}`,
+            action: "تحديث مخزون",
+            details: `تم تحديث ${updatesData.length} سجل مخزون. إجمالي الوحدات: ${totalUnits}`,
           },
         });
 
@@ -2322,18 +2411,21 @@ export async function updateMultipleInventories(
       count: result.updatedInventories.length,
       inventories: result.updatedInventories,
       purchases: result.createdPurchases,
-      message: `ØªÙ… ØªØ­Ø¯ÙŠØ« ${result.updatedInventories.length} Ø³Ø¬Ù„ Ù…Ø®Ø²ÙˆÙ† Ø¨Ù†Ø¬Ø§Ø­`,
+      message: `تم تحديث ${result.updatedInventories.length} سجل مخزون بنجاح`,
     };
   } catch (error) {
     console.error("Error updating multiple inventory:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "ÙØ´Ù„ ØªØ­Ø¯ÙŠØ« Ø§Ù„Ù…Ø®Ø²ÙˆÙ†",
+      error:
+        error instanceof Error
+          ? error.message
+          : "فشل تحديث المخزون",
     };
   }
 }
 
-// Ã°Å¸â€ â€¢ Helper function to convert to base units
+// 🆕 Helper function to convert to base units
 function convertToBaseUnits(
   quantity: number,
   selectedUnit: any,
@@ -2356,7 +2448,7 @@ function convertToBaseUnits(
   return quantity * multiplier;
 }
 
-// Ã°Å¸â€ â€¢ Helper function to convert from base units to any unit
+// 🆕 Helper function to convert from base units to any unit
 export async function convertFromBaseUnits(
   baseQuantity: number,
   targetUnitId: string,
@@ -2375,4 +2467,3 @@ export async function convertFromBaseUnits(
 
   return Promise.resolve(baseQuantity / divisor);
 }
-

@@ -18,6 +18,7 @@ export default function StocksLayout({
     { label: "معلومات الشركة", href: "/company", roles: ["admin"] },
     { label: "الأدوار", href: "/userroles", roles: ["admin"] },
     { label: "المستخدمين", href: "/user", roles: ["admin"] },
+    { label: "الموظفين", href: "/employee", roles: ["admin"] },
     {
       label: "أنشطة المستخدم",
       href: "/userActiviteslogs",

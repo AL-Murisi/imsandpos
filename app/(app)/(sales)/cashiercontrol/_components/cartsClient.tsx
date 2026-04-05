@@ -146,6 +146,7 @@ export default function CartDisplay({
   const [receivedAmount, setReceivedAmount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserOption | null>(null);
+  const [manualCustomerName, setManualCustomerName] = useState("");
   const [isLoadingSaleNumber, setIsLoadingSaleNumber] = useState(false);
   const [currency, setCurrency] = useState<UserOption | null>(null);
   const { options } = useCurrencyOptions();
@@ -168,6 +169,8 @@ export default function CartDisplay({
     currency?.id ?? company?.base_currency ?? offlineSession?.currency ?? "";
 
   const debtLimit = totals.totalAfter + (selectedUser?.outstandingBalance ?? 0);
+  const effectiveCustomerName =
+    selectedUser?.name || manualCustomerName.trim() || undefined;
 
   const hasAddedCart = useRef(false);
   const hasHydratedOfflineState = useRef(false);
@@ -390,6 +393,7 @@ export default function CartDisplay({
       cashierId: effectiveCashierId,
       branchId: effectiveBranchId,
       customer: selectedUser,
+      guestCustomerName: selectedUser?.id ? undefined : effectiveCustomerName,
       saleNumber: nextnumber || `OFFLINE-${Date.now()}`,
 
       // المبالغ المطلوبة:
@@ -419,6 +423,8 @@ export default function CartDisplay({
     const resetCartAfterSubmit = () => {
       dispatch(clearCart());
       setReceivedAmount(0);
+      setManualCustomerName("");
+      setSelectedUser(null);
       dispatch(setDiscount({ type: "fixed", value: 0 }));
       setDiscountsValue(0);
       dispatch(removeCart(activeCartId ?? ""));
@@ -621,7 +627,21 @@ export default function CartDisplay({
             options={users ?? []}
             action={(user) => {
               setSelectedUser(user); // now `user` is single UserOption
+              if (user?.id) {
+                setManualCustomerName("");
+              }
             }}
+          />
+          <Input
+            value={manualCustomerName}
+            onChange={(e) => {
+              setManualCustomerName(e.target.value);
+              if (selectedUser?.id) {
+                setSelectedUser(null);
+              }
+            }}
+            placeholder="اسم عميل غير مسجل"
+            className="w-40"
           />
           <Button
             disabled={isLoading2}
@@ -763,8 +783,7 @@ export default function CartDisplay({
         <div className="grid grid-cols-2 gap-3">
           {/* Discount controls */}
           <div>
-            {" "}
-            {tt("customer")}: <Badge>{selectedUser?.name ?? ""}</Badge>
+            {tt("customer")}: <Badge>{effectiveCustomerName ?? ""}</Badge>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3">
             <div className="w-20"> {t("discount")}</div>
@@ -834,7 +853,7 @@ export default function CartDisplay({
                   receivedAmount={receivedAmount}
                   calculatedChange={calculatedChange}
                   userName={user?.name}
-                  customerName={selectedUser?.name}
+                  customerName={effectiveCustomerName}
                   customerDebt={selectedUser?.outstandingBalance}
                   isCash={receivedAmount >= totals.totalAfter}
                   t={tt}
@@ -863,7 +882,7 @@ export default function CartDisplay({
                   receivedAmount={receivedAmount}
                   calculatedChange={calculatedChange}
                   userName={user?.name}
-                  customerName={selectedUser?.name}
+                  customerName={effectiveCustomerName}
                   customerDebt={selectedUser?.outstandingBalance}
                   isCash={receivedAmount >= totals.totalAfter}
                   t={tt}

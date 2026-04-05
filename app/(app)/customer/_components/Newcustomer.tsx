@@ -67,6 +67,7 @@ export default function CustomerForm() {
   ];
 
   const selectedCustomerType = watch("customerType");
+  const hasEmail = Boolean(watch("email")?.trim());
 
   const onSubmit = async (data: CreateCustomer) => {
     setIsSubmitting(true);
@@ -137,6 +138,24 @@ export default function CustomerForm() {
               <div className="grid gap-2">
                 <Label htmlFor="phoneNumber">رقم الهاتف</Label>
                 <Input id="phoneNumber" type="tel" {...register("phoneNumber")} />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="password">كلمة مرور الحساب</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  {...register("password")}
+                  placeholder="مطلوبة فقط عند إنشاء حساب دخول"
+                />
+                {errors.password && (
+                  <p className="text-xs text-red-500">{errors.password.message}</p>
+                )}
+                {hasEmail && !watch("password") && (
+                  <p className="text-xs text-amber-600">
+                    إذا أدخلت البريد الإلكتروني فسيتم إنشاء مستخدم للعميل ويجب إدخال كلمة المرور.
+                  </p>
+                )}
               </div>
             </div>
 

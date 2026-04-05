@@ -71,6 +71,7 @@ export default function CustomerEditForm({ customer }: { customer: any }) {
   ];
 
   const selectedCustomerType = watch("customerType");
+  const hasEmail = Boolean(watch("email")?.trim());
 
   const onSubmit = async (data: CreateCustomer) => {
     setIsSubmitting(true);
@@ -126,6 +127,24 @@ export default function CustomerEditForm({ customer }: { customer: any }) {
               <Label htmlFor="address">العنوان</Label>
               <Input id="address" {...register("address")} />
             </div>
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="password">كلمة مرور الحساب</Label>
+            <Input
+              id="password"
+              type="password"
+              {...register("password")}
+              placeholder="اتركها فارغة إذا لا تريد تغييرها"
+            />
+            {errors.password && (
+              <p className="text-xs text-red-500">{errors.password.message}</p>
+            )}
+            {hasEmail && !customer?.userId && !watch("password") && (
+              <p className="text-xs text-amber-600">
+                إذا كان هذا العميل بلا حساب مستخدم فإدخال البريد يتطلب كلمة مرور لإنشاء الحساب.
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">

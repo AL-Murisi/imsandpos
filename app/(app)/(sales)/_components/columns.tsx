@@ -247,7 +247,7 @@ export const debtSaleColumns: ColumnDef<any>[] = [
               receivedAmount={Number(debt.amountPaid ?? 0)}
               calculatedChange={Number(debt.calculated_change ?? 0)}
               userName={debt.cashierName ?? ""}
-              customerName={debt.customer?.name ?? "لايوجد"}
+              customerName={debt.customer?.name ?? debt.customerName ?? "لايوجد"}
               customerDebt={Number(debt.customer_debt ?? 0)}
               isCash={Boolean(debt.is_cash)}
               t={t}
@@ -274,14 +274,16 @@ export const debtSaleColumns: ColumnDef<any>[] = [
               receivedAmount={Number(debt.amountPaid ?? 0)}
               calculatedChange={Number(debt.calculated_change ?? 0)}
               userName={debt.cashierName ?? ""}
-              customerName={debt.customer?.name ?? "لايوجد"}
+              customerName={debt.customer?.name ?? debt.customerName ?? "لايوجد"}
               customerDebt={Number(debt.customer_debt ?? 0)}
               isCash={Boolean(debt.is_cash)}
               t={t}
               company={company}
             />
           )}
-          {debt.sale_type === "SALE" && <ReturnForm sale={debt} />}
+          {debt.sale_type === "SALE" && !debt.hasReturnSale && (
+            <ReturnForm sale={debt} />
+          )}
         </div>
       );
     },

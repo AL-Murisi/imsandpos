@@ -18,6 +18,9 @@ export function notificationUnsupported(): boolean {
 }
 
 const SERVICE_WORKER_TIMEOUT_MS = 12000;
+const SERVICE_WORKER_PATH = "/sw.js";
+const FCM_TOKEN_REFRESH_KEY = "ims:fcm-token-last-refresh";
+const FCM_TOKEN_REFRESH_INTERVAL_MS = 1000 * 60 * 60 * 24;
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -37,10 +40,20 @@ function readClientEnv(name: string): string | undefined {
 }
 
 async function getActiveServiceWorkerRegistration(): Promise<ServiceWorkerRegistration> {
-  const existingRegistration = await navigator.serviceWorker.getRegistration();
+  const existingRegistration =
+    (await navigator.serviceWorker.getRegistration(SERVICE_WORKER_PATH)) ??
+    (await navigator.serviceWorker.getRegistration());
 
   if (existingRegistration?.active) {
     return existingRegistration;
+  }
+
+  let registration = existingRegistration;
+
+  if (!registration) {
+    registration = await navigator.serviceWorker.register(SERVICE_WORKER_PATH, {
+      scope: "/",
+    });
   }
 
   const timeoutPromise = new Promise<never>((_, reject) => {
@@ -49,15 +62,15 @@ async function getActiveServiceWorkerRegistration(): Promise<ServiceWorkerRegist
     }, SERVICE_WORKER_TIMEOUT_MS);
   });
 
-  const registration = await Promise.race([
+  const readyRegistration = await Promise.race([
     navigator.serviceWorker.ready,
     timeoutPromise,
   ]);
 
-  if (!registration.active && registration.installing) {
+  if (!readyRegistration.active && readyRegistration.installing) {
     await Promise.race([
       new Promise<void>((resolve, reject) => {
-        const worker = registration.installing;
+        const worker = readyRegistration.installing;
         if (!worker) {
           resolve();
           return;
@@ -76,7 +89,7 @@ async function getActiveServiceWorkerRegistration(): Promise<ServiceWorkerRegist
     ]);
   }
 
-  return registration;
+  return readyRegistration;
 }
 
 async function submitFcmToken(token: string): Promise<void> {
@@ -104,19 +117,65 @@ async function deleteFcmToken(token: string): Promise<void> {
   });
 }
 
-export async function getExistingSubscription(): Promise<NotificationSubscriptionState | null> {
+function shouldRefreshFcmToken(): boolean {
+  if (typeof window === "undefined") return false;
+
+  const lastRefresh = window.localStorage.getItem(FCM_TOKEN_REFRESH_KEY);
+  if (!lastRefresh) return true;
+
+  const parsedLastRefresh = Number(lastRefresh);
+  if (!Number.isFinite(parsedLastRefresh)) return true;
+
+  return Date.now() - parsedLastRefresh >= FCM_TOKEN_REFRESH_INTERVAL_MS;
+}
+
+function markFcmTokenRefreshed(): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(FCM_TOKEN_REFRESH_KEY, String(Date.now()));
+}
+
+async function resolveFcmToken(options?: {
+  forceRefresh?: boolean;
+}): Promise<string | null> {
   const registration = await getActiveServiceWorkerRegistration();
   const messaging = await getFirebaseMessagingClient();
   const vapidKey = readClientEnv("NEXT_PUBLIC_FIREBASE_VAPID_KEY");
 
-  if (messaging && vapidKey && Notification.permission === "granted") {
+  if (!messaging || !vapidKey || Notification.permission !== "granted") {
+    return null;
+  }
+
+  if (options?.forceRefresh) {
     try {
-      const token = await getToken(messaging, {
-        vapidKey,
-        serviceWorkerRegistration: registration,
-      });
+      await deleteToken(messaging);
+    } catch (error) {
+      console.warn(
+        "[Push] Failed to delete existing FCM token before refresh:",
+        error,
+      );
+    }
+  }
+
+  const token = await getToken(messaging, {
+    vapidKey,
+    serviceWorkerRegistration: registration,
+  });
+
+  return token || null;
+}
+
+export async function getExistingSubscription(): Promise<NotificationSubscriptionState | null> {
+  if (Notification.permission === "granted") {
+    try {
+      let token = await resolveFcmToken();
+
+      if (!token || shouldRefreshFcmToken()) {
+        token = await resolveFcmToken({ forceRefresh: true });
+      }
 
       if (token) {
+        await submitFcmToken(token);
+        markFcmTokenRefreshed();
         return {
           provider: "fcm",
           token,
@@ -133,7 +192,7 @@ export async function registerAndSubscribe(
   onSubscribe: (subs: NotificationSubscriptionState | null) => void,
 ): Promise<NotificationSubscriptionState | null> {
   try {
-    const registration = await getActiveServiceWorkerRegistration();
+    await getActiveServiceWorkerRegistration();
     await delay(500);
     const messaging = await getFirebaseMessagingClient();
     const vapidKey = readClientEnv("NEXT_PUBLIC_FIREBASE_VAPID_KEY");
@@ -143,10 +202,7 @@ export async function registerAndSubscribe(
 
     if (messaging && vapidKey) {
       try {
-        const token = await getToken(messaging, {
-          vapidKey,
-          serviceWorkerRegistration: registration,
-        });
+        const token = await resolveFcmToken({ forceRefresh: true });
 
         if (!token) {
           throw new Error("Failed to receive FCM token");
@@ -154,6 +210,7 @@ export async function registerAndSubscribe(
 
         console.info("[Push] FCM token generated:", token);
         await submitFcmToken(token);
+        markFcmTokenRefreshed();
         console.info("[Push] FCM token submitted successfully");
 
         const result = {

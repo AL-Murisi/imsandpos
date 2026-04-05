@@ -1,10 +1,3 @@
-import { fetchAllFormData } from "@/lib/actions/roles";
-import {
-  fetchAllFormDatas,
-  getInventoryById,
-  getStockMovements,
-} from "@/lib/actions/warehouse";
-import { TabsContent } from "@/components/ui/tabs";
 import { ParsedSort } from "@/hooks/sort";
 import { Prisma } from "@prisma/client";
 import { SortingState } from "@tanstack/react-table";

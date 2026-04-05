@@ -448,6 +448,7 @@ export function ReturnForm({ sale }: { sale: any }) {
                     <td className="p-3 text-center">
                       <Input
                         type="number"
+                        disabled={field.quantitySold === 0}
                         min={0}
                         max={field.quantitySold}
                         step="any"

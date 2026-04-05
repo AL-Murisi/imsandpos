@@ -776,6 +776,25 @@ export async function createSupplierPaymentFromPurchases(
           "PAYMENT",
           tx,
         );
+        const mappings = await tx.account_mappings.findMany({
+          where: { company_id: companyId, is_default: true },
+          select: { mapping_type: true, account_id: true },
+        });
+        const accountMap = new Map(
+          mappings.map((mapping) => [mapping.mapping_type, mapping.account_id]),
+        );
+        const payableAccount = accountMap.get("accounts_payable");
+        const paymentAccount =
+          paymentMethod === "bank"
+            ? accountMap.get("bank") || accountMap.get("cash")
+            : accountMap.get("cash");
+
+        if (!payableAccount || !paymentAccount) {
+          throw new Error(
+            "Missing required account mappings for supplier payment",
+          );
+        }
+
         // 1. Create supplier payment record first
         const supplierPayment = await tx.financialTransaction.create({
           data: {
@@ -826,30 +845,70 @@ export async function createSupplierPaymentFromPurchases(
           where: { id: supplierId, companyId },
           data: supplierUpdateData,
         });
-        await tx.journalEvent.create({
-          data: {
-            companyId: companyId,
-            eventType: "purchase-payment",
-            status: "pending",
-            entityType: "payment-purchase",
-            payload: {
-              companyId,
 
-              supplierId,
-              supplierPayment: supplierPayment,
-              userId,
-              branchId,
-              paymentDetails: {
-                exchangeRate: exchangeRate,
-                amountFC: amountFC,
-                bankId: bankId,
-                referenceNumber: referenceNumber,
-                paymentMethod: paymentMethod,
-                currency_code: currency_code,
-                baseCurrency: baseCurrency,
-              },
+        const entryYear = new Date().getFullYear();
+        const entryNumber = `SP-${entryYear}-${Date.now()}-${Math.floor(
+          Math.random() * 1000,
+        )}`;
+        const isForeign =
+          Boolean(currency_code) &&
+          Boolean(baseCurrency) &&
+          currency_code !== baseCurrency &&
+          Boolean(exchangeRate) &&
+          exchangeRate !== 1;
+        const description = `Supplier payment for purchase ${updatedPurchase.invoiceNumber || updatedPurchase.id}`;
+
+        await tx.journalHeader.create({
+          data: {
+            companyId,
+            entryNumber,
+            description,
+            branchId,
+            referenceType: "supplier-payment",
+            referenceId: supplierPayment.id,
+            entryDate: paymentDate ?? new Date(),
+            status: "POSTED",
+            createdBy: userId,
+            lines: {
+              create: [
+                {
+                  companyId,
+                  accountId: payableAccount,
+                  debit: amount,
+                  credit: 0,
+                  memo: description,
+                  ...(isForeign
+                    ? {
+                        currencyCode: currency_code,
+                        exchangeRate,
+                        foreignAmount: amountFC,
+                        baseAmount: amount,
+                      }
+                    : {
+                        currencyCode:
+                          baseCurrency || currency_code || undefined,
+                      }),
+                },
+                {
+                  companyId,
+                  accountId: paymentAccount,
+                  debit: 0,
+                  credit: amount,
+                  memo: `${description} - ${paymentMethod}`,
+                  ...(isForeign
+                    ? {
+                        currencyCode: currency_code,
+                        exchangeRate,
+                        foreignAmount: amountFC,
+                        baseAmount: amount,
+                      }
+                    : {
+                        currencyCode:
+                          baseCurrency || currency_code || undefined,
+                      }),
+                },
+              ],
             },
-            processed: false,
           },
         });
         revalidatePath("/suppliers");
@@ -1034,129 +1093,6 @@ export async function createSupplierPaymentJournalEntries({
   await updateAccountBalance(paymentAccount, payment.amount, 0);
 }
 
-// export async function getPurchasePaymentHistory(
-//   purchaseId: string,
-//   companyId: string,
-// ) {
-//   try {
-//     const purchase = await prisma.purchase.findUnique({
-//       where: { id: purchaseId, companyId },
-//       include: {
-//         supplierPayments: {
-//           orderBy: { paymentDate: "desc" },
-//           include: {
-//             supplier: {
-//               select: {
-//                 id: true,
-//                 name: true,
-//               },
-//             },
-//           },
-//         },
-//         supplier: {
-//           select: {
-//             id: true,
-//             name: true,
-//           },
-//         },
-//       },
-//     });
-
-//     if (!purchase) {
-//       throw new Error("Purchase not found");
-//     }
-
-//     // Calculate cumulative totals
-//     let runningPaid = 0;
-//     const paymentsWithRunningTotal = purchase.supplierPayments
-//       .map((payment) => {
-//         runningPaid += Number(payment.amount);
-//         return {
-//           ...payment,
-//           cumulativePaid: runningPaid,
-//           remainingDue: Number(purchase.totalAmount) - runningPaid,
-//         };
-//       })
-//       .reverse(); // Reverse to show oldest first with running total
-
-//     return {
-//       success: true,
-//       purchase: {
-//         id: purchase.id,
-//         totalAmount: Number(purchase.totalAmount),
-//         amountPaid: Number(purchase.amountPaid),
-//         amountDue: Number(purchase.amountDue),
-//         status: purchase.status,
-//         supplier: purchase.supplier,
-//       },
-//       payments: serializeData(paymentsWithRunningTotal),
-//     };
-//   } catch (error) {
-//     console.error("❌ Error getting payment history:", error);
-//     return {
-//       success: false,
-//       error:
-//         error instanceof Error
-//           ? error.message
-//           : "Failed to get payment history",
-//     };
-//   }
-// }
-
-// export async function getSupplierSummary(
-//   supplierId: string,
-//   companyId: string,
-// ) {
-//   try {
-//     const [purchases, payments, totalPurchases] = await Promise.all([
-//       prisma.purchase.findMany({
-//         where: { companyId, supplierId },
-//         select: {
-//           totalAmount: true,
-//           amountPaid: true,
-//           amountDue: true,
-//           status: true,
-//         },
-//       }),
-//       prisma.supplierPayment.findMany({
-//         where: { companyId, supplierId },
-//         select: { amount: true },
-//       }),
-//       prisma.purchase.count({
-//         where: { companyId, supplierId },
-//       }),
-//     ]);
-
-//     const totalAmount = purchases.reduce(
-//       (sum, p) => sum + Number(p.totalAmount),
-//       0,
-//     );
-//     const totalPaid = purchases.reduce(
-//       (sum, p) => sum + Number(p.amountPaid),
-//       0,
-//     );
-//     const totalDue = purchases.reduce((sum, p) => sum + Number(p.amountDue), 0);
-
-//     return {
-//       totalPurchases,
-//       totalAmount,
-//       totalPaid,
-//       totalDue,
-//       balance: totalDue,
-//       purchaseCount: purchases.length,
-//       paymentCount: payments.length,
-//       statusBreakdown: {
-//         pending: purchases.filter((p) => p.status === "pending").length,
-//         partial: purchases.filter((p) => p.status === "partial").length,
-//         paid: purchases.filter((p) => p.status === "paid").length,
-//         received: purchases.filter((p) => p.status === "received").length,
-//       },
-//     };
-//   } catch (error) {
-//     console.error("Error fetching supplier summary:", error);
-//     throw error;
-//   }
-// }
 export async function FetchSupplierbyname(searchQuery?: string) {
   const combinedWhere: any = {
     companyId: (await getSession())?.companyId,

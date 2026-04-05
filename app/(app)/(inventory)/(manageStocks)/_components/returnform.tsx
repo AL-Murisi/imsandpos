@@ -346,11 +346,44 @@ export default function PurchaseReturnForm({
               </div>
               <div className="space-y-2">
                 <Label>الكمية</Label>
-                <Input
-                  type="number"
-                  {...register("returnQuantity", { valueAsNumber: true })}
-                  className="bg-white"
-                />
+                {(() => {
+                  const quantityField = register("returnQuantity", {
+                    valueAsNumber: true,
+                    onChange: (event) => {
+                      const rawValue = event.target.value;
+                      if (rawValue === "") return;
+
+                      const parsedValue = Number(rawValue);
+                      const maxQuantity = Number(
+                        inventory.purchaseItem.quantity ?? 0,
+                      );
+                      const clampedValue = Number.isNaN(parsedValue)
+                        ? 0
+                        : Math.min(maxQuantity, Math.max(0, parsedValue));
+
+                      if (clampedValue !== parsedValue) {
+                        event.target.value = String(clampedValue);
+                      }
+
+                      setValue("returnQuantity", clampedValue, {
+                        shouldValidate: true,
+                        shouldDirty: true,
+                      });
+                    },
+                  });
+
+                  return (
+                    <Input
+                      type="number"
+                      disabled={Number(inventory.purchaseItem.quantity ?? 0) === 0}
+                      min={0}
+                      max={Number(inventory.purchaseItem.quantity ?? 0)}
+                      step="any"
+                      {...quantityField}
+                      className="bg-white"
+                    />
+                  );
+                })()}
               </div>
               <div className="space-y-2">
                 <Label>تكلفة الوحدة</Label>

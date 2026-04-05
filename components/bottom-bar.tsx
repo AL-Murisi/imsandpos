@@ -97,6 +97,33 @@ export function BottomBar() {
             <span>العملاء</span>
           </Link>
         )}
+        {canAccess(["customer"]) && (
+          <Link
+            href="/customer-portal"
+            className="flex flex-col items-center text-xs"
+          >
+            <User2 size={22} />
+            <span>بوابة العميل</span>
+          </Link>
+        )}
+        {canAccess(["customer"]) && (
+          <Link
+            href="/customer-portal/statement"
+            className="flex flex-col items-center text-xs"
+          >
+            <Notebook size={22} />
+            <span> كشف الحساب</span>
+          </Link>
+        )}{" "}
+        {canAccess(["customer"]) && (
+          <Link
+            href="/customer-portal/reports"
+            className="flex flex-col items-center text-xs"
+          >
+            <BarChart3 size={22} />
+            <span> التقارير </span>
+          </Link>
+        )}
         {canAccess(["admin", "manager_wh"]) && (
           <Link
             href="/inventory"

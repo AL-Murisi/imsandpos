@@ -135,6 +135,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           roles: ["admin"],
         },
         {
+          title: "الموظفون",
+          url: "/employee",
+          icon: <User className="text-blue-600" />,
+          roles: ["admin"],
+        },
+        {
           title: t("branches"),
           url: "/branches",
           icon: <Building2 className="text-blue-600" />,
@@ -194,6 +200,38 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       icon: () => <User className="h-4 w-4 text-sky-500" />,
       roles: ["admin", "cashier"],
     },
+
+    {
+      title: "الرئيسية",
+      url: "/customer-portal",
+      icon: () => <Home className="text-indigo-600" />,
+      roles: ["customer"],
+    },
+    {
+      title: "الفواتير",
+      url: "/customer-portal/receipts",
+      icon: () => <Receipt className="h-4 w-4 text-amber-600" />,
+      roles: ["customer"],
+    },
+    {
+      title: "السندات",
+      url: "/customer-portal/vouchers",
+      icon: () => <Wallet className="h-4 w-4 text-blue-600" />,
+      roles: ["customer"],
+    },
+    {
+      title: "كشف الحساب",
+      url: "/customer-portal/statement",
+      icon: () => <Notebook className="h-4 w-4 text-pink-600" />,
+      roles: ["customer"],
+    },
+    {
+      title: "التقارير",
+      url: "/customer-portal/reports",
+      icon: () => <BarChart3 className="h-4 w-4 text-green-600" />,
+      roles: ["customer"],
+    },
+
     {
       title: t("financials"), // or t("accounting")
       icon: () => <Wallet className="text-blue-600" />, // Wallet or Landmark icon fits well here

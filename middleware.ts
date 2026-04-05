@@ -7,6 +7,8 @@ const KNOWN_ROLES = [
   "manager_wh",
   "supplier",
   "accountant",
+  "customer",
+  "employee",
 ] as const;
 
 type Role = (typeof KNOWN_ROLES)[number];
@@ -21,6 +23,7 @@ const routePermissions: ReadonlyArray<{ prefix: string; roles: Role[] }> = [
 
   { prefix: "/company", roles: ["admin"] },
   { prefix: "/user", roles: ["admin"] },
+  { prefix: "/employee", roles: ["admin"] },
   { prefix: "/branches", roles: ["admin"] },
   { prefix: "/userActiviteslogs", roles: ["admin"] },
   { prefix: "/userroles", roles: ["admin"] },
@@ -46,6 +49,7 @@ const routePermissions: ReadonlyArray<{ prefix: string; roles: Role[] }> = [
 
   { prefix: "/salesDashboard", roles: ["admin", "cashier"] },
   { prefix: "/customer", roles: ["admin", "cashier", "accountant"] },
+  { prefix: "/customer-portal", roles: ["customer"] },
   {
     prefix: "/reports",
     roles: ["admin", "cashier", "manager_wh", "accountant", "supplier"],
@@ -93,6 +97,7 @@ function getDefaultRedirectForRole(roles: Role[]): string {
   if (roles.includes("manager_wh")) return "/dashboardUser";
   if (roles.includes("supplier")) return "/supplier/orders";
   if (roles.includes("accountant")) return "/voucher";
+  if (roles.includes("customer")) return "/customer-portal";
   return "/landing";
 }
 
@@ -172,11 +177,17 @@ export default async function middleware(req: NextRequest) {
   }
 
   if (isAuthenticated && !isSubscriptionActive && path !== subscriptionRoute) {
+    if (userRoles.includes("customer")) {
+      return safeRedirect(req, getDefaultRedirectForRole(userRoles));
+    }
     return safeRedirect(req, subscriptionRoute);
   }
 
   if (isAuthenticated) {
     if (path === subscriptionRoute) {
+      if (userRoles.includes("customer")) {
+        return safeRedirect(req, getDefaultRedirectForRole(userRoles));
+      }
       return NextResponse.next();
     }
     const requiredRoles = getRequiredRoles(path);

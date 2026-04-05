@@ -213,6 +213,7 @@ export async function processSale(data: any, companyId: string) {
     baseCurrency,
     branchId,
     customer,
+    guestCustomerName,
     saleNumber,
     exchangeRate,
     baseAmount,
@@ -317,6 +318,7 @@ export async function processSale(data: any, companyId: string) {
               companyId,
               invoiceNumber: effectiveSaleNumber,
               customerId: customer?.id,
+              customerName: customer?.name || guestCustomerName || null,
               cashierId,
               branchId: branchId,
               sale_type: "SALE",
@@ -772,8 +774,10 @@ export async function processReturn(data: any, companyId: string) {
         select: {
           id: true,
           invoiceNumber: true,
+          sale_type: true,
           amountDue: true,
           customerId: true,
+          customerName: true,
           warehouseId: true,
           items: {
             select: {
@@ -798,17 +802,23 @@ export async function processReturn(data: any, companyId: string) {
         throw new Error("فاتورة البيع غير موجودة");
       }
 
-      const originalSaleReturnPrefix = `${originalSale.invoiceNumber.replace("بيع", "مرتجع")}-`;
-      const existingReturnSales = await tx.invoice.findMany({
+      if (originalSale.sale_type !== "SALE") {
+        throw new Error("يمكن تنفيذ الإرجاع على فاتورة بيع فقط");
+      }
+
+      const existingReturnSale = await tx.invoice.findFirst({
         where: {
           companyId,
           sale_type: "RETURN_SALE",
-          invoiceNumber: {
-            startsWith: originalSaleReturnPrefix,
-          },
+          invoiceNumber: originalSale.invoiceNumber,
         },
         select: {
           id: true,
+          totalAmount: true,
+          amountPaid: true,
+          currencyCode: true,
+          foreignAmount: true,
+          baseAmount: true,
           items: {
             select: {
               productId: true,
@@ -818,22 +828,18 @@ export async function processReturn(data: any, companyId: string) {
         },
       });
 
-      const returnedQuantityMap = new Map<string, number>();
-      existingReturnSales.forEach((returnSale) => {
-        returnSale.items.forEach((item) => {
-          returnedQuantityMap.set(
-            item.productId,
-            (returnedQuantityMap.get(item.productId) || 0) +
-              Number(item.quantity),
-          );
-        });
-      });
+      if (existingReturnSale) {
+        throw new Error("تم إرجاع هذه الفاتورة مسبقاً، لا يمكن إرجاعها مرة أخرى");
+      }
 
-      const originalNumber = returnNumber || originalSale.invoiceNumber;
-      const returnNumberWithArabic = `${originalNumber.replace("بيع", "مرتجع")}-${Date.now()}`;
+      const returnedQuantityMap = new Map<string, number>();
       const originalSaleAmountDue = Number(originalSale.amountDue || 0);
       const saleItemsMap = new Map(
         originalSale.items.map((item) => [item.productId, item]),
+      );
+      const returnInvoiceNumber = originalSale.invoiceNumber.replace(
+        "بيع",
+        "مرتجع",
       );
 
       let returnSubtotal =
@@ -861,11 +867,15 @@ export async function processReturn(data: any, companyId: string) {
       for (const returnItem of returnItems) {
         const saleItem = saleItemsMap.get(returnItem.productId);
         if (!saleItem) {
-          throw new Error(`الصنف ${returnItem.name} غير موجود في فاتورة البيع الأصلية`);
+          throw new Error(
+            `الصنف ${returnItem.name} غير موجود في فاتورة البيع الأصلية`,
+          );
         }
 
         if (returnItem.quantity > saleItem.quantity.toNumber()) {
-          throw new Error(`كمية الإرجاع للصنف ${returnItem.name} أكبر من الكمية المباعة`);
+          throw new Error(
+            `كمية الإرجاع للصنف ${returnItem.name} أكبر من الكمية المباعة`,
+          );
         }
 
         const alreadyReturnedQty =
@@ -874,7 +884,9 @@ export async function processReturn(data: any, companyId: string) {
           saleItem.quantity.toNumber() - alreadyReturnedQty;
 
         if (remainingReturnableQty <= 0) {
-          throw new Error(`تم إرجاع كامل الكمية سابقًا للصنف ${returnItem.name}`);
+          throw new Error(
+            `تم إرجاع كامل الكمية سابقًا للصنف ${returnItem.name}`,
+          );
         }
 
         if (returnItem.quantity > remainingReturnableQty) {
@@ -962,8 +974,9 @@ export async function processReturn(data: any, companyId: string) {
       const returnSale = await tx.invoice.create({
         data: {
           companyId,
-          invoiceNumber: returnNumberWithArabic,
+          invoiceNumber: returnInvoiceNumber,
           customerId: originalSale.customerId,
+          customerName: originalSale.customerName,
           cashierId,
           branchId,
           warehouseId: returnItems[0]?.warehouseId ?? originalSale.warehouseId,
@@ -972,9 +985,9 @@ export async function processReturn(data: any, companyId: string) {
           totalAmount: returnSubtotal,
           amountPaid: returnToCustomer,
           amountDue: 0,
-          currencyCode: currency,
+          currencyCode: currency || baseCurrency,
           exchangeRate,
-          foreignAmount,
+          foreignAmount: foreignAmount ?? returnSubtotal,
           baseAmount: returnSubtotal,
           items: {
             create: invoiceItemsData,

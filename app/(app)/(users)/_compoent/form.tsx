@@ -82,6 +82,8 @@ export default function UserForm({
 
   const selectedRoleObj = roles.find((r) => r.id === selectedRole);
   const isCashier = selectedRoleObj?.name === "cashier";
+  const createsLinkedProfile =
+    selectedRoleObj?.name === "customer" || selectedRoleObj?.name === "employee";
   const isCashierLimitReached = isCashier && (cashierLimit?.atLimit ?? false);
 
   const onSubmit = async (data: UserInput) => {
@@ -183,6 +185,12 @@ export default function UserForm({
             {errors.roleId && (
               <p className="text-xs text-red-500">{errors.roleId.message}</p>
             )}
+            {createsLinkedProfile ? (
+              <p className="text-xs text-blue-600">
+                سيتم إنشاء سجل مرتبط تلقائيا في{" "}
+                {selectedRoleObj?.name === "customer" ? "العملاء" : "الموظفين"}.
+              </p>
+            ) : null}
             {isCashierLimitReached && (
               <p className="text-xs text-red-500">
                 تم الوصول إلى الحد الأقصى للكاشير في الاشتراك.

@@ -31,6 +31,11 @@ function serializeData<T>(data: T): T {
 
   return plainObj;
 }
+
+function normalizeOptionalString(value?: string | null) {
+  const normalized = value?.trim();
+  return normalized ? normalized : null;
+}
 export async function getCustomerById(
   companyId: string,
   page: number = 0, // 0-indexed page number
@@ -68,6 +73,7 @@ export async function getCustomerById(
       },
       select: {
         id: true,
+        userId: true,
         name: true,
         email: true,
         phoneNumber: true,
@@ -251,14 +257,34 @@ export async function updateCustomerStatus(
  */
 export async function deleteCustomer(customerId: string, companyId: string) {
   try {
-    const deletedCustomer = await prisma.customer.delete({
-      where: { id: customerId, companyId },
+    const result = await prisma.$transaction(async (tx) => {
+      const customer = await tx.customer.findFirst({
+        where: { id: customerId, companyId },
+        select: { userId: true },
+      });
+
+      const deletedCustomer = await tx.customer.delete({
+        where: { id: customerId, companyId },
+      });
+
+      if (customer?.userId) {
+        await tx.userRole.deleteMany({ where: { userId: customer.userId } });
+        await tx.userInvite.deleteMany({ where: { userId: customer.userId } });
+        await tx.pushSubscription.deleteMany({ where: { userId: customer.userId } });
+        await tx.pushDeviceToken.deleteMany({ where: { userId: customer.userId } });
+        await tx.user.delete({
+          where: { id: customer.userId, companyId },
+        });
+      }
+
+      return deletedCustomer;
     });
     revalidatePath("/customer");
+    revalidatePath("/user");
     return {
-      ...deletedCustomer,
-      creditLimit: deletedCustomer.creditLimit?.toString() ?? "0",
-      outstandingBalance: deletedCustomer.outstandingBalance.toString(),
+      ...result,
+      creditLimit: result.creditLimit?.toString() ?? "0",
+      outstandingBalance: result.outstandingBalance.toString(),
     };
   } catch (error) {
     console.error("Failed to delete customer:", error);
@@ -275,6 +301,7 @@ export async function createCutomer(form: CreateCustomer, companyId: string) {
   const {
     name,
     email,
+    password,
     phoneNumber,
     address,
     city,
@@ -307,11 +334,57 @@ export async function createCutomer(form: CreateCustomer, companyId: string) {
       return { error: "هذا البريد الإلكتروني مستخدم بالفعل" };
     }
 
+    const customerRole = await prisma.role.findFirst({
+      where: { name: { equals: "customer", mode: "insensitive" } },
+      select: { id: true },
+    });
+
+    let linkedUserId: string | null = null;
+
+    if (emailValue) {
+      if (!password) {
+        return { error: "كلمة المرور مطلوبة لإنشاء حساب العميل" };
+      }
+
+      const existingUser = await prisma.user.findUnique({
+        where: { email: emailValue.toLowerCase() },
+        select: { id: true },
+      });
+
+      if (existingUser) {
+        return { error: "هذا البريد مستخدم بالفعل في المستخدمين" };
+      }
+
+      if (!customerRole) {
+        return { error: "دور customer غير موجود في النظام" };
+      }
+
+      const createdUser = await prisma.user.create({
+        data: {
+          companyId,
+          email: emailValue.toLowerCase(),
+          name,
+          phoneNumber: normalizeOptionalString(phoneNumber),
+          password,
+        },
+      });
+
+      await prisma.userRole.create({
+        data: {
+          userId: createdUser.id,
+          roleId: customerRole.id,
+        },
+      });
+
+      linkedUserId = createdUser.id;
+    }
+
     const customer = await prisma.customer.create({
       data: {
         companyId,
+        userId: linkedUserId,
         name,
-        ...(emailValue ? { email: emailValue } : {}),
+        ...(emailValue ? { email: emailValue.toLowerCase() } : {}),
         phoneNumber,
         address,
         city,
@@ -325,6 +398,7 @@ export async function createCutomer(form: CreateCustomer, companyId: string) {
       },
     });
     revalidatePath("/customer");
+    revalidatePath("/user");
     await prisma.journalEvent.create({
       data: {
         companyId: companyId,
@@ -488,6 +562,7 @@ export async function updatedCustomer(
   const {
     name,
     email,
+    password,
     phoneNumber,
     address,
     preferred_currency,
@@ -509,12 +584,66 @@ export async function updatedCustomer(
       return { error: "هذا البريد الإلكتروني مستخدم بالفعل" };
     }
 
+    const existingCustomer = await prisma.customer.findFirst({
+      where: { id, companyId },
+      select: { userId: true },
+    });
+
+    let userId = existingCustomer?.userId ?? null;
+
+    if (emailValue) {
+      const customerRole = await prisma.role.findFirst({
+        where: { name: { equals: "customer", mode: "insensitive" } },
+        select: { id: true },
+      });
+
+      if (!userId) {
+        if (!password) {
+          return { error: "أدخل كلمة مرور لإنشاء حساب العميل" };
+        }
+
+        if (!customerRole) {
+          return { error: "دور customer غير موجود في النظام" };
+        }
+
+        const createdUser = await prisma.user.create({
+          data: {
+            companyId,
+            email: emailValue.toLowerCase(),
+            name,
+            phoneNumber: normalizeOptionalString(phoneNumber),
+            password,
+          },
+        });
+
+        await prisma.userRole.create({
+          data: {
+            userId: createdUser.id,
+            roleId: customerRole.id,
+          },
+        });
+
+        userId = createdUser.id;
+      } else {
+        await prisma.user.update({
+          where: { id: userId, companyId },
+          data: {
+            email: emailValue.toLowerCase(),
+            name,
+            phoneNumber: normalizeOptionalString(phoneNumber),
+            ...(password ? { password } : {}),
+          },
+        });
+      }
+    }
+
     const customer = await prisma.customer.update({
       where: { id, companyId },
       data: {
         companyId: companyId,
+        userId,
         name,
-        ...(emailValue ? { email: emailValue } : {}),
+        ...(emailValue ? { email: emailValue.toLowerCase() } : {}),
         phoneNumber,
         address,
         city,
@@ -527,6 +656,7 @@ export async function updatedCustomer(
       },
     });
     revalidatePath("/customer");
+    revalidatePath("/user");
     return { success: true, customer };
   } catch (error) {
     throw error;

@@ -94,6 +94,7 @@ model User {
   journalHeadersCreated                              JournalHeader[] @relation("JournalHeaderCreatedBy")
   
   invoices Invoice[] @relation("UserSales")
+  customers Customer[]
   employees Employee[] // 👈 ADD THIS
   @@index([companyId])
   @@index([name])
@@ -448,6 +449,7 @@ model StockMovement {
 model Customer {
   id                 String    @id @default(cuid())
   companyId          String    @map("company_id")
+  userId             String?   @map("user_id")
   name               String
   email              String?
   phoneNumber        String?   @map("phone_number")
@@ -466,6 +468,7 @@ model Customer {
   updatedAt          DateTime  @updatedAt @map("updated_at")
   balance            Decimal?  @default(0) @map("balance") @db.Decimal(10, 2)
   company            Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user               User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
 
  transaction           FinancialTransaction[]
  invoice                Invoice[]
@@ -567,6 +570,7 @@ model OfflineOperation {
   @@index([companyId])
   @@map("offline_operations")
 }
+
 
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -915,6 +919,7 @@ model Invoice {
   sale_type            InvoiceType @default(SALE) // SALE, PURCHASE, RETURN_SALE, RETURN_PURCHASE
   // الأطراف (اختياري حسب نوع الفاتورة)
   customerId      String?  @map("customer_id")
+  customerName    String?  @map("customer_name")
   supplierId      String?  @map("supplier_id")
 
   totalAmount     Decimal  @db.Decimal(12, 2)

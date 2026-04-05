@@ -1,0 +1,357 @@
+"use server";
+
+import prisma from "@/lib/prisma";
+import { CreateEmployeeSchema, UpdateEmployeeSchema } from "@/lib/zod";
+import { revalidatePath } from "next/cache";
+import { canCreateSubscriptionResource } from "./subscription";
+
+function normalizeOptionalString(value?: string | null) {
+  const normalized = value?.trim();
+  return normalized ? normalized : null;
+}
+
+async function nextEmployeeCode(companyId: string) {
+  const count = await prisma.employee.count({ where: { companyId } });
+  return `EMP-${String(count + 1).padStart(4, "0")}`;
+}
+
+export async function fetchEmployees(
+  companyId: string,
+  searchQuery = "",
+  page = 0,
+  pageSize = 10,
+) {
+  const where = {
+    companyId,
+    ...(searchQuery
+      ? {
+          OR: [
+            { name: { contains: searchQuery, mode: "insensitive" as const } },
+            { email: { contains: searchQuery, mode: "insensitive" as const } },
+            { phone: { contains: searchQuery } },
+            {
+              employeeCode: {
+                contains: searchQuery,
+                mode: "insensitive" as const,
+              },
+            },
+          ],
+        }
+      : {}),
+  };
+
+  const [employees, total] = await Promise.all([
+    prisma.employee.findMany({
+      where,
+      skip: page * pageSize,
+      take: pageSize,
+      orderBy: { createdAt: "desc" },
+      include: {
+        user: {
+          select: {
+            id: true,
+            isActive: true,
+            roles: {
+              select: {
+                role: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    }),
+    prisma.employee.count({ where }),
+  ]);
+
+  return {
+    employees: employees.map((employee) => ({
+      ...employee,
+      salary: employee.salary ? Number(employee.salary) : null,
+      hireDate: employee.hireDate.toISOString(),
+    })),
+    total,
+  };
+}
+
+export async function createEmployee(form: unknown, companyId: string) {
+  const parsed = CreateEmployeeSchema.safeParse(form);
+  if (!parsed.success) {
+    return { error: "Invalid employee data" };
+  }
+
+  const {
+    name,
+    email,
+    phone,
+    position,
+    department,
+    salary,
+    hireDate,
+    password,
+  } = parsed.data;
+  const normalizedEmail = email?.trim().toLowerCase() || null;
+
+  try {
+    const employeeRole = await prisma.role.findFirst({
+      where: { name: { equals: "employee", mode: "insensitive" } },
+      select: { id: true },
+    });
+
+    if (!employeeRole) {
+      return { error: "دور employee غير موجود في النظام" };
+    }
+
+    let userId: string | null = null;
+    if (normalizedEmail) {
+      const userCapacity = await canCreateSubscriptionResource(
+        companyId,
+        "users",
+      );
+      if (!userCapacity.allowed) {
+        return {
+          error: `تم الوصول إلى الحد الأقصى للمستخدمين (${userCapacity.usage.used}/${userCapacity.usage.limit})`,
+        };
+      }
+
+      if (!password) {
+        return { error: "كلمة المرور مطلوبة لإنشاء حساب الموظف" };
+      }
+
+      const existingUser = await prisma.user.findUnique({
+        where: { email: normalizedEmail },
+        select: { id: true },
+      });
+
+      if (existingUser) {
+        return { error: "هذا البريد مستخدم بالفعل" };
+      }
+
+      const user = await prisma.user.create({
+        data: {
+          companyId,
+          email: normalizedEmail,
+          name,
+          phoneNumber: normalizeOptionalString(phone),
+          password,
+        },
+      });
+
+      await prisma.userRole.create({
+        data: {
+          userId: user.id,
+          roleId: employeeRole.id,
+        },
+      });
+
+      userId = user.id;
+    }
+
+    const employee = await prisma.employee.create({
+      data: {
+        companyId,
+        userId,
+        employeeCode: await nextEmployeeCode(companyId),
+        name,
+        email: normalizedEmail,
+        phone: normalizeOptionalString(phone),
+        position: normalizeOptionalString(position),
+        department: normalizeOptionalString(department),
+        salary,
+        hireDate: new Date(hireDate),
+      },
+    });
+
+    revalidatePath("/employee");
+    revalidatePath("/user");
+    return { success: true, employee };
+  } catch (error) {
+    console.error("Failed to create employee:", error);
+    return { error: "Failed to create employee" };
+  }
+}
+
+export async function updateEmployee(
+  employeeId: string,
+  companyId: string,
+  form: unknown,
+) {
+  const parsed = UpdateEmployeeSchema.safeParse(form);
+  if (!parsed.success) {
+    return { error: "Invalid employee data" };
+  }
+
+  const {
+    name,
+    email,
+    phone,
+    position,
+    department,
+    salary,
+    hireDate,
+    password,
+  } = parsed.data;
+  const normalizedEmail = email?.trim().toLowerCase() || null;
+
+  try {
+    const existingEmployee = await prisma.employee.findFirst({
+      where: { id: employeeId, companyId },
+      select: { userId: true },
+    });
+
+    if (!existingEmployee) {
+      return { error: "Employee not found" };
+    }
+
+    let userId = existingEmployee.userId ?? null;
+
+    if (normalizedEmail) {
+      const employeeRole = await prisma.role.findFirst({
+        where: { name: { equals: "employee", mode: "insensitive" } },
+        select: { id: true },
+      });
+
+      if (!userId) {
+        const userCapacity = await canCreateSubscriptionResource(
+          companyId,
+          "users",
+        );
+        if (!userCapacity.allowed) {
+          return {
+            error: `تم الوصول إلى الحد الأقصى للمستخدمين (${userCapacity.usage.used}/${userCapacity.usage.limit})`,
+          };
+        }
+
+        if (!password) {
+          return { error: "أدخل كلمة مرور لإنشاء حساب الموظف" };
+        }
+
+        if (!employeeRole) {
+          return { error: "دور employee غير موجود في النظام" };
+        }
+
+        const createdUser = await prisma.user.create({
+          data: {
+            companyId,
+            email: normalizedEmail,
+            name: name ?? "",
+            phoneNumber: normalizeOptionalString(phone),
+            password,
+          },
+        });
+
+        await prisma.userRole.create({
+          data: {
+            userId: createdUser.id,
+            roleId: employeeRole.id,
+          },
+        });
+
+        userId = createdUser.id;
+      } else {
+        await prisma.user.update({
+          where: { id: userId, companyId },
+          data: {
+            ...(normalizedEmail ? { email: normalizedEmail } : {}),
+            ...(name ? { name } : {}),
+            phoneNumber: normalizeOptionalString(phone),
+            ...(password ? { password } : {}),
+          },
+        });
+      }
+    }
+
+    const employee = await prisma.employee.update({
+      where: { id: employeeId },
+      data: {
+        ...(name !== undefined ? { name } : {}),
+        ...(normalizedEmail !== null ? { email: normalizedEmail } : {}),
+        ...(phone !== undefined
+          ? { phone: normalizeOptionalString(phone) }
+          : {}),
+        ...(position !== undefined
+          ? { position: normalizeOptionalString(position) }
+          : {}),
+        ...(department !== undefined
+          ? { department: normalizeOptionalString(department) }
+          : {}),
+        ...(salary !== undefined ? { salary } : {}),
+        ...(hireDate ? { hireDate: new Date(hireDate) } : {}),
+        userId,
+      },
+    });
+
+    revalidatePath("/employee");
+    revalidatePath("/user");
+    return { success: true, employee };
+  } catch (error) {
+    console.error("Failed to update employee:", error);
+    return { error: "Failed to update employee" };
+  }
+}
+
+export async function updateEmployeeStatus(
+  employeeId: string,
+  companyId: string,
+  isActive: boolean,
+) {
+  try {
+    const employee = await prisma.employee.update({
+      where: { id: employeeId },
+      data: { isActive },
+      select: { userId: true },
+    });
+
+    if (employee.userId) {
+      await prisma.user.update({
+        where: { id: employee.userId, companyId },
+        data: { isActive },
+      });
+    }
+
+    revalidatePath("/employee");
+    revalidatePath("/user");
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to update employee status:", error);
+    return { error: "Failed to update employee status" };
+  }
+}
+
+export async function deleteEmployee(employeeId: string, companyId: string) {
+  try {
+    await prisma.$transaction(async (tx) => {
+      const employee = await tx.employee.findFirst({
+        where: { id: employeeId, companyId },
+        select: { userId: true },
+      });
+
+      await tx.employee.delete({ where: { id: employeeId } });
+
+      if (employee?.userId) {
+        await tx.customer.updateMany({
+          where: { userId: employee.userId, companyId },
+          data: { userId: null },
+        });
+        await tx.userRole.deleteMany({ where: { userId: employee.userId } });
+        await tx.userInvite.deleteMany({ where: { userId: employee.userId } });
+        await tx.pushSubscription.deleteMany({
+          where: { userId: employee.userId },
+        });
+
+        await tx.user.delete({ where: { id: employee.userId, companyId } });
+      }
+    });
+
+    revalidatePath("/employee");
+    revalidatePath("/user");
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to delete employee:", error);
+    return { error: "Failed to delete employee" };
+  }
+}

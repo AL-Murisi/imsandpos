@@ -171,7 +171,7 @@ export default function ManageStocksClient({
         onGlobalFilterChange={setGlobalFilter}
         globalFilter={globalFilter}
         sorting={sorting}
-        highet="h-[65vh]"
+        highet="h-[60vh]"
         pagination={pagination}
         totalCount={total}
       />

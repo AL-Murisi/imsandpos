@@ -32,6 +32,7 @@ function getDefaultRedirectForRole(roles: string[] = []): string {
   if (normalizedRoles.includes("manager_wh")) return "/dashboardUser";
   if (normalizedRoles.includes("supplier")) return "/supplier/orders";
   if (normalizedRoles.includes("accountant")) return "/voucher";
+  if (normalizedRoles.includes("customer")) return "/customer-portal";
   return "/landing";
 }
 

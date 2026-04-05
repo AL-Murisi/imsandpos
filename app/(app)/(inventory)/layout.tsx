@@ -27,20 +27,11 @@ export default async function StocksLayout({
       roles: ["admin", "manager_wh"],
     },
     {
-      label: "التوريد",
-      href: "/purchases",
-      roles: ["admin", "manager_wh"],
-    },
-    {
       label: "الموردين",
       href: "/suppliers",
-      roles: ["admin"],
+      roles: ["admin", "manager_wh"],
     },
-    {
-      label: "حركات المخزون",
-      href: "/movement",
-      roles: ["admin"],
-    },
+
     {
       label: "المنتجات",
       href: "/products",
@@ -50,11 +41,6 @@ export default async function StocksLayout({
       label: "أصناف",
       href: "/categories",
       roles: ["admin", "manager_wh"],
-    },
-    {
-      label: "مخازن",
-      href: "/warehouses",
-      roles: ["admin"],
     },
   ];
 

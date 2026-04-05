@@ -531,7 +531,7 @@ export async function updateSalesBulk(
                 buildDebtJournalLine(
                   companyId,
                   settlementAccount,
-                  `${desc} - receipt`,
+                  `${desc} - فاتوره`,
                   p.amount,
                   0,
                   {
@@ -698,7 +698,7 @@ export async function payOutstandingOnly(
               buildDebtJournalLine(
                 companyId,
                 settlementAccount,
-                `${desc} - receipt`,
+                `${desc} - فاتوره`,
                 paymentDetails.baseAmount || paymentAmount,
                 0,
                 {

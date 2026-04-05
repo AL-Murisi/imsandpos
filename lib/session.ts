@@ -30,6 +30,12 @@ export async function getSession(): Promise<SessionData | null> {
       }
     | undefined;
 
+  const normalizedRoles = Array.isArray(user?.roles)
+    ? user.roles
+        .filter((role): role is string => typeof role === "string")
+        .map((role) => role.trim().toLowerCase())
+    : [];
+
   if (
     !user?.userId ||
     !user?.companyId ||
@@ -41,7 +47,7 @@ export async function getSession(): Promise<SessionData | null> {
 
   return {
     userId: user.userId,
-    roles: user.roles ?? [],
+    roles: normalizedRoles,
     name: user.name ?? "",
     email: user.email ?? "",
     companyId: user.companyId,

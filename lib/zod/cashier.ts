@@ -37,6 +37,7 @@ export const CashierSchema = z.object({
   cashierId: z.string(),
   saleNumber: z.string().optional(),
   customerId: z.string().optional(),
+  guestCustomerName: z.string().optional(),
   receivedAmount: z.number().nonnegative("المبلغ المستلم مطلوب"),
   change: z.number().nonnegative("المتبقي للعميل مطلوب"),
 

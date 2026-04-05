@@ -2042,7 +2042,11 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
     const browser = await getBrowser();
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: "networkidle0" });
+    await page.setContent(html, {
+      waitUntil: ["domcontentloaded", "load"],
+      timeout: 60000,
+    });
+    await page.evaluateHandle("document.fonts.ready");
     const pdfBuffer = await page.pdf({
       format: "A4",
       printBackground: true,

@@ -22,6 +22,11 @@ export const CreateCustomerSchema = z.object({
   outstandingBalance: z.number().default(0).optional(),
   balance: z.number().default(0).optional(),
   creditLimit: z.number().positive("حد الدين يجب أن يكون أكبر من صفر").optional(),
+  password: z
+    .string()
+    .min(8, "كلمة المرور يجب أن تكون 8 أحرف على الأقل")
+    .optional()
+    .or(z.literal("")),
 });
 
 export type CreateCustomer = z.infer<typeof CreateCustomerSchema>;

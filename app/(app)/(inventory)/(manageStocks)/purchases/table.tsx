@@ -1,6 +1,3 @@
-import dynamic from "next/dynamic";
-import TableSkeleton from "@/components/skeleton/table";
-
 import PurchasesTable from "../_components/PurchasesTable";
 type ProductClientProps = {
   data: any[];
