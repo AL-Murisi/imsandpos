@@ -864,7 +864,7 @@ export async function createSupplierPaymentFromPurchases(
             entryNumber,
             description,
             branchId,
-            referenceType: "supplier-payment",
+            referenceType: "سند دفع مورد",
             referenceId: supplierPayment.id,
             entryDate: paymentDate ?? new Date(),
             status: "POSTED",

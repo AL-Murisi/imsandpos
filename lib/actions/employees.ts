@@ -1,9 +1,16 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { CreateEmployeeSchema, UpdateEmployeeSchema } from "@/lib/zod";
+import {
+  CreateEmployeeSchema,
+  EmployeeSalaryPaymentSchema,
+  UpdateEmployeeSchema,
+} from "@/lib/zod";
 import { revalidatePath } from "next/cache";
 import { canCreateSubscriptionResource } from "./subscription";
+import { getSession } from "@/lib/session";
+import { getNextVoucherNumber } from "./cashier";
+import { validateFiscalYear } from "./fiscalYear";
 
 function normalizeOptionalString(value?: string | null) {
   const normalized = value?.trim();
@@ -353,5 +360,180 @@ export async function deleteEmployee(employeeId: string, companyId: string) {
   } catch (error) {
     console.error("Failed to delete employee:", error);
     return { error: "Failed to delete employee" };
+  }
+}
+
+export async function createEmployeeSalaryPayment(
+  employeeId: string,
+  companyId: string,
+  form: unknown,
+) {
+  const parsed = EmployeeSalaryPaymentSchema.safeParse(form);
+  if (!parsed.success) {
+    return { error: "Invalid salary payment data" };
+  }
+
+  const session = await getSession();
+  if (!session?.userId || session.companyId !== companyId) {
+    return { error: "Unauthorized" };
+  }
+
+  const {
+    amount,
+    paymentMethod,
+    paymentDate,
+    branchId,
+    referenceNumber,
+    notes,
+    currencyCode,
+  } = parsed.data;
+
+  try {
+    await validateFiscalYear(companyId);
+
+    const employee = await prisma.employee.findFirst({
+      where: { id: employeeId, companyId, isActive: true },
+      select: {
+        id: true,
+        name: true,
+        salary: true,
+        userId: true,
+      },
+    });
+
+    if (!employee) {
+      return { error: "Employee not found" };
+    }
+
+    const company = await prisma.company.findUnique({
+      where: { id: companyId },
+      select: { base_currency: true },
+    });
+
+    const paymentDateValue = new Date(paymentDate);
+    const selectedCurrency = currencyCode || company?.base_currency || "YER";
+
+    const result = await prisma.$transaction(async (tx) => {
+      const voucherNumber = await getNextVoucherNumber(
+        companyId,
+        "PAYMENT",
+        tx,
+      );
+
+      const [mappings, payrollExpenseAccount] = await Promise.all([
+        tx.account_mappings.findMany({
+          where: { company_id: companyId, is_default: true },
+          select: { mapping_type: true, account_id: true },
+        }),
+        tx.accounts.findFirst({
+          where: {
+            company_id: companyId,
+            account_category: "PAYROLL_EXPENSES",
+            is_active: true,
+          },
+          select: { id: true },
+          orderBy: { account_code: "asc" },
+        }),
+      ]);
+
+      const accountMap = new Map(
+        mappings.map((mapping) => [mapping.mapping_type, mapping.account_id]),
+      );
+      const settlementAccount =
+        paymentMethod === "bank"
+          ? accountMap.get("bank") || accountMap.get("cash")
+          : accountMap.get("cash");
+
+      if (!payrollExpenseAccount?.id) {
+        throw new Error("حساب مصروف الرواتب غير موجود");
+      }
+
+      if (!settlementAccount) {
+        throw new Error("حساب السداد النقدي أو البنكي غير موجود");
+      }
+
+      const description = `صرف راتب الموظف ${employee.name}`;
+      const payment = await tx.financialTransaction.create({
+        data: {
+          companyId,
+          userId: employee.userId ?? undefined,
+          branchId: branchId || undefined,
+          type: "PAYMENT",
+          voucherNumber,
+          amount,
+          currencyCode: selectedCurrency,
+          baseAmount: amount,
+          paymentMethod,
+          referenceNumber: referenceNumber || undefined,
+          status: "paid",
+          notes: notes
+            ? `${description} - ${notes}`
+            : `${description} (الموظف: ${employee.id})`,
+          date: paymentDateValue,
+          createdAt: paymentDateValue,
+        },
+      });
+
+      const entryNumber = `SAL-${new Date().getFullYear()}-${voucherNumber}`;
+      await tx.journalHeader.create({
+        data: {
+          companyId,
+          entryNumber,
+          description,
+          branchId: branchId || undefined,
+          referenceType: "سند صرف راتب",
+          referenceId: employee.id,
+          entryDate: paymentDateValue,
+          status: "POSTED",
+          createdBy: session.userId,
+          lines: {
+            create: [
+              {
+                companyId,
+                accountId: payrollExpenseAccount.id,
+                debit: amount,
+                credit: 0,
+                currencyCode: selectedCurrency,
+                memo: description,
+              },
+              {
+                companyId,
+                accountId: settlementAccount,
+                debit: 0,
+                credit: amount,
+                currencyCode: selectedCurrency,
+                memo: `${description} - ${paymentMethod}`,
+              },
+            ],
+          },
+        },
+      });
+
+      return { payment, voucherNumber };
+    });
+
+    await prisma.activityLogs.create({
+      data: {
+        userId: session.userId,
+        companyId,
+        action: "صرف راتب موظف",
+        details: `تم صرف راتب للموظف ${employee.name} بمبلغ ${amount} ورقم سند ${result.voucherNumber}`,
+        userAgent: "",
+      },
+    });
+
+    revalidatePath("/employee");
+    revalidatePath("/voucher");
+    revalidatePath("/journal");
+
+    return { success: true, payment: result.payment };
+  } catch (error) {
+    console.error("Failed to create employee salary payment:", error);
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to create salary payment",
+    };
   }
 }

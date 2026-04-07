@@ -65,6 +65,8 @@ export default function EditUserForm({ users }: any) {
 
     void loadRoles();
   }, [open, currentRoleName, setValue]);
+  const customerRole = roles.find((r) => r.name.toLowerCase());
+  const customer = users?.roles?.[0]?.role?.name;
 
   const selectedRole = watch("roleId");
 
@@ -120,7 +122,6 @@ export default function EditUserForm({ users }: any) {
               )}
             </div>
           </div>
-
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2 text-right">
               <Label htmlFor="phoneNumber">رقم الهاتف</Label>
@@ -133,6 +134,7 @@ export default function EditUserForm({ users }: any) {
 
             <SelectField
               options={roles}
+              disabled={customer?.toLowerCase() === "customer"}
               action={(value) => setValue("roleId", value)}
               value={selectedRole}
             />

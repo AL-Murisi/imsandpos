@@ -25,9 +25,15 @@ type Props = {
   users: any[];
   total: number;
   role: { id: string; name: string }[];
+  cus: {
+    limit: number | null;
+    used: number;
+    remaining: number | null;
+    atLimit: boolean;
+  } | null;
 };
 
-export default function CustomerClinet({ users, total, role }: Props) {
+export default function CustomerClinet({ users, total, role, cus }: Props) {
   const {
     pagination,
     sorting,
@@ -106,7 +112,6 @@ export default function CustomerClinet({ users, total, role }: Props) {
       className="bg-accent border-primary flex flex-col rounded-2xl border p-3 shadow-xl/20 shadow-gray-900"
       dir="rtl"
     >
-      {/* Add dir="rtl" for proper RTL layout */}
       <input
         placeholder={"Type push message ..."}
         value={message ?? ""}
@@ -121,7 +126,7 @@ export default function CustomerClinet({ users, total, role }: Props) {
             <SearchInput placeholder={"بحث"} paramKey={"customers"} />{" "}
             {/* Translate placeholder */}
             <SelectField options={role} paramKey="role" placeholder="الفئة" />
-            <CustomerForm />
+            <CustomerForm cus={cus} />
           </div>
         }
         data={users}

@@ -1,6 +1,7 @@
 import { getCustomerById } from "@/lib/actions/customers";
 import { getSession } from "@/lib/session";
 import CustomerClinet from "./_components/table";
+import { getCompanySubscriptionUsage } from "@/lib/actions/subscription";
 type DashboardProps = {
   searchParams: Promise<{
     from?: string;
@@ -53,18 +54,20 @@ export default async function DebtSell({ searchParams }: DashboardProps) {
 
   const pageIndex = Number(page) - 1;
   const pageSize = Number(limit);
-  const data = await getCustomerById(
-    user.companyId,
-    pageIndex,
-    pageSize,
-    customersquery,
-    from,
-  );
+  const [data, subscriptionUsage] = await Promise.all([
+    getCustomerById(user.companyId, pageIndex, pageSize, customersquery, from),
+    getCompanySubscriptionUsage(),
+  ]);
   // const data = await FetchDebtSales(filter);
   return (
     <div className="p-3">
       {" "}
-      <CustomerClinet users={data.result} total={data.total} role={[]} />
+      <CustomerClinet
+        users={data.result}
+        total={data.total}
+        role={[]}
+        cus={subscriptionUsage?.users ?? null}
+      />
     </div>
   );
 }

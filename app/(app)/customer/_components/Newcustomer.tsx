@@ -18,8 +18,13 @@ import { createCutomer } from "@/lib/actions/customers";
 import { fallbackCurrencyOptions } from "@/lib/actions/currnciesOptions";
 import { useAuth } from "@/lib/context/AuthContext";
 import { CreateCustomer, CreateCustomerSchema } from "@/lib/zod";
-
-export default function CustomerForm() {
+type LimitInfo = {
+  limit: number | null;
+  used: number;
+  remaining: number | null;
+  atLimit: boolean;
+} | null;
+export default function CustomerForm({ cus }: { cus?: LimitInfo }) {
   const {
     register,
     handleSubmit,
@@ -52,6 +57,7 @@ export default function CustomerForm() {
 
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isUserLimitReached = cus?.atLimit ?? false;
 
   useEffect(() => {
     if (baseCurrency) {
@@ -105,12 +111,8 @@ export default function CustomerForm() {
     <Dailogreuse
       open={open}
       setOpen={setOpen}
-      btnLabl={
-        <>
-          <Plus className="ml-1" />
-          إضافة عميل
-        </>
-      }
+      disabled={isUserLimitReached}
+      btnLabl="إضافة عميل"
       titel="إضافة عميل"
       style="sm:max-w-6xl"
       description="أدخل بيانات العميل أدناه."
@@ -137,7 +139,11 @@ export default function CustomerForm() {
 
               <div className="grid gap-2">
                 <Label htmlFor="phoneNumber">رقم الهاتف</Label>
-                <Input id="phoneNumber" type="tel" {...register("phoneNumber")} />
+                <Input
+                  id="phoneNumber"
+                  type="tel"
+                  {...register("phoneNumber")}
+                />
               </div>
 
               <div className="grid gap-2">
@@ -149,11 +155,14 @@ export default function CustomerForm() {
                   placeholder="مطلوبة فقط عند إنشاء حساب دخول"
                 />
                 {errors.password && (
-                  <p className="text-xs text-red-500">{errors.password.message}</p>
+                  <p className="text-xs text-red-500">
+                    {errors.password.message}
+                  </p>
                 )}
                 {hasEmail && !watch("password") && (
                   <p className="text-xs text-amber-600">
-                    إذا أدخلت البريد الإلكتروني فسيتم إنشاء مستخدم للعميل ويجب إدخال كلمة المرور.
+                    إذا أدخلت البريد الإلكتروني فسيتم إنشاء مستخدم للعميل ويجب
+                    إدخال كلمة المرور.
                   </p>
                 )}
               </div>
@@ -184,7 +193,11 @@ export default function CustomerForm() {
 
               <div className="grid gap-2">
                 <Label htmlFor="postalCode">الرمز البريدي</Label>
-                <Input id="postalCode" type="number" {...register("postalCode")} />
+                <Input
+                  id="postalCode"
+                  type="number"
+                  {...register("postalCode")}
+                />
               </div>
 
               <div className="grid gap-2">
@@ -198,7 +211,9 @@ export default function CustomerForm() {
                   placeholder="اختر النوع"
                 />
                 {errors.customerType && (
-                  <p className="text-xs text-red-500">{errors.customerType.message}</p>
+                  <p className="text-xs text-red-500">
+                    {errors.customerType.message}
+                  </p>
                 )}
               </div>
             </div>
@@ -207,7 +222,9 @@ export default function CustomerForm() {
               <Label className="text-right">العملات المسموحة</Label>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
                 {currencyOptions.map((option) => {
-                  const isSelected = watch("preferred_currency")?.includes(option.id);
+                  const isSelected = watch("preferred_currency")?.includes(
+                    option.id,
+                  );
 
                   return (
                     <div
@@ -230,7 +247,9 @@ export default function CustomerForm() {
                     >
                       <div
                         className={`flex h-4 w-4 items-center justify-center rounded-sm border ${
-                          isSelected ? "border-primary bg-primary" : "border-gray-300"
+                          isSelected
+                            ? "border-primary bg-primary"
+                            : "border-gray-300"
                         }`}
                       >
                         {isSelected && <Check className="h-3 w-3 text-white" />}
@@ -241,16 +260,23 @@ export default function CustomerForm() {
                 })}
               </div>
               {errors.preferred_currency && (
-                <p className="text-xs text-red-500">{errors.preferred_currency.message}</p>
+                <p className="text-xs text-red-500">
+                  {errors.preferred_currency.message}
+                </p>
               )}
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
               <div className="grid gap-2">
                 <Label htmlFor="creditLimit">حد الدين</Label>
-                <Input id="creditLimit" {...register("creditLimit", { valueAsNumber: true })} />
+                <Input
+                  id="creditLimit"
+                  {...register("creditLimit", { valueAsNumber: true })}
+                />
                 {errors.creditLimit && (
-                  <p className="text-xs text-red-500">{errors.creditLimit.message}</p>
+                  <p className="text-xs text-red-500">
+                    {errors.creditLimit.message}
+                  </p>
                 )}
               </div>
 
@@ -269,7 +295,10 @@ export default function CustomerForm() {
 
               <div className="grid gap-2">
                 <Label htmlFor="balance">رصيد افتتاحي دائن</Label>
-                <Input id="balance" {...register("balance", { valueAsNumber: true })} />
+                <Input
+                  id="balance"
+                  {...register("balance", { valueAsNumber: true })}
+                />
               </div>
             </div>
           </div>

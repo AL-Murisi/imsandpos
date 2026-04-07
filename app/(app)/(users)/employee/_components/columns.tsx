@@ -20,12 +20,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  deleteEmployee,
-  updateEmployeeStatus,
-} from "@/lib/actions/employees";
+import { deleteEmployee, updateEmployeeStatus } from "@/lib/actions/employees";
 import { useAuth } from "@/lib/context/AuthContext";
 import EditEmployeeForm from "./editForm";
+import EmployeeSalaryForm from "./salaryForm";
 
 type SortableHeaderProps = {
   column: Column<any, unknown>;
@@ -165,6 +163,7 @@ export const employeeColumns: ColumnDef<any>[] = [
 
       return (
         <div className="flex items-center justify-center gap-2">
+          <EmployeeSalaryForm employee={employee} />
           <EditEmployeeForm employee={employee} />
           <Button
             variant="ghost"
@@ -175,8 +174,13 @@ export const employeeColumns: ColumnDef<any>[] = [
                 : "text-yellow-600 hover:bg-yellow-100"
             }`}
             onClick={() =>
-              updateEmployeeStatus(employee.id, user.companyId, !employee.isActive)
+              updateEmployeeStatus(
+                employee.id,
+                user.companyId,
+                !employee.isActive,
+              )
             }
+            disabled={employee.user.roles?.[0]?.role?.name === "admin"}
             title={employee.isActive ? "تعطيل" : "تفعيل"}
           >
             <Power className="h-4 w-4" />
@@ -190,6 +194,7 @@ export const employeeColumns: ColumnDef<any>[] = [
               if (!ok) return;
               await deleteEmployee(employee.id, user.companyId);
             }}
+            disabled={employee.user.roles?.[0]?.role?.name === "admin"}
             title="حذف"
           >
             <Trash2 className="h-4 w-4" />

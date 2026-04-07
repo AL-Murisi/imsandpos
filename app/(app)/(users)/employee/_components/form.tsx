@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -12,6 +12,8 @@ import { Label } from "@/components/ui/label";
 import { createEmployee } from "@/lib/actions/employees";
 import { useAuth } from "@/lib/context/AuthContext";
 import { CreateEmployeeInput, CreateEmployeeSchema } from "@/lib/zod";
+import { fetchRolesForSelect } from "@/lib/actions/roles";
+import { SelectField } from "@/components/common/selectproduct";
 
 type LimitInfo = {
   limit: number | null;
@@ -19,17 +21,22 @@ type LimitInfo = {
   remaining: number | null;
   atLimit: boolean;
 } | null;
-
+type Role = {
+  id: string;
+  name: string;
+};
 export default function EmployeeForm({ userLimit }: { userLimit?: LimitInfo }) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [roles, setRoles] = useState<Role[]>([]);
 
   const {
     register,
     handleSubmit,
     reset,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<CreateEmployeeInput>({
     resolver: zodResolver(CreateEmployeeSchema),
@@ -44,9 +51,24 @@ export default function EmployeeForm({ userLimit }: { userLimit?: LimitInfo }) {
       password: "",
     },
   });
+  const selectedRole = watch("position");
 
+  const selectedRoleObj = roles.find((r) => r.id === selectedRole);
   if (!user?.companyId) return null;
+  useEffect(() => {
+    if (!open) return;
+    const loadRoles = async () => {
+      const result = await fetchRolesForSelect();
+      // const branch = await fetchbranches();
+      setRoles(result);
+      if (result.length > 0) {
+        setValue("position", result[0].id);
 
+        // Default role
+      }
+    };
+    loadRoles();
+  }, [open]);
   const hasEmail = Boolean(watch("email")?.trim());
   const isUserLimitReached = userLimit?.atLimit ?? false;
 
@@ -130,14 +152,19 @@ export default function EmployeeForm({ userLimit }: { userLimit?: LimitInfo }) {
             )}
             {hasEmail && !watch("password") && (
               <p className="text-xs text-amber-600">
-                عند إدخال البريد سيتم إنشاء مستخدم للموظف ويجب إدخال كلمة المرور.
+                عند إدخال البريد سيتم إنشاء مستخدم للموظف ويجب إدخال كلمة
+                المرور.
               </p>
             )}
           </div>
 
           <div className="grid gap-2">
             <Label htmlFor="position">الوظيفة</Label>
-            <Input id="position" {...register("position")} />
+            <SelectField
+              options={roles}
+              action={(value) => setValue("position", value)}
+              value={selectedRole}
+            />{" "}
           </div>
 
           <div className="grid gap-2">
@@ -153,7 +180,9 @@ export default function EmployeeForm({ userLimit }: { userLimit?: LimitInfo }) {
               step="0.01"
               {...register("salary", {
                 setValueAs: (value) =>
-                  value === "" || value === undefined ? undefined : Number(value),
+                  value === "" || value === undefined
+                    ? undefined
+                    : Number(value),
               })}
             />
           </div>

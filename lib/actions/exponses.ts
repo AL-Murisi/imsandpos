@@ -121,7 +121,7 @@ export async function getExpensesByCompany(
       ? await prisma.journalHeader.findMany({
           where: {
             companyId,
-            referenceType: "expense",
+            referenceType: "سند صرف",
             referenceId: { in: expenseIds },
           },
           select: {
@@ -500,7 +500,7 @@ export async function createMultipleExpenses(
             entryNumber,
             description: expenseData.description,
             branchId: expenseData.branchId,
-            referenceType: "expense",
+            referenceType: "سند صرف",
             referenceId: expense.id,
             entryDate: expenseData.expense_date,
             status: "POSTED",

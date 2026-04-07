@@ -392,7 +392,7 @@ export async function processSale(data: any, companyId: string) {
               quantity: baseQty,
               quantityBefore: inventory.stockQuantity,
               quantityAfter: inventory.stockQuantity - baseQty,
-              referenceType: "sale",
+              referenceType: "فاتوره مبيعات",
               referenceId: sale.id,
               userId: cashierId,
             });
@@ -558,7 +558,7 @@ export async function processSale(data: any, companyId: string) {
               entryNumber,
               description: desc,
               branchId,
-              referenceType: "sale",
+              referenceType: "فاتوره مبيعات",
               referenceId: sale.id,
               entryDate: new Date(),
               status: "POSTED",
@@ -829,7 +829,9 @@ export async function processReturn(data: any, companyId: string) {
       });
 
       if (existingReturnSale) {
-        throw new Error("تم إرجاع هذه الفاتورة مسبقاً، لا يمكن إرجاعها مرة أخرى");
+        throw new Error(
+          "تم إرجاع هذه الفاتورة مسبقاً، لا يمكن إرجاعها مرة أخرى",
+        );
       }
 
       const returnedQuantityMap = new Map<string, number>();
@@ -1163,7 +1165,7 @@ export async function processReturn(data: any, companyId: string) {
           entryNumber,
           description: desc,
           branchId,
-          referenceType: "sale_return",
+          referenceType: "ارجاع مبيعات",
           referenceId: returnSale.id,
           entryDate: new Date(),
           status: "POSTED",

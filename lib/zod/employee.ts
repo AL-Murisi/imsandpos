@@ -24,3 +24,17 @@ export const UpdateEmployeeSchema = CreateEmployeeSchema.partial();
 
 export type CreateEmployeeInput = z.infer<typeof CreateEmployeeSchema>;
 export type UpdateEmployeeInput = z.infer<typeof UpdateEmployeeSchema>;
+
+export const EmployeeSalaryPaymentSchema = z.object({
+  amount: z.number().positive("مبلغ الراتب مطلوب"),
+  paymentMethod: z.enum(["cash", "bank"]),
+  paymentDate: z.string().min(1, "تاريخ الدفع مطلوب"),
+  branchId: z.string().optional(),
+  referenceNumber: z.string().optional(),
+  notes: z.string().optional(),
+  currencyCode: z.string().min(3).max(3).optional(),
+});
+
+export type EmployeeSalaryPaymentInput = z.infer<
+  typeof EmployeeSalaryPaymentSchema
+>;

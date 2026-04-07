@@ -181,6 +181,7 @@ export const columns: ColumnDef<User>[] = [
                   ? "text-green-600 hover:bg-green-100"
                   : "text-yellow-600 hover:bg-yellow-100"
               }`}
+              disabled={userr.roles?.[0]?.role?.name === "admin"}
               onClick={() => {
                 // Toggle status functionality
                 updateUsers(true, userr.id, user.companyId);
@@ -197,6 +198,7 @@ export const columns: ColumnDef<User>[] = [
                   ? "text-green-600 hover:bg-green-100"
                   : "text-yellow-600 hover:bg-yellow-100"
               }`}
+              disabled={userr.roles?.[0]?.role?.name === "admin"}
               onClick={() => {
                 // Toggle status functionality
                 updateUsers(false, userr.id, user.companyId);

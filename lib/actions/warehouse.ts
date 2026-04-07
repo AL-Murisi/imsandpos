@@ -210,24 +210,18 @@ export async function updateInventory(
     ]);
 
     if (!currentInventory) {
-      throw new Error(
-        "سجل المخزون غير موجود",
-      );
+      throw new Error("سجل المخزون غير موجود");
     }
 
     const product = currentInventory.product;
     const supplierId = providedSupplierId || product.supplierId;
 
     if (updateType === "supplier" && !supplierId) {
-      throw new Error(
-        "يجب تحديد المورد",
-      );
+      throw new Error("يجب تحديد المورد");
     }
 
     if (updateType === "supplier" && !supplierExists) {
-      throw new Error(
-        "المورد غير موجود",
-      );
+      throw new Error("المورد غير موجود");
     }
 
     // ============================================
@@ -366,9 +360,7 @@ export async function updateInventory(
                   amount: paymentAmount,
                   paymentMethod,
                   status: "paid",
-                  notes:
-                    notes ||
-                    "دفعة مشتريات",
+                  notes: notes || "دفعة مشتريات",
                 },
               }),
             );
@@ -424,14 +416,9 @@ export async function updateInventory(
                   productId: product.id,
                   warehouseId: inventoryTarget.warehouseId,
                   userId,
-                  movementType:
-                    stockDifference > 0
-                      ? "وارد"
-                      : "صادر",
+                  movementType: stockDifference > 0 ? "وارد" : "صادر",
                   quantity: Math.abs(stockDifference),
-                  reason:
-                    updateData.reason ||
-                    "تم_استلام_المورد",
+                  reason: updateData.reason || "تم_استلام_المورد",
                   notes:
                     notes ||
                     `${supplierId ? "المخزون من المورد" : "تحديث المخزون"}`,
@@ -550,16 +537,10 @@ export async function updateInventory(
 
     return { success: true, data: result.updatedInventory };
   } catch (error) {
-    console.error(
-      "خطأ في تحديث المخزون:",
-      error,
-    );
+    console.error("خطأ في تحديث المخزون:", error);
     return {
       success: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : "فشل تحديث المخزون",
+      error: error instanceof Error ? error.message : "فشل تحديث المخزون",
     };
   }
 }
@@ -852,9 +833,7 @@ export async function processPurchaseReturn(
         });
 
         if (!originalPurchase) {
-          throw new Error(
-            "عملية الشراء الأصلية غير موجودة",
-          );
+          throw new Error("عملية الشراء الأصلية غير موجودة");
         }
 
         if (originalPurchase.sale_type !== "PURCHASE") {
@@ -1007,7 +986,7 @@ export async function processPurchaseReturn(
             reason: "إرجاع_للمورد",
             quantityBefore: inventory.stockQuantity,
             quantityAfter: newStockQty,
-            referenceType: "purchase_return",
+            referenceType: "مرتجع مشتريات",
             referenceId: purchaseReturn.id,
             notes:
               reason ||
@@ -1049,9 +1028,7 @@ export async function processPurchaseReturn(
                   : undefined,
               paymentMethod,
               referenceNumber: transferNumber,
-              notes:
-                reason ||
-                `استرداد مبلغ من المورد - فاتورة ${purchaseId}`,
+              notes: reason || `استرداد مبلغ من المورد - فاتورة ${purchaseId}`,
             },
           });
         }
@@ -1145,7 +1122,7 @@ export async function processPurchaseReturn(
             entryNumber,
             description: desc,
             branchId,
-            referenceType: "purchase_return",
+            referenceType: "مرتجع مشتريات",
             referenceId: purchaseReturn.id,
             entryDate: new Date(),
             status: "POSTED",
@@ -1246,8 +1223,7 @@ export async function getPurchaseReturnData(
     if (!purchase) {
       return {
         success: false,
-        message:
-          "لم يتم العثور على المشتريات",
+        message: "لم يتم العثور على المشتريات",
       };
     }
 
@@ -1276,8 +1252,7 @@ export async function getPurchaseReturnData(
     if (!item) {
       return {
         success: false,
-        message:
-          "لا توجد منتجات في هذه المشتريات",
+        message: "لا توجد منتجات في هذه المشتريات",
       };
     }
     function calculateStockByUnit(baseQuantity: number, units: any[]) {
@@ -1357,8 +1332,7 @@ export async function getPurchaseReturnData(
     console.error("Error loading purchase return data", error);
     return {
       success: false,
-      message:
-        "حدث خطأ في الخادم",
+      message: "حدث خطأ في الخادم",
     };
   }
 }
@@ -1914,8 +1888,7 @@ export async function updateWarehouse(id: string, input: UpdateWarehouseInput) {
     console.error("Failed to update warehouse:", error);
     return {
       success: false,
-      error:
-        "حدث خطأ أثناء تحديث المستودع",
+      error: "حدث خطأ أثناء تحديث المستودع",
     };
   }
 }
@@ -1932,8 +1905,7 @@ export async function deleteWarehouse(id: string) {
     console.error("Failed to delete warehouse:", error);
     return {
       success: false,
-      error:
-        "حدث خطأ أثناء حذف المستودع",
+      error: "حدث خطأ أثناء حذف المستودع",
     };
   }
 }
@@ -2064,9 +2036,7 @@ export async function updateMultipleInventories(
           ]);
 
           if (!product) {
-            throw new Error(
-              `المنتج غير موجود: ${updateData.productId}`,
-            );
+            throw new Error(`المنتج غير موجود: ${updateData.productId}`);
           }
 
           // 🆕 Parse selling units
@@ -2317,7 +2287,7 @@ export async function updateMultipleInventories(
                 entryNumber,
                 description: desc,
                 branchId: updateData.branchId,
-                referenceType: "purchase",
+                referenceType: "سند صرف مخزني",
                 referenceId: purchase.id,
                 entryDate: new Date(),
                 status: "POSTED",
@@ -2417,10 +2387,7 @@ export async function updateMultipleInventories(
     console.error("Error updating multiple inventory:", error);
     return {
       success: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : "فشل تحديث المخزون",
+      error: error instanceof Error ? error.message : "فشل تحديث المخزون",
     };
   }
 }
