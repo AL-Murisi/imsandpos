@@ -140,7 +140,7 @@ export default function CustomerClinet({ users, total, role, cus }: Props) {
         sorting={sorting}
         pagination={pagination}
         totalCount={total}
-        highet="h-[68vh]"
+        highet="h-[65vh]"
       />
       {/* <CustomerStatementPage customers={user.result} /> */}
     </div>

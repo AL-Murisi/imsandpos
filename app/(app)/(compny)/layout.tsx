@@ -15,15 +15,10 @@ export default function StocksLayout({
   const { hasAnyRole } = useAuth();
 
   const navItems = [
-    { label: "المستخدمين", href: "/user", roles: ["admin"] },
+    { label: "معلومات الشركة", href: "/company", roles: ["admin"] },
+    { label: "الأدوار", href: "/userroles", roles: ["admin"] },
 
-    { label: "العملاء", href: "/customer", roles: ["admin"] },
-    { label: "الموظفين", href: "/employee", roles: ["admin"] },
-    {
-      label: "أنشطة المستخدم",
-      href: "/userActiviteslogs",
-      roles: ["admin"],
-    },
+    { label: "الفروع", href: "/branches", roles: ["admin"] },
   ];
 
   const visibleItems = navItems.filter((item) => hasAnyRole(item.roles));

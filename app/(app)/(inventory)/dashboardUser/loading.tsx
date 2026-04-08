@@ -59,7 +59,7 @@ function WarehouseCardSkeleton() {
 export default function Loading() {
   return (
     <div
-      className="min-h-[calc(94dvh-3rem)] space-y-6 overflow-x-hidden p-3 pb-24 md:p-4 md:pb-6"
+      className="min-h-[calc(94dvh-3rem)] space-y-6 overflow-hidden p-3 pb-24 md:p-4 md:pb-6"
       dir="rtl"
     >
       <section className="overflow-hidden rounded-[28px] bg-[#0b142a] p-5 text-white shadow-lg md:p-7">

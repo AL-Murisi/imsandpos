@@ -75,10 +75,11 @@ export default function Appheader() {
   const pageTitle = usePageTitle();
 
   return (
-    <header
+    <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
+      {/* <header
       className="dark:bg-accent dark:text-foreground text-sidebar flex h-10 shrink-0 items-center gap-2 border-b bg-[#0b142a] transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)"
       dir="rtl"
-    >
+    > */}
       <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
         <button
           onClick={toggleSidebar}
@@ -91,9 +92,9 @@ export default function Appheader() {
           className="mx-2 data-[orientation=vertical]:h-4"
         />
         <h1 className="text-base font-medium">{pageTitle}</h1>
-        <div className="ml-auto flex items-center gap-2">
-          <PushNotificationManager />
-        </div>
+      </div>
+      <div className="ml-auto flex items-center gap-2">
+        <PushNotificationManager />
       </div>
     </header>
   );

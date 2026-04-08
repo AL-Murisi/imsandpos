@@ -14,9 +14,8 @@ import { SelectField } from "@/components/common/selection";
 // import SearchInput from "@/components/common/SearchInput";
 
 import SearchInput from "@/components/common/searchtest";
-import { columns } from "./columns";
+import { columns } from "../../(compny)/_compoent/columns";
 import UserForm from "./form";
-import TableSkeleton from "@/components/skeleton/table";
 import { DataTable } from "@/components/common/ReusbleTable";
 
 type ProductClientProps = {

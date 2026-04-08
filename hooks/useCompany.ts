@@ -30,11 +30,22 @@ let cachedCompany: Company = undefined;
 export function useCompany() {
   const { user } = useAuth();
   const [company, setCompany] = useState<Company>(cachedCompany);
-  const [loading, setLoading] = useState(!cachedCompany);
+  const [loading, setLoading] = useState(Boolean(user) && !cachedCompany);
   const hasFetched = useRef(false);
 
   useEffect(() => {
-    if (!user || hasFetched.current || cachedCompany) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    if (cachedCompany) {
+      setCompany(cachedCompany);
+      setLoading(false);
+      return;
+    }
+
+    if (hasFetched.current) return;
     hasFetched.current = true;
 
     const fetchCompany = async () => {
@@ -53,5 +64,5 @@ export function useCompany() {
     fetchCompany();
   }, [user?.companyId]);
 
-  return { company };
+  return { company, loading };
 }

@@ -32,7 +32,7 @@ const CustomerEditForm = dynamic(() => import("./editcustomer"), {
   // loading: () => <TableSkeleton rows={20} columns={10} />,
 });
 const DebtReport = dynamic(
-  () => import("@/app/(app)/customer/_components/DebtReport"),
+  () => import("@/app/(app)/(users)/customer/_components/DebtReport"),
   {
     ssr: false,
     // loading: () => <TableSkeleton rows={20} columns={10} />,

@@ -55,10 +55,9 @@ export default function PushNotificationManager() {
           if (result?.provider === "fcm" && result.token) {
             toast.success(`FCM Token: ${result.token}`);
           } else if (result?.provider === "fcm" && result.debugMessage) {
-            toast.error(
-              `فشل Firebase: ${result.debugMessage}`,
-              { duration: 8000 },
-            );
+            toast.error(`فشل Firebase: ${result.debugMessage}`, {
+              duration: 8000,
+            });
           } else {
             toast.error("لم يتم إنشاء توكن Firebase");
           }
@@ -92,14 +91,13 @@ export default function PushNotificationManager() {
   if (unsupported) return null;
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-3 p-1">
       <Button
         size="icon"
+        variant="outline"
         disabled={isLoading}
         onClick={handleToggle}
-        className={cn(
-          "dark:bg-accent dark:text-foreground bg-[#0b142a] transition-all duration-300",
-        )}
+        className={cn("border-transparent transition-all duration-300")}
       >
         {isLoading ? (
           <Loader2 className="h-5 w-5 animate-spin" />
@@ -109,14 +107,6 @@ export default function PushNotificationManager() {
           <BellOff className="h-5 w-5" />
         )}
       </Button>
-
-      <span className="text-sm font-medium">
-        {isLoading
-          ? "جاري التحميل..."
-          : subscription
-            ? "الإشعارات مفعلة"
-            : "تفعيل الإشعارات"}
-      </span>
     </div>
   );
 }

@@ -26,6 +26,12 @@ import {
   Building,
   InfoIcon,
   BriefcaseBusiness,
+  Users2,
+  User2,
+  UserLock,
+  Shield,
+  UserCog,
+  Activity,
 } from "lucide-react";
 import Image from "next/image";
 
@@ -128,16 +134,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           icon: <Building className="text-blue-600" />,
           roles: ["admin"],
         },
+
         {
-          title: t("users"),
-          url: "/user",
-          icon: <Users className="text-blue-600" />,
-          roles: ["admin"],
-        },
-        {
-          title: "الموظفون",
-          url: "/employee",
-          icon: <User className="text-blue-600" />,
+          title: "الأدوار",
+          url: "/userroles",
+          icon: <UserCog className="text-blue-600" />,
           roles: ["admin"],
         },
         {
@@ -195,12 +196,45 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       ],
     },
     {
+      title: "المستخدمين",
+      icon: () => <Users2 className="text-shadow-rose-500" />, // Boxes = Inventory
+      roles: ["admin"],
+      isDropdown: true,
+
+      subItems: [
+        {
+          title: t("users"),
+          url: "/user",
+          icon: <Users className="text-blue-600" />,
+          roles: ["admin"],
+        },
+        {
+          title: t("customer"),
+          url: "/customer",
+          icon: <User className="h-4 w-4 text-sky-500" />,
+          roles: ["admin"],
+        },
+
+        {
+          title: "الموظفون",
+          url: "/employee",
+          icon: <User className="text-blue-600" />,
+          roles: ["admin"],
+        },
+        {
+          title: "أنشطة المستخدم",
+          url: "/userActiviteslogs",
+          icon: <Activity className="text-blue-600" />,
+          roles: ["admin"],
+        },
+      ],
+    },
+    {
       title: t("customer"),
       url: "/customer",
       icon: () => <User className="h-4 w-4 text-sky-500" />,
-      roles: ["admin", "cashier"],
+      roles: ["cashier"],
     },
-
     {
       title: "الرئيسية",
       url: "/customer-portal",
@@ -411,17 +445,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     return subItems.filter((subItem) => hasAnyRole(subItem.roles));
   };
   const { company } = useCompany();
-  if (!company) return;
+  if (!company) {
+    return null;
+  }
 
   return (
     <Sidebar
       collapsible="icon"
       {...props}
-      className="dark:bg-accent dark:text-foreground text-sidebar bg-[#0b142a] py-4"
+      className="bg-sidebar-primary text-foreground py-4"
     >
       <SidebarHeader
         data-state={isCollapsed ? "collapsed" : "expanded"}
-        className="flex items-center bg-[#0b142a]"
+        className="flex items-center"
       >
         <div
           className={cn(
@@ -454,18 +490,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </div> */}
         </div>
       </SidebarHeader>
-      <SidebarHeader className="bg-[#0b142a]">
-        <SidebarGroupLabel className="dark:text-foreground text-sidebar text-xs">
+      <SidebarHeader className="">
+        <SidebarGroupLabel className="text-foreground text-xs">
           {company.name}
         </SidebarGroupLabel>
-        <SidebarGroupLabel className="dark:text-foreground text-sidebar text-xs">
+        <SidebarGroupLabel className="-foreground text-xs">
           {t("welcome")} {user?.name}
         </SidebarGroupLabel>
       </SidebarHeader>{" "}
-      <div className="dark:bg-accent dark:text-foreground text-sidebar flex h-[calc(100vh-8rem)] flex-col justify-between bg-[#0b142a]">
+      <div className="text-foreground flex h-[calc(100vh-8rem)] flex-col justify-between">
         {/* Scrollable menu area */}
         {/* <ScrollArea className="h-full pr-2" dir="rtl"> */}
-        <SidebarContent className="dark:bg-accent dark:text-foreground text-sidebar h-full rounded-sm bg-[#0b142a] p-1">
+        <SidebarContent className="text-foreground h-full rounded-sm p-1">
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
@@ -503,7 +539,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                     className={`${
                                       pathname === subItem.url
                                         ? "w-40 rounded-l-lg border-r-4 border-r-orange-600 bg-orange-400 text-white"
-                                        : "text-white hover:bg-orange-300/20"
+                                        : "text-foreground hover:bg-orange-300/20"
                                     } !justify-start !pr-4 !pl-8`}
                                   >
                                     <Link href={subItem.url || "/"}>
@@ -550,7 +586,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         className={`${
                           pathname === item.url
                             ? "w-52 rounded-l-lg border-r-4 border-r-orange-600 bg-orange-400 text-white"
-                            : "text-white hover:bg-orange-300/20"
+                            : "text-foreground hover:bg-orange-300/20"
                         }`}
                       >
                         <Link href={item.url ?? "/"}>

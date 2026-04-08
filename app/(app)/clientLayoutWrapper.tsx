@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/lib/context/AuthContext";
+import { useCompany } from "@/hooks/useCompany";
 import { usePathname } from "next/navigation";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import dynamic from "next/dynamic";
@@ -12,7 +13,6 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import Appheader from "@/app/AppHeader/appheader";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { useFirebaseForegroundNotifications } from "@/hooks/useFirebaseForegroundNotifications";
-import { Suspense } from "react";
 import { AppSidebar } from "@/components/appside-bar";
 import PullToRefreshCurrentPage from "@/components/refresh";
 
@@ -42,6 +42,7 @@ export default function ClientLayoutWrapper({
   children: React.ReactNode;
 }) {
   const { user, loading, loggingOut } = useAuth();
+  const { loading: companyLoading } = useCompany();
   const pathname = usePathname();
   useOfflineSync();
   useFirebaseForegroundNotifications();
@@ -50,7 +51,7 @@ export default function ClientLayoutWrapper({
   const authRoutes = ["/login", "/signup"];
   const isAuthRoute = authRoutes.includes(pathname);
 
-  if (loading || loggingOut) {
+  if (loading || loggingOut || (!!user && companyLoading)) {
     return <IMSLoader />;
   }
 
@@ -85,8 +86,6 @@ export default function ClientLayoutWrapper({
                 </ScrollArea>
               </div>
             </SidebarInset>
-            {/* {" "}
-          <SidebarTrigger /> */}
             <AppSidebar
               variant="floating"
               className="text-2xl"
