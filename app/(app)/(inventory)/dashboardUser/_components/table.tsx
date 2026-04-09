@@ -76,7 +76,7 @@ function InventoryStatusTable({
       <CardContent className="min-w-0">
         <div className="overflow-x-auto">
           <Table className="min-w-[680px]">
-            <TableHeader className="shadow-none">
+            <TableHeader className="bg-accent shadow-none">
               <TableRow>
                 <TableHead className="text-right">الصنف</TableHead>
                 <TableHead className="text-right">المخزن</TableHead>
@@ -134,7 +134,7 @@ function MovementTable({ rows }: { rows: MovementRow[] }) {
       <CardContent className="min-w-0">
         <div className="overflow-x-auto">
           <Table className="min-w-[680px]">
-            <TableHeader className="-none">
+            <TableHeader className="bg-accent">
               <TableRow>
                 <TableHead className="text-right">الصنف</TableHead>
                 <TableHead className="text-right">المخزن</TableHead>

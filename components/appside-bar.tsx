@@ -453,7 +453,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     <Sidebar
       collapsible="icon"
       {...props}
-      className="bg-sidebar-primary text-foreground py-4"
+      className="bg-background text-foreground py-4"
     >
       <SidebarHeader
         data-state={isCollapsed ? "collapsed" : "expanded"}
@@ -494,7 +494,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarGroupLabel className="text-foreground text-xs">
           {company.name}
         </SidebarGroupLabel>
-        <SidebarGroupLabel className="-foreground text-xs">
+        <SidebarGroupLabel className="text-foreground text-xs">
           {t("welcome")} {user?.name}
         </SidebarGroupLabel>
       </SidebarHeader>{" "}
