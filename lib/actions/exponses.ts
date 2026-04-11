@@ -376,6 +376,25 @@ interface ExpenseData {
   amountFC?: number;
 
   notes?: string;
+  employeeId?: string;
+  customerId?: string;
+}
+
+export async function getExpenseAssignmentOptions(companyId: string) {
+  const [employees, customers] = await Promise.all([
+    prisma.employee.findMany({
+      where: { companyId, isActive: true },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.customer.findMany({
+      where: { companyId, isActive: true },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+  ]);
+
+  return { employees, customers };
 }
 
 export async function createMultipleExpenses(
@@ -427,6 +446,12 @@ export async function createMultipleExpenses(
       // جلب آخر رقم سند صرف للشركة لمرة واحدة وزيادته تدريجياً داخل الحلقة
 
       for (const expenseData of expensesData) {
+        if (expenseData.employeeId && expenseData.customerId) {
+          throw new Error(
+            "Expense can be linked to either an employee or a customer, not both",
+          );
+        }
+
         currentVoucherNumber++; // زيادة الرقم لكل مصروف جديد
         const expenseNumber = `EXP-${String(nextExpenseNumber).padStart(5, "0")}`;
         nextExpenseNumber++; // زيادة الرقم للمصروف التالي
@@ -481,6 +506,8 @@ export async function createMultipleExpenses(
                 referenceNumber: expenseData.referenceNumber,
                 notes: expenseData.description,
                 status: "paid",
+                employeeId: expenseData.employeeId,
+                customerId: expenseData.customerId,
                 date: expenseData.expense_date,
               },
             },
@@ -490,10 +517,8 @@ export async function createMultipleExpenses(
         // ب- إنشاء المعاملة المالية المرتبطة (FinancialTransaction)
         // هذا يمثل "سند الصرف" الفعلي في الخزينة
 
-        const entryYear = new Date().getFullYear();
-        const entryNumber = `JE-${entryYear}-${Date.now()}-${Math.floor(
-          Math.random() * 1000,
-        )}`;
+        const entryNumber = `SAL-${new Date().getFullYear()}-${voucherNumber}`;
+
         const journalHeader = await tx.journalHeader.create({
           data: {
             companyId,

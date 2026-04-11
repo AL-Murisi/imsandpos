@@ -54,6 +54,7 @@ export default function Appheader() {
     { title: "تقارير العميل", url: "/customer-portal/reports" },
     { title: t("reports"), url: "/reports" },
     { title: t("settings"), url: "/settings" },
+    { title: " الموظفين", url: "/employee" },
   ];
   type MenuItem = (typeof menuItems)[number];
   const pathname = usePathname();
@@ -75,7 +76,7 @@ export default function Appheader() {
   const pageTitle = usePageTitle();
 
   return (
-    <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
+    <header className="border-accent-foreground flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
       {/* <header
       className="dark:bg-accent dark:text-foreground text-sidebar flex h-10 shrink-0 items-center gap-2 border-b bg-[#0b142a] transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)"
       dir="rtl"

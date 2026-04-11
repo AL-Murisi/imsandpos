@@ -25,7 +25,7 @@ export default function StocksLayout({
 
   return (
     <div className="p-1">
-      <div className="flex flex-wrap gap-2 border-b p-2">
+      <div className="border-accent-foreground flex flex-wrap gap-2 border-b p-1">
         {visibleItems.map((item) => {
           const isActive =
             pathname === item.href || pathname.startsWith(`${item.href}/`);

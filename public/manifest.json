@@ -4,7 +4,7 @@
   "description": "نظام شامل لإدارة المنتجات والمخزون - Comprehensive product and inventory management system",
   "start_url": "/",
   "id": "/",
-  "display": "standalone",
+  "display": "Minimal-ui",
   "background_color": "#ffffff",
   "theme_color": "#ffffff",
   "orientation": "portrait-primary",

@@ -36,6 +36,143 @@ function normalizeOptionalString(value?: string | null) {
   const normalized = value?.trim();
   return normalized ? normalized : null;
 }
+
+async function resolveCustomerOpeningOffsetAccount(
+  tx: Prisma.TransactionClient,
+  companyId: string,
+) {
+  const preferredMappings = [
+    "opening_balance_equity",
+    "retained_earnings",
+    "owner_equity",
+  ];
+
+  const mappedAccount = await tx.account_mappings.findFirst({
+    where: {
+      company_id: companyId,
+      mapping_type: { in: preferredMappings },
+      is_default: true,
+    },
+    select: { account_id: true },
+  });
+
+  if (mappedAccount?.account_id) {
+    return mappedAccount.account_id;
+  }
+
+  const fallbackEquityAccount = await tx.accounts.findFirst({
+    where: {
+      company_id: companyId,
+      account_type: "EQUITY",
+      is_active: true,
+    },
+    orderBy: [{ is_system: "desc" }, { account_code: "asc" }],
+    select: { id: true },
+  });
+
+  return fallbackEquityAccount?.id ?? null;
+}
+
+async function createCustomerOpeningBalanceArtifacts(
+  tx: Prisma.TransactionClient,
+  params: {
+    companyId: string;
+    customerId: string;
+    customerName: string;
+    createdBy: string;
+    outstandingBalance: number;
+  },
+) {
+  if (params.outstandingBalance <= 0) {
+    return null;
+  }
+
+  const mappings = await tx.account_mappings.findMany({
+    where: { company_id: params.companyId, is_default: true },
+    select: { mapping_type: true, account_id: true },
+  });
+
+  const arAccount = mappings.find(
+    (mapping) => mapping.mapping_type === "accounts_receivable",
+  )?.account_id;
+
+  if (!arAccount) {
+    throw new Error("Accounts receivable account mapping is required");
+  }
+
+  const offsetAccount = await resolveCustomerOpeningOffsetAccount(
+    tx,
+    params.companyId,
+  );
+
+  if (!offsetAccount) {
+    throw new Error("No equity account found for opening balance posting");
+  }
+
+  const company = await tx.company.findUnique({
+    where: { id: params.companyId },
+    select: { base_currency: true },
+  });
+
+  const invoiceNumber = `OPEN-AR-${Date.now()}-${params.customerId.slice(-4).toUpperCase()}`;
+  const description = `رصيد افتتاحي عميل - ${params.customerName} - ${invoiceNumber}`;
+  const entryNumber = `JE-OPEN-CUST-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+  const openingInvoice = await tx.invoice.create({
+    data: {
+      companyId: params.companyId,
+      invoiceNumber,
+      cashierId: params.createdBy,
+      customerId: params.customerId,
+      customerName: params.customerName,
+      sale_type: "SALE",
+      status: "unpaid",
+      totalAmount: params.outstandingBalance,
+      amountPaid: 0,
+      amountDue: params.outstandingBalance,
+      currencyCode: company?.base_currency ?? null,
+      baseAmount: params.outstandingBalance,
+      invoiceDate: new Date(),
+    },
+  });
+
+  await tx.journalHeader.create({
+    data: {
+      companyId: params.companyId,
+      entryNumber,
+      description,
+      referenceType: "رصيد افتتاحي عميل",
+      referenceId: openingInvoice.id,
+      entryDate: new Date(),
+      status: "POSTED",
+      createdBy: params.createdBy,
+      lines: {
+        create: [
+          {
+            companyId: params.companyId,
+            accountId: arAccount,
+            debit: params.outstandingBalance,
+            credit: 0,
+            currencyCode: company?.base_currency ?? null,
+            baseAmount: params.outstandingBalance,
+            memo: `${description} - مدين`,
+          },
+          {
+            companyId: params.companyId,
+            accountId: offsetAccount,
+            debit: 0,
+            credit: params.outstandingBalance,
+            currencyCode: company?.base_currency ?? null,
+            baseAmount: params.outstandingBalance,
+            memo: `${description} - مقابل الرصيد الافتتاحي`,
+          },
+        ],
+      },
+    },
+  });
+
+  return openingInvoice;
+}
 export async function getCustomerById(
   companyId: string,
   page: number = 0, // 0-indexed page number
@@ -116,48 +253,33 @@ export async function getCustomerById(
         const paymentIdList = paymentIds.map((p) => p.id);
 
         // جلب القيود المحاسبية الخاصة بهذا العميل تحديداً ضمن الفترة الزمنية
-        const [entries, journalEntries] = await Promise.all([
-          prisma.journalLine.findMany({
-            where: {
-              companyId: companyId,
-              accountId: arAccount,
-              header: {
-                referenceId: { in: invoiceIdList },
-                entryDate: {
-                  ...(fromDate && { gte: fromDate }),
-                  ...(toDate && { lte: toDate }),
-                },
-              },
-            },
-            select: {
-              debit: true,
-              credit: true,
-            },
-          }),
-          prisma.journal_entries.findMany({
-            where: {
-              company_id: companyId,
-              account_id: arAccount,
-              reference_id: { in: [customer.id, ...invoiceIdList, ...paymentIdList] },
-              entry_date: {
+        const entries = await prisma.journalLine.findMany({
+          where: {
+            companyId: companyId,
+            accountId: arAccount,
+            header: {
+              referenceId: { in: invoiceIdList },
+              entryDate: {
                 ...(fromDate && { gte: fromDate }),
                 ...(toDate && { lte: toDate }),
               },
             },
-            select: {
-              debit: true,
-              credit: true,
-            },
-          }),
-        ]);
+          },
+          select: {
+            debit: true,
+            credit: true,
+          },
+        });
 
         // حساب الإجمالي من واقع القيود
-        const totalDebit =
-          entries.reduce((s, t) => s + Number(t.debit || 0), 0) +
-          journalEntries.reduce((s, t) => s + Number(t.debit || 0), 0);
-        const totalCredit =
-          entries.reduce((s, t) => s + Number(t.credit || 0), 0) +
-          journalEntries.reduce((s, t) => s + Number(t.credit || 0), 0);
+        const totalDebit = entries.reduce(
+          (s, t) => s + Number(t.debit || 0),
+          0,
+        );
+        const totalCredit = entries.reduce(
+          (s, t) => s + Number(t.credit || 0),
+          0,
+        );
 
         return {
           ...customer,
@@ -270,8 +392,12 @@ export async function deleteCustomer(customerId: string, companyId: string) {
       if (customer?.userId) {
         await tx.userRole.deleteMany({ where: { userId: customer.userId } });
         await tx.userInvite.deleteMany({ where: { userId: customer.userId } });
-        await tx.pushSubscription.deleteMany({ where: { userId: customer.userId } });
-        await tx.pushDeviceToken.deleteMany({ where: { userId: customer.userId } });
+        await tx.pushSubscription.deleteMany({
+          where: { userId: customer.userId },
+        });
+        await tx.pushDeviceToken.deleteMany({
+          where: { userId: customer.userId },
+        });
         await tx.user.delete({
           where: { id: customer.userId, companyId },
         });

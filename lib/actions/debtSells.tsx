@@ -509,10 +509,8 @@ export async function updateSalesBulk(
         });
         createdPayments.push(payment);
 
-        const entryYear = new Date().getFullYear();
-        const entryNumber = `JE-${entryYear}-${Date.now()}-${Math.floor(
-          Math.random() * 1000,
-        )}`;
+        const entryNumber = `Debt-${new Date().getFullYear()}-${voucherNumber}`;
+
         const desc = `Debt payment for invoice: ${p.invoiceNumber}`;
 
         await tx.journalHeader.create({

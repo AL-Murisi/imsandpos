@@ -1,4 +1,5 @@
 import {
+  getExpenseAssignmentOptions,
   getExpenseCategories,
   getExpensesByCompany,
 } from "@/lib/actions/exponses";
@@ -11,19 +12,22 @@ export default async function Home() {
   if (!user) return <div>Not authenticated</div>;
 
   try {
-    const [expensesData, categoriesData, payment] = await Promise.all([
-      getExpensesByCompany(user.companyId),
-      getExpenseCategories(user.companyId),
-      fetchPayments(),
-    ]);
+    const [expensesData, categoriesData, payment, assignmentOptions] =
+      await Promise.all([
+        getExpensesByCompany(user.companyId),
+        getExpenseCategories(user.companyId),
+        fetchPayments(),
+        getExpenseAssignmentOptions(user.companyId),
+      ]);
 
     return (
       <div className="p-3">
         <ExpensesPage
           data={expensesData.data}
-          total={expensesData}
+          total={expensesData.total}
           payment={payment}
           formData={categoriesData}
+          assignmentOptions={assignmentOptions}
         />
       </div>
     );

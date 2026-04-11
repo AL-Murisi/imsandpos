@@ -270,7 +270,196 @@ export async function getCustomerStatement(
     return { success: false, error: "خطأ في جلب كشف الحساب" };
   }
 }
+export async function getEmployeerStatement(
+  employeer: string,
+  companyId: string,
 
+  dateFrom: string,
+  dateTo: string,
+) {
+  try {
+    const mappings = await prisma.account_mappings.findMany({
+      where: { company_id: companyId, is_default: true },
+      select: { mapping_type: true, account_id: true },
+    });
+    const prAccount = mappings.find(
+      (m) => m.mapping_type === "PAYROLL_EXPENSES",
+    )?.account_id;
+    if (!prAccount) {
+      return {
+        success: false,
+        error: "حساب العملاء (المدينون) غير مربوط",
+      };
+    }
+
+    const fiscalYear = await prisma.fiscal_periods.findFirst({
+      where: {
+        company_id: companyId,
+        is_closed: false,
+      },
+      select: { start_date: true, end_date: true },
+    });
+    const fromDate = dateFrom
+      ? new Date(dateFrom)
+      : fiscalYear
+        ? new Date(fiscalYear.start_date)
+        : null;
+    const toDate = dateTo
+      ? new Date(dateTo)
+      : fiscalYear
+        ? new Date(fiscalYear.end_date)
+        : null;
+
+    if (!fromDate || !toDate) {
+      return {
+        success: false,
+        error: "تعذر تحديد الفترة المالية",
+      };
+    }
+
+    fromDate.setHours(0, 0, 0, 0); // Start of day
+    toDate.setHours(23, 59, 59, 999); // End of day
+
+    // 1️⃣ جلب حساب المدينون
+
+    const customer = await prisma.employee.findUnique({
+      where: { id: employeer, companyId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+      },
+    });
+
+    if (!customer) {
+      return { success: false, error: "العميل غير موجود" };
+    }
+
+    // const invoiceIds = await prisma.invoice.findMany({
+    //   where: { companyId, customerId },
+    //   select: { id: true },
+    // });
+    const paymentIds = await prisma.financialTransaction.findMany({
+      where: {
+        companyId,
+        employeeId: employeer,
+      },
+      select: { id: true },
+    });
+    const paymentIdList = paymentIds.map((p) => p.id);
+    const customerReferenceIds = [employeer, ...paymentIdList];
+
+    // 2️⃣ الرصيد الافتتاحي قبل الفترة
+    const [openingLines] = await Promise.all([
+      prisma.journalLine.findMany({
+        where: {
+          companyId,
+          accountId: prAccount,
+          header: {
+            referenceId: { in: customerReferenceIds },
+            entryDate: { lt: fromDate },
+          },
+        },
+        select: {
+          debit: true,
+          credit: true,
+        },
+      }),
+    ]);
+
+    const openingBalance = openingLines.reduce(
+      (sum, e) => sum + Number(e.debit) - Number(e.credit),
+      0,
+    );
+
+    // 3️⃣ قيود الفترة
+    const [lines] = await Promise.all([
+      prisma.journalLine.findMany({
+        where: {
+          companyId,
+          header: {
+            referenceId: { in: customerReferenceIds },
+            entryDate: { gte: fromDate, lte: toDate },
+          },
+        },
+        orderBy: { header: { entryDate: "asc" } },
+        include: {
+          header: true,
+        },
+      }),
+    ]);
+
+    const combinedEntries = [
+      ...lines.map((entry) => ({
+        date: entry.header.entryDate,
+        debit: Number(entry.debit),
+        credit: Number(entry.credit),
+        description: entry.memo ?? entry.header.description,
+        docNo: entry.header.entryNumber,
+        typeName: mapType(entry.header.referenceType),
+      })),
+    ].sort((a, b) => {
+      const aTime = a.date ? new Date(a.date).getTime() : 0;
+      const bTime = b.date ? new Date(b.date).getTime() : 0;
+      return aTime - bTime;
+    });
+
+    // 4️⃣ بناء كشف الحساب
+    let runningBalance = openingBalance;
+    const transactions = combinedEntries.map((entry) => {
+      runningBalance = Math.abs(
+        runningBalance + Number(entry.debit) - Number(entry.credit),
+      );
+
+      return {
+        date: entry.date,
+        debit: Number(entry.debit),
+        credit: Number(entry.credit),
+        balance: runningBalance,
+        description: entry.description,
+        docNo: entry.docNo,
+        typeName: entry.typeName,
+      };
+    });
+    const totalDebit = transactions.reduce((s, t) => s + t.debit, 0);
+    const totalCredit = transactions.reduce((s, t) => s + t.credit, 0);
+    const periodDebit = transactions.reduce((s, t) => s + t.debit, 0);
+    const periodCredit = transactions.reduce((s, t) => s + t.credit, 0);
+
+    // المنطق للعميل:
+    // إذا كان الافتتاحي موجب (مدين) يضاف للمدين، وإذا كان سالب (دائن) يضاف للدائن
+    const finalTotalDebit =
+      openingBalance > 0 ? periodDebit + openingBalance : periodDebit;
+    const finalTotalCredit =
+      openingBalance < 0
+        ? periodCredit + Math.abs(openingBalance)
+        : periodCredit;
+    return {
+      success: true,
+      data: {
+        customer: serializeData(customer),
+        openingBalance,
+        closingBalance: openingBalance + totalCredit - totalDebit,
+        totalDebit: finalTotalDebit,
+        totalCredit: finalTotalCredit,
+        transactions,
+        period: {
+          from:
+            fromDate instanceof Date
+              ? fromDate.toLocaleDateString("ar-EG")
+              : fromDate,
+          to:
+            toDate instanceof Date
+              ? toDate.toLocaleDateString("ar-EG")
+              : toDate,
+        },
+      },
+    };
+  } catch (error) {
+    console.error("Error loading journal-based statement:", error);
+    return { success: false, error: "خطأ في جلب كشف الحساب" };
+  }
+}
 // 🔍 لتحسين أسماء العمليات حسب نوع القيد
 function mapType(ref: string | null) {
   if (!ref) return "عملية";

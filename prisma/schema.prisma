@@ -517,7 +517,7 @@ model FinancialTransaction {
   supplierId      String?  @map("supplier_id")
   userId          String?  @map("user_id") // للموظفين أو المصاريف الإدارية
     expenseId       String?  @map("expense_id") @db.Uuid
-
+    employeeId String?   @map("employee_id")
   branchId        String?
   // الربط بالعمليات (اختياري)
   saleId          String?  @map("sale_id")
@@ -541,7 +541,7 @@ model FinancialTransaction {
   
   // العلاقات
   expense         expenses? @relation(fields: [expenseId], references: [id])
-  
+  employee         Employee? @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   customer        Customer? @relation(fields: [customerId], references: [id])
   supplier        Supplier? @relation(fields: [supplierId], references: [id])
@@ -687,6 +687,8 @@ model Employee {
   updatedAt      DateTime @updatedAt @map("updated_at")
 
   // 🔑 Payroll account (optional)
+ transaction           FinancialTransaction[]
+
    payableAccountId String?   @map("payable_account_id")
   payableAccount   accounts? @relation("EmployeePayableAccount", fields: [payableAccountId], references: [id])
   company        Company @relation(fields: [companyId], references: [id], onDelete: Cascade)

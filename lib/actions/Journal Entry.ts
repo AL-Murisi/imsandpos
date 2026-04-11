@@ -129,6 +129,7 @@ export async function getVouchers(
       include: {
         customer: { select: { name: true } },
         supplier: { select: { name: true } },
+        employee: { select: { name: true } },
         invoice: { select: { invoiceNumber: true } },
         expense: { select: { expense_number: true } },
       },
@@ -144,124 +145,7 @@ export async function getVouchers(
     return { success: false, error: "حدث خطأ أثناء جلب السندات" };
   }
 }
-/**
- * 2. PURCHASE TRANSACTION - Creates journal entries when purchasing inventory
- *
- * Journal Entry:
- * - Debit: Inventory (Asset) - $5,000
- * - Credit: Accounts Payable (Liability) - $5,000
- */
 
-/**
- * 3. EXPENSE TRANSACTION
- *
- * Journal Entry:
- * - Debit: Expense Account - $500
- * - Credit: Cash (Asset) - $500
- */
-// export async function createExpenseWithJournalEntries(
-//   expenseData: any,
-//   userId: string,
-//   companyId: string,
-// ) {
-//   return await prisma.$transaction(async (tx) => {
-//     // 1. Create the expense
-//     const expense = await tx.expenses.create({
-//       data: {
-//         ...expenseData,
-//         company_id: companyId,
-//         user_id: userId,
-//       },
-//     });
-
-//     // 2. Get account mappings
-//     const cashAccountId = await getAccountMapping(companyId, "cash");
-
-//     // Get or create expense category account
-//     let expenseAccountId;
-//     // if (expense.category_id) {
-//     //   const category = await tx.expense_categories.findUnique({
-//     //     where: { id: expense.category_id },
-//     //   });
-
-//       // Find corresponding expense account (you'd need to link categories to accounts)
-//       const expenseAccount = await tx.accounts.findFirst({
-//         where: {
-//           company_id: companyId,
-//           account_category: "OPERATING_EXPENSES",
-//           account_name_en: {
-//             contains: category?.name,
-//           },
-//         },
-//       });
-
-//       expenseAccountId =
-//         expenseAccount?.id ||
-//         (await getAccountMapping(companyId, "operating_expenses"));
-//     }
-
-//     // 3. Create journal entries
-
-//     // Expense (Debit)
-//     await createJournalEntry({
-//       companyId,
-//       accountId: expenseAccountId ?? "",
-//       description: `Expense: ${expense.description}`,
-//       debit: Number(expense.amount),
-//       credit: 0,
-//       referenceType: "expense",
-//       referenceId: expense.id,
-//       userId,
-//     });
-
-//     // Cash reduction (Credit)
-//     await createJournalEntry({
-//       companyId,
-//       accountId: cashAccountId,
-//       description: `Payment for expense: ${expense.description}`,
-//       debit: 0,
-//       credit: Number(expense.amount),
-//       referenceType: "expense",
-//       referenceId: expense.id,
-//       userId,
-//     });
-
-//     // 4. Update account balances
-//     await tx.accounts.update({
-//       where: { id: expenseAccountId },
-//       data: { balance: { increment: expense.amount } },
-//     });
-
-//     await tx.accounts.update({
-//       where: { id: cashAccountId },
-//       data: { balance: { decrement: expense.amount } },
-//     });
-
-//     return expense;
-// //   });
-// // }
-
-/**
- * 4. PAYMENT RECEIVED FROM CUSTOMER
- *
- * Journal Entry:
- * - Debit: Cash/Bank (Asset) - $1,000
- * - Credit: Accounts Receivable (Asset) - $1,000
- */
-
-/**
- * 5. SUPPLIER PAYMENT
- *
- * Journal Entry:
- * - Debit: Accounts Payable (Liability) - $3,000
- * - Credit: Cash/Bank (Asset) - $3,000
- */
-
-/**
- * 6. GENERATE FINANCIAL REPORTS
- */
-
-// Profit & Loss Statement
 export async function getProfitAndLoss(
   companyId: string,
   startDate: Date,
@@ -591,9 +475,7 @@ export async function getJournalEntries(
       entryDate: true,
       description: true,
       lines: {
-        ...(account_id
-          ? { where: { accountId: account_id } }
-          : {}),
+        ...(account_id ? { where: { accountId: account_id } } : {}),
         select: {
           debit: true,
           currencyCode: true,
@@ -647,10 +529,7 @@ export async function getJournalEntries(
       memo: line.memo,
       account: line.account,
     })),
-    debit: entry.lines.reduce(
-      (sum, line) => sum + Number(line.debit || 0),
-      0,
-    ),
+    debit: entry.lines.reduce((sum, line) => sum + Number(line.debit || 0), 0),
     credit: entry.lines.reduce(
       (sum, line) => sum + Number(line.credit || 0),
       0,
@@ -720,7 +599,10 @@ export async function getJournalEntrie(account_id?: string) {
     },
     posted_by: null,
     users_journal_entries_created_byTousers: line.header.createdUser
-      ? { name: line.header.createdUser.name, email: line.header.createdUser.email }
+      ? {
+          name: line.header.createdUser.name,
+          email: line.header.createdUser.email,
+        }
       : null,
     users_journal_entries_updated_byTousers: null,
     total,

@@ -24,6 +24,8 @@ import { deleteEmployee, updateEmployeeStatus } from "@/lib/actions/employees";
 import { useAuth } from "@/lib/context/AuthContext";
 import EditEmployeeForm from "./editForm";
 import EmployeeSalaryForm from "./salaryForm";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 type SortableHeaderProps = {
   column: Column<any, unknown>;
@@ -157,6 +159,8 @@ export const employeeColumns: ColumnDef<any>[] = [
     header: "الإجراءات",
     enableHiding: false,
     cell: ({ row }) => {
+      const router = useRouter();
+      const [isLoading, setIsLoading] = useState(false);
       const employee = row.original;
       const { user } = useAuth();
       if (!user) return null;
@@ -198,6 +202,17 @@ export const employeeColumns: ColumnDef<any>[] = [
             title="حذف"
           >
             <Trash2 className="h-4 w-4" />
+          </Button>
+          <Button
+            disabled={isLoading}
+            onClick={() => {
+              setIsLoading(true);
+              router.push(`/employee/${employee.id}`);
+            }}
+            className="flex items-center gap-2"
+          >
+            {isLoading && <Clock className="h-3 w-3 animate-spin" />}
+            {isLoading ? "جاري الفتح" : "كشف حساب"}
           </Button>
         </div>
       );

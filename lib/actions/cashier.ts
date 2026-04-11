@@ -280,7 +280,11 @@ export async function processSale(data: any, companyId: string) {
             // If you need warehouse info at the item level:
             // warehouseId: item.warehouseId
           }));
-
+          const voucherNumber = await getNextVoucherNumber(
+            companyId,
+            "RECEIPT",
+            tx,
+          );
           const paymentDataTemplate = async (invoiceNo: string) =>
             baseAmount > 0
               ? {
@@ -288,11 +292,7 @@ export async function processSale(data: any, companyId: string) {
                   userId: cashierId,
                   branchId,
                   customerId: customer?.id,
-                  voucherNumber: await getNextVoucherNumber(
-                    companyId,
-                    "RECEIPT",
-                    tx,
-                  ),
+                  voucherNumber,
                   currencyCode: currency,
                   exchangeRate: exchangeRate,
                   paymentMethod: "cash",
@@ -393,7 +393,7 @@ export async function processSale(data: any, companyId: string) {
               quantityBefore: inventory.stockQuantity,
               quantityAfter: inventory.stockQuantity - baseQty,
               referenceType: "فاتوره مبيعات",
-              referenceId: sale.id,
+              referenceId: sale.invoiceNumber,
               userId: cashierId,
             });
 
@@ -468,9 +468,7 @@ export async function processSale(data: any, companyId: string) {
           }
 
           const entryYear = new Date().getFullYear();
-          const entryNumber = `JE-${entryYear}-${Date.now()}-${Math.floor(
-            Math.random() * 1000,
-          )}`;
+          const entryNumber = `SALE-${new Date().getFullYear()}-${voucherNumber}`;
 
           const desc = `Sales invoice: ${sale.invoiceNumber}`;
           const isForeign =
@@ -1005,7 +1003,11 @@ export async function processReturn(data: any, companyId: string) {
         tx.stockMovement.createMany({ data: stockMovementsData }),
         ...inventoryUpdatesPromises,
       ]);
-
+      const voucherNumber = await getNextVoucherNumber(
+        companyId,
+        "PAYMENT",
+        tx,
+      );
       const customerOperations: Prisma.PrismaPromise<any>[] = [];
       const returnAgainstReceivable = Math.min(
         originalSaleAmountDue,
@@ -1024,12 +1026,6 @@ export async function processReturn(data: any, companyId: string) {
       }
 
       if (returnToCustomer > 0) {
-        const voucherNumber = await getNextVoucherNumber(
-          companyId,
-          "PAYMENT",
-          tx,
-        );
-
         customerOperations.push(
           tx.financialTransaction.create({
             data: {
@@ -1074,10 +1070,8 @@ export async function processReturn(data: any, companyId: string) {
         );
       }
 
-      const entryYear = new Date().getFullYear();
-      const entryNumber = `JE-${entryYear}-${Date.now()}-${Math.floor(
-        Math.random() * 1000,
-      )}`;
+      const entryNumber = `RET-${new Date().getFullYear()}-${voucherNumber}`;
+
       const desc = `Sales return: ${returnSale.invoiceNumber} / original ${originalSale.invoiceNumber}`;
       const isForeign =
         currency &&

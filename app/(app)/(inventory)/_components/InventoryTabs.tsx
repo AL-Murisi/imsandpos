@@ -14,7 +14,7 @@ export default function InventoryTabs({ items }: { items: NavItem[] }) {
   const pathname = usePathname();
 
   return (
-    <div className="flex flex-wrap gap-2 border-b p-2">
+    <div className="border-foreground flex flex-wrap gap-2 p-1">
       {items.map((item) => {
         const isActive =
           pathname === item.href || pathname.startsWith(`${item.href}/`);

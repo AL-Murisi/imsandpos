@@ -413,104 +413,111 @@ export async function createEmployeeSalaryPayment(
     const paymentDateValue = new Date(paymentDate);
     const selectedCurrency = currencyCode || company?.base_currency || "YER";
 
-    const result = await prisma.$transaction(async (tx) => {
-      const voucherNumber = await getNextVoucherNumber(
-        companyId,
-        "PAYMENT",
-        tx,
-      );
-
-      const [mappings, payrollExpenseAccount] = await Promise.all([
-        tx.account_mappings.findMany({
-          where: { company_id: companyId, is_default: true },
-          select: { mapping_type: true, account_id: true },
-        }),
-        tx.accounts.findFirst({
-          where: {
-            company_id: companyId,
-            account_category: "PAYROLL_EXPENSES",
-            is_active: true,
-          },
-          select: { id: true },
-          orderBy: { account_code: "asc" },
-        }),
-      ]);
-
-      const accountMap = new Map(
-        mappings.map((mapping) => [mapping.mapping_type, mapping.account_id]),
-      );
-      const settlementAccount =
-        paymentMethod === "bank"
-          ? accountMap.get("bank") || accountMap.get("cash")
-          : accountMap.get("cash");
-
-      if (!payrollExpenseAccount?.id) {
-        throw new Error("حساب مصروف الرواتب غير موجود");
-      }
-
-      if (!settlementAccount) {
-        throw new Error("حساب السداد النقدي أو البنكي غير موجود");
-      }
-
-      const description = `صرف راتب الموظف ${employee.name}`;
-      const payment = await tx.financialTransaction.create({
-        data: {
+    const result = await prisma.$transaction(
+      async (tx) => {
+        const voucherNumber = await getNextVoucherNumber(
           companyId,
-          userId: employee.userId ?? undefined,
-          branchId: branchId || undefined,
-          type: "PAYMENT",
-          voucherNumber,
-          amount,
-          currencyCode: selectedCurrency,
-          baseAmount: amount,
-          paymentMethod,
-          referenceNumber: referenceNumber || undefined,
-          status: "paid",
-          notes: notes
-            ? `${description} - ${notes}`
-            : `${description} (الموظف: ${employee.id})`,
-          date: paymentDateValue,
-          createdAt: paymentDateValue,
-        },
-      });
+          "PAYMENT",
+          tx,
+        );
 
-      const entryNumber = `SAL-${new Date().getFullYear()}-${voucherNumber}`;
-      await tx.journalHeader.create({
-        data: {
-          companyId,
-          entryNumber,
-          description,
-          branchId: branchId || undefined,
-          referenceType: "سند صرف راتب",
-          referenceId: employee.id,
-          entryDate: paymentDateValue,
-          status: "POSTED",
-          createdBy: session.userId,
-          lines: {
-            create: [
-              {
-                companyId,
-                accountId: payrollExpenseAccount.id,
-                debit: amount,
-                credit: 0,
-                currencyCode: selectedCurrency,
-                memo: description,
-              },
-              {
-                companyId,
-                accountId: settlementAccount,
-                debit: 0,
-                credit: amount,
-                currencyCode: selectedCurrency,
-                memo: `${description} - ${paymentMethod}`,
-              },
-            ],
+        const [mappings, payrollExpenseAccount] = await Promise.all([
+          tx.account_mappings.findMany({
+            where: { company_id: companyId, is_default: true },
+            select: { mapping_type: true, account_id: true },
+          }),
+          tx.accounts.findFirst({
+            where: {
+              company_id: companyId,
+              account_category: "PAYROLL_EXPENSES",
+              is_active: true,
+            },
+            select: { id: true },
+            orderBy: { account_code: "asc" },
+          }),
+        ]);
+
+        const accountMap = new Map(
+          mappings.map((mapping) => [mapping.mapping_type, mapping.account_id]),
+        );
+        const settlementAccount =
+          paymentMethod === "bank"
+            ? accountMap.get("bank") || accountMap.get("cash")
+            : accountMap.get("cash");
+
+        if (!payrollExpenseAccount?.id) {
+          throw new Error("حساب مصروف الرواتب غير موجود");
+        }
+
+        if (!settlementAccount) {
+          throw new Error("حساب السداد النقدي أو البنكي غير موجود");
+        }
+
+        const description = `صرف راتب الموظف ${employee.name}`;
+        const payment = await tx.financialTransaction.create({
+          data: {
+            companyId,
+            userId: employee.userId ?? undefined,
+            branchId: branchId || undefined,
+            type: "PAYMENT",
+            voucherNumber,
+            amount,
+            currencyCode: selectedCurrency,
+            baseAmount: amount,
+            paymentMethod,
+            employeeId,
+            referenceNumber: referenceNumber || undefined,
+            status: "paid",
+            notes: notes
+              ? `${description} - ${notes}`
+              : `${description} (الموظف: ${employee.id})`,
+            date: paymentDateValue,
+            createdAt: paymentDateValue,
           },
-        },
-      });
+        });
 
-      return { payment, voucherNumber };
-    });
+        const entryNumber = `SAL-${new Date().getFullYear()}-${voucherNumber}`;
+        await tx.journalHeader.create({
+          data: {
+            companyId,
+            entryNumber,
+            description,
+            branchId: branchId || undefined,
+            referenceType: "سند صرف راتب",
+            referenceId: employee.id,
+            entryDate: paymentDateValue,
+            status: "POSTED",
+            createdBy: session.userId,
+            lines: {
+              create: [
+                {
+                  companyId,
+                  accountId: payrollExpenseAccount.id,
+                  debit: amount,
+                  credit: 0,
+                  currencyCode: selectedCurrency,
+                  memo: description,
+                },
+                {
+                  companyId,
+                  accountId: settlementAccount,
+                  debit: 0,
+                  credit: amount,
+                  currencyCode: selectedCurrency,
+                  memo: `${description} - ${paymentMethod}`,
+                },
+              ],
+            },
+          },
+        });
+
+        return { payment, voucherNumber };
+      },
+      {
+        timeout: 20000,
+        maxWait: 5000,
+      },
+    );
 
     await prisma.activityLogs.create({
       data: {

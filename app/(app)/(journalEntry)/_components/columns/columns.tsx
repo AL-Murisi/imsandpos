@@ -124,23 +124,24 @@ export const journalEntryColumns: ColumnDef<JournalEntryData>[] = [
   },
   {
     id: "accounts",
-    header: ({ column }) => (
-      <SortableHeader column={column} label="الحسابات" />
-    ),
+    header: ({ column }) => <SortableHeader column={column} label="الحسابات" />,
     cell: ({ row }) => {
       const accounts = row.original.lines.map(
         (line) => line.account.account_name_ar || line.account.account_name_en,
       );
       const preview = accounts.slice(0, 2).join("، ");
       const extra = accounts.length > 2 ? ` (+${accounts.length - 2})` : "";
-      return <span>{preview || "—"}{extra}</span>;
+      return (
+        <span>
+          {preview || "—"}
+          {extra}
+        </span>
+      );
     },
   },
   {
     id: "currencies",
-    header: ({ column }) => (
-      <SortableHeader column={column} label="العملات" />
-    ),
+    header: ({ column }) => <SortableHeader column={column} label="العملات" />,
     cell: ({ row }) => {
       const codes = Array.from(
         new Set(
@@ -280,6 +281,7 @@ export type FinancialVoucher = {
   notes?: string;
   customer?: { name: string };
   supplier?: { name: string };
+  employee?: { name: string };
   expense?: { expense_number: string };
 };
 
@@ -342,6 +344,7 @@ export const voucherColumns: ColumnDef<FinancialVoucher>[] = [
       const name =
         row.original.customer?.name ||
         row.original.supplier?.name ||
+        row.original.employee?.name ||
         voucher.invoice?.invoiceNumber ||
         voucher.expense?.expense_number;
       return <span>{name}</span>;

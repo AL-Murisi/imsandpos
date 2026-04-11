@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ColumnDef } from "@tanstack/react-table";
-import { Edit } from "lucide-react";
+import { Edit, Eye } from "lucide-react";
 import InvonteryEditFormm from "./form";
 import PurchaseReturnForm from "./returnform";
 import { PaymentCreateForm } from "./PaymentCreateForm";
@@ -174,7 +174,6 @@ function printDisbursementOrder(
     }, 800);
   };
 }
-
 export const StockMovementColumns: ColumnDef<any>[] = [
   {
     id: "select",
@@ -199,7 +198,51 @@ export const StockMovementColumns: ColumnDef<any>[] = [
     enableSorting: false,
     enableHiding: false,
   },
+  {
+    accessorKey: "warehouse.name",
+    header: "اسم المستودع",
+  },
+  {
+    accessorKey: "user.name",
+    header: "اسم المستخدم",
+  },
+  {
+    accessorKey: "product.sku",
+    header: "رمز المنتج (SKU)",
+  },
+  {
+    accessorKey: "product.name",
+    header: "اسم المنتج",
+  },
+  {
+    accessorKey: "quantityBefore",
+    header: "الكمية قبل",
+  },
+  {
+    accessorKey: "quantityAfter",
+    header: "الكمية بعد",
+  },
 
+  {
+    accessorKey: "reason",
+    header: "السبب",
+  },
+  {
+    accessorKey: "quantity",
+    header: "الكمية",
+  },
+  {
+    accessorKey: "movementType",
+    header: "نوع الحركة",
+  },
+  {
+    accessorKey: "createdAt",
+    header: "تاريخ الإنشاء",
+    cell: ({ row }) => {
+      const date = row.getValue("createdAt") as Date;
+      return <div>{new Date(date).toLocaleDateString("ar-EG")}</div>;
+    },
+  },
   {
     id: "actions",
     header: "الإجراءات",
@@ -210,6 +253,7 @@ export const StockMovementColumns: ColumnDef<any>[] = [
       const reason = inventory.reason;
       const quantityAfter = inventory.quantityAfter;
       const createdAt = inventory.createdAt;
+      const sellingUnit = inventory.sellingUnit;
       const adjustmentType = inventory.adjustmentType;
       const company = useCompany();
 
@@ -225,7 +269,7 @@ export const StockMovementColumns: ColumnDef<any>[] = [
                   name: it.product?.name || "-",
                   sku: it.product?.sku,
                   quantity: it.quantity ?? 0,
-                  unit: it.unit,
+                  unit: sellingUnit,
                 });
                 return acc;
               },
@@ -240,6 +284,7 @@ export const StockMovementColumns: ColumnDef<any>[] = [
                   name: inventory.product?.name || "-",
                   sku: inventory.product?.sku,
                   quantity: inventory.quantity ?? 0,
+                  unit: sellingUnit,
                 },
               ],
             },
@@ -253,7 +298,7 @@ export const StockMovementColumns: ColumnDef<any>[] = [
           setOpen={setOpen}
           btnLabl={
             <>
-              <Edit className="ml-2" /> عرض المنتج
+              <Eye className="ml-2" />
             </>
           }
           titel="تفاصيل المنتج"
@@ -296,10 +341,14 @@ export const StockMovementColumns: ColumnDef<any>[] = [
                   <span>الكمية بعد</span>
                   <span>{quantityAfter}</span>
                 </div>
+                <div className="flex justify-between">
+                  <span> الوحدة</span>
+                  <span>{sellingUnit}</span>
+                </div>
               </div>
             </div>
 
-            {/* <div className="mt-4 flex justify-end">
+            <div className="mt-4 flex justify-end">
               <Button
                 className="bg-emerald-600 text-white"
                 onClick={() => {
@@ -325,59 +374,13 @@ export const StockMovementColumns: ColumnDef<any>[] = [
               >
                 طباعة أمر صرف
               </Button>
-            </div> */}
+            </div>
           </div>
         </Dailogreuse>
       );
     },
   },
-
-  {
-    accessorKey: "createdAt",
-    header: "تاريخ الإنشاء",
-    cell: ({ row }) => {
-      const date = row.getValue("createdAt") as Date;
-      return <div>{new Date(date).toLocaleDateString("ar-EG")}</div>;
-    },
-  },
-  {
-    accessorKey: "movementType",
-    header: "نوع الحركة",
-  },
-  {
-    accessorKey: "quantity",
-    header: "الكمية",
-  },
-  {
-    accessorKey: "reason",
-    header: "السبب",
-  },
-  {
-    accessorKey: "quantityBefore",
-    header: "الكمية قبل",
-  },
-  {
-    accessorKey: "quantityAfter",
-    header: "الكمية بعد",
-  },
-  {
-    accessorKey: "product.name",
-    header: "اسم المنتج",
-  },
-  {
-    accessorKey: "product.sku",
-    header: "رمز المنتج (SKU)",
-  },
-  {
-    accessorKey: "user.name",
-    header: "اسم المستخدم",
-  },
-  {
-    accessorKey: "warehouse.name",
-    header: "اسم المستودع",
-  },
 ];
-
 export const inventoryColumns: ColumnDef<any>[] = [
   {
     id: "select",

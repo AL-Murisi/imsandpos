@@ -29,6 +29,10 @@ type ProductClientProps = {
 
   formData: { id: string; name: string }[];
   payment: any;
+  assignmentOptions: {
+    employees: { id: string; name: string }[];
+    customers: { id: string; name: string }[];
+  };
 };
 
 // Loading skeleton for table
@@ -38,6 +42,7 @@ export default function ExpensesPage({
   total,
   formData,
   payment,
+  assignmentOptions,
 }: ProductClientProps) {
   const {
     pagination,
@@ -70,9 +75,10 @@ export default function ExpensesPage({
 
             <ExpenseForm
               companyId={user.companyId}
-              userId={user.id}
+              userId={user.userId}
               payment={payment}
               categories={formData}
+              assignmentOptions={assignmentOptions}
             />
             <PrintExpenseTable expenses={data} />
           </div>

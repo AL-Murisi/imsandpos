@@ -1,23 +1,24 @@
 "use client";
 
 import { createMultipleExpenses } from "@/lib/actions/exponses";
-import { SelectField } from "@/components/common/selectproduct";
-import { Button } from "@/components/ui/button";
 import Dailogreuse from "@/components/common/dailogreuse";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { useAuth } from "@/lib/context/AuthContext";
-import { useEffect, useState } from "react";
-import { toast } from "sonner";
-import { fetchPayments } from "@/lib/actions/banks";
-import { Plus, Trash2, Save } from "lucide-react";
+import { SelectField } from "@/components/common/selectproduct";
 import {
   PaymentState,
   ReusablePayment,
 } from "@/components/common/ReusablePayment";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/lib/context/AuthContext";
 import { useCompany } from "@/hooks/useCompany";
+import { Plus, Save, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+
+type ExpenseAssignmentType = "general" | "employee" | "customer";
 
 interface ExpenseItem {
   id: string;
@@ -26,6 +27,8 @@ interface ExpenseItem {
   amount: string;
   notes?: string;
   payment?: PaymentState;
+  expenseFor: ExpenseAssignmentType;
+  relatedPartyId?: string;
 }
 
 interface Account {
@@ -39,6 +42,28 @@ interface MultiExpenseFormProps {
   userId: string;
   categories: { id: string; name: string }[];
   payment: any;
+  assignmentOptions: {
+    employees: { id: string; name: string }[];
+    customers: { id: string; name: string }[];
+  };
+}
+
+function createEmptyExpense(): ExpenseItem {
+  return {
+    id: crypto.randomUUID(),
+    account_id: "",
+    description: "",
+    amount: "",
+    notes: "",
+    expenseFor: "general",
+    relatedPartyId: "",
+    payment: {
+      paymentMethod: "",
+      accountId: "",
+      selectedCurrency: "",
+      amountBase: 0,
+    },
+  };
 }
 
 export default function ExpenseForm({
@@ -46,6 +71,7 @@ export default function ExpenseForm({
   userId,
   categories,
   payment,
+  assignmentOptions,
 }: MultiExpenseFormProps) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -54,120 +80,86 @@ export default function ExpenseForm({
   );
   const { company } = useCompany();
   const { user } = useAuth();
-
-  // ✅ Accounts per expense item
   const [accountsByExpense, setAccountsByExpense] = useState<
     Record<string, Account[]>
   >({});
-
-  // Initialize with one empty expense
-  const [expenses, setExpenses] = useState<ExpenseItem[]>([
-    {
-      id: crypto.randomUUID(),
-      account_id: "",
-      description: "",
-      amount: "",
-      notes: "",
-      payment: {
-        paymentMethod: "",
-        accountId: "",
-        selectedCurrency: "",
-        amountBase: 0,
-      },
-    },
-  ]);
+  const [expenses, setExpenses] = useState<ExpenseItem[]>([createEmptyExpense()]);
 
   if (!user) return null;
 
-  // ✅ Load accounts when payment method changes for any expense
   useEffect(() => {
     if (!open) return;
 
-    async function loadAccountsForAll() {
-      try {
-        const { banks, cashAccounts } = payment;
+    try {
+      const { banks, cashAccounts } = payment;
+      const nextAccountsByExpense: Record<string, Account[]> = {};
 
-        const newAccountsByExpense: Record<string, Account[]> = {};
+      expenses.forEach((exp) => {
+        if (exp.payment?.paymentMethod === "bank") {
+          nextAccountsByExpense[exp.id] = banks;
+        } else if (exp.payment?.paymentMethod === "cash") {
+          nextAccountsByExpense[exp.id] = cashAccounts;
+        } else {
+          nextAccountsByExpense[exp.id] = [];
+        }
+      });
 
-        expenses.forEach((exp) => {
-          if (exp.payment?.paymentMethod === "bank") {
-            newAccountsByExpense[exp.id] = banks;
-          } else if (exp.payment?.paymentMethod === "cash") {
-            newAccountsByExpense[exp.id] = cashAccounts;
-          } else {
-            newAccountsByExpense[exp.id] = [];
-          }
-        });
-
-        setAccountsByExpense(newAccountsByExpense);
-      } catch (err) {
-        console.error(err);
-        toast.error("فشل في جلب الحسابات");
-      }
+      setAccountsByExpense(nextAccountsByExpense);
+    } catch (error) {
+      console.error(error);
+      toast.error("فشل في جلب الحسابات");
     }
-
-    loadAccountsForAll();
   }, [
     open,
+    payment,
     expenses.map((exp) => `${exp.id}-${exp.payment?.paymentMethod}`).join(","),
   ]);
 
-  // Add new expense row
   const addExpense = () => {
-    setExpenses([
-      ...expenses,
-      {
-        id: crypto.randomUUID(),
-        account_id: "",
-        description: "",
-        amount: "",
-        notes: "",
-        payment: {
-          paymentMethod: "",
-          accountId: "",
-          selectedCurrency: "",
-          amountBase: 0,
-        },
-      },
-    ]);
+    setExpenses((current) => [...current, createEmptyExpense()]);
   };
 
-  // Remove expense row
   const removeExpense = (id: string) => {
-    if (expenses.length > 1) {
-      setExpenses(expenses.filter((exp) => exp.id !== id));
-    } else {
+    if (expenses.length <= 1) {
       toast.error("يجب أن يكون هناك مصروف واحد على الأقل");
+      return;
     }
+
+    setExpenses((current) => current.filter((exp) => exp.id !== id));
   };
 
-  // Update expense field
   const updateExpense = (id: string, field: keyof ExpenseItem, value: any) => {
-    setExpenses(
-      expenses.map((exp) => (exp.id === id ? { ...exp, [field]: value } : exp)),
+    setExpenses((current) =>
+      current.map((exp) => (exp.id === id ? { ...exp, [field]: value } : exp)),
     );
   };
 
-  // Calculate total
+  const updateExpenseAssignment = (
+    id: string,
+    expenseFor: ExpenseAssignmentType,
+  ) => {
+    setExpenses((current) =>
+      current.map((exp) =>
+        exp.id === id ? { ...exp, expenseFor, relatedPartyId: "" } : exp,
+      ),
+    );
+  };
+
   const totalAmount = expenses.reduce(
     (sum, exp) => sum + (exp.payment?.amountBase || 0),
     0,
   );
-  const isForeign = payment.selectedCurrency !== company?.base_currency;
-  /* ───────── Submit selected invoices ───────── */
-  const paymentAmount = isForeign
-    ? (payment.amountFC ?? 0)
-    : payment.amountBase;
-  // Validate and submit
+
   const handleSubmit = async () => {
-    // Validation`
     const invalidExpenses = expenses.filter(
       (exp) =>
         !exp.account_id ||
         !exp.description ||
         !exp.payment?.amountBase ||
         !exp.payment?.paymentMethod ||
-        !exp.payment?.accountId,
+        !exp.payment?.accountId ||
+        ((exp.expenseFor === "employee" || exp.expenseFor === "customer") &&
+          !exp.relatedPartyId),
     );
 
     if (invalidExpenses.length > 0) {
@@ -175,19 +167,9 @@ export default function ExpenseForm({
       return;
     }
 
-    // Check amount matches
-    // for (const exp of expenses) {
-    //   const expAmount = parseFloat(exp.amount);
-    //   if (exp.payment && exp.payment.amountBase !== totalAmount) {
-    //     toast.error("مبلغ الدفع يجب أن يطابق مبلغ المصروف");
-    //     return;
-    //   }
-    // }
-
     setIsSubmitting(true);
 
     try {
-      // Prepare expenses data
       const expensesData = expenses.map((exp) => ({
         account_id: exp.account_id,
         description: exp.description,
@@ -201,42 +183,27 @@ export default function ExpenseForm({
         exchangeRate: exp.payment?.exchangeRate || undefined,
         amountFC: exp.payment?.amountFC || undefined,
         notes: exp.notes || undefined,
-        branchId: company?.branches[0].id ?? "",
+        branchId: company?.branches[0]?.id ?? "",
         basCurrncy: company?.base_currency ?? "",
+        employeeId:
+          exp.expenseFor === "employee" ? exp.relatedPartyId || undefined : undefined,
+        customerId:
+          exp.expenseFor === "customer" ? exp.relatedPartyId || undefined : undefined,
       }));
 
-      const result = await createMultipleExpenses(
-        user.companyId,
-        user.userId,
-        expensesData,
-      );
+      const result = await createMultipleExpenses(companyId, userId, expensesData);
 
-      if (result.success) {
-        toast.success(
-          `تمت إضافة ${result.count} مصروف بنجاح! المبلغ الإجمالي: ${totalAmount.toFixed(2)}`,
-        );
-
-        // Reset form
-        setExpenses([
-          {
-            id: crypto.randomUUID(),
-            account_id: "",
-            description: "",
-            amount: "",
-            notes: "",
-            payment: {
-              paymentMethod: "",
-              accountId: "",
-              selectedCurrency: "",
-              amountBase: 0,
-            },
-          },
-        ]);
-        setExpenseDate(new Date().toISOString().split("T")[0]);
-        setOpen(false);
-      } else {
+      if (!result.success) {
         toast.error(result.error || "حدث خطأ أثناء إضافة المصاريف");
+        return;
       }
+
+      toast.success(
+        `تمت إضافة ${result.count} مصروف بنجاح! المبلغ الإجمالي: ${totalAmount.toFixed(2)}`,
+      );
+      setExpenses([createEmptyExpense()]);
+      setExpenseDate(new Date().toISOString().split("T")[0]);
+      setOpen(false);
     } catch (error) {
       console.error("Error creating expenses:", error);
       toast.error("حدث خطأ أثناء إضافة المصاريف");
@@ -255,7 +222,6 @@ export default function ExpenseForm({
     >
       <ScrollArea className="h-[70vh] w-full pr-4">
         <div className="space-y-4" dir="rtl">
-          {/* Header with Date and Total */}
           <div className="bg-card sticky top-0 z-10 rounded-lg border p-4 shadow-md">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
@@ -289,14 +255,12 @@ export default function ExpenseForm({
             </div>
           </div>
 
-          {/* Expense Items */}
           <div className="space-y-4">
             {expenses.map((expense, index) => (
               <div
                 key={expense.id}
                 className="bg-card space-y-3 rounded-lg border p-4"
               >
-                {/* Header */}
                 <div className="flex items-center justify-between border-b pb-2">
                   <h3 className="font-semibold">المصروف {index + 1}</h3>
                   {expenses.length > 1 && (
@@ -311,9 +275,7 @@ export default function ExpenseForm({
                   )}
                 </div>
 
-                {/* Form Fields */}
                 <div className="grid gap-3 md:grid-cols-2">
-                  {/* Category */}
                   <div className="grid gap-3">
                     <Label>
                       فئة المصروف <span className="text-red-500">*</span>
@@ -328,33 +290,57 @@ export default function ExpenseForm({
                     />
                   </div>
 
-                  {/* Amount */}
-                  {/* <div className="space-y-2">
-                    <Label>
-                      المبلغ <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={expense.amount}
-                      onChange={(e) => {
-                        const amount = parseFloat(e.target.value) || 0;
-                        updateExpense(expense.id, "amount", e.target.value);
-                        // Sync with payment amount
-                        if (expense.payment) {
-                          updateExpense(expense.id, "payment", {
-                            ...expense.payment,
-                            amountBase: amount,
-                          });
-                        }
-                      }}
-                      placeholder="0.00"
-                      className="text-right"
+                  <div className="grid gap-3">
+                    <Label>المصروف على</Label>
+                    <SelectField
+                      options={[
+                        { id: "general", name: "عام" },
+                        { id: "employee", name: "موظف" },
+                        { id: "customer", name: "عميل" },
+                      ]}
+                      value={expense.expenseFor}
+                      action={(val) =>
+                        updateExpenseAssignment(
+                          expense.id,
+                          val as ExpenseAssignmentType,
+                        )
+                      }
+                      placeholder="اختر الجهة"
                     />
-                  </div> */}
+                  </div>
 
-                  {/* Description */}
+                  {expense.expenseFor === "employee" && (
+                    <div className="grid gap-3">
+                      <Label>
+                        الموظف <span className="text-red-500">*</span>
+                      </Label>
+                      <SelectField
+                        options={assignmentOptions.employees}
+                        value={expense.relatedPartyId}
+                        action={(val) =>
+                          updateExpense(expense.id, "relatedPartyId", val)
+                        }
+                        placeholder="اختر الموظف"
+                      />
+                    </div>
+                  )}
+
+                  {expense.expenseFor === "customer" && (
+                    <div className="grid gap-3">
+                      <Label>
+                        العميل <span className="text-red-500">*</span>
+                      </Label>
+                      <SelectField
+                        options={assignmentOptions.customers}
+                        value={expense.relatedPartyId}
+                        action={(val) =>
+                          updateExpense(expense.id, "relatedPartyId", val)
+                        }
+                        placeholder="اختر العميل"
+                      />
+                    </div>
+                  )}
+
                   <div className="grid gap-3">
                     <Label>
                       الوصف <span className="text-red-500">*</span>
@@ -369,7 +355,6 @@ export default function ExpenseForm({
                     />
                   </div>
 
-                  {/* Notes */}
                   <div className="space-y-2 md:col-span-2">
                     <Label>ملاحظات (اختياري)</Label>
                     <Textarea
@@ -384,7 +369,6 @@ export default function ExpenseForm({
                   </div>
                 </div>
 
-                {/* ✅ Reusable Payment Component */}
                 <div className="border-t pt-3">
                   <ReusablePayment
                     value={
@@ -400,11 +384,10 @@ export default function ExpenseForm({
                   />
                 </div>
 
-                {/* Expense Summary */}
                 <div className="flex justify-between border-t pt-2 text-sm">
                   <span className="text-muted-foreground">المبلغ:</span>
                   <span className="text-primary font-bold">
-                    {expense.payment?.amountBase.toFixed(2)}
+                    {(expense.payment?.amountBase || 0).toFixed(2)}
                     {expense.payment?.selectedCurrency || ""}
                   </span>
                 </div>
@@ -412,7 +395,6 @@ export default function ExpenseForm({
             ))}
           </div>
 
-          {/* Submit Button */}
           <div className="bg-card sticky bottom-0 rounded-lg border p-4 shadow-lg">
             <Button
               onClick={handleSubmit}

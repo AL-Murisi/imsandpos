@@ -384,7 +384,11 @@ export async function updateInventory(
           // Execute all supplier operations in parallel
           await Promise.all(operations);
         }
-
+        const voucherNumber = await getNextVoucherNumber(
+          companyId,
+          "PAYMENT",
+          tx,
+        );
         // Update inventory
         const updatedInventory = await tx.inventory.update({
           where: { id: inventoryTarget.id },
@@ -405,6 +409,7 @@ export async function updateInventory(
             warehouse: { select: { name: true, location: true } },
           },
         });
+        const entryNumber = `PUR-${new Date().getFullYear()}-${voucherNumber}`;
 
         // Record stock movement if there's a difference
         const stockDifference = finalStockQty - inventoryTarget.stockQuantity;
@@ -432,9 +437,7 @@ export async function updateInventory(
             ? tx.journalHeader.create({
                 data: {
                   companyId,
-                  entryNumber: `JE-${new Date().getFullYear()}-${Date.now()}-${Math.floor(
-                    Math.random() * 1000,
-                  )}`,
+                  entryNumber,
                   description: `Purchase invoice: ${purchase.invoiceNumber || purchase.id}`,
                   referenceType: "purchase",
                   referenceId: purchase.id,
@@ -993,20 +996,12 @@ export async function processPurchaseReturn(
               `إرجاع ${returnQuantity} ${returnUnit} من فاتورة ${purchaseId}`,
           },
         });
-
+        const voucherNumber = await getNextVoucherNumber(
+          companyId,
+          "PAYMENT",
+          tx,
+        );
         if (refundAmount > 0 && paymentMethod) {
-          const aggregate = await tx.financialTransaction.aggregate({
-            where: {
-              companyId: companyId,
-              type: "RECEIPT",
-            },
-            _max: {
-              voucherNumber: true,
-            },
-          });
-
-          const lastNumber = aggregate._max.voucherNumber || 0;
-          const nextNumber = lastNumber + 1;
           await tx.financialTransaction.create({
             data: {
               companyId,
@@ -1016,7 +1011,7 @@ export async function processPurchaseReturn(
               branchId,
               type: "PAYMENT",
               purchaseId: purchaseReturn.id,
-              voucherNumber: nextNumber,
+              voucherNumber: voucherNumber,
               userId: userId,
               status: "paid",
               amount: refundAmount,
@@ -1056,10 +1051,8 @@ export async function processPurchaseReturn(
           },
         });
 
-        const entryYear = new Date().getFullYear();
-        const entryNumber = `JE-${entryYear}-${Date.now()}-${Math.floor(
-          Math.random() * 1000,
-        )}`;
+        const entryNumber = `PURET-${new Date().getFullYear()}-${voucherNumber}`;
+
         const desc = `Purchase return: ${purchaseReturn.invoiceNumber}`;
         const journalLines: any[] = [];
 
@@ -1575,6 +1568,7 @@ export async function getStockMovements(
     const movements = await prisma.stockMovement.findMany({
       select: {
         id: true,
+        productId: true,
         movementType: true,
         quantity: true,
         reason: true,
@@ -1582,7 +1576,7 @@ export async function getStockMovements(
         quantityAfter: true,
         notes: true,
         createdAt: true,
-
+        referenceId: true,
         product: {
           select: {
             name: true,
@@ -1606,8 +1600,34 @@ export async function getStockMovements(
       skip: page * pageSize,
       take: pageSize,
     });
+    const invoiceIds = movements
+      .filter((m) => m.referenceId)
+      .map((m) => m.referenceId as string);
+    const invoiceItems = await prisma.invoiceItem.findMany({
+      where: {
+        invoiceId: { in: invoiceIds },
+      },
+      select: {
+        invoiceId: true,
+        productId: true,
+        unit: true, // This is the selling unit you want
+      },
+    });
 
-    return { movements, totalCount };
+    // 3. Map the units back to the movements
+    const movementsWithUnits = movements.map((m) => {
+      const matchingItem = invoiceItems.find(
+        (item) =>
+          item.invoiceId === m.referenceId && item.productId === m.productId,
+      );
+
+      return {
+        ...m,
+        sellingUnit: matchingItem?.unit || "وحدة أساسية",
+      };
+    });
+
+    return { movements: movementsWithUnits, totalCount };
   } catch (error) {
     console.error("Error getting stock movements:", error);
     throw error;
