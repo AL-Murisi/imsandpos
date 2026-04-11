@@ -283,7 +283,7 @@ export async function getEmployeerStatement(
       select: { mapping_type: true, account_id: true },
     });
     const prAccount = mappings.find(
-      (m) => m.mapping_type === "PAYROLL_EXPENSES",
+      (m) => m.mapping_type === "payroll_expenses",
     )?.account_id;
     if (!prAccount) {
       return {
