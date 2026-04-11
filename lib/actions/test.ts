@@ -377,6 +377,7 @@ export async function getEmployeerStatement(
       prisma.journalLine.findMany({
         where: {
           companyId,
+          accountId: prAccount,
           header: {
             referenceId: { in: customerReferenceIds },
             entryDate: { gte: fromDate, lte: toDate },
