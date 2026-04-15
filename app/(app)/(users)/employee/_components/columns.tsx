@@ -143,12 +143,36 @@ export const employeeColumns: ColumnDef<any>[] = [
     cell: ({ row }) => row.original.salary ?? "غير محدد",
   },
   {
+    accessorKey: "balance",
+    header: "رصيد العميل",
+    cell: ({ row }) => {
+      const balance = Number(row.original.balance);
+
+      const isDebit = balance < 0; // customer owes company
+      const isCredit = balance > 0; // company owes customer
+
+      return (
+        <span
+          className={`font-bold ${
+            isDebit
+              ? "text-red-600"
+              : isCredit
+                ? "text-green-600"
+                : "text-gray-600"
+          }`}
+        >
+          {balance}
+        </span>
+      );
+    },
+  },
+  {
     accessorKey: "user",
     header: "حساب الدخول",
     cell: ({ row }) =>
       row.original.user ? (
         <Badge className="rounded-md bg-blue-600 text-xs text-white">
-          {row.original.user.roles?.[0]?.role?.name ?? "employee"}
+          {row.original.user.role ?? "employee"}
         </Badge>
       ) : (
         <Badge variant="outline">بدون حساب</Badge>
@@ -184,7 +208,7 @@ export const employeeColumns: ColumnDef<any>[] = [
                 !employee.isActive,
               )
             }
-            disabled={employee.user.roles?.[0]?.role?.name === "admin"}
+            disabled={employee.user.role === "admin"}
             title={employee.isActive ? "تعطيل" : "تفعيل"}
           >
             <Power className="h-4 w-4" />
@@ -198,7 +222,7 @@ export const employeeColumns: ColumnDef<any>[] = [
               if (!ok) return;
               await deleteEmployee(employee.id, user.companyId);
             }}
-            disabled={employee.user.roles?.[0]?.role?.name === "admin"}
+            disabled={employee.user.role === "admin"}
             title="حذف"
           >
             <Trash2 className="h-4 w-4" />

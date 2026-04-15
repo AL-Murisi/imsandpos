@@ -7,6 +7,7 @@ import {
   MoreHorizontal,
   Clock,
   CheckCircle,
+  Trash2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -27,6 +28,7 @@ import { useAuth } from "@/lib/context/AuthContext";
 import dynamic from "next/dynamic";
 import { useState } from "react";
 import { useFormatter } from "@/hooks/usePrice";
+import { ConfirmModal } from "@/components/common/confirm-modal";
 const CustomerEditForm = dynamic(() => import("./editcustomer"), {
   ssr: false,
   // loading: () => <TableSkeleton rows={20} columns={10} />,
@@ -226,6 +228,9 @@ export const customerColumns: ColumnDef<any>[] = [
       const customer = row.original;
       const { user } = useAuth();
       const router = useRouter();
+      const balance = Number(row.original.balance);
+
+      const isCredit = balance < 0; // customer owes company
       const [isLoading, setIsLoading] = useState(false);
 
       if (!user) return;
@@ -263,11 +268,6 @@ export const customerColumns: ColumnDef<any>[] = [
                   تفعيل
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem
-                onClick={() => deleteCustomer(customer.id, user.companyId)}
-              >
-                حذف العميل
-              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <DebtReport
@@ -276,6 +276,21 @@ export const customerColumns: ColumnDef<any>[] = [
             outstandingBalance={customer.outstandingBalance}
           />
           <CustomerEditForm customer={customer} />
+          <ConfirmModal
+            title="حذف المستخدم"
+            description="هل أنت متأكد من حذف هذا العميل؟ سيتم إزالة كافة البيانات المرتبطة به."
+            action={() => deleteCustomer(customer.id, user.companyId)}
+            confirmText="حذف"
+          >
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 text-red-600 hover:bg-red-100"
+              disabled={isCredit}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </ConfirmModal>
 
           <Button
             disabled={isLoading}

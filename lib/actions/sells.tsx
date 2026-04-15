@@ -165,49 +165,63 @@ export async function FetchDebtSales(
           select: { invoiceNumber: true },
         })
       : [];
-  const returnedInvoiceNumbers = new Set(
-    existingReturns.map((invoice) => invoice.invoiceNumber),
+  const returnedBaseNumbers = new Set(
+    existingReturns.map((invoice) =>
+      invoice.invoiceNumber.replace("-مرتجع", "").replace("-بيع", "").trim(),
+    ),
   );
+
   const total = await prisma.invoice.count({ where: { companyId } });
 
-  // await prisma.payment
-  const serializedDebts = debts.map((sale) => ({
-    ...sale,
-    saleItems: sale.items.map((item) => ({
-      ...item,
-      quantity: Number(item.quantity),
-      unitPrice: Number(item.price),
-      unit: item.unit,
-      warehouse: item.product.warehouse?.name || "بدون مستودع",
-      totalPrice: Number(item.totalPrice),
-    })),
-    saleNumber: sale.invoiceNumber,
-    status: sale.status,
-    reason: sale.transactions.find((p) => p.notes)?.notes || null, // ✅ FIXED
-    totalAmount: Number(sale.totalAmount),
-    amountPaid: Number(sale.amountPaid),
-    amountDue: Number(sale.amountDue),
-    payments: sale.transactions,
-    saleDate: sale.invoiceDate.toISOString(),
-    createdAt: sale.invoiceDate.toISOString(),
-    hasReturnSale: returnedInvoiceNumbers.has(sale.invoiceNumber),
-    customer: sale.customer
-      ? {
-          ...sale.customer,
-          outstandingBalance: Number(sale.customer.outstandingBalance),
-        }
-      : sale.customerName
-        ? {
-            name: sale.customerName,
-            outstandingBalance: 0,
-            phoneNumber: null,
-            customerType: "",
-          }
-        : null,
-  }));
-  const serilaz = serializeData(serializedDebts);
+  const serializedDebts = debts.map((sale) => {
+    // 1. Clean the current sale's invoice number inside the map
+    const currentBaseNumber = sale.invoiceNumber
+      .replace("-مرتجع", "")
+      .replace("-بيع", "")
+      .trim();
 
-  return { serilaz, total }; // Return the transformed data
+    // 2. Check if THIS specific invoice exists in the returns set
+    const hasAlreadyBeenReturned = returnedBaseNumbers.has(currentBaseNumber);
+
+    return {
+      ...sale,
+      saleItems: sale.items.map((item) => ({
+        ...item,
+        quantity: Number(item.quantity),
+        unitPrice: Number(item.price),
+        unit: item.unit,
+        warehouse: item.product.warehouse?.name || "بدون مستودع",
+        totalPrice: Number(item.totalPrice),
+      })),
+      saleNumber: sale.invoiceNumber,
+      status: sale.status,
+      reason: sale.transactions.find((p) => p.notes)?.notes || null,
+      totalAmount: Number(sale.totalAmount),
+      amountPaid: Number(sale.amountPaid),
+      amountDue: Number(sale.amountDue),
+      payments: sale.transactions,
+      saleDate: sale.invoiceDate.toISOString(),
+      createdAt: sale.invoiceDate.toISOString(),
+      // 3. Assign the result here
+      hasReturnSale: hasAlreadyBeenReturned,
+      customer: sale.customer
+        ? {
+            ...sale.customer,
+            outstandingBalance: Number(sale.customer.outstandingBalance),
+          }
+        : sale.customerName
+          ? {
+              name: sale.customerName,
+              outstandingBalance: 0,
+              phoneNumber: null,
+              customerType: "",
+            }
+          : null,
+    };
+  });
+
+  const serilaz = serializeData(serializedDebts);
+  return { serilaz, total };
 }
 
 export async function FetchCustomerDebtReport(

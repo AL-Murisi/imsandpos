@@ -323,81 +323,31 @@ export const createColumns = (
         const id = product.id ?? "";
         const { user } = useAuth();
         if (!user) return;
-        const [confirmOpen, setConfirmOpen] = useState(false);
+
         const [isPending, startTransition] = useTransition();
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={async () => {
-            (await deleteProduct(id, user.companyId),
-              toast("✅ deleteing items successed"));
-          }}
-          title={tt("deleteProduct")}
-        >
-          <Trash2 className="h-4 w-4 text-red-500" />
-        </Button>;
-        const handleDelete = () => {
-          startTransition(async () => {
-            const result = await deleteProduct(id, user.companyId);
-
-            if (result.success) {
-              toast(
-                `تم بنجاح ✅
-                   ${result.message}تم حذف الحساب بنجاح.,
-                 `,
-              );
-            } else {
-              toast(
-                `  حدث خطأ ⚠️
-                  ${result.error} فشل في حذف الحساب
-                  `,
-              );
-            }
-          });
-        };
         return (
           <div className="flex gap-2">
             {" "}
             {/* <SellingUnitsManager /> */}
-            <Dailogreuse
-              open={confirmOpen}
-              setOpen={setConfirmOpen}
-              btnLabl={
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={isPending}
-                  className="h-8 w-8 p-0 text-red-600 hover:bg-red-100"
-                  onClick={() => setConfirmOpen(true)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              }
-              titel="تأكيد الحذف"
+            <ConfirmModal
+              title="تأكيد الحذف"
               description={`هل أنت متأكد من حذف هذا ${product.name}؟ هذه العملية لا يمكن التراجع عنها.`}
-              style={undefined}
+              action={() =>
+                startTransition(async () => {
+                  deleteProduct(id, user.companyId);
+                })
+              }
+              confirmText="حذف"
             >
-              {" "}
-              <div className="mt-4 flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setConfirmOpen(false)}>
-                  إلغاء
-                </Button>
-                <Button variant="destructive" onClick={handleDelete}>
-                  موافق، احذف
-                </Button>
-              </div>
-            </Dailogreuse>
-            <div className="flex gap-2">
-              {/* <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigator.clipboard.writeText(product.sku)}
-                title={tt("copySKU")}
+              <Button
+                disabled={isPending}
+                className="text-red-600 hover:bg-orange-300/20 hover:text-red-700"
               >
-                <CopyIcon className="h-4 w-4" />
-              </Button> */}
-
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </ConfirmModal>
+            <div className="flex gap-2">
               <ProductEditFormm
                 product={product}
                 type={product.type ?? "full"}
@@ -412,6 +362,7 @@ export const createColumns = (
 
 export default function sortfilteringsearch() {}
 import { format } from "date-fns";
+import { ConfirmModal } from "@/components/common/confirm-modal";
 
 type ExpiryProps = {
   expiredAt?: string | Date;

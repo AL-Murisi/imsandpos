@@ -8,7 +8,7 @@ export const CreateUserSchema = z.object({
     .string()
     .min(8, "Password must be at least 8 characters")
     .optional(),
-  roleId: z.string().min(1, "يجب اختيار دور واحد على الأقل"),
+  role: z.string().min(1, "يجب اختيار دور واحد على الأقل"),
   branchId: z.string().optional(),
 });
 export const UpdateUserSchema = CreateUserSchema.partial().omit({
@@ -25,11 +25,7 @@ export const userSchema = z.object({
   isActive: z.boolean(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  roles: z.array(
-    z.object({
-      role: z.object({ name: z.string() }),
-    }),
-  ),
+  role: z.string(),
 });
 export type userSchemaa = z.infer<typeof userSchema>;
 export const UpdateCompanySchema = z.object({

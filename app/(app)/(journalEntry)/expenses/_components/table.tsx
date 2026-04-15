@@ -22,6 +22,7 @@ import { expenseColumns } from "./columns";
 
 import { Calendar22 } from "@/components/common/DatePicker";
 import { DataTable } from "@/components/common/ReusbleTable";
+import { SelectField } from "@/components/common/selection";
 
 type ProductClientProps = {
   data: any;
@@ -71,7 +72,12 @@ export default function ExpensesPage({
         search={
           <div className="flex flex-wrap gap-2 p-1 md:flex-row lg:flex-row">
             <Calendar22 />
-            <SearchInput placeholder={"بحث "} paramKey={"product"} />
+            <SearchInput placeholder={"بحث"} paramKey={"search"} />
+            <SelectField
+              options={formData}
+              paramKey="expense_categoriesId"
+              placeholder="الفئة"
+            />
 
             <ExpenseForm
               companyId={user.companyId}
@@ -93,7 +99,7 @@ export default function ExpensesPage({
         globalFilter={globalFilter}
         sorting={sorting}
         pagination={pagination}
-        highet="h-[70vh]"
+        highet="h-[67vh]"
         totalCount={total}
       />
     </div>

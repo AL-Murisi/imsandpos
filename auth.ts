@@ -3,6 +3,11 @@ import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import prisma from "@/lib/prisma";
 
+function normalizeRole(role?: string | null) {
+  const normalized = role?.trim().toLowerCase();
+  return normalized ? [normalized] : [];
+}
+
 const googleClientId =
   process.env.AUTH_GOOGLE_ID ?? process.env.GOOGLE_CLIENT_ID;
 const googleClientSecret =
@@ -38,10 +43,10 @@ const providers = [
           email: true,
           name: true,
           password: true,
+          role: true,
           isActive: true,
           companyId: true,
           company: { select: { isActive: true } },
-          roles: { include: { role: true } },
           userInvites: {
             where: { usedAt: null, expiresAt: { gt: new Date() } },
             select: { id: true },
@@ -60,9 +65,6 @@ const providers = [
         return null;
       }
 
-      const roles = user.roles
-        .map((r) => r.role.name?.trim().toLowerCase())
-        .filter(Boolean);
       const subscription = await ensureTrialSubscription(user.companyId);
       const subscriptionEndsAt = subscription?.endsAt ?? null;
       const subscriptionActive = isSubscriptionActive(subscription);
@@ -71,7 +73,7 @@ const providers = [
         email: user.email,
         name: user.name,
         companyId: user.companyId,
-        roles,
+        role: user.role,
         userId: user.id,
         isActive: user.isActive,
         companyActive: user.company?.isActive ?? false,
@@ -82,11 +84,13 @@ const providers = [
   }),
 ];
 
-function isSubscriptionActive(subscription: {
-  isActive: boolean;
-  status: string;
-  endsAt: Date | null;
-} | null) {
+function isSubscriptionActive(
+  subscription: {
+    isActive: boolean;
+    status: string;
+    endsAt: Date | null;
+  } | null,
+) {
   if (!subscription) return false;
   if (!subscription.isActive) return false;
   if (subscription.status !== "ACTIVE") return false;
@@ -130,7 +134,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async signIn({ user, account }) {
       if (account?.provider && account.provider !== "credentials") {
         const email =
-          typeof user?.email === "string" ? user.email.trim().toLowerCase() : "";
+          typeof user?.email === "string"
+            ? user.email.trim().toLowerCase()
+            : "";
         if (!email) return false;
 
         const appUser = await prisma.user.findUnique({
@@ -162,7 +168,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         token.userId = (user as any).userId ?? user.id;
         token.companyId = (user as any).companyId;
-        token.roles = (user as any).roles ?? [];
+        token.role = (user as any).role ?? "";
         token.userActive =
           typeof (user as any).isActive === "boolean"
             ? (user as any).isActive
@@ -178,7 +184,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.subscriptionEndsAt = (user as any).subscriptionEndsAt ?? null;
       }
 
-      // If we already have the core fields, avoid hitting the DB on every request.
       if (token.userId && token.companyId && Array.isArray(token.roles)) {
         return token;
       }
@@ -192,9 +197,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             select: {
               id: true,
               companyId: true,
+              role: true,
               isActive: true,
               company: { select: { isActive: true } },
-              roles: { include: { role: true } },
             },
           });
 
@@ -203,15 +208,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             token.companyId = appUser.companyId;
             token.userActive = appUser.isActive;
             token.companyActive = appUser.company?.isActive ?? false;
-            token.roles = appUser.roles
-              .map((r) => r.role.name?.trim().toLowerCase())
-              .filter(Boolean);
-            const subscription = await ensureTrialSubscription(appUser.companyId);
+            token.roles = appUser.role;
+            const subscription = await ensureTrialSubscription(
+              appUser.companyId,
+            );
             token.subscriptionActive = isSubscriptionActive(subscription);
             token.subscriptionEndsAt = subscription?.endsAt ?? null;
           }
         } catch (error) {
-          // If DB is unavailable, keep the existing token instead of failing session.
           return token;
         }
       }
@@ -222,7 +226,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (session.user) {
         (session.user as any).userId = token.userId;
         (session.user as any).companyId = token.companyId;
-        (session.user as any).roles = token.roles ?? [];
+        (session.user as any).role = token.role ?? "";
         (session.user as any).isActive = token.userActive ?? true;
         (session.user as any).companyActive = token.companyActive ?? true;
         (session.user as any).subscriptionActive =

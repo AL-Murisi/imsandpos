@@ -29,8 +29,8 @@ export default function StocksLayout({
   const visibleItems = navItems.filter((item) => hasAnyRole(item.roles));
 
   return (
-    <div className="p-1">
-      <div className="border-accent-foreground flex flex-wrap gap-2 border-b p-1">
+    <div className="space-y-2">
+      <div className="border-primary flex flex-wrap gap-2 rounded-2xl border-1 p-1">
         {visibleItems.map((item) => {
           const isActive =
             pathname === item.href || pathname.startsWith(`${item.href}/`);

@@ -30,8 +30,8 @@ export default async function EmployeePage({
   return (
     <div className="p-3">
       <EmployeeClient
-        employees={data.employees}
-        total={data.total}
+        employees={data.employees ?? []}
+        total={data.total ?? 0}
         userLimit={subscriptionUsage?.users ?? null}
       />
     </div>

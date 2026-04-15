@@ -145,10 +145,10 @@ export const columns: ColumnDef<User>[] = [
     ),
   },
   {
-    accessorKey: "roles", // or whatever your key is
+    accessorKey: "role", // or whatever your key is
     header: ({ column }) => <SortableHeader column={column} label="الدور" />,
     cell: ({ row }) => {
-      const role = row.original.roles?.[0]?.role?.name ?? "بدون دور";
+      const role = row.original.role;
 
       return (
         <Badge className="rounded-md bg-blue-600 text-xs text-white">
@@ -181,7 +181,7 @@ export const columns: ColumnDef<User>[] = [
                   ? "text-green-600 hover:bg-green-100"
                   : "text-yellow-600 hover:bg-yellow-100"
               }`}
-              disabled={userr.roles?.[0]?.role?.name === "admin"}
+              disabled={userr.role === "admin"}
               onClick={() => {
                 // Toggle status functionality
                 updateUsers(true, userr.id, user.companyId);
@@ -198,7 +198,7 @@ export const columns: ColumnDef<User>[] = [
                   ? "text-green-600 hover:bg-green-100"
                   : "text-yellow-600 hover:bg-yellow-100"
               }`}
-              disabled={userr.roles?.[0]?.role?.name === "admin"}
+              disabled={userr.role === "admin"}
               onClick={() => {
                 // Toggle status functionality
                 updateUsers(false, userr.id, user.companyId);

@@ -182,8 +182,6 @@ export async function getCustomerById(
   from?: string,
   to?: string,
 ) {
-  const fromDate = from ? new Date(from) : undefined;
-  const toDate = to ? new Date(to) : undefined;
   try {
     const mappings = await prisma.account_mappings.findMany({
       where: { company_id: companyId, is_default: true },
@@ -195,6 +193,28 @@ export async function getCustomerById(
     if (!arAccount) {
       throw new Error("Accounts receivable not mapped");
     }
+
+    const fiscalYear = await prisma.fiscal_periods.findFirst({
+      where: {
+        company_id: companyId,
+        is_closed: false,
+      },
+      select: { start_date: true, end_date: true },
+    });
+
+    const fromDate = from
+      ? new Date(from)
+      : fiscalYear
+        ? new Date(fiscalYear.start_date)
+        : undefined;
+    const toDate = to
+      ? new Date(to)
+      : fiscalYear
+        ? new Date(fiscalYear.end_date)
+        : undefined;
+
+    fromDate?.setHours(0, 0, 0, 0);
+    toDate?.setHours(23, 59, 59, 999);
 
     const customers = await prisma.customer.findMany({
       where: {
@@ -251,45 +271,67 @@ export async function getCustomerById(
           select: { id: true },
         });
         const paymentIdList = paymentIds.map((p) => p.id);
-
-        // جلب القيود المحاسبية الخاصة بهذا العميل تحديداً ضمن الفترة الزمنية
-        const entries = await prisma.journalLine.findMany({
-          where: {
-            companyId: companyId,
-            accountId: arAccount,
-            header: {
-              referenceId: { in: invoiceIdList },
-              entryDate: {
-                ...(fromDate && { gte: fromDate }),
-                ...(toDate && { lte: toDate }),
+        const customerReferenceIds = [
+          customer.id,
+          ...invoiceIdList,
+          ...paymentIdList,
+        ];
+        const openingLines = fromDate
+          ? await prisma.journalLine.findMany({
+              where: {
+                companyId,
+                accountId: arAccount,
+                header: {
+                  referenceId: { in: customerReferenceIds },
+                  entryDate: { lt: fromDate },
+                },
               },
-            },
-          },
-          select: {
-            debit: true,
-            credit: true,
-          },
-        });
+              select: { debit: true, credit: true },
+            })
+          : [];
 
-        // حساب الإجمالي من واقع القيود
-        const totalDebit = entries.reduce(
+        const entries =
+          fromDate && toDate
+            ? await prisma.journalLine.findMany({
+                where: {
+                  companyId,
+                  accountId: arAccount,
+                  header: {
+                    referenceId: { in: customerReferenceIds },
+                    entryDate: {
+                      gte: fromDate,
+                      lte: toDate,
+                    },
+                  },
+                },
+                select: {
+                  debit: true,
+                  credit: true,
+                },
+              })
+            : [];
+
+        const openingBalance = openingLines.reduce(
+          (sum, line) => sum + Number(line.debit || 0) - Number(line.credit || 0),
+          0,
+        );
+
+        const periodDebit = entries.reduce(
           (s, t) => s + Number(t.debit || 0),
           0,
         );
-        const totalCredit = entries.reduce(
+        const periodCredit = entries.reduce(
           (s, t) => s + Number(t.credit || 0),
           0,
         );
+        const closingBalance = openingBalance + periodDebit - periodCredit;
 
         return {
           ...customer,
           creditLimit: customer.creditLimit?.toString() ?? "0",
-          // إجمالي الديون (الجانب المدين في المحاسبة للعملاء عادة يمثل الديون المطلوبة منهم)
-          balance: totalCredit - totalDebit,
-          // إجمالي المبالغ المدفوعة أو الدائنة
-          totalPayments: totalCredit,
-          // الرصيد النهائي (الفرق بين المدين والدائن)
-          outstandingBalance: totalDebit - totalCredit,
+          balance: closingBalance,
+          totalPayments: periodCredit,
+          outstandingBalance: closingBalance,
         };
       }),
     );
@@ -492,15 +534,16 @@ export async function createCutomer(form: CreateCustomer, companyId: string) {
           name,
           phoneNumber: normalizeOptionalString(phoneNumber),
           password,
+          role: "customer",
         },
       });
 
-      await prisma.userRole.create({
-        data: {
-          userId: createdUser.id,
-          roleId: customerRole.id,
-        },
-      });
+      // await prisma.userRole.create({
+      //   data: {
+      //     userId: createdUser.id,
+      //     roleId: customerRole.id,
+      //   },
+      // });
 
       linkedUserId = createdUser.id;
     }
@@ -742,12 +785,12 @@ export async function updatedCustomer(
           },
         });
 
-        await prisma.userRole.create({
-          data: {
-            userId: createdUser.id,
-            roleId: customerRole.id,
-          },
-        });
+        // await prisma.userRole.create({
+        //   data: {
+        //     userId: createdUser.id,
+        //     roleId: customerRole.id,
+        //   },
+        // });
 
         userId = createdUser.id;
       } else {

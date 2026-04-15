@@ -120,76 +120,41 @@ export async function getCustomerStatement(
     ];
 
     // 2️⃣ الرصيد الافتتاحي قبل الفترة
-    const [openingLines, openingJournalEntries] = await Promise.all([
-      prisma.journalLine.findMany({
-        where: {
-          companyId,
-          accountId: arAccount,
-          header: {
-            referenceId: { in: customerReferenceIds },
-            entryDate: { lt: fromDate },
-          },
+    const openingLines = await prisma.journalLine.findMany({
+      where: {
+        companyId,
+        accountId: arAccount,
+        header: {
+          referenceId: { in: customerReferenceIds },
+          entryDate: { lt: fromDate },
         },
-        select: {
-          debit: true,
-          credit: true,
-        },
-      }),
-      prisma.journal_entries.findMany({
-        where: {
-          company_id: companyId,
-          account_id: arAccount,
-          reference_id: { in: customerReferenceIds },
-          entry_date: { lt: fromDate },
-        },
-        select: { debit: true, credit: true },
-      }),
-    ]);
+      },
+      select: {
+        debit: true,
+        credit: true,
+      },
+    });
 
-    const openingBalance =
-      openingLines.reduce(
-        (sum, e) => sum + Number(e.debit) - Number(e.credit),
-        0,
-      ) +
-      openingJournalEntries.reduce(
-        (sum, e) => sum + Number(e.debit) - Number(e.credit),
-        0,
-      );
+    const openingBalance = openingLines.reduce(
+      (sum, e) => sum + Number(e.debit) - Number(e.credit),
+      0,
+    );
 
     // 3️⃣ قيود الفترة
-    const [lines, journalEntries] = await Promise.all([
-      prisma.journalLine.findMany({
-        where: {
-          companyId,
-          accountId: arAccount,
-          header: {
-            referenceId: { in: customerReferenceIds },
-            entryDate: { gte: fromDate, lte: toDate },
-          },
+    const lines = await prisma.journalLine.findMany({
+      where: {
+        companyId,
+        accountId: arAccount,
+        header: {
+          referenceId: { in: customerReferenceIds },
+          entryDate: { gte: fromDate, lte: toDate },
         },
-        orderBy: { header: { entryDate: "asc" } },
-        include: {
-          header: true,
-        },
-      }),
-      prisma.journal_entries.findMany({
-        where: {
-          company_id: companyId,
-          account_id: arAccount,
-          reference_id: { in: customerReferenceIds },
-          entry_date: { gte: fromDate, lte: toDate },
-        },
-        orderBy: { entry_date: "asc" },
-        select: {
-          entry_date: true,
-          debit: true,
-          credit: true,
-          description: true,
-          entry_number: true,
-          reference_type: true,
-        },
-      }),
-    ]);
+      },
+      orderBy: { header: { entryDate: "asc" } },
+      include: {
+        header: true,
+      },
+    });
 
     const combinedEntries = [
       ...lines.map((entry) => ({
@@ -200,14 +165,6 @@ export async function getCustomerStatement(
         docNo: entry.header.entryNumber,
         typeName: mapType(entry.header.referenceType),
       })),
-      ...journalEntries.map((entry) => ({
-        date: entry.entry_date,
-        debit: Number(entry.debit),
-        credit: Number(entry.credit),
-        description: entry.description,
-        docNo: entry.entry_number,
-        typeName: mapType(entry.reference_type),
-      })),
     ].sort((a, b) => {
       const aTime = a.date ? new Date(a.date).getTime() : 0;
       const bTime = b.date ? new Date(b.date).getTime() : 0;
@@ -217,9 +174,8 @@ export async function getCustomerStatement(
     // 4️⃣ بناء كشف الحساب
     let runningBalance = openingBalance;
     const transactions = combinedEntries.map((entry) => {
-      runningBalance = Math.abs(
-        runningBalance + Number(entry.debit) - Number(entry.credit),
-      );
+      runningBalance =
+        runningBalance + Number(entry.debit) - Number(entry.credit);
 
       return {
         date: entry.date,
@@ -249,7 +205,7 @@ export async function getCustomerStatement(
       data: {
         customer: serializeData(customer),
         openingBalance,
-        closingBalance: openingBalance + totalCredit - totalDebit,
+        closingBalance: openingBalance + totalDebit - totalCredit,
         totalDebit: finalTotalDebit,
         totalCredit: finalTotalCredit,
         transactions,
@@ -777,7 +733,7 @@ export async function getSupplierStatement(
 
     // 2️⃣ الرصيد الافتتاحي قبل الفترة
     const supplierInvoiceIds = await prisma.invoice.findMany({
-      where: { companyId, supplierId },
+      where: { companyId, supplierId, sale_type: "PURCHASE" },
       select: { id: true },
     });
 
@@ -792,76 +748,41 @@ export async function getSupplierStatement(
       ...supplierPaymentIds.map((payment) => payment.id),
     ];
 
-    const [openingEntries, openingJournalEntries] = await Promise.all([
-      prisma.journalLine.findMany({
-        where: {
-          companyId,
-          accountId: apAccount,
-          header: {
-            referenceId: { in: supplierReferenceIds },
-            entryDate: { lt: fromDate },
-          },
+    const openingEntries = await prisma.journalLine.findMany({
+      where: {
+        companyId,
+        accountId: apAccount,
+        header: {
+          referenceId: { in: supplierReferenceIds },
+          entryDate: { lt: fromDate },
         },
-        select: {
-          debit: true,
-          credit: true,
-        },
-      }),
-      prisma.journal_entries.findMany({
-        where: {
-          company_id: companyId,
-          account_id: apAccount,
-          reference_id: { in: supplierReferenceIds },
-          entry_date: { lt: fromDate },
-        },
-        select: { debit: true, credit: true },
-      }),
-    ]);
+      },
+      select: {
+        debit: true,
+        credit: true,
+      },
+    });
 
-    const openingBalance =
-      openingEntries.reduce(
-        (sum, e) => sum + Number(e.credit) - Number(e.debit),
-        0,
-      ) +
-      openingJournalEntries.reduce(
-        (sum, e) => sum + Number(e.credit) - Number(e.debit),
-        0,
-      );
+    const openingBalance = openingEntries.reduce(
+      (sum, e) => sum + Number(e.credit) - Number(e.debit),
+      0,
+    );
 
     // 3️⃣ قيود الفترة
-    const [entries, journalEntries] = await Promise.all([
-      prisma.journalLine.findMany({
-        where: {
-          companyId,
-          accountId: apAccount,
-          header: {
-            referenceId: { in: supplierReferenceIds },
-            entryDate: { gte: fromDate, lte: toDate },
-          },
+    const entries = await prisma.journalLine.findMany({
+      where: {
+        companyId,
+        accountId: apAccount,
+        header: {
+          referenceId: { in: supplierReferenceIds },
+          entryDate: { gte: fromDate, lte: toDate },
         },
-        orderBy: { header: { entryDate: "asc" } },
-        include: {
-          header: true,
-        },
-      }),
-      prisma.journal_entries.findMany({
-        where: {
-          company_id: companyId,
-          account_id: apAccount,
-          reference_id: { in: supplierReferenceIds },
-          entry_date: { gte: fromDate, lte: toDate },
-        },
-        orderBy: { entry_date: "asc" },
-        select: {
-          entry_date: true,
-          debit: true,
-          credit: true,
-          description: true,
-          entry_number: true,
-          reference_type: true,
-        },
-      }),
-    ]);
+      },
+      orderBy: { header: { entryDate: "asc" } },
+      include: {
+        header: true,
+      },
+    });
 
     const combinedEntries = [
       ...entries.map((entry) => ({
@@ -872,15 +793,6 @@ export async function getSupplierStatement(
         docNo: entry.header.entryNumber,
         Currency: entry.currencyCode,
         typeName: mapType(entry.header.referenceType),
-      })),
-      ...journalEntries.map((entry) => ({
-        date: entry.entry_date,
-        debit: Number(entry.debit),
-        credit: Number(entry.credit),
-        description: entry.description,
-        docNo: entry.entry_number,
-        Currency: null,
-        typeName: mapType(entry.reference_type),
       })),
     ].sort((a, b) => {
       const aTime = a.date ? new Date(a.date).getTime() : 0;

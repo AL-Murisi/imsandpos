@@ -3,6 +3,11 @@
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { revalidatePath } from "next/cache";
+import {
+  SubscriptionPlanKey,
+  SUBSCRIPTION_PLAN_DEFS,
+  isSubscriptionRecordActive,
+} from "../subscription";
 
 type LimitResource = "branches" | "cashiers" | "warehouses" | "users";
 
@@ -46,6 +51,60 @@ export async function getCompanySubscriptionInfo() {
   });
 
   return subscription;
+}
+
+export async function assertCompanySubscriptionActive(companyId: string) {
+  const subscription = await prisma.subscription.findFirst({
+    where: { companyId },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (!isSubscriptionRecordActive(subscription)) {
+    throw new Error(
+      "Subscription is inactive. Please renew your plan to continue using write actions.",
+    );
+  }
+
+  return subscription;
+}
+
+export async function createOrUpdateCompanySubscription(
+  companyId: string,
+  plan: SubscriptionPlanKey,
+) {
+  const def = SUBSCRIPTION_PLAN_DEFS[plan];
+  const now = new Date();
+  const endsAt =
+    def.days === null
+      ? null
+      : new Date(now.getTime() + def.days * 24 * 60 * 60 * 1000);
+
+  const payload = {
+    companyId,
+    plan,
+    status: "ACTIVE",
+    startsAt: now,
+    endsAt,
+    isActive: true,
+    maxBranches: def.maxBranches ?? null,
+    maxCashiers: def.maxCashiers ?? null,
+    maxWarehouses: def.maxWarehouses ?? null,
+    maxUsers: def.maxUsers ?? null,
+  };
+
+  const latest = await prisma.subscription.findFirst({
+    where: { companyId },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (!latest) {
+    return prisma.subscription.create({ data: payload });
+  }
+
+  return prisma.subscription.update({
+    where: { id: latest.id },
+    data: payload,
+  });
 }
 
 export async function getCompanySubscriptionUsage(): Promise<SubscriptionUsage | null> {
@@ -114,9 +173,7 @@ export async function renewSubscription(days: number = 30) {
   const session = await getSession();
   if (!session) return { success: false, error: "Unauthorized" };
 
-  const isAdmin = (session.roles ?? []).some((r) =>
-    r.toLowerCase().includes("admin"),
-  );
+  const isAdmin = session.role === "admin";
   if (!isAdmin) {
     return { success: false, error: "Forbidden" };
   }
@@ -159,61 +216,22 @@ export async function renewSubscription(days: number = 30) {
   return { success: true, subscription: updated };
 }
 
-const PLAN_DEFS: Record<
-  string,
-  {
-    days: number;
-    maxBranches?: number;
-    maxCashiers?: number;
-    maxWarehouses?: number;
-    maxUsers?: number;
-  }
-> = {
-  TRIAL: {
-    days: 7,
-    maxBranches: 1,
-    maxCashiers: 1,
-    maxWarehouses: 1,
-    maxUsers: 2,
-  },
-  BASIC: {
-    days: 30,
-    maxBranches: 1,
-    maxCashiers: 2,
-    maxWarehouses: 1,
-    maxUsers: 5,
-  },
-  ADVANCE: {
-    days: 90,
-    maxBranches: 3,
-    maxCashiers: 5,
-    maxWarehouses: 3,
-    maxUsers: 15,
-  },
-  PRO: {
-    days: 180,
-    maxBranches: 10,
-    maxCashiers: 20,
-    maxWarehouses: 10,
-    maxUsers: 50,
-  },
-};
-
 export async function setSubscriptionPlan(plan: string) {
   const session = await getSession();
   if (!session) return { success: false, error: "Unauthorized" };
+  const isAdmin = session.role === "admin";
 
-  const isAdmin = (session.roles ?? []).some((r) =>
-    r.toLowerCase().includes("admin"),
-  );
   if (!isAdmin) {
     return { success: false, error: "Forbidden" };
   }
 
   const key = plan.trim().toUpperCase();
-  const def = PLAN_DEFS[key];
+  const def = SUBSCRIPTION_PLAN_DEFS[key as SubscriptionPlanKey];
   if (!def) {
     return { success: false, error: "Invalid plan" };
+  }
+  if (def.days === null) {
+    return { success: false, error: "Plan duration is not configurable" };
   }
 
   const now = new Date();
@@ -255,10 +273,10 @@ export async function setSubscriptionPlan(plan: string) {
       status: "ACTIVE",
       isActive: true,
       endsAt: newEndsAt,
-      maxBranches: def.maxBranches,
-      maxCashiers: def.maxCashiers,
-      maxWarehouses: def.maxWarehouses,
-      maxUsers: def.maxUsers,
+      maxBranches: def.maxBranches ?? null,
+      maxCashiers: def.maxCashiers ?? null,
+      maxWarehouses: def.maxWarehouses ?? null,
+      maxUsers: def.maxUsers ?? null,
     },
   });
   revalidatePath("/subscription");

@@ -986,7 +986,7 @@ export async function processPurchaseReturn(
             userId,
             movementType: "صادر",
             quantity: returnQuantityInUnits,
-            reason: "إرجاع_للمورد",
+            reason: "إرجاع للمورد",
             quantityBefore: inventory.stockQuantity,
             quantityAfter: newStockQty,
             referenceType: "مرتجع مشتريات",
@@ -1913,8 +1913,50 @@ export async function updateWarehouse(id: string, input: UpdateWarehouseInput) {
   }
 }
 
+async function getWarehouseDependencyCounts(warehouseId: string) {
+  const [productCount, inventoryCount, stockMovementCount, invoiceCount] =
+    await Promise.all([
+      prisma.product.count({ where: { warehouseId } }),
+      prisma.inventory.count({ where: { warehouseId } }),
+      prisma.stockMovement.count({ where: { warehouseId } }),
+      prisma.invoice.count({ where: { warehouseId } }),
+    ]);
+
+  return {
+    productCount,
+    inventoryCount,
+    stockMovementCount,
+    invoiceCount,
+    total: productCount + inventoryCount + stockMovementCount + invoiceCount,
+  };
+}
+
 export async function deleteWarehouse(id: string) {
   try {
+    const dependencies = await getWarehouseDependencyCounts(id);
+
+    if (dependencies.total > 0) {
+      const blocks: string[] = [];
+
+      if (dependencies.productCount > 0) {
+        blocks.push(`${dependencies.productCount} منتج`);
+      }
+      if (dependencies.inventoryCount > 0) {
+        blocks.push(`${dependencies.inventoryCount} سجل مخزون`);
+      }
+      if (dependencies.stockMovementCount > 0) {
+        blocks.push(`${dependencies.stockMovementCount} حركة مخزون`);
+      }
+      if (dependencies.invoiceCount > 0) {
+        blocks.push(`${dependencies.invoiceCount} فاتورة`);
+      }
+
+      return {
+        success: false,
+        error: `لا يمكن حذف المستودع لأنه مرتبط بـ ${blocks.join(" و ")}. احذف أو انقل هذه السجلات أولاً.`,
+      };
+    }
+
     await prisma.warehouse.delete({ where: { id } });
 
     revalidatePath("/warehouses");

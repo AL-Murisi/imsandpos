@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSession } from "@/lib/session";
+import { assertCompanySubscriptionActive } from "@/lib/actions/subscription";
 
 import prisma from "@/lib/prisma"; // ✅ make sure this path is correct
 import { CreateProductSchema } from "@/lib/zod";
@@ -6,6 +8,18 @@ import { read, utils } from "xlsx";
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (session.subscriptionActive === false) {
+      return NextResponse.json(
+        { error: "Subscription inactive" },
+        { status: 403 },
+      );
+    }
+    await assertCompanySubscriptionActive(session.companyId);
+
     const formData = await req.formData();
     const file = formData.get("file") as File;
 

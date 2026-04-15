@@ -25,14 +25,13 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-function getDefaultRedirectForRole(roles: string[] = []): string {
-  const normalizedRoles = roles.map((r) => r.trim().toLowerCase());
-  if (normalizedRoles.includes("admin")) return "/company";
-  if (normalizedRoles.includes("cashier")) return "/salesDashboard";
-  if (normalizedRoles.includes("manager_wh")) return "/dashboardUser";
-  if (normalizedRoles.includes("supplier")) return "/supplier/orders";
-  if (normalizedRoles.includes("accountant")) return "/voucher";
-  if (normalizedRoles.includes("customer")) return "/customer-portal";
+function getDefaultRedirectForRole(roles?: string): string {
+  if (roles === "admin") return "/company";
+  if (roles === "cashier") return "/salesDashboard";
+  if (roles === "manager_wh") return "/dashboardUser";
+  if (roles === "supplier") return "/supplier/orders";
+  if (roles === "accountant") return "/voucher";
+  if (roles === "customer") return "/customer-portal";
   return "/landing";
 }
 
@@ -109,7 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
           return {
             success: true,
-            redirectPath: getDefaultRedirectForRole(userData.roles ?? []),
+            redirectPath: getDefaultRedirectForRole(userData.role ?? []),
           };
         }
 
@@ -185,11 +184,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const hasRole = (role: string): boolean => {
-    return user?.roles?.includes(role) || false;
+    return user?.role?.includes(role) || false;
   };
 
-  const hasAnyRole = (roles: string[]): boolean => {
-    return roles.some((role) => user?.roles?.includes(role)) || false;
+  const hasAnyRole = (allowedRoles: string[]): boolean => {
+    // If the item has no roles defined, maybe show it to everyone (optional)
+    if (!allowedRoles || allowedRoles.length === 0) return true;
+
+    // Check if the user's single role is one of the allowed roles
+    return user?.role ? allowedRoles.includes(user.role) : false;
   };
 
   return (

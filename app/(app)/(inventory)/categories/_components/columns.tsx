@@ -23,6 +23,7 @@ import { CategorySchema } from "@/lib/zod";
 import { z } from "zod";
 import { deleteCategory, toggleCategoryActive } from "@/lib/actions/category";
 import EditCategoryForm from "./editForm";
+import { toast } from "sonner";
 
 // 🔽 Sortable Header Component
 type SortableHeaderProps = {
@@ -185,7 +186,12 @@ export const columns: ColumnDef<User>[] = [
               <DropdownMenuItem
                 onClick={async () => {
                   if (confirm("هل أنت متأكد من حذف هذه الفئة؟")) {
-                    await deleteCategory(category.id);
+                    const res = await deleteCategory(category.id);
+                    if (res.success) {
+                      toast.success("تم حذف الفئة بنجاح");
+                    } else {
+                      toast.error(res.error || "فشل حذف الفئة");
+                    }
                   }
                 }}
               >

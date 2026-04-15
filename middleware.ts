@@ -91,13 +91,13 @@ function sanitizeRoles(value: unknown): Role[] {
     .filter((role): role is Role => roleSet.has(role));
 }
 
-function getDefaultRedirectForRole(roles: Role[]): string {
-  if (roles.includes("admin")) return "/company";
-  if (roles.includes("cashier")) return "/salesDashboard";
-  if (roles.includes("manager_wh")) return "/dashboardUser";
-  if (roles.includes("supplier")) return "/supplier/orders";
-  if (roles.includes("accountant")) return "/voucher";
-  if (roles.includes("customer")) return "/customer-portal";
+function getDefaultRedirectForRole(roles?: string): string {
+  if (roles === "admin") return "/company";
+  if (roles === "cashier") return "/salesDashboard";
+  if (roles === "manager_wh") return "/dashboardUser";
+  if (roles === "supplier") return "/supplier/orders";
+  if (roles === "accountant") return "/voucher";
+  if (roles === "customer") return "/customer-portal";
   return "/landing";
 }
 
@@ -142,19 +142,10 @@ export default async function middleware(req: NextRequest) {
   }
 
   const authToken = await getToken(params);
-  const userRoles = sanitizeRoles(authToken?.roles);
+  const userRoles = authToken?.role;
   const isAuthenticated = Boolean(authToken?.userId || authToken?.email);
   const isTokenActive =
     authToken?.userActive !== false && authToken?.companyActive !== false;
-  const subscriptionEndsAt =
-    typeof authToken?.subscriptionEndsAt === "string"
-      ? new Date(authToken.subscriptionEndsAt)
-      : authToken?.subscriptionEndsAt instanceof Date
-        ? authToken.subscriptionEndsAt
-        : null;
-  const isSubscriptionActive =
-    authToken?.subscriptionActive !== false &&
-    (!subscriptionEndsAt || subscriptionEndsAt.getTime() >= Date.now());
   const subscriptionRoute = "/settings/subscription";
 
   if (isAuthenticated && !isTokenActive) {
@@ -176,27 +167,26 @@ export default async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL("/login", req.nextUrl));
   }
 
-  if (isAuthenticated && !isSubscriptionActive && path !== subscriptionRoute) {
-    if (userRoles.includes("customer")) {
-      return safeRedirect(req, getDefaultRedirectForRole(userRoles));
-    }
-    return safeRedirect(req, subscriptionRoute);
-  }
-
   if (isAuthenticated) {
     if (path === subscriptionRoute) {
-      if (userRoles.includes("customer")) {
+      if (userRoles === "customer") {
         return safeRedirect(req, getDefaultRedirectForRole(userRoles));
       }
       return NextResponse.next();
     }
     const requiredRoles = getRequiredRoles(path);
-    if (
-      requiredRoles &&
-      !requiredRoles.some((role) => userRoles.includes(role))
-    ) {
+    if (requiredRoles && !requiredRoles.some((role) => userRoles === role)) {
       return safeRedirect(req, getDefaultRedirectForRole(userRoles));
     }
+  }
+
+  if (
+    isAuthenticated &&
+    authToken?.subscriptionActive === false &&
+    req.method !== "GET" &&
+    path !== subscriptionRoute
+  ) {
+    return new NextResponse("Subscription inactive", { status: 403 });
   }
 
   const response = NextResponse.next();

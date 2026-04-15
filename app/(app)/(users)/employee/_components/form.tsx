@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-
+import { ROLE_DEFINITIONS } from "@/lib/constants/roles";
 import Dailogreuse from "@/components/common/dailogreuse";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,10 @@ type Role = {
   id: string;
   name: string;
 };
+const roleOptions: Role[] = ROLE_DEFINITIONS.map((role) => ({
+  id: role.name,
+  name: role.name,
+}));
 export default function EmployeeForm({ userLimit }: { userLimit?: LimitInfo }) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
@@ -44,7 +48,7 @@ export default function EmployeeForm({ userLimit }: { userLimit?: LimitInfo }) {
       name: "",
       email: "",
       phone: "",
-      position: "",
+      position: "cashier",
       department: "",
       salary: undefined,
       hireDate: new Date().toISOString().split("T")[0],
@@ -58,14 +62,8 @@ export default function EmployeeForm({ userLimit }: { userLimit?: LimitInfo }) {
   useEffect(() => {
     if (!open) return;
     const loadRoles = async () => {
-      const result = await fetchRolesForSelect();
       // const branch = await fetchbranches();
-      setRoles(result);
-      if (result.length > 0) {
-        setValue("position", result[0].id);
-
-        // Default role
-      }
+      setRoles(roleOptions);
     };
     loadRoles();
   }, [open]);
@@ -94,7 +92,7 @@ export default function EmployeeForm({ userLimit }: { userLimit?: LimitInfo }) {
       name: "",
       email: "",
       phone: "",
-      position: "",
+      position: "cashier",
       department: "",
       salary: undefined,
       hireDate: new Date().toISOString().split("T")[0],
@@ -162,7 +160,12 @@ export default function EmployeeForm({ userLimit }: { userLimit?: LimitInfo }) {
             <Label htmlFor="position">الوظيفة</Label>
             <SelectField
               options={roles}
-              action={(value) => setValue("position", value)}
+              action={(value) =>
+                setValue(
+                  "position",
+                  value as "admin" | "customer" | "accountant" | "manager_wh" | "supplier" | "cashier"
+                )
+              }
               value={selectedRole}
             />{" "}
           </div>

@@ -160,7 +160,8 @@ export const debtSaleColumns: ColumnDef<any>[] = [
     header: "نوع العملية",
     cell: ({ row }) => {
       const type = row.getValue("sale_type") as string;
-      const label = type === "RETURN_SALE" ? "إرجاع" : type === "SALE" ? "بيع" : "-";
+      const label =
+        type === "RETURN_SALE" ? "إرجاع" : type === "SALE" ? "بيع" : "-";
       const color =
         type === "RETURN_SALE"
           ? "bg-red-100 text-red-800"
@@ -220,7 +221,6 @@ export const debtSaleColumns: ColumnDef<any>[] = [
           userAgent,
         );
       const debt = row.original;
-      const amountDue = Number(debt.amountDue) || 0; // ✅ convert to number safely
 
       return (
         <div className="flex flex-row gap-2">
@@ -231,23 +231,26 @@ export const debtSaleColumns: ColumnDef<any>[] = [
             <PrintButton
               saleNumber={debt.invoiceNumber ?? ""}
               items={debt.saleItems.map((item: any) => ({
-                name: item.name,
-                warehousename: item.warehousename,
-                selectedQty: item.selectedQty,
-                sellingUnit: item.sellingUnit,
+                id: item.id,
+                name: item.product.name,
+                warehousename: item.warehouse,
+                selectedQty: item.quantity,
+                sellingUnit: item.unit,
                 unit_price: item.unitPrice,
-                pricePerUnit: item.unitPrice,
-                total: item.total,
+
+                total: item.totalPrice,
               }))}
               totals={{
                 totalBefore: debt.totalAmount,
-                discount: 0,
+                discount: debt.items?.discount ?? 0,
                 totalAfter: debt.totalAmount,
               }}
               receivedAmount={Number(debt.amountPaid ?? 0)}
               calculatedChange={Number(debt.calculated_change ?? 0)}
               userName={debt.cashierName ?? ""}
-              customerName={debt.customer?.name ?? debt.customerName ?? "لايوجد"}
+              customerName={
+                debt.customer?.name ?? debt.customerName ?? "لايوجد"
+              }
               customerDebt={Number(debt.customer_debt ?? 0)}
               isCash={Boolean(debt.is_cash)}
               t={t}
@@ -274,7 +277,9 @@ export const debtSaleColumns: ColumnDef<any>[] = [
               receivedAmount={Number(debt.amountPaid ?? 0)}
               calculatedChange={Number(debt.calculated_change ?? 0)}
               userName={debt.cashierName ?? ""}
-              customerName={debt.customer?.name ?? debt.customerName ?? "لايوجد"}
+              customerName={
+                debt.customer?.name ?? debt.customerName ?? "لايوجد"
+              }
               customerDebt={Number(debt.customer_debt ?? 0)}
               isCash={Boolean(debt.is_cash)}
               t={t}
@@ -289,4 +294,3 @@ export const debtSaleColumns: ColumnDef<any>[] = [
     },
   },
 ];
-

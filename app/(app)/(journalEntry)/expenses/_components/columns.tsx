@@ -5,6 +5,12 @@ import { Badge } from "@/components/ui/badge";
 
 import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
+import { Button } from "@/components/ui/button";
+import { TrashIcon } from "lucide-react";
+import { useAuth } from "@/lib/context/AuthContext";
+import { deleteExpense } from "@/lib/actions/exponses";
+import { ConfirmModal } from "@/components/common/confirm-modal";
+import { useTransition } from "react";
 const ExpenseEditForm = dynamic(
   () => import("./ExpenseEditForm").then((m) => m.ExpenseEditForm),
   {
@@ -133,10 +139,34 @@ export const expenseColumns: ColumnDef<any>[] = [
     id: "actions",
     header: "الإجراءات",
     cell: ({ row }) => {
+      const { user } = useAuth();
+      if (!user) return;
       const exponses = row.original;
+      const [isPending, startTransition] = useTransition();
+
       const category = row.original.account_category;
-      // return <ExpenseEditForm expense={exponses} />;
+      return (
+        <div className="flex gap-2">
+          <ExpenseEditForm expense={exponses} />
+          <ConfirmModal
+            title="تأكيد الحذف"
+            description={`هل أنت متأكد من حذف هذا ${exponses.name}؟ هذه العملية لا يمكن التراجع عنها.`}
+            action={() =>
+              startTransition(async () => {
+                deleteExpense(exponses.id, user.companyId, user.userId);
+              })
+            }
+            confirmText="حذف"
+          >
+            <Button
+              disabled={isPending}
+              className="text-red-600 hover:bg-orange-300/20 hover:text-red-700"
+            >
+              <TrashIcon className="h-4 w-4" />
+            </Button>
+          </ConfirmModal>
+        </div>
+      );
     },
-    enableSorting: false,
   },
 ];

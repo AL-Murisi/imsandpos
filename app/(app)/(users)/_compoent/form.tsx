@@ -1,22 +1,22 @@
 "use client";
+
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
+import { SelectField } from "@/components/common/selectproduct";
+import Dailogreuse from "@/components/common/dailogreuse";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
-import { fetchRolesForSelect } from "@/lib/actions/roles";
+import { fetchbranches } from "@/lib/actions/pos";
 import { createUser } from "@/lib/actions/users";
-import { SelectField } from "@/components/common/selectproduct";
+import { ROLE_DEFINITIONS } from "@/lib/constants/roles";
 import { useAuth } from "@/lib/context/AuthContext";
 import { CreateUserSchema, UserInput } from "@/lib/zod";
 import { toast } from "sonner";
-import Dailogreuse from "@/components/common/dailogreuse";
-import { fetchbranches } from "@/lib/actions/pos";
 
-type Role = {
+type SelectOption = {
   id: string;
   name: string;
 };
@@ -28,6 +28,11 @@ type LimitInfo = {
   atLimit: boolean;
 } | null;
 
+const roleOptions: SelectOption[] = ROLE_DEFINITIONS.map((role) => ({
+  id: role.name,
+  name: role.name,
+}));
+
 export default function UserForm({
   userLimit,
   cashierLimit,
@@ -35,8 +40,7 @@ export default function UserForm({
   userLimit?: LimitInfo;
   cashierLimit?: LimitInfo;
 }) {
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [branch, setBranch] = useState<Role[]>([]);
+  const [branch, setBranch] = useState<SelectOption[]>([]);
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -54,36 +58,37 @@ export default function UserForm({
       name: "",
       phoneNumber: "",
       password: "",
-      roleId: "",
+      role: "",
       branchId: undefined,
     },
   });
+
   const { user } = useAuth();
+  const selectedRole = watch("role");
+  const selectedRoleObj = useMemo(
+    () => ROLE_DEFINITIONS.find((role) => role.name === selectedRole),
+    [selectedRole],
+  );
+
   if (!user) return;
   const isUserLimitReached = userLimit?.atLimit ?? false;
-  // Load roles on mount
+
   useEffect(() => {
     if (!open) return;
-    const loadRoles = async () => {
-      const result = await fetchRolesForSelect();
-      const branch = await fetchbranches();
-      setRoles(result);
-      setBranch(branch ?? []);
-      if (result.length > 0) {
-        setValue("roleId", result[0].id);
-
-        // Default role
+    const loadFormData = async () => {
+      const branches = await fetchbranches();
+      setBranch(branches ?? []);
+      if (roleOptions.length > 0) {
+        setValue("role", roleOptions[0].id);
       }
     };
-    loadRoles();
-  }, [open]);
+    void loadFormData();
+  }, [open, setValue]);
 
-  const selectedRole = watch("roleId");
-
-  const selectedRoleObj = roles.find((r) => r.id === selectedRole);
   const isCashier = selectedRoleObj?.name === "cashier";
   const createsLinkedProfile =
-    selectedRoleObj?.name === "customer" || selectedRoleObj?.name === "employee";
+    selectedRoleObj?.name === "customer" ||
+    selectedRoleObj?.name === "supplier";
   const isCashierLimitReached = isCashier && (cashierLimit?.atLimit ?? false);
 
   const onSubmit = async (data: UserInput) => {
@@ -136,7 +141,6 @@ export default function UserForm({
             </p>
           )}
           <div className="grid grid-cols-2 gap-4">
-            {/* Email */}
             <div className="grid gap-2">
               <Label htmlFor="email">البريد الإلكتروني</Label>
               <Input id="email" type="email" {...register("email")} />
@@ -145,7 +149,6 @@ export default function UserForm({
               )}
             </div>
 
-            {/* Full Name */}
             <div className="grid gap-2">
               <Label htmlFor="name">الاسم الكامل</Label>
               <Input id="name" {...register("name")} />
@@ -156,13 +159,11 @@ export default function UserForm({
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            {/* Phone */}
             <div className="grid gap-2">
               <Label htmlFor="phoneNumber">رقم الهاتف</Label>
               <Input id="phoneNumber" type="tel" {...register("phoneNumber")} />
             </div>
 
-            {/* Password */}
             <div className="grid gap-2">
               <Label htmlFor="password">كلمة المرور</Label>
               <Input id="password" type="password" {...register("password")} />
@@ -174,21 +175,20 @@ export default function UserForm({
             </div>
           </div>
 
-          {/* Role select */}
           <div className="grid gap-2">
             <Label htmlFor="role">الدور</Label>
             <SelectField
-              options={roles}
-              action={(value) => setValue("roleId", value)}
+              options={roleOptions}
+              action={(value) => setValue("role", value)}
               value={selectedRole}
             />
-            {errors.roleId && (
-              <p className="text-xs text-red-500">{errors.roleId.message}</p>
+            {errors.role && (
+              <p className="text-xs text-red-500">{errors.role.message}</p>
             )}
             {createsLinkedProfile ? (
               <p className="text-xs text-blue-600">
                 سيتم إنشاء سجل مرتبط تلقائيا في{" "}
-                {selectedRoleObj?.name === "customer" ? "العملاء" : "الموظفين"}.
+                {selectedRoleObj?.name === "customer" ? "العملاء" : "الموردين"}.
               </p>
             ) : null}
             {isCashierLimitReached && (
@@ -217,7 +217,9 @@ export default function UserForm({
         <div className="flex justify-end">
           <Button
             type="submit"
-            disabled={isSubmitting || isUserLimitReached || isCashierLimitReached}
+            disabled={
+              isSubmitting || isUserLimitReached || isCashierLimitReached
+            }
             className="min-w-[120px] bg-green-600 hover:bg-green-700"
           >
             {isSubmitting ? "جاري الحفظ..." : "حفظ "}

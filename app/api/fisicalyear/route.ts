@@ -1,6 +1,7 @@
 // app/api/fiscal-year/close/route.ts
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/session";
+import { assertCompanySubscriptionActive } from "@/lib/actions/subscription";
 import { NextRequest } from "next/server";
 
 export async function POST(req: NextRequest) {
@@ -9,6 +10,13 @@ export async function POST(req: NextRequest) {
     if (!session) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
+    if (session.subscriptionActive === false) {
+      return Response.json(
+        { error: "Subscription inactive" },
+        { status: 403 },
+      );
+    }
+    await assertCompanySubscriptionActive(session.companyId);
 
     const { fiscalYearId } = await req.json();
 

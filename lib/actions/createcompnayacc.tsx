@@ -5,6 +5,8 @@ import { getSession } from "../session";
 import { revalidatePath } from "next/cache";
 import { randomBytes } from "crypto";
 import { sendUserInviteEmail } from "@/lib/email";
+import { createOrUpdateCompanySubscription } from "./subscription";
+import { normalizeSubscriptionPlan } from "../subscription";
 
 interface CreateCompanyInput {
   name: string;
@@ -18,6 +20,7 @@ interface CreateCompanyInput {
   adminPassword?: string;
   base_currency: string;
   supabaseId?: string;
+  plan?: string;
 }
 
 export async function createCompany(data: CreateCompanyInput) {
@@ -33,6 +36,7 @@ export async function createCompany(data: CreateCompanyInput) {
     adminPassword,
     base_currency,
     supabaseId,
+    plan,
   } = data;
   email = email.trim().toLowerCase();
   adminEmail = adminEmail.trim().toLowerCase();
@@ -58,7 +62,13 @@ export async function createCompany(data: CreateCompanyInput) {
           country,
           isActive: true,
           base_currency,
+          plan: normalizeSubscriptionPlan(plan),
         },
+      });
+    } else if (plan) {
+      company = await prisma.company.update({
+        where: { id: company.id },
+        data: { plan: normalizeSubscriptionPlan(plan) },
       });
     }
 
@@ -86,21 +96,10 @@ export async function createCompany(data: CreateCompanyInput) {
       },
     });
 
-    const existingSubscription = await prisma.subscription.findFirst({
-      where: { companyId: company.id },
-      select: { id: true },
-    });
-
-    if (!existingSubscription) {
-      await prisma.subscription.create({
-        data: {
-          companyId: company.id,
-          plan: "CUSTOM",
-          status: "ACTIVE",
-          isActive: true,
-        },
-      });
-    }
+    await createOrUpdateCompanySubscription(
+      company.id,
+      normalizeSubscriptionPlan(plan),
+    );
 
     // 2️⃣ Ensure base roles exist
     const baseRoles = [
@@ -160,6 +159,7 @@ export async function createCompany(data: CreateCompanyInput) {
           phoneNumber: phone,
           password: invitePassword,
           supabaseId,
+          role: "admin",
           isActive: false,
         },
       });
@@ -187,26 +187,27 @@ export async function createCompany(data: CreateCompanyInput) {
           phoneNumber: phone,
           password: invitePassword,
           isActive: false,
+          role: "admin",
         },
       });
     }
 
     // 4️⃣ Link admin user to admin role (if not already)
-    const existingLink = await prisma.userRole.findFirst({
-      where: {
-        userId: user.id,
-        roleId: adminRole.id,
-      },
-    });
+    // const existingLink = await prisma.userRole.findFirst({
+    //   where: {
+    //     userId: user.id,
+    //     roleId: adminRole.id,
+    //   },
+    // });
 
-    if (!existingLink) {
-      await prisma.userRole.create({
-        data: {
-          userId: user.id,
-          roleId: adminRole.id,
-        },
-      });
-    }
+    // if (!existingLink) {
+    //   await prisma.userRole.create({
+    //     data: {
+    //       userId: user.id,
+    //       roleId: adminRole.id,
+    //     },
+    //   });
+    // }
 
     await prisma.userInvite.deleteMany({
       where: {

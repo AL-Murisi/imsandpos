@@ -17,11 +17,12 @@ import SearchInput from "@/components/common/searchtest";
 import { columns } from "../../(compny)/_compoent/columns";
 import UserForm from "./form";
 import { DataTable } from "@/components/common/ReusbleTable";
+import { ROLE_DEFINITIONS } from "@/lib/constants/roles";
 
 type ProductClientProps = {
   users: any[];
   total: number;
-  role: { id: string; name: string }[];
+
   userLimit: {
     limit: number | null;
     used: number;
@@ -35,11 +36,14 @@ type ProductClientProps = {
     atLimit: boolean;
   } | null;
 };
-
+type Role = {
+  id: string;
+  name: string;
+};
 export default function UserClinet({
   users,
   total,
-  role,
+
   userLimit,
   cashierLimit,
 }: ProductClientProps) {
@@ -56,7 +60,10 @@ export default function UserClinet({
     roles,
     setParam,
   } = useTablePrams();
-
+  const roleOptions: Role[] = ROLE_DEFINITIONS.map((role) => ({
+    id: role.name,
+    name: role.name,
+  }));
   return (
     <div
       className="bg-accent border-primary flex flex-col rounded-2xl border p-3 shadow-xl/20 shadow-gray-900"
@@ -69,8 +76,11 @@ export default function UserClinet({
           <div className="flex flex-wrap gap-2">
             <Calendar22 />
             <SearchInput placeholder={"بحث"} paramKey={"users"} />{" "}
-            {/* Translate placeholder */}
-            <SelectField options={role} paramKey="role" placeholder="الفئة" />
+            <SelectField
+              options={roleOptions}
+              paramKey="role"
+              placeholder="الفئة"
+            />
             <UserForm userLimit={userLimit} cashierLimit={cashierLimit} />
           </div>
         }

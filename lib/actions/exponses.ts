@@ -55,6 +55,7 @@ export async function getExpensesByCompany(
     to,
     pageIndex = 0,
     pageSize = 10,
+    search,
     expense_categoriesId,
     status,
     parsedSort,
@@ -63,6 +64,7 @@ export async function getExpensesByCompany(
     to?: string;
     pageIndex?: number;
     pageSize?: number;
+    search?: string;
     expense_categoriesId?: string;
     status?: string;
     parsedSort?: { id: string; desc: boolean }[];
@@ -83,6 +85,35 @@ export async function getExpensesByCompany(
 
     // Status filter
     if (status && status !== "all") filters.status = status;
+
+    if (search?.trim()) {
+      filters.OR = [
+        {
+          expense_number: {
+            contains: search.trim(),
+            mode: "insensitive",
+          },
+        },
+        {
+          description: {
+            contains: search.trim(),
+            mode: "insensitive",
+          },
+        },
+        {
+          notes: {
+            contains: search.trim(),
+            mode: "insensitive",
+          },
+        },
+        {
+          reference_number: {
+            contains: search.trim(),
+            mode: "insensitive",
+          },
+        },
+      ];
+    }
 
     // Count total
     const total = await prisma.expenses.count({ where: filters });
@@ -517,7 +548,7 @@ export async function createMultipleExpenses(
         // ب- إنشاء المعاملة المالية المرتبطة (FinancialTransaction)
         // هذا يمثل "سند الصرف" الفعلي في الخزينة
 
-        const entryNumber = `SAL-${new Date().getFullYear()}-${voucherNumber}`;
+        const entryNumber = `EXP-${new Date().getFullYear()}-${voucherNumber}`;
 
         const journalHeader = await tx.journalHeader.create({
           data: {
@@ -714,22 +745,147 @@ export async function updateExpense(
   },
 ) {
   try {
-    const expense = await prisma.expenses.update({
-      where: { id: expenseId },
-      data: {
-        ...(data.account_id && {
-          account_id: data.account_id,
-        }),
-        ...(data.description && { description: data.description }),
-        ...(data.amount && { amount: data.amount }),
-        ...(data.expense_date && { expense_date: data.expense_date }),
-        ...(data.payment_method && { payment_method: data.payment_method }),
-        ...(data.status && { status: data.status }),
-        ...(data.notes && { notes: data.notes }),
-      },
-      include: {
-        users: true,
-      },
+    const expense = await prisma.$transaction(async (tx) => {
+      const existingExpense = await tx.expenses.findUnique({
+        where: { id: expenseId },
+        select: {
+          id: true,
+          description: true,
+          amount: true,
+          expense_date: true,
+          payment_method: true,
+          status: true,
+          notes: true,
+          account_id: true,
+          branchId: true,
+        },
+      });
+
+      if (!existingExpense) {
+        throw new Error("Expense not found");
+      }
+
+      const updatedExpense = await tx.expenses.update({
+        where: { id: expenseId },
+        data: {
+          ...(data.account_id !== undefined ? { account_id: data.account_id } : {}),
+          ...(data.description !== undefined
+            ? { description: data.description }
+            : {}),
+          ...(data.amount !== undefined ? { amount: data.amount } : {}),
+          ...(data.expense_date !== undefined
+            ? { expense_date: data.expense_date }
+            : {}),
+          ...(data.payment_method !== undefined
+            ? { payment_method: data.payment_method }
+            : {}),
+          ...(data.status !== undefined ? { status: data.status } : {}),
+          ...(data.notes !== undefined ? { notes: data.notes } : {}),
+        },
+        include: {
+          users: true,
+        },
+      });
+
+      const finalDescription =
+        updatedExpense.description ?? existingExpense.description ?? "";
+      const finalAmount = Number(updatedExpense.amount);
+      const finalPaymentMethod =
+        updatedExpense.payment_method ?? existingExpense.payment_method ?? "cash";
+      const finalExpenseDate =
+        updatedExpense.expense_date ?? existingExpense.expense_date;
+      const finalAccountId =
+        updatedExpense.account_id ?? existingExpense.account_id;
+
+      const journalHeader = await tx.journalHeader.findFirst({
+        where: {
+          companyId,
+          referenceId: expenseId,
+        },
+        include: {
+          lines: true,
+        },
+      });
+
+      if (journalHeader) {
+        const accountMap = await getDefaultAccountMap(tx, companyId);
+        const settlementAccount = resolveSettlementAccount(
+          accountMap,
+          finalPaymentMethod,
+        );
+
+        if (!finalAccountId) {
+          throw new Error("Expense account is required for journal entry");
+        }
+
+        if (!settlementAccount) {
+          throw new Error(
+            "Missing settlement account mapping for expense payment",
+          );
+        }
+
+        await tx.journalHeader.update({
+          where: { id: journalHeader.id },
+          data: {
+            description: finalDescription,
+            entryDate: finalExpenseDate,
+            branchId: existingExpense.branchId ?? undefined,
+          },
+        });
+
+        const debitLine = journalHeader.lines.find(
+          (line) => Number(line.debit) > 0,
+        );
+        const creditLine = journalHeader.lines.find(
+          (line) => Number(line.credit) > 0,
+        );
+
+        if (debitLine) {
+          await tx.journalLine.update({
+            where: { id: debitLine.id },
+            data: {
+              accountId: finalAccountId,
+              debit: finalAmount,
+              credit: 0,
+              baseAmount: finalAmount,
+              memo: finalDescription,
+            },
+          });
+        }
+
+        if (creditLine) {
+          await tx.journalLine.update({
+            where: { id: creditLine.id },
+            data: {
+              accountId: settlementAccount,
+              debit: 0,
+              credit: finalAmount,
+              baseAmount: finalAmount,
+              memo: `${finalDescription} - payment`,
+            },
+          });
+        }
+      }
+
+      await tx.financialTransaction.updateMany({
+        where: {
+          companyId,
+          expenseId,
+        },
+        data: {
+          amount: finalAmount,
+          baseAmount: finalAmount,
+          paymentMethod: finalPaymentMethod,
+          notes:
+            data.notes !== undefined
+              ? data.notes
+              : (updatedExpense.notes ?? undefined),
+          date: finalExpenseDate,
+          status: updatedExpense.status ?? undefined,
+        },
+      });
+
+      return updatedExpense;
     });
 
     // Log activity
@@ -763,9 +919,14 @@ export async function deleteExpense(
 ) {
   try {
     const expense = await prisma.expenses.delete({
-      where: { id: expenseId },
+      where: { company_id: companyId, id: expenseId },
     });
-
+    await prisma.journalHeader.deleteMany({
+      where: {
+        companyId: companyId,
+        referenceId: expenseId, // This matches your referenceId: referenceId logic
+      },
+    });
     // Log activity
     await prisma.activityLogs.create({
       data: {

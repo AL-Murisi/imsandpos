@@ -54,24 +54,6 @@ export default function Recitp({ id }: Props) {
   if (!user) return;
   let unitPrice = 0;
   let total = 0;
-  // const formattedItems: ReceiptItem[] =
-  //   data.items.map((item: any) => {
-  //     const unitPrice = Number(
-  //       item.unit_price ?? item.unitPrice ?? item.price ?? 0,
-  //     );
-
-  //     const qty = Number(item.selectedQty ?? item.quantity ?? 0);
-
-  //     return {
-  //       id: item.id,
-  //       name: item.name,
-  //       warehousename: item.warehousename ?? item.warehouseName ?? "-",
-  //       selectedQty: qty,
-  //       sellingUnit: item.sellingUnit ?? item.unit_name ?? item.unitType ?? "-",
-  //       unit_price: unitPrice,
-  //       total: unitPrice * qty,
-  //     };
-  //   }) ?? [];
 
   const handleFetch = async () => {
     if (!id) return;
@@ -119,7 +101,9 @@ export default function Recitp({ id }: Props) {
                 فاتورة رقم: {data.invoiceNumber}
               </h2>
 
-              <span>العميل: {data.customer?.name || data.customerName || "لايوجد"}</span>
+              <span>
+                العميل: {data.customer?.name || data.customerName || "لايوجد"}
+              </span>
               <span>الكاشير: {data.cashierName}</span>
               <span>
                 طريقة الدفع:{" "}

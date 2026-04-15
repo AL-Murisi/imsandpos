@@ -63,6 +63,7 @@
     "pulltorefreshjs": "^0.1.22",
     "puppeteer": "^24.23.0",
     "puppeteer-core": "^24.23.0",
+    "radix-ui": "^1.4.3",
     "react": "^19.2.1",
     "react-day-picker": "^9.8.1",
     "react-dom": "^19.2.1",

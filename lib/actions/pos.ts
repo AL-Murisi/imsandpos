@@ -196,14 +196,14 @@ export async function fetchPOSManagers(companyId: string) {
 
   // Fetch only id and name for POS manager selection
   const managers = await prisma.user.findMany({
-    where: { roles: { some: { role: { name: "admin" } } }, companyId },
+    where: { role: "admin" , companyId },
     select: {
       id: true,
       name: true,
     },
   });
   const cashiers = await prisma.user.findMany({
-    where: { roles: { some: { role: { name: "cashier" } } }, companyId },
+    where: { role: "cashier" , companyId },
     select: {
       id: true,
       name: true,

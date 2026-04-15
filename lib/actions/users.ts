@@ -223,7 +223,7 @@ export async function fetechUser(
   }
 
   if (role) {
-    combinedWhere.roles = {
+    combinedWhere.role = {
       some: {
         role: {
           id: {
@@ -249,16 +249,7 @@ export async function fetechUser(
       email: true,
       phoneNumber: true,
       isActive: true,
-      roles: {
-        select: {
-          role: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-        },
-      },
+      role: true,
     },
     where: combinedWhere,
     skip: page * pageSize,
@@ -274,7 +265,7 @@ export async function createUser(form: any, companyId: string) {
     throw new Error("Invalid user data");
   }
 
-  const { email, name, phoneNumber, password, roleId, branchId } = parsed.data;
+  const { email, name, phoneNumber, password, role, branchId } = parsed.data;
   const normalizedEmail = email.trim().toLowerCase();
   const finalPassword =
     typeof password === "string" && password.length > 0
@@ -292,16 +283,16 @@ export async function createUser(form: any, companyId: string) {
       };
     }
 
-    const selectedRole = await prisma.role.findUnique({
-      where: { id: roleId },
-      select: { name: true },
-    });
+    // const selectedRole = await prisma.role.findUnique({
+    //   where: { id: roleId },
+    //   select: { name: true },
+    // });
 
-    if (!selectedRole) {
-      return { error: "Role not found" };
-    }
+    // if (!selectedRole) {
+    //   return { error: "Role not found" };
+    // }
 
-    if (selectedRole.name === "cashier") {
+    if (role === "cashier") {
       const cashierCapacity = await canCreateSubscriptionResource(
         companyId,
         "cashiers",
@@ -332,15 +323,15 @@ export async function createUser(form: any, companyId: string) {
       },
     });
 
-    await prisma.userRole.create({
-      data: {
-        userId: user.id,
-        roleId,
-      },
-    });
+    // await prisma.userRole.create({
+    //   data: {
+    //     userId: user.id,
+    //     roleId,
+    //   },
+    // });
 
     await syncRelatedRecordForRole({
-      roleName: selectedRole.name,
+      roleName: role,
       userId: user.id,
       companyId,
       name,
@@ -405,7 +396,7 @@ export async function UpdatwUser(form: any, id: string, companyId: string) {
     return { error: "Invalid user data" };
   }
 
-  const { email, name, phoneNumber, roleId, branchId } = parsed.data;
+  const { email, name, phoneNumber, role, branchId } = parsed.data;
   const normalizedEmail =
     typeof email === "string" ? email.trim().toLowerCase() : undefined;
 
@@ -436,36 +427,35 @@ export async function UpdatwUser(form: any, id: string, companyId: string) {
         },
       });
 
-      if (roleId) {
-        await tx.userRole.deleteMany({ where: { userId: existingUser.id } });
-        await tx.userRole.create({
-          data: {
-            userId: existingUser.id,
-            roleId,
-          },
-        });
-      }
+      // if (roleId) {
+      //   await tx.userRole.deleteMany({ where: { userId: existingUser.id } });
+      //   await tx.userRole.create({
+      //     data: {
+      //       userId: existingUser.id,
+      //       roleId,
+      //     },
+      //   });
+      // }
 
       return updatedUser;
     });
 
-    if (roleId) {
-      const role = await prisma.role.findUnique({
-        where: { id: roleId },
-        select: { name: true },
-      });
+    // if (roleId) {
+    //   const role = await prisma.role.findUnique({
+    //     where: { id: roleId },
+    //     select: { name: true },
+    //   });
 
-      if (role) {
-        await syncRelatedRecordForRole({
-          roleName: role.name,
-          userId: existingUser.id,
-          companyId,
-          name: name ?? user.name,
-          email: normalizedEmail ?? user.email,
-          phoneNumber: phoneNumber ?? user.phoneNumber,
-          branchId: branchId ?? user.branchId ?? null,
-        });
-      }
+    if (role) {
+      await syncRelatedRecordForRole({
+        roleName: role,
+        userId: existingUser.id,
+        companyId,
+        name: name ?? user.name,
+        email: normalizedEmail ?? user.email,
+        phoneNumber: phoneNumber ?? user.phoneNumber,
+        branchId: branchId ?? user.branchId ?? null,
+      });
     }
 
     revalidatePath("/user");

@@ -9,9 +9,11 @@ import { Separator } from "@/components/ui/separator";
 import { useTranslations } from "next-intl";
 import PushNotificationManager from "@/components/NotificationBell";
 import { Menu } from "lucide-react";
+import { useAuth } from "@/lib/context/AuthContext";
 
 export default function Appheader() {
   const t = useTranslations("menu");
+  const { user } = useAuth();
 
   const menuItems = [
     // --- الرئيسية ---
@@ -76,26 +78,30 @@ export default function Appheader() {
   const pageTitle = usePageTitle();
 
   return (
-    <header className="border-accent-foreground flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
-      {/* <header
-      className="dark:bg-accent dark:text-foreground text-sidebar flex h-10 shrink-0 items-center gap-2 border-b bg-[#0b142a] transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)"
-      dir="rtl"
-    > */}
-      <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
-        <button
-          onClick={toggleSidebar}
-          className="flex flex-col items-center text-xs"
-        >
-          <Menu size={22} />
-        </button>{" "}
-        <Separator
-          orientation="vertical"
-          className="mx-2 data-[orientation=vertical]:h-4"
-        />
-        <h1 className="text-base font-medium">{pageTitle}</h1>
-      </div>
-      <div className="ml-auto flex items-center gap-2">
-        <PushNotificationManager />
+    <header className="flex flex-col" dir="rtl">
+      {user?.subscriptionActive === false && (
+        <div className="border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm text-amber-200">
+          اشتراكك غير نشط. يمكنك تصفح الصفحات، لكن عمليات الإضافة والتعديل والحذف
+          متوقفة حتى تجديد الاشتراك.
+        </div>
+      )}
+      <div className="flex h-(--header-height) shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
+        <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
+          <button
+            onClick={toggleSidebar}
+            className="flex flex-col items-center text-xs"
+          >
+            <Menu size={22} />
+          </button>{" "}
+          <Separator
+            orientation="vertical"
+            className="mx-2 data-[orientation=vertical]:h-4"
+          />
+          <h1 className="text-base font-medium">{pageTitle}</h1>
+        </div>
+        <div className="ml-auto flex items-center gap-2">
+          <PushNotificationManager />
+        </div>
       </div>
     </header>
   );

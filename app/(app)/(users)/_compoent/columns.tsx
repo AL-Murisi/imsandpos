@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import EditUserForm from "./editForm";
+import { ConfirmModal } from "@/components/common/confirm-modal";
 
 // 🔽 Sortable Header Component
 type SortableHeaderProps = {
@@ -145,10 +146,10 @@ export const columns: ColumnDef<User>[] = [
     ),
   },
   {
-    accessorKey: "roles", // or whatever your key is
+    accessorKey: "role", // or whatever your key is
     header: ({ column }) => <SortableHeader column={column} label="الدور" />,
     cell: ({ row }) => {
-      const role = row.original.roles?.[0]?.role?.name ?? "بدون دور";
+      const role = row.original.role ?? "بدون دور";
 
       return (
         <Badge className="rounded-md bg-blue-600 text-xs text-white">
@@ -181,7 +182,7 @@ export const columns: ColumnDef<User>[] = [
                   ? "text-green-600 hover:bg-green-100"
                   : "text-yellow-600 hover:bg-yellow-100"
               }`}
-              disabled={userr.roles?.[0]?.role?.name === "admin"}
+              disabled={userr.role === "admin"}
               onClick={() => {
                 // Toggle status functionality
                 updateUsers(true, userr.id, user.companyId);
@@ -198,7 +199,7 @@ export const columns: ColumnDef<User>[] = [
                   ? "text-green-600 hover:bg-green-100"
                   : "text-yellow-600 hover:bg-yellow-100"
               }`}
-              disabled={userr.roles?.[0]?.role?.name === "admin"}
+              disabled={userr.role === "admin"}
               onClick={() => {
                 // Toggle status functionality
                 updateUsers(false, userr.id, user.companyId);
@@ -207,23 +208,21 @@ export const columns: ColumnDef<User>[] = [
               <Power className="h-4 w-4" />
             </Button>
           )}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0 text-red-600 hover:bg-red-100"
-            onClick={async () => {
-              if (userr.id === user.userId) return;
-              const ok = window.confirm("هل تريد حذف المستخدم؟");
-              if (!ok) return;
-              await deleteUser(userr.id, user.companyId);
-            }}
-            disabled={userr.id === user.userId}
-            title={
-              userr.id === user.userId ? "لا يمكن حذف المستخدم الحالي" : "حذف"
-            }
+          <ConfirmModal
+            title="حذف المستخدم"
+            description="هل أنت متأكد من حذف هذا العميل؟ سيتم إزالة كافة البيانات المرتبطة به."
+            action={() => deleteUser(userr.id, user.companyId)}
+            confirmText="حذف"
           >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 text-red-600 hover:bg-red-100"
+              disabled={userr.id === user.userId && userr.role === "customer"}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </ConfirmModal>
           {/* <Changerole /> */}
         </div>
       );

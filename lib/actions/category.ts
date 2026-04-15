@@ -56,13 +56,44 @@ export async function updateCategory(
   return category;
 }
 
+async function getCategoryDependencyCounts(id: string) {
+  const [productCount, childCategoryCount] = await Promise.all([
+    prisma.product.count({ where: { categoryId: id } }),
+    prisma.category.count({ where: { parentId: id } }),
+  ]);
+
+  return {
+    productCount,
+    childCategoryCount,
+    total: productCount + childCategoryCount,
+  };
+}
+
 // Delete category
 export async function deleteCategory(id: string) {
+  const dependencies = await getCategoryDependencyCounts(id);
+
+  if (dependencies.total > 0) {
+    const blocks: string[] = [];
+
+    if (dependencies.productCount > 0) {
+      blocks.push(`${dependencies.productCount} منتج`);
+    }
+    if (dependencies.childCategoryCount > 0) {
+      blocks.push(`${dependencies.childCategoryCount} فئة فرعية`);
+    }
+
+    return {
+      success: false,
+      error: `لا يمكن حذف الفئة لأنها مرتبطة بـ ${blocks.join(" و ")}. احذف أو انقل هذه العناصر أولاً.`,
+    };
+  }
+
   const category = await prisma.category.delete({ where: { id } });
 
   revalidatePath("/products");
   revalidatePath("/categories");
-  return category;
+  return { success: true, category };
 }
 
 // Toggle activate/deactivate

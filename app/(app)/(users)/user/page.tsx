@@ -37,7 +37,7 @@ export default async function User({ searchParams }: Users) {
   const pageSize = Number(limit);
   const user = await getSession();
   if (!user) return;
-  const [data, roless, subscriptionUsage] = await Promise.all([
+  const [data, subscriptionUsage] = await Promise.all([
     fetechUser(
       user.companyId,
       usersquery,
@@ -49,15 +49,12 @@ export default async function User({ searchParams }: Users) {
       // parsedSort
     ),
 
-    // const data = await fetechUser();
-    fetchRolesForSelect(),
     getCompanySubscriptionUsage(),
   ]);
   return (
     <UserClinet
       users={data}
       total={0}
-      role={roless}
       userLimit={subscriptionUsage?.users ?? null}
       cashierLimit={subscriptionUsage?.cashiers ?? null}
     />

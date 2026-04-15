@@ -24,6 +24,9 @@ export default function LandingPage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const router = useRouter();
+  const goToSignup = (plan: "STARTER" | "PRO" | "ENTERPRISE" | "TRIAL") => {
+    router.push(`/signup?plan=${plan}`);
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -83,7 +86,7 @@ export default function LandingPage() {
                 تسجيل الدخول
               </button>
               <button
-                onClick={() => router.push("/signup")}
+                onClick={() => goToSignup("STARTER")}
                 className="transform rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 px-6 py-2 text-white shadow-lg transition hover:scale-105 hover:shadow-xl"
               >
                 إنشاء حساب
@@ -134,7 +137,7 @@ export default function LandingPage() {
                 تسجيل الدخول
               </button>
               <button
-                onClick={() => router.push("/signup")}
+                onClick={() => goToSignup("STARTER")}
                 className="w-full rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 px-6 py-2 text-white"
               >
                 إنشاء حساب
@@ -543,7 +546,10 @@ export default function LandingPage() {
                   </span>
                 </li>
               </ul>
-              <button className="w-full rounded-xl bg-gray-100 py-3 font-semibold text-gray-900 transition hover:bg-gray-200 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600">
+              <button
+                onClick={() => goToSignup("STARTER")}
+                className="w-full rounded-xl bg-gray-100 py-3 font-semibold text-gray-900 transition hover:bg-gray-200 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+              >
                 ابدأ الآن
               </button>
             </div>
@@ -579,7 +585,10 @@ export default function LandingPage() {
                   <span>تحليلات متقدمة</span>
                 </li>
               </ul>
-              <button className="w-full rounded-xl bg-white py-3 font-semibold text-blue-600 transition hover:shadow-lg">
+              <button
+                onClick={() => goToSignup("PRO")}
+                className="w-full rounded-xl bg-white py-3 font-semibold text-blue-600 transition hover:shadow-lg"
+              >
                 ابدأ الآن
               </button>
             </div>
@@ -639,7 +648,10 @@ export default function LandingPage() {
                   </span>
                 </li>
               </ul>
-              <button className="w-full rounded-xl bg-gray-100 py-3 font-semibold text-gray-900 transition hover:bg-gray-200 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600">
+              <button
+                onClick={() => goToSignup("ENTERPRISE")}
+                className="w-full rounded-xl bg-gray-100 py-3 font-semibold text-gray-900 transition hover:bg-gray-200 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+              >
                 اتصل بالمبيعات
               </button>
             </div>
@@ -658,7 +670,10 @@ export default function LandingPage() {
             ابدأ تجربتك المجانية لمدة 14 يومًا اليوم.
           </p>
           <div className="flex flex-col justify-center gap-4 sm:flex-row">
-            <button className="flex transform items-center justify-center gap-2 rounded-xl bg-white px-8 py-4 font-semibold text-blue-600 transition hover:scale-105 hover:shadow-2xl">
+            <button
+              onClick={() => goToSignup("TRIAL")}
+              className="flex transform items-center justify-center gap-2 rounded-xl bg-white px-8 py-4 font-semibold text-blue-600 transition hover:scale-105 hover:shadow-2xl"
+            >
               <span>ابدأ التجربة المجانية</span>
               <ArrowLeft size={20} />
             </button>

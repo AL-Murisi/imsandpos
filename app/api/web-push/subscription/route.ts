@@ -1,6 +1,7 @@
 ﻿import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/session";
+import { assertCompanySubscriptionActive } from "@/lib/actions/subscription";
 import {
   deletePushDeviceTokenByUserAndToken,
   upsertPushDeviceToken,
@@ -21,6 +22,13 @@ export async function POST(request: Request) {
     if (!userinf) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    if (userinf.subscriptionActive === false) {
+      return NextResponse.json(
+        { error: "Subscription inactive" },
+        { status: 403 },
+      );
+    }
+    await assertCompanySubscriptionActive(userinf.companyId);
 
     const user = await prisma.user.findUnique({
       where: { id: userinf.userId },
@@ -133,6 +141,13 @@ export async function DELETE(request: Request) {
     if (!userinf) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    if (userinf.subscriptionActive === false) {
+      return NextResponse.json(
+        { error: "Subscription inactive" },
+        { status: 403 },
+      );
+    }
+    await assertCompanySubscriptionActive(userinf.companyId);
 
     const { endpoint, fcmToken } = await request.json();
 

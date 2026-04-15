@@ -63,6 +63,7 @@ import { ModeToggle } from "./toggoletheme";
 
 import { cn } from "@/lib/utils";
 import CurrencySwitcher from "./common/CurrencySwitcher";
+import Logout from "./logout";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user, logout, hasAnyRole, logoutAndRedirect, loggingOut } = useAuth();
@@ -408,10 +409,22 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   ];
 
   // Filter menu items based on user roles
-  const visibleMenuItems = menuItems.filter((item) => {
-    return hasAnyRole(item.roles);
-  });
-
+  const visibleMenuItems = menuItems
+    .filter((item) => hasAnyRole(item.roles)) // Filter parent items
+    .map((item) => {
+      // If it has sub-items, filter them too
+      if (item.subItems) {
+        return {
+          ...item,
+          subItems: item.subItems.filter((sub) => hasAnyRole(sub.roles)),
+        };
+      }
+      return item;
+    })
+    // Final check: if a dropdown has 0 visible sub-items, hide the parent too
+    .filter(
+      (item) => !item.isDropdown || (item.subItems && item.subItems.length > 0),
+    );
   // const visibleMenuItems = menuItems.filter((item) => {
   //   return item.roles.includes("admin"); // Hardcoded
   // });
@@ -630,18 +643,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   </SidebarMenuButton>
                 </SidebarMenuItem>{" "}
                 <SidebarMenuItem>
-                  <SidebarMenuButton
-                    tooltip={t("logout")}
-                    onClick={() => logoutAndRedirect()}
-                    disabled={loggingOut}
-                    className="text-red-600 hover:bg-orange-300/20 hover:text-red-700"
-                  >
-                    {loggingOut ? (
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                    ) : (
-                      <LogOut className="h-5 w-5" />
-                    )}
-                  </SidebarMenuButton>
+                  <Logout />
                 </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>

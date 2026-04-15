@@ -7,6 +7,7 @@ import {
   CheckCircle,
   Clock,
   MoreHorizontal,
+  Trash2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,9 @@ import {
 
 import { WarehouseUpdateDialog } from "./editform";
 import { deleteWarehouse } from "@/lib/actions/warehouse";
+import { ConfirmModal } from "@/components/common/confirm-modal";
+import { useState } from "react";
+import { toast } from "sonner";
 
 // 🔽 Sortable Header Component
 type SortableHeaderProps = {
@@ -191,10 +195,10 @@ export const columns: ColumnDef<any>[] = [
     id: "actions",
     enableHiding: false,
     cell: ({ row }) => {
-      const user = row.original;
+      const warehouse = row.original;
+      const [isDeleting, setIsDeleting] = useState(false);
       return (
         <>
-          <></>
           <>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -206,25 +210,45 @@ export const columns: ColumnDef<any>[] = [
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>إجراءات</DropdownMenuLabel>
                 <DropdownMenuItem
-                  onClick={() => navigator.clipboard.writeText(user.id)}
+                  onClick={() => navigator.clipboard.writeText(warehouse.id)}
                 >
                   نسخ رقم المعرف
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={async () => {
-                    if (confirm("هل أنت متأكد من حذف هذه الفئة؟")) {
-                      await deleteWarehouse(user.id);
-                    }
-                  }}
-                >
-                  حذف
-                </DropdownMenuItem>
 
                 <DropdownMenuItem>تعطيل</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <WarehouseUpdateDialog warehouse={user} />
+            <ConfirmModal
+              title="تأكيد الحذف"
+              description={`هل أنت متأكد من حذف هذا ${warehouse.name}؟ هذه العملية لا يمكن التراجع عنها.`}
+              action={async () => {
+                if (isDeleting) return;
+                setIsDeleting(true);
+                try {
+                  const res = await deleteWarehouse(warehouse.id);
+                  if (res.success) {
+                    toast.success("تم حذف المستودع بنجاح");
+                  } else {
+                    toast.error(res.error || "فشل حذف المستودع");
+                  }
+                } catch (error) {
+                  toast.error("حدث خطأ أثناء الحذف");
+                  console.error(error);
+                } finally {
+                  setIsDeleting(false);
+                }
+              }}
+              confirmText="حذف"
+            >
+              <Button
+                disabled={isDeleting}
+                className="text-red-600 hover:bg-orange-300/20 hover:text-red-700"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </ConfirmModal>
+            <WarehouseUpdateDialog warehouse={warehouse} />
           </>
         </>
       );

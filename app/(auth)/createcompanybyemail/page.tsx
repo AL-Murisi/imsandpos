@@ -36,6 +36,7 @@ export default function CreateCompanyAfterGoogle() {
               session.user.email ||
               "Admin",
             adminPassword: companyData.adminPassword || undefined,
+            plan: companyData.plan || "TRIAL",
           });
 
           if (!result.success) {

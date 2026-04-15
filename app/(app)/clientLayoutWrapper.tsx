@@ -67,12 +67,12 @@ export default function ClientLayoutWrapper({
           }
         >
           <SidebarInset>
+            <Appheader />
             <div className="flex flex-col">
               <ScrollArea
                 className="group @container/main flex flex-col"
                 dir="rtl"
               >
-                <Appheader />
                 <PullToRefreshCurrentPage>
                   {children}
                   <div className="mt-12 md:mt-0 md:hidden">

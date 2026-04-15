@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { z } from "zod";
+import { ROLE_DEFINITIONS } from "@/lib/constants/roles";
 
 type Role = {
   id: string;
@@ -21,7 +22,12 @@ type Role = {
 };
 
 type EditUserInput = z.infer<typeof UpdateUserSchema>;
-
+const roleOptions: Role[] = ROLE_DEFINITIONS.filter(
+  (role) => role.name !== "admin",
+).map((role) => ({
+  id: role.name,
+  name: role.name,
+}));
 export default function EditUserForm({ users }: any) {
   const [roles, setRoles] = useState<Role[]>([]);
   const [open, setOpen] = useState(false);
@@ -42,7 +48,7 @@ export default function EditUserForm({ users }: any) {
       email: users.email,
       name: users.name,
       phoneNumber: users.phoneNumber,
-      roleId: users?.roles?.[0]?.role?.id,
+      role: users.role,
     },
   });
 
@@ -53,13 +59,12 @@ export default function EditUserForm({ users }: any) {
     if (!open) return;
 
     const loadRoles = async () => {
-      const result = await fetchRolesForSelect();
-      setRoles(result);
-      if (result.length > 0) {
+      setRoles(roleOptions);
+      if (roleOptions.length > 0) {
         const currentRole = currentRoleName
-          ? result.find((r) => r.name === currentRoleName)
+          ? roleOptions.find((r) => r.name === currentRoleName)
           : undefined;
-        setValue("roleId", currentRole?.id ?? result[0].id);
+        setValue("role", currentRole?.id ?? roleOptions[0].id);
       }
     };
 
@@ -68,7 +73,7 @@ export default function EditUserForm({ users }: any) {
   const customerRole = roles.find((r) => r.name.toLowerCase());
   const customer = users?.roles?.[0]?.role?.name;
 
-  const selectedRole = watch("roleId");
+  const selectedRole = watch("role");
 
   const onSubmit = async (data: EditUserInput) => {
     setIsSubmitting(true);
@@ -135,12 +140,12 @@ export default function EditUserForm({ users }: any) {
             <SelectField
               options={roles}
               disabled={customer?.toLowerCase() === "customer"}
-              action={(value) => setValue("roleId", value)}
+              action={(value) => setValue("role", value)}
               value={selectedRole}
             />
 
-            {errors.roleId && (
-              <p className="text-xs text-red-500">{errors.roleId.message}</p>
+            {errors.role && (
+              <p className="text-xs text-red-500">{errors.role.message}</p>
             )}
           </div>
         </div>

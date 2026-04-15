@@ -9,7 +9,14 @@ export const CreateEmployeeSchema = z.object({
     .optional()
     .or(z.literal("")),
   phone: z.string().optional(),
-  position: z.string().optional(),
+  position: z.enum([
+    "admin",
+    "customer",
+    "accountant",
+    "manager_wh",
+    "supplier",
+    "cashier",
+  ]),
   department: z.string().optional(),
   salary: z.number().optional(),
   hireDate: z.string().min(1, "تاريخ التوظيف مطلوب"),

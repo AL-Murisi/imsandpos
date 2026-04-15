@@ -5,7 +5,7 @@ import { auth as nextAuth } from "@/auth";
 
 export interface SessionData {
   userId: string;
-  roles: string[];
+  role: string;
   name: string;
   email: string;
   companyId: string;
@@ -19,7 +19,7 @@ export async function getSession(): Promise<SessionData | null> {
   const user = session?.user as
     | {
         userId?: string;
-        roles?: string[];
+        role?: string | null;
         name?: string | null;
         email?: string | null;
         companyId?: string;
@@ -29,12 +29,6 @@ export async function getSession(): Promise<SessionData | null> {
         subscriptionEndsAt?: string | null;
       }
     | undefined;
-
-  const normalizedRoles = Array.isArray(user?.roles)
-    ? user.roles
-        .filter((role): role is string => typeof role === "string")
-        .map((role) => role.trim().toLowerCase())
-    : [];
 
   if (
     !user?.userId ||
@@ -47,7 +41,7 @@ export async function getSession(): Promise<SessionData | null> {
 
   return {
     userId: user.userId,
-    roles: normalizedRoles,
+    role: user.role ?? "",
     name: user.name ?? "",
     email: user.email ?? "",
     companyId: user.companyId,

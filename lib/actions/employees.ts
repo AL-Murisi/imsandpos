@@ -27,7 +27,11 @@ export async function fetchEmployees(
   searchQuery = "",
   page = 0,
   pageSize = 10,
+  from?: string,
+  to?: string,
 ) {
+  const fromDate = from ? new Date(from) : undefined;
+  const toDate = to ? new Date(to) : undefined;
   const where = {
     companyId,
     ...(searchQuery
@@ -46,38 +50,81 @@ export async function fetchEmployees(
         }
       : {}),
   };
-
+  const mappings = await prisma.account_mappings.findMany({
+    where: { company_id: companyId, is_default: true },
+    select: { mapping_type: true, account_id: true },
+  });
+  const prAccount = mappings.find(
+    (m) => m.mapping_type === "payroll_expenses",
+  )?.account_id;
+  if (!prAccount) {
+    return {
+      success: false,
+      error: "حساب العملاء (المدينون) غير مربوط",
+    };
+  }
   const [employees, total] = await Promise.all([
     prisma.employee.findMany({
       where,
       skip: page * pageSize,
       take: pageSize,
       orderBy: { createdAt: "desc" },
-      include: {
-        user: {
-          select: {
-            id: true,
-            isActive: true,
-            roles: {
-              select: {
-                role: {
-                  select: {
-                    id: true,
-                    name: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
     }),
     prisma.employee.count({ where }),
   ]);
+  const result = await Promise.all(
+    employees.map(async (employee) => {
+      const paymentIds = await prisma.financialTransaction.findMany({
+        where: {
+          companyId,
+          customerId: employee.id,
+          createdAt: {
+            ...(fromDate && { gte: fromDate }),
+            ...(toDate && { lte: toDate }),
+          },
+        },
+        select: { id: true },
+      });
+      const paymentIdList = paymentIds.map((p) => p.id);
+      const employeeid = employees.map((id) => id.id);
+      const employeeReferenceIds = [...employeeid, ...paymentIdList];
+      // جلب القيود المحاسبية الخاصة بهذا العميل تحديداً ضمن الفترة الزمنية
+      const entries = await prisma.journalLine.findMany({
+        where: {
+          companyId: companyId,
+          accountId: prAccount,
+          header: {
+            referenceId: { in: employeeReferenceIds },
+            entryDate: {
+              ...(fromDate && { gte: fromDate }),
+              ...(toDate && { lte: toDate }),
+            },
+          },
+        },
+        select: {
+          debit: true,
+          credit: true,
+        },
+      });
+
+      // حساب الإجمالي من واقع القيود
+      const totalDebit = entries.reduce((s, t) => s + Number(t.debit || 0), 0);
+      const totalCredit = entries.reduce(
+        (s, t) => s + Number(t.credit || 0),
+        0,
+      );
+      return {
+        // إجمالي الديون (الجانب المدين في المحاسبة للعملاء عادة يمثل الديون المطلوبة منهم)
+        balance: totalCredit - totalDebit,
+        // إجمالي المبالغ المدفوعة أو الدائنة
+      };
+    }),
+  );
 
   return {
-    employees: employees.map((employee) => ({
+    employees: employees.map((employee, idx) => ({
       ...employee,
+      balance: result[idx]?.balance,
       salary: employee.salary ? Number(employee.salary) : null,
       hireDate: employee.hireDate.toISOString(),
     })),
@@ -104,15 +151,6 @@ export async function createEmployee(form: unknown, companyId: string) {
   const normalizedEmail = email?.trim().toLowerCase() || null;
 
   try {
-    const employeeRole = await prisma.role.findFirst({
-      where: { name: { equals: "employee", mode: "insensitive" } },
-      select: { id: true },
-    });
-
-    if (!employeeRole) {
-      return { error: "دور employee غير موجود في النظام" };
-    }
-
     let userId: string | null = null;
     if (normalizedEmail) {
       const userCapacity = await canCreateSubscriptionResource(
@@ -145,13 +183,7 @@ export async function createEmployee(form: unknown, companyId: string) {
           name,
           phoneNumber: normalizeOptionalString(phone),
           password,
-        },
-      });
-
-      await prisma.userRole.create({
-        data: {
-          userId: user.id,
-          roleId: employeeRole.id,
+          role: position,
         },
       });
 

@@ -13,8 +13,7 @@ export default async function StocksLayout({
   children: React.ReactNode;
 }) {
   const session = await getSession();
-  const roles = session?.roles ?? [];
-
+  const roles = session?.role ?? "";
   const navItems: NavItem[] = [
     {
       label: "الرئيسيه",
@@ -49,7 +48,7 @@ export default async function StocksLayout({
   );
 
   return (
-    <div className="p-1">
+    <div className="space-y-2 p-1">
       <InventoryTabs items={visibleTabs} />
       <div>{children}</div>
     </div>

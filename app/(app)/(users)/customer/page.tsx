@@ -7,22 +7,11 @@ type DashboardProps = {
     from?: string;
     to?: string;
     categoryId?: string;
-    tab?: string;
+
     customersquery?: string;
     page?: string;
     limit?: string;
-    allFrom?: string;
-    allTo?: string;
-    salesFrom?: string;
-    salesTo?: string;
-    purchasesFrom?: string;
-    purchasesTo?: string;
-    revenueFrom?: string;
-    revenueTo?: string;
-    debtFrom?: string;
-    debtTo?: string;
-    chartTo?: string;
-    chartFrom?: string;
+
     sort: string;
   }>;
 };
@@ -37,25 +26,20 @@ export default async function DebtSell({ searchParams }: DashboardProps) {
     customersquery,
     page = "1",
     limit = "13",
-    salesFrom,
-    salesTo,
-    purchasesFrom,
-    purchasesTo,
-    revenueFrom,
-    revenueTo,
-    debtFrom,
-    debtTo,
-    chartTo,
-    chartFrom,
-    allFrom,
-    sort,
-    allTo,
   } = param || {};
 
   const pageIndex = Number(page) - 1;
   const pageSize = Number(limit);
   const [data, subscriptionUsage] = await Promise.all([
-    getCustomerById(user.companyId, pageIndex, pageSize, customersquery, from),
+    getCustomerById(
+      user.companyId,
+      pageIndex,
+      pageSize,
+      customersquery,
+      undefined,
+      from,
+      to,
+    ),
     getCompanySubscriptionUsage(),
   ]);
   // const data = await FetchDebtSales(filter);
@@ -65,7 +49,6 @@ export default async function DebtSell({ searchParams }: DashboardProps) {
       <CustomerClinet
         users={data.result}
         total={data.total}
-        role={[]}
         cus={subscriptionUsage?.users ?? null}
       />
     </div>

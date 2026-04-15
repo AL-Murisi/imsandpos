@@ -6,7 +6,7 @@ import { z } from "zod";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import Image from "next/image";
 import { createCompany } from "@/lib/actions/createcompnayacc";
@@ -60,8 +60,27 @@ const CompanySignupSchema = z
 
 type FormValues = z.infer<typeof CompanySignupSchema>;
 
+const PLAN_OPTIONS = [
+  {
+    key: "STARTER",
+    label: "Starter",
+    description: "مناسب للبدايات والمحال الصغيرة",
+  },
+  {
+    key: "PRO",
+    label: "Pro",
+    description: "للنمو والمخزون الأكثر حركة",
+  },
+  {
+    key: "ENTERPRISE",
+    label: "Enterprise",
+    description: "حل مؤسسي بمرونة أكبر",
+  },
+] as const;
+
 export default function CompanySignup() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const { options } = useCurrencyOptions();
   const currencyOptions = options.length ? options : fallbackCurrencyOptions;
@@ -69,6 +88,9 @@ export default function CompanySignup() {
   const [errorMessage, setErrorMessage] = useState("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const planParam = searchParams.get("plan")?.trim().toUpperCase();
+  const selectedPlan =
+    PLAN_OPTIONS.find((plan) => plan.key === planParam)?.key ?? "STARTER";
 
   const {
     register,
@@ -129,6 +151,7 @@ export default function CompanySignup() {
         adminEmail: data.adminEmail,
         adminPassword: data.adminPassword,
         base_currency: data.base_currency,
+        plan: selectedPlan,
       });
 
       if (result.success) {
@@ -199,6 +222,35 @@ export default function CompanySignup() {
           <p className="mt-2 text-gray-400">
             ابدأ بتنظيم مخزونك ومبيعاتك في دقائق
           </p>
+        </div>
+
+        <div className="mb-8 rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4">
+          <div className="mb-3 text-center text-sm text-blue-200">
+            الخطة المختارة من التسعير
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            {PLAN_OPTIONS.map((plan) => {
+              const active = plan.key === selectedPlan;
+              return (
+                <button
+                  key={plan.key}
+                  type="button"
+                  onClick={() => router.replace(`/signup?plan=${plan.key}`)}
+                  className={`rounded-xl border px-4 py-3 text-right transition ${
+                    active
+                      ? "border-blue-400 bg-blue-500/30 text-white shadow-lg"
+                      : "border-white/10 bg-white/5 text-gray-300 hover:border-blue-400/50 hover:bg-white/10"
+                  }`}
+                >
+                  <div className="text-base font-bold">{plan.label}</div>
+                  <div className="mt-1 text-xs opacity-80">{plan.description}</div>
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-3 text-center text-sm text-blue-100">
+            سيتم تسجيل الاشتراك على خطة <span className="font-bold">{selectedPlan}</span> عند إنشاء الحساب.
+          </div>
         </div>
 
         <div className="rounded-3xl border border-gray-800 bg-[#111827]/80 p-6 shadow-2xl backdrop-blur-xl md:p-10">

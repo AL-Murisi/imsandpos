@@ -9,6 +9,7 @@ import {
   Clock,
   MoreHorizontal,
   Trash,
+  Trash2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -23,13 +24,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { deleteCustomer } from "@/lib/actions/users";
 import { useAuth } from "@/lib/context/AuthContext";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 
 import Dailogreuse from "@/components/common/dailogreuse";
 import { Badge } from "@/components/ui/badge";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { EditSupplierForm } from "./editform";
+import { ConfirmModal } from "@/components/common/confirm-modal";
 
 const PaymentEditForm = dynamic(
   () => import("./form").then((m) => m.PaymentEditForm),
@@ -179,6 +181,7 @@ export const supplierColumns: ColumnDef<any>[] = [
       const supplier = row.original;
       const [isLoading, setIsLoading] = useState(false);
       const router = useRouter();
+      const [isPending, startTransition] = useTransition();
       return (
         <div className="flex gap-3">
           <DropdownMenu>
@@ -196,16 +199,25 @@ export const supplierColumns: ColumnDef<any>[] = [
                 نسخ معرف المورد
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem></DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={async () => {
-                  await deleteCustomer(supplier.id, user.companyId);
-                }}
-              >
-                <Trash className="mr-2 h-4 w-4" /> مسح
-              </DropdownMenuItem>
             </DropdownMenuContent>
-          </DropdownMenu>
+          </DropdownMenu>{" "}
+          <ConfirmModal
+            title="تأكيد الحذف"
+            description={`هل أنت متأكد من حذف هذا ${supplier.name}؟ هذه العملية لا يمكن التراجع عنها.`}
+            action={() =>
+              startTransition(async () => {
+                deleteCustomer(supplier.id, user.companyId);
+              })
+            }
+            confirmText="حذف"
+          >
+            <Button
+              disabled={isPending}
+              className="text-red-600 hover:bg-orange-300/20 hover:text-red-700"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </ConfirmModal>
           <EditSupplierForm supplier={supplier} />
           <Button
             disabled={isLoading}

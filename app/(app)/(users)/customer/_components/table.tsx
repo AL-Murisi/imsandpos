@@ -24,7 +24,6 @@ import { DataTable } from "@/components/common/ReusbleTable";
 type Props = {
   users: any[];
   total: number;
-  role: { id: string; name: string }[];
   cus: {
     limit: number | null;
     used: number;
@@ -33,7 +32,7 @@ type Props = {
   } | null;
 };
 
-export default function CustomerClinet({ users, total, role, cus }: Props) {
+export default function CustomerClinet({ users, total, cus }: Props) {
   const {
     pagination,
     sorting,
@@ -125,7 +124,6 @@ export default function CustomerClinet({ users, total, role, cus }: Props) {
             <Calendar22 />
             <SearchInput placeholder={"بحث"} paramKey={"customers"} />{" "}
             {/* Translate placeholder */}
-            <SelectField options={role} paramKey="role" placeholder="الفئة" />
             <CustomerForm cus={cus} />
           </div>
         }
