@@ -11,5 +11,5 @@ export const verifySession = cache(async () => {
     return { isAuth: false, userId: null, userRole: null }; // ➡️ Return a clear failure state
   }
 
-  return { isAuth: true, userId: session.userId, userRole: session.roles };
+  return { isAuth: true, userId: session.userId, userRole: session.role };
 });

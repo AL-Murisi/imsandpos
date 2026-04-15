@@ -32,15 +32,6 @@ export default function SellsDashboardClient({
   const [unsupported, setUnsupported] = useState<boolean>(false);
   const isPositive = salesSummary.percentageChange >= 0;
 
-  useEffect(() => {
-    const isUnsupported = notificationUnsupported();
-    setUnsupported(isUnsupported);
-    if (isUnsupported) {
-      return;
-    }
-
-    // allowing push logic ...
-  }, []);
   return (
     <section className="space-y-6">
       {" "}

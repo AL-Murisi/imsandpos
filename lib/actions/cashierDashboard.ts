@@ -49,7 +49,7 @@ export async function getCashierDashboardData() {
     return { success: false as const, error: "Unauthorized" };
   }
 
-  const isAdmin = session.roles.includes("admin");
+  const isAdmin = session.role === "admin";
   const invoiceScope = isAdmin
     ? { companyId: session.companyId }
     : { companyId: session.companyId, cashierId: session.userId };

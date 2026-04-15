@@ -18,13 +18,7 @@ export default async function CustomerPortalLayout({
 }) {
   noStore();
   const session = await getSession();
-  const roles = Array.isArray(session?.roles)
-    ? session.roles
-        .filter((role): role is string => typeof role === "string")
-        .map((role) => role.trim().toLowerCase())
-    : [];
-
-  if (!session || !roles.includes("customer")) {
+  if (!session || session.role !== "customer") {
     redirect("/unauthorized");
   }
 

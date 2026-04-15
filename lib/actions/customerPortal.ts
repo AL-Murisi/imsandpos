@@ -37,7 +37,7 @@ export async function requireCustomerPortalContext() {
     throw new Error("Unauthorized");
   }
 
-  if (!(session.roles ?? []).includes("customer")) {
+  if (session.role !== "customer") {
     throw new Error("Unauthorized");
   }
 

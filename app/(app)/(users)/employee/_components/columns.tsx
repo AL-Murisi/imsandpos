@@ -166,18 +166,7 @@ export const employeeColumns: ColumnDef<any>[] = [
       );
     },
   },
-  {
-    accessorKey: "user",
-    header: "حساب الدخول",
-    cell: ({ row }) =>
-      row.original.user ? (
-        <Badge className="rounded-md bg-blue-600 text-xs text-white">
-          {row.original.user.role ?? "employee"}
-        </Badge>
-      ) : (
-        <Badge variant="outline">بدون حساب</Badge>
-      ),
-  },
+
   {
     id: "actions",
     header: "الإجراءات",
@@ -208,7 +197,7 @@ export const employeeColumns: ColumnDef<any>[] = [
                 !employee.isActive,
               )
             }
-            disabled={employee.user.role === "admin"}
+            disabled={employee.position === "admin"}
             title={employee.isActive ? "تعطيل" : "تفعيل"}
           >
             <Power className="h-4 w-4" />
@@ -222,7 +211,7 @@ export const employeeColumns: ColumnDef<any>[] = [
               if (!ok) return;
               await deleteEmployee(employee.id, user.companyId);
             }}
-            disabled={employee.user.role === "admin"}
+            disabled={employee.position === "admin"}
             title="حذف"
           >
             <Trash2 className="h-4 w-4" />
