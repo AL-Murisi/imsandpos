@@ -341,7 +341,9 @@ const reportAccessByRole: Record<
   },
 };
 
-function getAllowedReportsForRoles(roles: string[]) {
+function getAllowedReportsForRoles(roleOrRoles: string | string[]) {
+  const roles = Array.isArray(roleOrRoles) ? roleOrRoles : [roleOrRoles];
+
   if (roles.includes("admin")) {
     return reports;
   }
@@ -349,8 +351,8 @@ function getAllowedReportsForRoles(roles: string[]) {
   const allowedIds = new Set<string>();
   const allowedTypes = new Set<string>();
 
-  for (const role of roles) {
-    const access = reportAccessByRole[role];
+  for (const currentRole of roles) {
+    const access = reportAccessByRole[currentRole];
     if (!access) continue;
     if (access.all) return reports;
     access.ids?.forEach((id) => allowedIds.add(id));
@@ -434,20 +436,20 @@ export default function ReportsPage({
   const [isBulkSubmitting, setIsBulkSubmitting] = useState(false);
   const [bulkProgress, setBulkProgress] = useState(0);
   const allowedReports = useMemo(
-    () => getAllowedReportsForRoles(authUser?.roles ?? []),
-    [authUser?.roles],
+    () => getAllowedReportsForRoles(authUser?.role ?? ""),
+    [authUser?.role],
   );
   const allowedReportIds = useMemo(
     () => new Set(allowedReports.map((report) => report.id)),
     [allowedReports],
   );
   const allowedCategories = useMemo(() => {
-    if ((authUser?.roles ?? []).includes("admin")) return categories;
+    if (authUser?.role === "admin") return categories;
     const allowedTypes = new Set(allowedReports.map((report) => report.type));
     return categories.filter(
       (cat) => cat.id === "all" || allowedTypes.has(cat.id),
     );
-  }, [allowedReports, authUser?.roles]);
+  }, [allowedReports, authUser?.role]);
 
   const filteredReports =
     category === "all"
