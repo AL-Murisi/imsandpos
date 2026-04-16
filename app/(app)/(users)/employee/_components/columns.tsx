@@ -26,6 +26,7 @@ import EditEmployeeForm from "./editForm";
 import EmployeeSalaryForm from "./salaryForm";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { ConfirmModal } from "@/components/common/confirm-modal";
 
 type SortableHeaderProps = {
   column: Column<any, unknown>;
