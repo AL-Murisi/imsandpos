@@ -48,8 +48,10 @@ export default async function StocksLayout({
   );
 
   return (
-    <div className="space-y-2 p-1">
-      <InventoryTabs items={visibleTabs} />
+    <div className="space-y-2">
+      <div className="px-2">
+        <InventoryTabs items={visibleTabs} />
+      </div>
       <div>{children}</div>
     </div>
   );

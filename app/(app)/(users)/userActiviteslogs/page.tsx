@@ -38,5 +38,9 @@ export default async function User({ searchParams }: Users) {
   const logs = await getActivityLogs(user.companyId, pageIndex, pageSize);
 
   const { logs: log, total: totals } = logs;
-  return <UserActivityTable logs={log} total={totals} sort={[]} />;
+  return (
+    <div className="p-3">
+      <UserActivityTable logs={log} total={totals} sort={[]} />
+    </div>
+  );
 }

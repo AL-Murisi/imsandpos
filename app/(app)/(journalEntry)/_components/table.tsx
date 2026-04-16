@@ -62,7 +62,7 @@ export default function JournalEntriesTable({
 
   return (
     <div className="" dir="rtl">
-      <div className="bg-accent rounded-2xl p-2 shadow-xl/20 shadow-gray-900">
+      <div className="bg-accent border-primary rounded-2xl p-2 shadow-xl/20 shadow-gray-900">
         <DataTable
           search={
             <div className="flex flex-wrap gap-2 p-1 md:flex-row lg:flex-row">

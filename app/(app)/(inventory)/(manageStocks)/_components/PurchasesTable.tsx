@@ -40,7 +40,7 @@ export default function PurchasesTable({ data, total }: ProductClientProps) {
 
   return (
     <div
-      className="bg-accent w-full rounded-2xl p-2 shadow-xl/20 shadow-gray-500 group-data-[[state=pending]]:animate-pulse"
+      className="bg-accent border-primary w-full rounded-2xl p-2 shadow-xl/20 shadow-gray-500 group-data-[[state=pending]]:animate-pulse"
       dir="rtl"
     >
       <DataTable

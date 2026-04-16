@@ -86,10 +86,12 @@ export default async function manageStocks({ searchParams }: DashboardProps) {
   );
 
   return (
-    <ManagemovementClient
-      products={movementData.movements}
-      total={movementData.totalCount}
-      formData={formData}
-    />
+    <div className="p-3">
+      <ManagemovementClient
+        products={movementData.movements}
+        total={movementData.totalCount}
+        formData={formData}
+      />
+    </div>
   );
 }

@@ -47,44 +47,7 @@ export default function CustomerClinet({ users, total, cus }: Props) {
     setParam,
   } = useTablePrams();
   const { user } = useAuth();
-  // const router = useRouter();
-  // useEffect(() => {
-  //   let channel: any;
 
-  //   async function initRealtime() {
-  //     const { supabase } = await import("@/lib/supabaseClient");
-
-  //     if (!user?.companyId || !users?.length) return;
-
-  //     const customerIds = new Set(users.map((c) => c.id));
-
-  //     channel = supabase
-  //       .channel(`journal-${user.companyId}`)
-  //       .on(
-  //         "postgres_changes",
-  //         {
-  //           event: "INSERT",
-  //           schema: "public",
-  //           table: "journal_entries",
-  //           filter: `company_id=eq.${user.companyId}`,
-  //         },
-  //         (payload) => {
-  //           const newRow = payload.new as { reference_id?: string };
-
-  //           if (newRow?.reference_id && customerIds.has(newRow.reference_id)) {
-  //             router.refresh();
-  //           }
-  //         },
-  //       )
-  //       .subscribe();
-  //   }
-
-  //   initRealtime();
-
-  //   return () => {
-  //     if (channel) channel.unsubscribe();
-  //   };
-  // }, [user?.companyId, users]);
   const [message, setMessage] = useState<string | null>(null);
   async function sendWebPush(message: string) {
     if (!message) return alert("Message is empty");

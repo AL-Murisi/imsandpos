@@ -41,7 +41,10 @@ export default function Exchange({ exchangeRate }: Props) {
   } = useTablePrams();
 
   return (
-    <div className="bg-accent flex flex-col rounded-2xl p-3" dir="rtl">
+    <div
+      className="bg-accent border-primary flex flex-col rounded-2xl p-3"
+      dir="rtl"
+    >
       {/* Add dir="rtl" for proper RTL layout */}
       <PushNotificationManager />
 

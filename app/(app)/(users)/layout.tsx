@@ -30,27 +30,29 @@ export default function StocksLayout({
 
   return (
     <div className="space-y-2">
-      <div className="border-primary flex flex-wrap gap-2 rounded-2xl border-1 p-1">
-        {visibleItems.map((item) => {
-          const isActive =
-            pathname === item.href || pathname.startsWith(`${item.href}/`);
+      <div className="px-2">
+        <div className="border-primary flex flex-wrap gap-2 rounded-2xl border-1 p-1">
+          {visibleItems.map((item) => {
+            const isActive =
+              pathname === item.href || pathname.startsWith(`${item.href}/`);
 
-          return (
-            <Button
-              key={item.href}
-              asChild
-              variant={isActive ? "default" : "outline"}
-              className={cn(
-                "relative transition-all duration-200",
-                isActive && "shadow-inner",
-              )}
-            >
-              <Link href={item.href} prefetch>
-                {item.label}
-              </Link>
-            </Button>
-          );
-        })}
+            return (
+              <Button
+                key={item.href}
+                asChild
+                variant={isActive ? "default" : "outline"}
+                className={cn(
+                  "relative transition-all duration-200",
+                  isActive && "shadow-inner",
+                )}
+              >
+                <Link href={item.href} prefetch>
+                  {item.label}
+                </Link>
+              </Button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="transition-opacity duration-300">{children}</div>

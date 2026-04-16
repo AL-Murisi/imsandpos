@@ -60,7 +60,7 @@ export default function EmployeeClient({
         sorting={sorting}
         pagination={pagination}
         totalCount={total}
-        highet="h-[67vh]"
+        highet="h-[65vh]"
       />
     </div>
   );

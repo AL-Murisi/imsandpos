@@ -128,7 +128,7 @@ export default function ManageStocksClient({
 
   const t = useTranslations("productColumns");
   return (
-    <div className="bg-accent w-full rounded-2xl border border-amber-500 p-2">
+    <div className="bg-accent border-primary w-full rounded-2xl border p-2">
       {/* <SearchInput
         placeholder={"search"}
         value={globalFilter}

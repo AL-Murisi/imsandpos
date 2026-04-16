@@ -93,7 +93,7 @@ export async function fetchEmployees(
       const paymentIds = await prisma.financialTransaction.findMany({
         where: {
           companyId,
-          customerId: employee.id,
+          employeeId: employee.id,
           createdAt: {
             ...(fromDate && { gte: fromDate }),
             ...(toDate && { lte: toDate }),
@@ -102,8 +102,7 @@ export async function fetchEmployees(
         select: { id: true },
       });
       const paymentIdList = paymentIds.map((p) => p.id);
-      const employeeid = employees.map((id) => id.id);
-      const employeeReferenceIds = [...employeeid, ...paymentIdList];
+      const employeeReferenceIds = [employee.id, ...paymentIdList];
       // جلب القيود المحاسبية الخاصة بهذا العميل تحديداً ضمن الفترة الزمنية
       const entries = await prisma.journalLine.findMany({
         where: {
@@ -130,20 +129,19 @@ export async function fetchEmployees(
         0,
       );
       return {
-        // إجمالي الديون (الجانب المدين في المحاسبة للعملاء عادة يمثل الديون المطلوبة منهم)
+        ...employee,
         balance: totalCredit - totalDebit,
+        salary: employee.salary ? Number(employee.salary) : null,
+        hireDate: employee.hireDate.toISOString(),
+        // إجمالي الديون (الجانب المدين في المحاسبة للعملاء عادة يمثل الديون المطلوبة منهم)
+
         // إجمالي المبالغ المدفوعة أو الدائنة
       };
     }),
   );
 
   return {
-    employees: employees.map((employee, idx) => ({
-      ...employee,
-      balance: result[idx]?.balance,
-      salary: employee.salary ? Number(employee.salary) : null,
-      hireDate: employee.hireDate.toISOString(),
-    })),
+    employees: result,
     total,
   };
 }

@@ -14,8 +14,7 @@ export default async function Warehouses() {
     getCompanySubscriptionUsage(),
   ]);
   return (
-    <Suspense fallback={<Loading />}>
-      {" "}
+    <div className="p-3">
       <Clint
         products={data}
         total={data.length}
@@ -27,7 +26,7 @@ export default async function Warehouses() {
           suppliers: [],
         }}
       />
-    </Suspense>
+    </div>
     // </CardContainer>
   );
 }

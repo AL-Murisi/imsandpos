@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { Fetchbanks } from "@/lib/actions/banks";
+import { Edit } from "lucide-react";
 
 export function ExpenseEditForm({ expense }: { expense: any }) {
   const { register, handleSubmit, setValue, watch } = useForm({
@@ -114,7 +115,7 @@ export function ExpenseEditForm({ expense }: { expense: any }) {
     <Dailogreuse
       open={open}
       setOpen={setOpen}
-      btnLabl="تسديد"
+      btnLabl={<Edit/>}
       style="bg-accent sm:max-w-md"
       titel=">إضافة فئة جديدة للمصروف"
       description="قم بإدخال المبلغ الجديد لتسديد جزء أو كل الدين."

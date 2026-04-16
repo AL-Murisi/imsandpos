@@ -100,5 +100,10 @@ export default async function manageStocks({ searchParams }: DashboardProps) {
     parsedSort,
   });
 
-  return <Table data={purchasesPromise.data} total={purchasesPromise.total} />;
+  return (
+    <div className="px-2">
+      {" "}
+      <Table data={purchasesPromise.data} total={purchasesPromise.total} />
+    </div>
+  );
 }

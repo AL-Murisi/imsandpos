@@ -204,7 +204,10 @@ export default function CurrenciesClient({
   ];
 
   return (
-    <div className="space-y-4" dir="rtl">
+    <div
+      className="bg-accent border-primary flex flex-col rounded-2xl p-3"
+      dir="rtl"
+    >
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">العملات</h1>
@@ -212,54 +215,56 @@ export default function CurrenciesClient({
             إدارة العملات وربطها بالشركة
           </p>
         </div>
-        <Dailogreuse
-          open={openCreate}
-          setOpen={setOpenCreate}
-          btnLabl="إضافة عملة"
-          titel="عملة جديدة"
-          description="أدخل بيانات العملة الجديدة"
-          style="sm:max-w-md"
-        >
-          <form action={handleCreate} className="space-y-4">
-            <div className="grid gap-2">
-              <Label htmlFor="code">رمز العملة (3 أحرف)</Label>
-              <Input id="code" name="code" maxLength={3} required />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="name">الاسم</Label>
-              <Input id="name" name="name" required />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="symbol">الرمز</Label>
-              <Input id="symbol" name="symbol" />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="decimals">عدد الكسور</Label>
-              <Input
-                id="decimals"
-                name="decimals"
-                type="number"
-                min={0}
-                max={6}
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setOpenCreate(false)}
-              >
-                إلغاء
-              </Button>
-              <Button type="submit" disabled={isPending}>
-                حفظ
-              </Button>
-            </div>
-          </form>
-        </Dailogreuse>
       </div>
 
       <DataTable
+        search={
+          <Dailogreuse
+            open={openCreate}
+            setOpen={setOpenCreate}
+            btnLabl="إضافة عملة"
+            titel="عملة جديدة"
+            description="أدخل بيانات العملة الجديدة"
+            style="sm:max-w-md"
+          >
+            <form action={handleCreate} className="space-y-4">
+              <div className="grid gap-2">
+                <Label htmlFor="code">رمز العملة (3 أحرف)</Label>
+                <Input id="code" name="code" maxLength={3} required />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="name">الاسم</Label>
+                <Input id="name" name="name" required />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="symbol">الرمز</Label>
+                <Input id="symbol" name="symbol" />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="decimals">عدد الكسور</Label>
+                <Input
+                  id="decimals"
+                  name="decimals"
+                  type="number"
+                  min={0}
+                  max={6}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setOpenCreate(false)}
+                >
+                  إلغاء
+                </Button>
+                <Button type="submit" disabled={isPending}>
+                  حفظ
+                </Button>
+              </div>
+            </form>
+          </Dailogreuse>
+        }
         data={data.items}
         columns={columns}
         initialPageSize={pagination.pageSize}

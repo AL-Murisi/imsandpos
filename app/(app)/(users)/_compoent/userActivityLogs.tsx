@@ -53,7 +53,7 @@ export default function UserActivityTable({
         sorting={sort}
         pagination={pagination}
         totalCount={total}
-        highet="h-[70vh]"
+        highet="h-[67vh]"
       />
     </div>
   );

@@ -52,11 +52,13 @@ export default async function User({ searchParams }: Users) {
     getCompanySubscriptionUsage(),
   ]);
   return (
-    <UserClinet
-      users={data}
-      total={0}
-      userLimit={subscriptionUsage?.users ?? null}
-      cashierLimit={subscriptionUsage?.cashiers ?? null}
-    />
+    <div className="p-3">
+      <UserClinet
+        users={data}
+        total={0}
+        userLimit={subscriptionUsage?.users ?? null}
+        cashierLimit={subscriptionUsage?.cashiers ?? null}
+      />
+    </div>
   );
 }

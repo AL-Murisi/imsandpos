@@ -47,7 +47,10 @@ export default function DebtSells({
     },
   ];
   return (
-    <div className="bg-accent rounded-2xl p-2 lg:col-span-1" dir="rtl">
+    <div
+      className="bg-accent border-primary rounded-2xl p-2 lg:col-span-1"
+      dir="rtl"
+    >
       <DataTable
         search={
           <>

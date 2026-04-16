@@ -51,7 +51,7 @@ export default function VouvherEntriesTable({
 
   return (
     <div className="" dir="rtl">
-      <div className="bg-accent rounded-2xl p-2 shadow-xl/20 shadow-gray-900">
+      <div className="bg-accent border-primary rounded-2xl p-2 shadow-xl/20 shadow-gray-900">
         <DataTable
           search={<Calendar22 />}
           data={data}

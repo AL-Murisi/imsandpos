@@ -86,12 +86,14 @@ export default async function manageStocks({ searchParams }: DashboardProps) {
   // Collect common params
 
   return (
-    <ManageStocksClient
-      products={inventoryData.inventory}
-      total={inventoryData.totalCount}
-      formData={formData}
-      multipleInventory={MultipleInventory}
-      payments={b}
-    />
+    <div className="p-3">
+      <ManageStocksClient
+        products={inventoryData.inventory}
+        total={inventoryData.totalCount}
+        formData={formData}
+        multipleInventory={MultipleInventory}
+        payments={b}
+      />
+    </div>
   );
 }

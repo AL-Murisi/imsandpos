@@ -106,6 +106,12 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
 
   const { products, totalCount } = product;
   return (
-    <ProductClient products={products} total={totalCount} formData={formData} />
+    <div className="p-3">
+      <ProductClient
+        products={products}
+        total={totalCount}
+        formData={formData}
+      />
+    </div>
   );
 }

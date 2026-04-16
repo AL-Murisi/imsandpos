@@ -69,5 +69,9 @@ export default async function Suppliers({ searchParams }: DashboardProps) {
   // });
 
   // ✅ Pass promises directly (React 19 pattern)
-  return <SuppliersTable suppliersPromise={suppliersPromise} />;
+  return (
+    <div className="p-3">
+      <SuppliersTable suppliersPromise={suppliersPromise} />
+    </div>
+  );
 }

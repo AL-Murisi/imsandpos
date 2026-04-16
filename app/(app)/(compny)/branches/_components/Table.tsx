@@ -79,7 +79,7 @@ export default function SalesPointTable({
         sorting={sorting}
         pagination={pagination}
         totalCount={total}
-        highet="h-[68vh]"
+        highet="h-[67vh]"
       />
     </div>
   );

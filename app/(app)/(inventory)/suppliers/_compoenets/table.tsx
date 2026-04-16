@@ -28,14 +28,6 @@ const ImportWarehouse = dynamic(() => import("@/components/uploadwarehouse"), {
 type ProductClientProps = {
   suppliersPromise: Promise<{ data: any[]; total: number }>;
 };
-// const DataTable = dynamic(
-//   () => import("@/components/common/ReusbleTable").then((m) => m.DataTable),
-//   {
-//     ssr: false,
-//     loading: () => <TableSkeleton rows={20} columns={10} />,
-//   },
-// );
-// Loading skeleton for table
 
 export default function SuppliersTable({
   suppliersPromise,
@@ -59,7 +51,7 @@ export default function SuppliersTable({
   const suppliers = use(suppliersPromise);
   return (
     <div
-      className="bg-accent w-full rounded-2xl p-2 shadow-xl/20 shadow-gray-500 group-data-[[state=pending]]:animate-pulse"
+      className="bg-accent border-primary w-full rounded-2xl p-2 shadow-xl/20 shadow-gray-500 group-data-[[state=pending]]:animate-pulse"
       dir="rtl"
     >
       <div className="flex flex-wrap gap-2 p-1 md:flex-row lg:flex-row">
