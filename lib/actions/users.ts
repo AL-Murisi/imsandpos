@@ -244,7 +244,6 @@ export async function fetechUser(
 
   const data = await prisma.user.findMany({
     select: {
-      omit: { password: true },
       id: true,
       name: true,
       email: true,
@@ -406,7 +405,6 @@ export async function UpdatwUser(form: any, id: string, companyId: string) {
       where: { id, companyId },
 
       select: {
-        omit: { password: true },
         id: true,
         name: true,
         email: true,

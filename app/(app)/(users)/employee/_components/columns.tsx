@@ -202,20 +202,22 @@ export const employeeColumns: ColumnDef<any>[] = [
           >
             <Power className="h-4 w-4" />
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0 text-red-600 hover:bg-red-100"
-            onClick={async () => {
-              const ok = window.confirm("هل تريد حذف الموظف؟");
-              if (!ok) return;
-              await deleteEmployee(employee.id, user.companyId);
-            }}
-            disabled={employee.position === "admin"}
-            title="حذف"
+          <ConfirmModal
+            title="حذف الموظف"
+            description="هل أنت متأكد من حذف هذا الموظف؟ سيتم إزالة كافة البيانات المرتبطة به."
+            action={() => deleteEmployee(employee.id, user.companyId)}
+            confirmText="حذف"
           >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 text-red-600 hover:bg-red-100"
+              disabled={employee.position === "admin"}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </ConfirmModal>
+
           <Button
             disabled={isLoading}
             onClick={() => {
