@@ -313,6 +313,8 @@ export async function processSale(data: any, companyId: string) {
 
           const baseAmountDue = Math.max(0, totalAfterDiscount - baseAmount);
           const paymentData = await paymentDataTemplate(effectiveSaleNumber);
+          // const entryNumber = `SALE-${new Date().getFullYear()}-${paymentData?.voucherNumber}`;
+
           const sale = await tx.invoice.create({
             data: {
               companyId,
@@ -335,6 +337,10 @@ export async function processSale(data: any, companyId: string) {
           });
           // ==========================================
           // 2. جلب المخزون لكل منتج ومستودع
+          const entryNumber =
+            baseAmount > 0
+              ? `SALE-${new Date().getFullYear()}-${paymentData?.voucherNumber}`
+              : `SALE-${new Date().getFullYear()}-${sale.invoiceNumber}`;
 
           const invMap = new Map(
             inventoryUnits.map((i) => [`${i.productId}-${i.warehouseId}`, i]),
@@ -468,7 +474,6 @@ export async function processSale(data: any, companyId: string) {
           }
 
           const entryYear = new Date().getFullYear();
-          const entryNumber = `SALE-${new Date().getFullYear()}-${voucherNumber}`;
 
           const desc = `Sales invoice: ${sale.invoiceNumber}`;
           const isForeign =
@@ -1069,8 +1074,21 @@ export async function processReturn(data: any, companyId: string) {
           "Missing required account mappings for return sales journal entry",
         );
       }
+      let createdTransactions = [];
 
-      const entryNumber = `RET-${new Date().getFullYear()}-${voucherNumber}`;
+      if (customerOperations.length > 0) {
+        // Promise.all returns the actual results of the database operations
+        createdTransactions = await Promise.all(customerOperations);
+      }
+
+      // Now you can access the voucherNumber from the first (or relevant) transaction
+      const voucherFromDb =
+        createdTransactions.length > 0
+          ? createdTransactions[0].voucherNumber
+          : "N/A";
+
+      // Fix your entryNumber logic:
+      const entryNumber = `RET-${new Date().getFullYear()}-${voucherFromDb}`;
 
       const desc = `Sales return: ${returnSale.invoiceNumber} / original ${originalSale.invoiceNumber}`;
       const isForeign =

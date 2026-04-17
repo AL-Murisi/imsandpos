@@ -578,6 +578,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
           SELECT
             i.id AS inventoryId,
             i."stock_quantity",
+            i."available_quantity",
             i."reorder_level",
             p.id AS product_id,
             p.name AS productName,

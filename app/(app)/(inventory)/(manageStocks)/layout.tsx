@@ -45,7 +45,9 @@ export default async function StocksLayout({
 
   return (
     <div className="p-1">
-      <InventoryTabs items={visibleTabs} />
+      <div className="px-2">
+        <InventoryTabs items={visibleTabs} />
+      </div>
       <div>{children}</div>
     </div>
   );

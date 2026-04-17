@@ -16,10 +16,15 @@ import {
   Database,
   Cloud,
   Smartphone,
+  Bell,
+  Globe,
+  SmartphoneIcon,
+  Laptop,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ModeToggle } from "./toggoletheme";
-
+import { CarouselDemo } from "./common/carousel";
+import { Carouselp } from "./common/carouselp";
 export default function LandingPage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -149,8 +154,10 @@ export default function LandingPage() {
 
       {/* Hero Section */}
       <section className="bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 px-6 pt-32 pb-20">
-        <div className="mx-auto max-w-7xl">
-          <div className="grid items-center gap-12 md:grid-cols-2">
+        <div className="mx-auto max-w-[1800px]">
+          {" "}
+          <div className="grid items-center gap-12 md:grid-cols-[0.9fr_2.1fr]">
+            {" "}
             <div className="space-y-8 text-right">
               <div className="inline-flex items-center gap-2 rounded-full bg-blue-500/20 px-4 py-2 text-sm font-medium text-blue-300 backdrop-blur-sm">
                 <Wifi size={16} />
@@ -199,12 +206,11 @@ export default function LandingPage() {
                 </div>
               </div>
             </div>
-
             {/* Dashboard Mockup */}
-            <div className="relative">
+            {/*   <div className="relative">
               <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-blue-400 to-indigo-400 opacity-20 blur-3xl"></div>
-              <div className="relative rounded-2xl border border-gray-700 bg-slate-800/50 p-8 shadow-2xl backdrop-blur-sm">
-                <div className="space-y-6">
+              <div className="relative rounded-2xl border border-gray-700 bg-slate-800/50 p-4 shadow-2xl backdrop-blur-sm">
+               <div className="space-y-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="h-3 w-3 animate-pulse rounded-full bg-green-500"></div>
@@ -256,9 +262,12 @@ export default function LandingPage() {
                       <div className="text-xs text-gray-400">متوسط البيع</div>
                     </div>
                   </div>
-                </div>
-              </div>
+                </div> */}
+            <div className="relative -ml-4 h-full w-full md:-ml-10">
+              <CarouselDemo />
             </div>
+            {/* </div>
+            </div> */}
           </div>
         </div>
       </section>
@@ -269,90 +278,105 @@ export default function LandingPage() {
         className="bg-slate-50 px-6 py-20 dark:bg-slate-900"
       >
         <div className="mx-auto max-w-7xl">
-          <div className="mb-16 text-center">
-            <h2 className="mb-4 text-4xl font-bold text-gray-900 md:text-5xl dark:text-white">
-              ميزات قوية لعملك
-            </h2>
-            <p className="mx-auto max-w-2xl text-xl text-gray-600 dark:text-gray-300">
-              كل ما تحتاجه لإدارة متجرك بكفاءة، كل ذلك في مكان واحد
-            </p>
-          </div>
-
-          <div className="grid gap-8 md:grid-cols-3">
-            <div className="group rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-8 text-right transition hover:shadow-xl dark:border-blue-800 dark:from-blue-950 dark:to-indigo-950">
-              <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg transition group-hover:scale-110">
-                <WifiOff className="text-white" size={28} />
-              </div>
-              <h3 className="mb-3 text-2xl font-bold text-gray-900 dark:text-white">
-                العمل بدون اتصال بالإنترنت أولاً
-              </h3>
-              <p className="leading-relaxed text-gray-600 dark:text-gray-300">
-                استمر في معالجة المبيعات حتى بدون الإنترنت. تتم مزامنة جميع
-                البيانات تلقائيًا عند العودة للاتصال.
-              </p>
+          <div className="grid items-center gap-12 md:grid-cols-[0.9fr_2.1fr]">
+            <div className="w-xs">
+              <Carouselp />
             </div>
-
-            <div className="group rounded-2xl border border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50 p-8 text-right transition hover:shadow-xl dark:border-purple-800 dark:from-purple-950 dark:to-pink-950">
-              <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 shadow-lg transition group-hover:scale-110">
-                <Package className="text-white" size={28} />
+            <div>
+              <div className="mb-16 text-center">
+                <h2 className="mb-4 text-4xl font-bold text-gray-900 md:text-5xl dark:text-white">
+                  ميزات قوية لعملك
+                </h2>
+                <p className="mx-auto max-w-2xl text-xl text-gray-600 dark:text-gray-300">
+                  كل ما تحتاجه لإدارة متجرك بكفاءة، كل ذلك في مكان واحد
+                </p>
               </div>
-              <h3 className="mb-3 text-2xl font-bold text-gray-900 dark:text-white">
-                إدارة المخزون
-              </h3>
-              <p className="leading-relaxed text-gray-600 dark:text-gray-300">
-                تتبع المخزون في الوقت الفعلي، تنبيهات انخفاض المخزون، وإعادة طلب
-                تلقائية للحفاظ على رفوفك ممتلئة.
-              </p>
-            </div>
 
-            <div className="group rounded-2xl border border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 p-8 text-right transition hover:shadow-xl dark:border-green-800 dark:from-green-950 dark:to-emerald-950">
-              <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg transition group-hover:scale-110">
-                <BarChart3 className="text-white" size={28} />
-              </div>
-              <h3 className="mb-3 text-2xl font-bold text-gray-900 dark:text-white">
-                تحليلات ذكية
-              </h3>
-              <p className="leading-relaxed text-gray-600 dark:text-gray-300">
-                تقارير مفصلة ورؤى لمساعدتك في اتخاذ قرارات تستند إلى البيانات
-                لعملك.
-              </p>
-            </div>
+              <div className="grid gap-8 md:grid-cols-3">
+                <div className="group rounded-2xl border border-purple-200 bg-gradient-to-br from-purple-50 to-indigo-50 p-8 text-right transition hover:shadow-xl dark:border-purple-800 dark:from-purple-950 dark:to-indigo-950">
+                  <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 shadow-lg transition group-hover:scale-110">
+                    <Globe className="text-white" size={28} />
+                    <SmartphoneIcon className="text-white" size={28} />
+                    <Laptop className="text-white" size={28} />
+                  </div>
 
-            <div className="group rounded-2xl border border-orange-200 bg-gradient-to-br from-orange-50 to-red-50 p-8 text-right transition hover:shadow-xl dark:border-orange-800 dark:from-orange-950 dark:to-red-950">
-              <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-red-600 shadow-lg transition group-hover:scale-110">
-                <Zap className="text-white" size={28} />
-              </div>
-              <h3 className="mb-3 text-2xl font-bold text-gray-900 dark:text-white">
-                سرعة البرق
-              </h3>
-              <p className="leading-relaxed text-gray-600 dark:text-gray-300">
-                مُحسَّن للسرعة مع بحث فوري عن المنتجات وعملية دفع سريعة.
-              </p>
-            </div>
+                  <h3 className="mb-3 text-2xl font-bold text-gray-900 dark:text-white">
+                    يعمل على الويب والتطبيقات
+                  </h3>
 
-            <div className="group rounded-2xl border border-cyan-200 bg-gradient-to-br from-cyan-50 to-blue-50 p-8 text-right transition hover:shadow-xl dark:border-cyan-800 dark:from-cyan-950 dark:to-blue-950">
-              <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 shadow-lg transition group-hover:scale-110">
-                <Shield className="text-white" size={28} />
-              </div>
-              <h3 className="mb-3 text-2xl font-bold text-gray-900 dark:text-white">
-                آمن وموثوق
-              </h3>
-              <p className="leading-relaxed text-gray-600 dark:text-gray-300">
-                أمان بمستوى البنوك مع نسخ احتياطي تلقائي وتخزين مشفر للبيانات.
-              </p>
-            </div>
+                  <p className="leading-relaxed text-gray-600 dark:text-gray-300">
+                    نظام مرن يعمل كـ موقع إلكتروني أو تطبيق على مختلف الأجهزة.
+                    مبني بتقنيات حديثة ليوفر أداء عالي وتجربة سلسة للمستخدمين
+                    والمطورين.
+                  </p>
+                </div>
+                <div className="group rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-8 text-right transition hover:shadow-xl dark:border-blue-800 dark:from-blue-950 dark:to-indigo-950">
+                  <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg transition group-hover:scale-110">
+                    <Bell className="text-white" size={28} />
+                  </div>
 
-            <div className="group rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-50 to-purple-50 p-8 text-right transition hover:shadow-xl dark:border-violet-800 dark:from-violet-950 dark:to-purple-950">
-              <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg transition group-hover:scale-110">
-                <Smartphone className="text-white" size={28} />
+                  <h3 className="mb-3 text-2xl font-bold text-gray-900 dark:text-white">
+                    إشعارات فورية وذكية
+                  </h3>
+
+                  <p className="leading-relaxed text-gray-600 dark:text-gray-300">
+                    احصل على إشعارات فورية حول المبيعات، انخفاض المخزون،
+                    والمدفوعات. ابقَ على اطلاع دائم بكل ما يحدث في نظامك في
+                    الوقت الحقيقي.
+                  </p>
+                </div>
+
+                <div className="group rounded-2xl border border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50 p-8 text-right transition hover:shadow-xl dark:border-purple-800 dark:from-purple-950 dark:to-pink-950">
+                  <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 shadow-lg transition group-hover:scale-110">
+                    <Package className="text-white" size={28} />
+                  </div>
+                  <h3 className="mb-3 text-2xl font-bold text-gray-900 dark:text-white">
+                    إدارة المخزون
+                  </h3>
+                  <p className="leading-relaxed text-gray-600 dark:text-gray-300">
+                    تتبع المخزون في الوقت الفعلي، تنبيهات انخفاض المخزون، وإعادة
+                    طلب تلقائية للحفاظ على رفوفك ممتلئة.
+                  </p>
+                </div>
+
+                <div className="group rounded-2xl border border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 p-8 text-right transition hover:shadow-xl dark:border-green-800 dark:from-green-950 dark:to-emerald-950">
+                  <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg transition group-hover:scale-110">
+                    <BarChart3 className="text-white" size={28} />
+                  </div>
+                  <h3 className="mb-3 text-2xl font-bold text-gray-900 dark:text-white">
+                    تحليلات ذكية
+                  </h3>
+                  <p className="leading-relaxed text-gray-600 dark:text-gray-300">
+                    تقارير مفصلة ورؤى لمساعدتك في اتخاذ قرارات تستند إلى
+                    البيانات لعملك.
+                  </p>
+                </div>
+
+                <div className="group rounded-2xl border border-orange-200 bg-gradient-to-br from-orange-50 to-red-50 p-8 text-right transition hover:shadow-xl dark:border-orange-800 dark:from-orange-950 dark:to-red-950">
+                  <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-red-600 shadow-lg transition group-hover:scale-110">
+                    <Zap className="text-white" size={28} />
+                  </div>
+                  <h3 className="mb-3 text-2xl font-bold text-gray-900 dark:text-white">
+                    سرعة البرق
+                  </h3>
+                  <p className="leading-relaxed text-gray-600 dark:text-gray-300">
+                    مُحسَّن للسرعة مع بحث فوري عن المنتجات وعملية دفع سريعة.
+                  </p>
+                </div>
+
+                <div className="group rounded-2xl border border-cyan-200 bg-gradient-to-br from-cyan-50 to-blue-50 p-8 text-right transition hover:shadow-xl dark:border-cyan-800 dark:from-cyan-950 dark:to-blue-950">
+                  <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 shadow-lg transition group-hover:scale-110">
+                    <Shield className="text-white" size={28} />
+                  </div>
+                  <h3 className="mb-3 text-2xl font-bold text-gray-900 dark:text-white">
+                    آمن وموثوق
+                  </h3>
+                  <p className="leading-relaxed text-gray-600 dark:text-gray-300">
+                    أمان بمستوى البنوك مع نسخ احتياطي تلقائي وتخزين مشفر
+                    للبيانات.
+                  </p>
+                </div>
               </div>
-              <h3 className="mb-3 text-2xl font-bold text-gray-900 dark:text-white">
-                متعدد الأجهزة
-              </h3>
-              <p className="leading-relaxed text-gray-600 dark:text-gray-300">
-                يعمل بسلاسة على سطح المكتب، والتابلت، والجوال. أدر عملك من أي
-                مكان.
-              </p>
             </div>
           </div>
         </div>

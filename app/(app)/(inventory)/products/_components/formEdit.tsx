@@ -270,7 +270,6 @@ export default function ProductEditForm({
                 <Label>سعر التكلفة (للوحدة الأساسية)</Label>
                 <Input
                   type="number"
-                  value={product.costPrice}
                   step="0.01"
                   {...register("costPrice", { valueAsNumber: true })}
                   placeholder="0.00"

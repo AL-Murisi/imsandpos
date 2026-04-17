@@ -522,7 +522,7 @@ export async function createEmployeeSalaryPayment(
           },
         });
 
-        const entryNumber = `SAL-${new Date().getFullYear()}-${voucherNumber}`;
+        const entryNumber = `SAL-${new Date().getFullYear()}-${payment.voucherNumber}`;
         await tx.journalHeader.create({
           data: {
             companyId,

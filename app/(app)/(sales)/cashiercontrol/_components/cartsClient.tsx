@@ -643,7 +643,7 @@ export default function CartDisplay({
             placeholder="اسم عميل غير مسجل"
             className="w-40"
           />
-          <Button
+          {/* <Button
             disabled={isLoading2}
             onClick={() => {
               setIsLoading2(true);
@@ -658,7 +658,7 @@ export default function CartDisplay({
               {isLoading2 && <Clock className="h-4 w-4 animate-spin" />}
               {isLoading2 ? "جاري الفتح..." : " إرجاع المبيعات"}
             </Link>
-          </Button>
+          </Button> */}
         </div>
       </div>
       <ScrollArea className="w-full py-2" dir="rtl">

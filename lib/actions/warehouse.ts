@@ -1001,8 +1001,9 @@ export async function processPurchaseReturn(
           "PAYMENT",
           tx,
         );
+        let payment;
         if (refundAmount > 0 && paymentMethod) {
-          await tx.financialTransaction.create({
+          const payments = await tx.financialTransaction.create({
             data: {
               companyId,
               supplierId,
@@ -1026,7 +1027,9 @@ export async function processPurchaseReturn(
               notes: reason || `استرداد مبلغ من المورد - فاتورة ${purchaseId}`,
             },
           });
+          payment = payments.voucherNumber;
         }
+        const entryNumber = `PURET-${new Date().getFullYear()}-${payment}`;
 
         await tx.supplier.update({
           where: { id: supplierId },
@@ -1050,8 +1053,6 @@ export async function processPurchaseReturn(
             },
           },
         });
-
-        const entryNumber = `PURET-${new Date().getFullYear()}-${voucherNumber}`;
 
         const desc = `Purchase return: ${purchaseReturn.invoiceNumber}`;
         const journalLines: any[] = [];
@@ -2288,9 +2289,7 @@ export async function updateMultipleInventories(
             }
 
             const entryYear = new Date().getFullYear();
-            const entryNumber = `JE-${entryYear}-${Date.now()}-${Math.floor(
-              Math.random() * 1000,
-            )}`;
+            const entryNumber = `JE-${entryYear}-${payment?.voucherNumber}}`;
             const desc = `Purchase invoice: ${purchase.invoiceNumber}`;
             const purchaseLines: any[] = [
               buildWarehouseJournalLine(

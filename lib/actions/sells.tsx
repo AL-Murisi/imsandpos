@@ -56,7 +56,7 @@ function serializeData<T>(data: T): T {
 export async function FetchDebtSales(
   companyId: string,
   where?: Prisma.InvoiceWhereInput,
-  sale_type: string = "SALE", // only returns
+  sale_type?: string, // only returns
 
   searchQuery: string = "",
   from?: string,

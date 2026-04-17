@@ -543,13 +543,16 @@ export async function createMultipleExpenses(
               },
             },
           },
+          include: {
+            transactions: true,
+          },
         });
 
         // ب- إنشاء المعاملة المالية المرتبطة (FinancialTransaction)
         // هذا يمثل "سند الصرف" الفعلي في الخزينة
+        const voucherFromDb = expense.transactions?.[0]?.voucherNumber || "N/A";
 
-        const entryNumber = `EXP-${new Date().getFullYear()}-${voucherNumber}`;
-
+        const entryNumber = `EXP-${new Date().getFullYear()}-${voucherFromDb}`;
         const journalHeader = await tx.journalHeader.create({
           data: {
             companyId,
@@ -768,7 +771,9 @@ export async function updateExpense(
       const updatedExpense = await tx.expenses.update({
         where: { id: expenseId },
         data: {
-          ...(data.account_id !== undefined ? { account_id: data.account_id } : {}),
+          ...(data.account_id !== undefined
+            ? { account_id: data.account_id }
+            : {}),
           ...(data.description !== undefined
             ? { description: data.description }
             : {}),
@@ -791,7 +796,9 @@ export async function updateExpense(
         updatedExpense.description ?? existingExpense.description ?? "";
       const finalAmount = Number(updatedExpense.amount);
       const finalPaymentMethod =
-        updatedExpense.payment_method ?? existingExpense.payment_method ?? "cash";
+        updatedExpense.payment_method ??
+        existingExpense.payment_method ??
+        "cash";
       const finalExpenseDate =
         updatedExpense.expense_date ?? existingExpense.expense_date;
       const finalAccountId =

@@ -82,24 +82,6 @@ export const createColumns = (
       accessorKey: "barcode",
       header: tt("barcode"),
     },
-    {
-      accessorKey: "type",
-      header: tt("type"),
-      cell: ({ row }) => {
-        const type = row.getValue("type") as
-          | "full"
-          | "cartonUnit"
-          | "cartonOnly";
-
-        const typeMap: Record<"full" | "cartonUnit" | "cartonOnly", string> = {
-          full: "وحدة + عبوة + كرتونة",
-          cartonUnit: "وحدة + كرتونة",
-          cartonOnly: "كرتونة فقط",
-        };
-
-        return type ? typeMap[type] : "غير محدد";
-      },
-    },
 
     {
       accessorKey: "sku",
