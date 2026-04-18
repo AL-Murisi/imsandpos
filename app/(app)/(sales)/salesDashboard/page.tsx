@@ -52,7 +52,7 @@ export default async function SellsDashboard({ searchParams }: DashboardProps) {
     usersquery,
     page = "1",
     limit = "13",
-    sale_type = "SALE",
+    sale_type,
     sort,
   } = param;
 
@@ -198,7 +198,9 @@ export default async function SellsDashboard({ searchParams }: DashboardProps) {
               </div>
               <div className="rounded-2xl border border-white/12 bg-white/8 p-4 backdrop-blur-sm">
                 <div className="mb-3 flex items-center justify-between">
-                  <span className="text-sm text-slate-200">صافي الحركة اليوم</span>
+                  <span className="text-sm text-slate-200">
+                    صافي الحركة اليوم
+                  </span>
                   <Users className="h-4 w-4 text-slate-200" />
                 </div>
                 <div className="text-3xl font-semibold">

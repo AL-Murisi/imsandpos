@@ -18,7 +18,6 @@ export default function LocaleSwitcher() {
           label: "ar",
         },
       ]}
-      label={t("label")}
     />
   );
 }

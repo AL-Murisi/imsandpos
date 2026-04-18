@@ -78,7 +78,7 @@ export default function Items({
   const columns = createColumns(tt);
   return (
     <div
-      className="bg-accent border-primary w-full rounded-2xl p-3 shadow-xl/20 shadow-gray-500 group-data-[[state=pending]]:animate-pulse"
+      className="bg-accent border-primary flex flex-col rounded-2xl border p-3 shadow-xl/20 shadow-gray-900"
       dir="rtl"
     >
       <div className="flex flex-wrap gap-2 md:flex-row lg:flex-row">
@@ -89,7 +89,6 @@ export default function Items({
           paramKey="warehouseId"
           placeholder={tt("warehouseId")}
         />
-
         <SelectField
           options={formData.categories}
           paramKey="categoryId"
@@ -130,7 +129,7 @@ export default function Items({
         globalFilter={globalFilter}
         sorting={sorting}
         pagination={pagination}
-        highet="h-[70vh]"
+        highet="h-[68vh]"
         totalCount={total}
       />
     </div>

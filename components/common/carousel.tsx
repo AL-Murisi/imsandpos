@@ -42,6 +42,8 @@ export function CarouselDemo() {
           </CarouselItem>
         ))}
       </CarouselContent>
+      <CarouselNext />
+      <CarouselPrevious />
     </Carousel>
   );
 }

@@ -81,8 +81,8 @@ export default function Appheader() {
     <header className="flex flex-col" dir="rtl">
       {user?.subscriptionActive === false && (
         <div className="border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm text-amber-200">
-          اشتراكك غير نشط. يمكنك تصفح الصفحات، لكن عمليات الإضافة والتعديل والحذف
-          متوقفة حتى تجديد الاشتراك.
+          اشتراكك غير نشط. يمكنك تصفح الصفحات، لكن عمليات الإضافة والتعديل
+          والحذف متوقفة حتى تجديد الاشتراك.
         </div>
       )}
       <div className="flex h-(--header-height) shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">

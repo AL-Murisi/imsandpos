@@ -15,18 +15,12 @@ export default function Logout() {
       confirmText="نعم"
     >
       {/* Wrap in a div to ensure a single child */}
-      <div>
-        <Button
-          disabled={loggingOut}
-          className="text-red-600 hover:bg-orange-300/20 hover:text-red-700"
-        >
-          {loggingOut ? (
-            <Loader2 className="h-5 w-5 animate-spin" />
-          ) : (
-            <LogOut className="h-5 w-5" />
-          )}
-        </Button>
-      </div>
+
+      {loggingOut ? (
+        <Loader2 className="h-5 w-5 animate-spin" />
+      ) : (
+        <LogOut color="red" className="bg-red h-5 w-5" />
+      )}
     </ConfirmModal>
   );
 }

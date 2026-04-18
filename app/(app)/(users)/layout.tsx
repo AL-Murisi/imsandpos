@@ -30,7 +30,7 @@ export default function StocksLayout({
 
   return (
     <div className="space-y-2">
-      <div className="px-2">
+      <div className="px-5">
         <div className="border-primary flex flex-wrap gap-2 rounded-2xl border-1 p-1">
           {visibleItems.map((item) => {
             const isActive =

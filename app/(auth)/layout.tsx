@@ -8,7 +8,6 @@ export default function AuthLayout({
 }) {
   return (
     <div className="min-h-screen">
-      {" "}
       <Provider store={store}> {children}</Provider>{" "}
     </div>
   );

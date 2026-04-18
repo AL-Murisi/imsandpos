@@ -68,19 +68,15 @@ export default function ClientLayoutWrapper({
         >
           <SidebarInset>
             <Appheader />
-            <div className="flex flex-col">
-              <ScrollArea
-                className="group @container/main flex flex-col"
-                dir="rtl"
-              >
-                <PullToRefreshCurrentPage>
-                  {children}
-                  <div className="mt-12 md:mt-0 md:hidden">
-                    <BottomBar />
-                  </div>
-                </PullToRefreshCurrentPage>
-              </ScrollArea>
-            </div>
+            <ScrollArea
+              className="group @container/main flex flex-col"
+              dir="rtl"
+            >
+              {children}
+              <div className="mt-12 md:mt-0 md:hidden">
+                <BottomBar />
+              </div>
+            </ScrollArea>
           </SidebarInset>
           <AppSidebar
             variant="floating"

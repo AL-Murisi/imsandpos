@@ -41,7 +41,9 @@ export function Carouselp() {
             </div>
           </CarouselItem>
         ))}
-      </CarouselContent>
+      </CarouselContent>{" "}
+      <CarouselNext />
+      <CarouselPrevious />
     </Carousel>
   );
 }

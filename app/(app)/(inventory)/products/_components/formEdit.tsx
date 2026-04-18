@@ -86,6 +86,7 @@ export default function ProductEditForm({
   const watchedWarehouseId = watch("warehouseId");
   const watchedCategoryId = watch("categoryId");
   const watchedSupplierId = watch("supplierId");
+  const costPrice = watch("costPrice");
   // const unitsPerPacket = watch("unitsPerPacket");
   // const packetsPerCarton = watch("packetsPerCarton");
   // const pricePerCarton = watch("pricePerCarton");
@@ -135,6 +136,7 @@ export default function ProductEditForm({
       supplierId: product.supplierId || "",
       warehouseId: product.warehouseId || "",
       description: product.description || "",
+      costPrice: product.costPrice || undefined, // ✅ ADD THIS
 
       wholesalePrice: product.wholesalePrice || undefined,
       minWholesaleQty: product.minWholesaleQty || undefined,
@@ -267,13 +269,19 @@ export default function ProductEditForm({
               </div>
 
               <div className="grid gap-3">
-                <Label>سعر التكلفة (للوحدة الأساسية)</Label>
+                <Label htmlFor="costPrice">سعر التكلفة (للوحدة الأساسية)</Label>
                 <Input
+                  id="costPrice"
                   type="number"
                   step="0.01"
                   {...register("costPrice", { valueAsNumber: true })}
                   placeholder="0.00"
-                />
+                />{" "}
+                {errors.costPrice && (
+                  <p className="text-right text-xs text-red-500">
+                    {errors.costPrice.message}
+                  </p>
+                )}
               </div>
               {/* Warehouse and Dimensions */}
             </div>{" "}

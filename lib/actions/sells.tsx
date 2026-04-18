@@ -150,21 +150,25 @@ export async function FetchDebtSales(
     take: pageSize,
     orderBy,
   });
-  const saleInvoiceNumbers = debts
+  const baseSaleNumbers = debts
     .filter((sale) => sale.sale_type === "SALE")
-    .map((sale) => sale.invoiceNumber);
+    .map((sale) => sale.invoiceNumber.replace("-بيع", "").trim());
 
   const existingReturns =
-    saleInvoiceNumbers.length > 0
+    baseSaleNumbers.length > 0
       ? await prisma.invoice.findMany({
           where: {
             companyId,
             sale_type: "RETURN_SALE",
-            invoiceNumber: { in: saleInvoiceNumbers },
+            OR: baseSaleNumbers.map((base) => ({
+              invoiceNumber: { contains: base },
+            })),
           },
           select: { invoiceNumber: true },
         })
       : [];
+
+  // 3. Normalize the found returns to their base IDs for easy lookup
   const returnedBaseNumbers = new Set(
     existingReturns.map((invoice) =>
       invoice.invoiceNumber.replace("-مرتجع", "").replace("-بيع", "").trim(),
