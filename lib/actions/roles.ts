@@ -175,7 +175,11 @@ export async function filteringData() {
       }),
       prisma.user.findMany({
         select: { id: true, name: true },
-        where: { isActive: true, companyId: userinf.companyId },
+        where: {
+          isActive: true,
+          companyId: userinf.companyId,
+          role: { not: "customer" },
+        },
         orderBy: { name: "asc" },
       }),
 

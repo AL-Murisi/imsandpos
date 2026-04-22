@@ -12,7 +12,6 @@ const FiscalYearManager = dynamic(() => import("./FiscalYearManager"), {
 });
 type JournalEntriesClientProps = {
   data: any[];
-  fiscalYear: any[] | undefined;
   acount: { id: string; name: string }[];
   customers?:
     | {
@@ -26,7 +25,7 @@ type JournalEntriesClientProps = {
 };
 export default function Tab({
   data,
-  fiscalYear,
+
   acount,
   customers,
   suppliers,

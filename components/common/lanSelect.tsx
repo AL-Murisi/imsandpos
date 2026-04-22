@@ -33,22 +33,25 @@ export default function LocaleSwitcherSelect({
     <Select defaultValue={defaultValue} onValueChange={onChange} dir="rtl">
       <SelectTrigger
         className={cn(
-          // 1. Remove all default styling
+          // 1. إزالة التنسيقات الافتراضية
           "h-10 w-10 border-none bg-transparent p-0 shadow-none ring-0 outline-none focus:ring-0 focus:ring-offset-0",
-          // 2. Hide the default arrow and the value text span
-          "[&>span]:hidden [&>svg]:hidden",
-          // 3. Center our custom icon
-          "flex items-center justify-center rounded-full transition-colors hover:bg-white/5",
+
+          // 2. إخفاء السهم الافتراضي فقط
+          "[&>svg]:hidden",
+
+          // 3. إخفاء نص القيمة فقط (span الافتراضي) وليس الأيقونة
+          // نستخدم select-none أو نحدد الـ span الفارغ الذي ينشئه shadcn
+          "[&>span]:empty:hidden data-[placeholder]:[&>span]:hidden",
+
+          // 4. توسيط الأيقونة
+          "flex items-center justify-center rounded-full transition-colors hover:bg-white/10",
         )}
       >
-        <Globe
-          size={22}
-          className={
-            isPending ? "animate-pulse text-gray-500" : "text-blue-400"
-          }
-        />
-      </SelectTrigger>
+        {/* وضع الأيقونة مباشرة */}
+        <Globe size={22} className="text-blue-500" />
 
+        {/* ملاحظة: تأكد من عدم وجود SelectValue هنا إذا كنت تريد الأيقونة فقط */}
+      </SelectTrigger>
       <SelectContent
         align="center"
         className="min-w-[120px] rounded-xl border-gray-800 bg-[#111827] text-white shadow-2xl"

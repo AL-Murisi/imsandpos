@@ -1,17 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import "./global.css";
 import { ThemeProvider } from "../components/theme-provider";
-import { AuthProvider } from "@/lib/context/AuthContext";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
-import { NextIntlClientProvider } from "next-intl";
-import { getLocale } from "next-intl/server";
-import { Toaster } from "@/components/ui/sonner";
 import { currencyConfig } from "@/currency/config";
 import { cookies } from "next/headers";
-import { CurrencyProvider } from "@/components/CurrencyProvider";
-import Providers from "./providers";
-import ChatbotWidget from "@/components/ChatbotWidget";
+import ClientProviders from "./client-providers";
+import { getLocale } from "next-intl/server";
 
 export const metadata: Metadata = {
   title: "IMS - نظام إدارة المخزون | Inventory Management System",
@@ -33,6 +28,7 @@ export const metadata: Metadata = {
     "مخازن",
     "نظام كاشير",
     "إدارة المبيعات",
+    "كاشير",
   ],
 
   manifest: "/manifest.json",
@@ -332,6 +328,7 @@ export const metadata: Metadata = {
   },
   other: { "apple-mobile-web-app-capable": "yes" }, // add this line
 };
+
 type CurrencyKey = keyof typeof currencyConfig;
 export const viewport: Viewport = {
   themeColor: "#0b142a",
@@ -369,22 +366,15 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <Providers>
-            <AuthProvider>
-              <NextIntlClientProvider
-                locale={locale}
-                messages={messages[locale]}
-              >
-                <CurrencyProvider currency={currencyConfig[currencyKey]}>
-                  {children}
-                  {/* <ChatbotWidget /> */}
-                  <Analytics />
-                  <SpeedInsights />
-                  <Toaster />
-                </CurrencyProvider>
-              </NextIntlClientProvider>
-            </AuthProvider>
-          </Providers>
+          <ClientProviders
+            locale={locale}
+            messages={messages}
+            currencyKey={currencyKey}
+          >
+            {children}
+            <Analytics />
+            <SpeedInsights />
+          </ClientProviders>
         </ThemeProvider>
       </body>
     </html>

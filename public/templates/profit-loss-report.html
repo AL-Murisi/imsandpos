@@ -122,6 +122,12 @@
         font-size: 14px;
         color: #777;
       }
+      .logo-title-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+      }
     </style>
   </head>
 
@@ -131,11 +137,11 @@
         <!-- Company -->
         <div class="grid grid-rows-3 items-baseline gap-2 text-right">
           <span class="green text-3xl font-bold"> {{company.name}} </span>
-          <span class="text-2xl">{{company.name}} </span>
+          <div>الموقع: {{company.branchName}}</div>
         </div>
 
         <!-- Logo -->
-        <div class="flex flex-col items-center">
+        <div class="logo-title-container">
           <img src="{{company.logoUrl}}" style="width: 100px; height: 90px" />
         </div>
 
@@ -143,9 +149,8 @@
         <div class="grid grid-rows-4">
           <div class="text-lg">{{company.address}}</div>
           <div class="text-lg">{{company.city}}</div>
-          <div class="text-lg">Location: {{company.branchLocation}}</div>
+          <div class="text-lg">الموقع: {{company.branchLocation}}</div>
           <div>تلفون: {{company.phone}}</div>
-          <div>Branch: {{company.branchName}}</div>
         </div>
       </div>
     </div>

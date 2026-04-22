@@ -43,10 +43,9 @@ export default async function Page({ searchParams }: JournalProps) {
   const pageSize = Number(limit);
 
   // ✅ Ensure async calls are awaited
-  const [data, accounts, fiscalYear, customers, suppliers] = await Promise.all([
+  const [data, accounts, customers, suppliers] = await Promise.all([
     getJournalEntries(account_id, status, from, to, pageIndex, pageSize),
     getExpenseCategories(),
-    getFiscalYears(),
     Fetchcustomerbyname(usersquery),
     getSuppliers(),
   ]);
@@ -55,7 +54,6 @@ export default async function Page({ searchParams }: JournalProps) {
     <Tab
       data={data}
       acount={accounts}
-      fiscalYear={fiscalYear}
       customers={customers}
       suppliers={suppliers}
     />

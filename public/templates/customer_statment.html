@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
   <head>
     <meta charset="UTF-8" />
-    <title>كشف حساب عميل</title>
+    <title>كشف حساب عملاء</title>
     <link
       href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap"
       rel="stylesheet"
@@ -25,99 +25,119 @@
 
       /* Fixed Header Layout */
       .header {
-        display: flex;
-        justify-content: space-between;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
         align-items: center;
-        border-bottom: 2px solid #000;
-        padding-bottom: 10px;
-        margin-bottom: 20px;
+        gap: 18px;
+        margin-bottom: 22px;
+        padding: 22px 26px;
+        border: 1px solid #d9e2ec;
+        border-bottom: 3px solid #0f766e;
+        border-radius: 20px;
+        background: linear-gradient(135deg, #ffffff 0%, #f7fbfb 55%, #eef7f6 100%);
+        box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+      }
+
+      .header-right,
+      .header-left {
+        min-width: 0;
+        padding: 14px 16px;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.88);
+        line-height: 1.8;
+        font-size: 13px;
       }
 
       .header-right {
-        width: 33%;
         text-align: right;
       }
 
-      .header-center {
-        width: 33%;
-        text-align: center;
-      }
-
       .header-left {
-        width: 33%;
-        text-align: left;
-        font-size: 14px;
+        text-align: right;
       }
 
-      .section-title {
-        font-size: 20px;
-        background: #e67e22;
-        color: #fff;
-        padding: 8px;
-        border-radius: 6px;
-        margin: 15px 0;
-        text-align: center;
-        font-weight: bold;
+      .header-right > div:first-child {
+        font-size: 24px !important;
+        font-weight: 700 !important;
+        line-height: 1.35 !important;
+        max-width: none !important;
+        word-break: break-word;
+        color: #0f766e !important;
       }
 
-      .info-box {
-        display: grid;
-        /* Creates two columns of equal width */
-        grid-template-columns: repeat(2, 1fr);
-        gap: 10px 10px; /* 10px vertical gap, 20px horizontal gap */
-
-        padding: 15px;
-        border: 1px solid #ddd; /* Lighter border for cleaner look */
-        border-radius: 8px;
-        background: #f9f9f9;
-        direction: rtl; /* Ensures grid flows correctly for Arabic */
-      }
-      .info-box p {
-        margin: 0; /* Remove default paragraph margins to keep grid tight */
-        font-size: 14px;
-        line-height: 1.6;
-      }
-
-      /* Table Fixes */
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        table-layout: fixed; /* Keeps columns aligned */
-      }
-
-      th,.page-container {
-    page-break-after: always;
-    clear: both;
-  }
-  
-  /* Prevent the last page from having a blank extra page */
-  .page-container:last-child {
-    page-break-after: auto;
-  }
-
-  /* Added a badge style for currency */
-  .currency-badge {
-    background: #2563eb;
-    color: white;
-    padding: 2px 10px;
-    border-radius: 4px;
-    font-size: 14px;
-  }
-      td {
-        border: 1px solid #000;
-        padding: 8px 4px;
-        font-size: 12px;
-        text-align: center;
-        word-wrap: break-word;
-      }
+      .header-center,
       .logo-title-container {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 10px;
+        justify-content: center;
+        gap: 12px;
+      }
+
+      .header-center img,
+      .logo-title-container img {
+        width: 96px !important;
+        height: 96px !important;
+        object-fit: contain;
+        padding: 10px;
+        border-radius: 20px;
+        background: #ffffff;
+        border: 1px solid #d9e2ec;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+      }
+
+      .title-box {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 6px 16px;
+        border-radius: 999px;
+        background: #ecfeff;
+        border: 1px solid #99f6e4;
+        color: #115e59;
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+        letter-spacing: 0.2px;
+      }
+
+
+
+      .section-title {
+        font-size: 20px;
+        color: #0f172a;
+        background: linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%);
+        border: 1px solid #99f6e4;
+        padding: 10px 14px;
+        border-radius: 14px;
+        margin-top: 26px;
+        margin-bottom: 12px;
+        font-weight: 700;
+      }
+      table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        table-layout: fixed;
+        overflow: hidden;
+        border: 1px solid #dbe4ea;
+        border-radius: 16px;
+        background: #ffffff;
+      }
+      th,
+      td {
+        border: 0;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 10px 8px;
+        font-size: 12px;
+        text-align: center;
+        word-wrap: break-word;
       }
       th {
-        background-color: #f2f2f2;
+        background: linear-gradient(135deg, #0f766e 0%, #115e59 100%);
+        color: #ffffff;
+        font-weight: 700;
       }
 
       thead {
@@ -127,50 +147,37 @@
       tr {
         page-break-inside: avoid;
       }
+  .info-box {
+        display: grid;
+        /* Creates two columns of equal width */
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px 10px; /* 10px vertical gap, 20px horizontal gap */
 
+        padding: 10px;
+    
+       
+        direction: rtl; /* Ensures grid flows correctly for Arabic */
+      }
+
+      .info-box p {
+        margin: 0; /* Remove default paragraph margins to keep grid tight */
+        font-size: 14px;
+        line-height: 1.6;
+      }
       .total-row {
-        background: #fee2e2 !important;
+        background: #f0fdfa;
         font-weight: bold;
+        color: #0f172a;
       }
-
-      /* Setting specific column widths */
-      .col-date {
-        width: 12%;
-      }
-      .col-type {
-        width: 12%;
-      }
-      .col-doc {
-        width: 18%;
-      }
-      .col-desc {
-        width: 28%;
-      }
-      .col-db {
-        width: 10%;
-      }
-      .col-cr {
-        width: 10%;
-      }
-      .col-bal {
-        width: 10%;
-      }
-
       .footer {
+        margin-top: 28px;
         text-align: center;
-        font-size: 11px;
-        margin-top: 30px;
-        color: #94a3b8;
+        font-size: 12px;
+        color: #64748b;
+        padding-top: 14px;
+        border-top: 1px solid #e2e8f0;
       }
-      .title-box {
-        border: 1px solid #000;
-        padding: 4px 12px;
-        border-radius: 4px;
-        background-color: #f0f0f0;
-        font-size: 10px;
-        font-weight: bold;
-        white-space: nowrap;
-      }
+
       .page-container {
         page-break-after: always; /* Each customer gets a fresh page */
       }
@@ -184,17 +191,17 @@
         <div class="header-right">
             <div style="font-size: 18px; font-weight: bold;">{{../company.name}}</div>
             <div dir="ltr">{{../company.phone}}</div>
-          <div>Branch: {{../company.branchName}}</div>
+          <div>فرع: {{../company.branchName}}</div>
         </div>
 
         <div class="logo-title-container">
             <img src="{{../company.logoUrl}}" style="width: 80px; height: 80px; object-fit: contain" />
-            <div class="title-box">📋 كشف حساب عميل</div>
+            <div class="title-box">كشف حساب عملاء</div>
         </div>
 
         <div class="header-left">
             <div>{{../company.address}}</div>
-          <div>Location: {{../company.branchLocation}}</div>
+          <div>الموقع: {{../company.branchLocation}}</div>
             <div>{{currency}}</div> </div>
     </div>
 
@@ -219,7 +226,7 @@
       <tbody>
         <tr style="background: #f8fafc;">
           <td>-</td>
-          <td colspan="2">رصيد افتتاحي ({{currency}})</td>
+          <td colspan="2">الرصيد الافتتاحي ({{currency}})</td>
           <td>{{#if (gt openingBalance 0)}}{{openingBalance}}{{else}}0.00{{/if}}</td>
           <td>{{#if (lt openingBalance 0)}}{{abs openingBalance}}{{else}}0.00{{/if}}</td>
           <td><strong>{{openingBalance}}</strong></td>
@@ -237,7 +244,7 @@
       </tbody>
       <tfoot>
         <tr class="total-row">
-          <td colspan="3">الإجمالي الحالي للعملة</td>
+          <td colspan="3">الإجمالي الحالي للعميل</td>
           <td>{{totalDebit}}</td>
           <td>{{totalCredit}}</td>
           <td>{{closingBalance}}</td>
@@ -246,8 +253,11 @@
     </table>
 
     <div class="footer">
-      صفحة كشف حساب عملة {{currency}} | نظام {{../company.name}}
+      كشف حساب العميل {{currency}} | نظام {{../company.name}}
     </div>
   </div>
   {{/each}}
 </html>
+
+
+

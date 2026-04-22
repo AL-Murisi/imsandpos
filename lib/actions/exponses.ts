@@ -7,6 +7,7 @@ import { account_category, Prisma, TransactionType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { getNextVoucherNumber } from "./cashier";
 import { validateFiscalYear } from "./fiscalYear";
+import { headers } from "next/headers";
 interface CreateCategoryData {
   name: string;
   description?: string;
@@ -412,7 +413,7 @@ interface ExpenseData {
 }
 
 export async function getExpenseAssignmentOptions(companyId: string) {
-  const [employees, customers] = await Promise.all([
+  const [employees, customers, branch] = await Promise.all([
     prisma.employee.findMany({
       where: { companyId, isActive: true },
       select: { id: true, name: true },
@@ -423,9 +424,14 @@ export async function getExpenseAssignmentOptions(companyId: string) {
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),
+    prisma.points_of_sale.findMany({
+      where: { company_id: companyId, is_active: true },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
   ]);
 
-  return { employees, customers };
+  return { employees, customers, branch };
 }
 
 export async function createMultipleExpenses(
@@ -434,7 +440,9 @@ export async function createMultipleExpenses(
   expensesData: ExpenseData[],
 ) {
   try {
-    await validateFiscalYear(companyId);
+    for (const expenseData of expensesData) {
+      await validateFiscalYear(companyId, expenseData.expense_date);
+    }
     // 1️⃣ التحقق من البيانات الأساسية
     if (!companyId || !userId) {
       return { success: false, error: "معرف الشركة ومعرف المستخدم مطلوبان" };
@@ -609,12 +617,14 @@ export async function createMultipleExpenses(
         (sum, exp) => sum + Number(exp.amount),
         0,
       );
+      const headersList = await headers();
+      const userAgent = headersList.get("user-agent") || "جهاز غير معروف";
+
       await tx.activityLogs.create({
         data: {
           userId: userId,
           companyId: companyId,
-          userAgent: typeof window !== "undefined" ? navigator.userAgent : "",
-
+          userAgent: userAgent,
           action: "إنشاء مصاريف متعددة مع عمليات مالية",
           details: `تم إنشاء عدد ${expensesData.length} من المصاريف. الإجمالي: ${totalAmount}. نطاق السندات: من ${lastNumber || 0 + 1} إلى ${currentVoucherNumber}`,
         },
@@ -896,14 +906,20 @@ export async function updateExpense(
     });
 
     // Log activity
+    const headersList = await headers();
+    const userAgent = headersList.get("user-agent") || "جهاز غير معروف";
+
     await prisma.activityLogs.create({
       data: {
         userId,
         companyId,
-        action: "updated expense",
-        userAgent: typeof window !== "undefined" ? navigator.userAgent : "",
+        userAgent: userAgent,
 
-        details: `Expense: ${expense.description}, Amount: ${expense.amount}`,
+        // النص المحدث للعربية
+        action: "تعديل مصروف",
+
+        // تفاصيل العملية بالعربية
+        details: `تم تعديل المصروف: ${expense.description}، القيمة الجديدة: ${expense.amount}`,
       },
     });
 
@@ -935,14 +951,20 @@ export async function deleteExpense(
       },
     });
     // Log activity
+    const headersList = await headers();
+    const userAgent = headersList.get("user-agent") || "جهاز غير معروف";
+
     await prisma.activityLogs.create({
       data: {
         userId,
         companyId,
-        userAgent: typeof window !== "undefined" ? navigator.userAgent : "",
+        userAgent: userAgent,
 
-        action: "deleted expense",
-        details: `Expense: ${expense.description}, Amount: ${expense.amount}`,
+        // تغيير نوع العملية للعربية
+        action: "حذف مصروف",
+
+        // صياغة التفاصيل بالعربية بشكل منظم
+        details: `المصروف: ${expense.description}، المبلغ: ${expense.amount}، رمز المصروف: ${expense.id}`,
       },
     });
 

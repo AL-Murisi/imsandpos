@@ -17,7 +17,7 @@ import { useCurrencyOptions } from "@/hooks/useCurrencyOptions";
 import { createCutomer } from "@/lib/actions/customers";
 import { fallbackCurrencyOptions } from "@/lib/actions/currnciesOptions";
 import { useAuth } from "@/lib/context/AuthContext";
-import { CreateCustomer, CreateCustomerSchema } from "@/lib/zod";
+import { CreateCustomer, CreateCustomerSchema } from "@/lib/zod/customer";
 type LimitInfo = {
   limit: number | null;
   used: number;

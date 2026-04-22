@@ -4,7 +4,7 @@ import { useTablePrams } from "@/hooks/useTableParams";
 import { SortingState } from "@tanstack/react-table";
 
 import { DataTable } from "@/components/common/ReusbleTable";
-import { userActivity } from "../../(compny)/_compoent/columns";
+import { userActivity } from "../../(compny)/_component/columns";
 type ProductClientProps = {
   logs: any[];
   total: number;

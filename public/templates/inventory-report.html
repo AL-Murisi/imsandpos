@@ -1,145 +1,20 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
-  <link
-    href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap"
-    rel="stylesheet"
-  />
   <head>
     <meta charset="UTF-8" />
-    <title>تقرير المبيعات</title>
+    <title>تقرير المخزون</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap"
+      rel="stylesheet"
+    />
     <style>
       body {
         font-family: "Cairo", sans-serif;
         direction: rtl;
         text-align: right;
         margin: 20px;
-        margin-top: 10px;
-        margin-bottom: 10px;
         background: #f8f9fa;
         color: #333;
-      }
-
-      .flex {
-        display: flex;
-      }
-      .justify-between {
-        justify-content: space-between;
-      }
-      .items-center {
-        align-items: center;
-      }
-      .mb-2 {
-        margin-bottom: 8px;
-      }
-      .gap-2 {
-        gap: 8px;
-      }
-      .grid {
-        display: grid;
-      }
-      .grid-cols-2 {
-        grid-template-columns: repeat(2, 1fr);
-      }
-      .text-sm {
-        font-size: 12px;
-      }
-      .text-lg {
-        font-size: 16px;
-        font-weight: bold;
-      }
-      .text-center {
-        text-align: center;
-      }
-      .text-xs {
-        font-size: 10px;
-      }
-      .green {
-        color: green;
-      }
-      .grey {
-        color: grey;
-      }
-      .text-3xl {
-        font-size: 24px;
-        font-weight: bold;
-      }
-      .text-2xl {
-        font-size: 15px;
-        font-weight: bold;
-      }
-      .justify-between {
-        justify-content: space-between;
-      }
-      .items-center {
-        align-items: center;
-      }
-      .items-center {
-        align-items: center;
-      }
-      .header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-bottom: 2px solid #000;
-        padding-bottom: 10px;
-        margin-bottom: 20px;
-      }
-
-      .header-right {
-        width: 33%;
-        text-align: right;
-      }
-
-      .header-center {
-        width: 33%;
-        text-align: center;
-      }
-
-      .header-left {
-        width: 33%;
-        text-align: left;
-        font-size: 14px;
-      }
-      .col-date {
-        width: 12%;
-      }
-      .section-title {
-        font-size: 20px;
-        background: #1abc9c;
-        color: #fff;
-        padding: 8px 12px;
-        border-radius: 5px;
-        margin-top: 30px;
-        margin-bottom: 10px;
-      }
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        table-layout: fixed; /* Keeps columns aligned */
-      }
-      th,
-      td {
-        border: 1px solid #000;
-        padding: 8px 4px;
-        font-size: 12px;
-        text-align: center;
-        word-wrap: break-word;
-      }
-      th {
-        background-color: #f2f2f2;
-      }
-
-      thead {
-        display: table-header-group; /* Repeats header on new pages */
-      }
-
-      tr {
-        page-break-inside: avoid;
-      }
-      .total-row {
-        background: #ecf0f1;
-        font-weight: bold;
-        color: #2c3e50;
       }
       .info-box {
         display: grid;
@@ -147,69 +22,117 @@
         grid-template-columns: repeat(2, 1fr);
         gap: 10px 10px; /* 10px vertical gap, 20px horizontal gap */
 
-        padding: 15px;
-        border: 1px solid #ddd; /* Lighter border for cleaner look */
-        border-radius: 8px;
-        background: #f9f9f9;
+        padding: 10px;
+
         direction: rtl; /* Ensures grid flows correctly for Arabic */
       }
+
       .info-box p {
         margin: 0; /* Remove default paragraph margins to keep grid tight */
         font-size: 14px;
         line-height: 1.6;
       }
-      .footer {
-        margin-top: 50px;
-        text-align: center;
-        font-size: 14px;
-        color: #777;
+      .header {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+        align-items: center;
+        gap: 18px;
+        margin-bottom: 22px;
+        padding: 22px 26px;
+        border: 1px solid #d9e2ec;
+        border-bottom: 3px solid #0f766e;
+        border-radius: 20px;
+        background: linear-gradient(
+          135deg,
+          #ffffff 0%,
+          #f7fbfb 55%,
+          #eef7f6 100%
+        );
       }
-      .currency {
-        font-family: "Tahoma", sans-serif;
+      .header-right,
+      .header-left {
+        padding: 14px 16px;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.88);
+        font-size: 13px;
+      }
+      .green {
+        color: #0f766e;
+        font-size: 24px;
+        font-weight: bold;
+      }
+      .title-box {
+        display: inline-flex;
+        padding: 6px 16px;
+        border-radius: 999px;
+        background: #ecfeff;
+        border: 1px solid #99f6e4;
+        color: #115e59;
+        font-weight: 700;
+        font-size: 12px;
+      }
+      table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        border: 1px solid #dbe4ea;
+        border-radius: 16px;
+        overflow: hidden;
+        background: #ffffff;
+      }
+      th {
+        background: linear-gradient(135deg, #0f766e 0%, #115e59 100%);
+        color: #ffffff;
+        padding: 10px;
+        font-weight: 700;
+        font-size: 12px;
+      }
+      td {
+        padding: 10px;
+        border-bottom: 1px solid #e2e8f0;
+        text-align: center;
+        font-size: 12px;
+      }
+      .total-row {
+        background: #f0fdfa;
+        font-weight: bold;
+      }
+      .footer {
+        margin-top: 28px;
+        text-align: center;
+        font-size: 12px;
+        color: #64748b;
+        border-top: 1px solid #e2e8f0;
+        padding-top: 14px;
       }
     </style>
   </head>
   <body>
-    <div class="section">
-      <div class="header">
-        <!-- Company -->
-        <div class="header-right">
-          <div
-            style="
-              font-size: 18px;
-              font-weight: bold;
-              line-height: 1.2;
-              max-width: 200px;
-              word-wrap: break-word;
-            "
-            class="green text-3xl font-bold"
-          >
-            {{company.name}}
-          </div>
-          <div>تلفون: {{company.phone}}</div>
-          <div>فرع: {{company.branchName}}</div>
-        </div>
-
-        <!-- Logo -->
-        <div class="logo-title-container">
-          <img src="{{company.logoUrl}}" style="width: 100px; height: 90px" />
-          <div class="title-box">📋تقرير المخزون</div>
-        </div>
-
-        <div class="header-left">
-          <div class="text-lg">المركز الرئيسي :{{company.address}}</div>
-          <div class="text-lg">{{company.city}}</div>
-          <div class="text-lg">الموقع: {{company.branchLocation}}</div>
-        </div>
+    <div class="header">
+      <div class="header-right">
+        <div class="green">{{company.name}}</div>
+        <div>تلفون: {{company.phone}}</div>
+        <div>فرع: {{company.branchName}}</div>
+      </div>
+      <div class="logo-title-container" style="text-align: center">
+        <img
+          src="{{company.logoUrl}}"
+          style="width: 100px; height: 90px; border-radius: 20px"
+        />
+        <br />
+        <div class="title-box">📋 تقرير المخزون</div>
+      </div>
+      <div class="header-left">
+        <div class="text-lg">المركز الرئيسي: {{company.address}}</div>
+        <div class="text-lg">{{company.city}}</div>
+        <div class="text-lg">الموقع: {{company.branchLocation}}</div>
       </div>
     </div>
     <div class="info-box">
-      <!-- <p>:<strong>الكاشير:</strong>{{casherNmae}}</p> -->
-
       <p><strong>من تاريخ:</strong> {{period.from}}</p>
       <p><strong>إلى تاريخ:</strong> {{period.to}}</p>
     </div>
-
     <table>
       <thead>
         <tr>
@@ -232,14 +155,12 @@
         {{/each}}
         <tr class="total-row">
           <td colspan="4">إجمالي قيمة المخزون (التكلفة)</td>
-          <td class="currency">{{totalInventoryValue}}</td>
+          <td>{{totalInventoryValue}}</td>
         </tr>
       </tbody>
     </table>
-
     <div class="footer">
-      <div>المستخدم:{{createby}}</div>
-
+      <div>المستخدم: {{createby}}</div>
       تم إنشاء هذا التقرير بواسطة نظام إدارة المخزون والمحاسبة.
     </div>
   </body>

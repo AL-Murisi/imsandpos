@@ -13,7 +13,7 @@ import { fetchbranches } from "@/lib/actions/pos";
 import { createUser } from "@/lib/actions/users";
 import { ROLE_DEFINITIONS } from "@/lib/constants/roles";
 import { useAuth } from "@/lib/context/AuthContext";
-import { CreateUserSchema, UserInput } from "@/lib/zod";
+import { CreateUserSchema, UserInput } from "@/lib/zod/user";
 import { toast } from "sonner";
 
 type SelectOption = {
@@ -117,7 +117,7 @@ export default function UserForm({
     if (result.warning) {
       toast.warning(result.warning);
     } else {
-      toast.success("User created successfully");
+      toast.success("تم اضافه المستخدم ✅");
     }
     setOpen(false);
     setIsSubmitting(false);
@@ -210,7 +210,7 @@ export default function UserForm({
                   </p>
                 )}
               </div>
-            )}{" "}
+            )}
           </div>
         </div>
 

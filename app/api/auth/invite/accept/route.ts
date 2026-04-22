@@ -4,13 +4,18 @@ import prisma from "@/lib/prisma";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+
     const token = typeof body?.token === "string" ? body.token : "";
     const email =
       typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
     const password = typeof body?.password === "string" ? body.password : "";
     const confirmPassword =
       typeof body?.confirmPassword === "string" ? body.confirmPassword : "";
-
+    // if (!user) {
+    //   return new Response(JSON.stringify({ error: "Unauthorized" }), {
+    //     status: 401,
+    //   });
+    // }
     if (!token || !email || password.length < 8 || confirmPassword.length < 8) {
       return NextResponse.json({ error: "Invalid request" }, { status: 400 });
     }
@@ -25,6 +30,7 @@ export async function POST(req: NextRequest) {
     const invite = await prisma.userInvite.findFirst({
       where: {
         token,
+
         usedAt: null,
         expiresAt: { gt: new Date() },
       },

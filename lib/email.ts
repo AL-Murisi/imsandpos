@@ -32,32 +32,114 @@ export async function sendUserInviteEmail(params: {
       pass: SMTP_PASS,
     },
   });
+  const safeCompany = params.companyName || "نظام إدارة المخزون";
 
   const appUrl = getAppUrl();
   const inviteUrl = `${appUrl}/invite?token=${encodeURIComponent(
     params.token,
   )}`;
-
-  const safeCompany = params.companyName || "نظام إدارة المخزون";
   const logoBlock = params.companyLogoUrl
-    ? `<div style="text-align:center; margin-bottom:16px;">
-         <img src="${params.companyLogoUrl}" alt="${safeCompany}" style="max-width:120px; max-height:120px; object-fit:contain; border-radius:40%" />
-       </div>`
+    ? `
+  <tr>
+    <td align="center" style="padding-bottom: 20px;">
+      <img 
+        src="${params.companyLogoUrl}" 
+        alt="${safeCompany}" 
+        width="90"
+        height="90"
+        style="display:block; border-radius:20px; object-fit:contain;"
+      />
+    </td>
+  </tr>`
     : "";
+
   const html = `
-  <div dir="rtl" style="font-family: Arial, sans-serif; line-height: 1.8; color: #111;">
-    ${logoBlock}
-    <h2 style="text-align:center;">مرحباً بك في ${safeCompany}</h2>
-    <p>مرحباً ${params.name ?? ""}،</p>
-    <p> تمت دعوتك للانضمام إلى حساب الشركة .</p>
-    <p>اضغط على الزر بالأسفل لتعيين كلمة المرور وتسجيل الدخول:</p>
-    <p style="text-align:center;">
-      <a href="${inviteUrl}" style="display: inline-block; padding: 12px 20px; background: #2563eb; color: #fff; text-decoration: none; border-radius: 6px;">قبول الدعوة</a>
-    </p>
-    <p>إذا لم يعمل الزر، انسخ الرابط التالي والصقه في المتصفح:</p>
-    <p>${inviteUrl}</p>
-  </div>
-  `;
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+</head>
+
+<body style="margin:0; padding:0; background-color:#f3f4f6; font-family:Arial, sans-serif;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f3f4f6; padding:20px 0;">
+    <tr>
+      <td align="center">
+
+        <!-- Container -->
+        <table width="100%" max-width="600" cellpadding="0" cellspacing="0"
+          style="background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+
+          <!-- Header -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#2563eb,#1e3a8a); padding:30px; text-align:center; color:#fff;">
+              <h1 style="margin:0; font-size:20px;">نظام إدارة المخزون</h1>
+              <p style="margin:5px 0 0; font-size:14px; opacity:0.9;">${safeCompany}</p>
+            </td>
+          </tr>
+
+          <!-- Logo -->
+          ${logoBlock}
+
+          <!-- Content -->
+          <tr>
+            <td style="padding:30px; color:#111; line-height:1.8; text-align:right;">
+              
+              <h2 style="margin-top:0; font-size:18px;">مرحباً ${params.name ?? ""} 👋</h2>
+
+              <p>
+                تمت دعوتك للانضمام إلى حساب الشركة.
+              </p>
+
+              <p>
+                اضغط على الزر أدناه لتعيين كلمة المرور والبدء باستخدام النظام:
+              </p>
+
+              <!-- Button -->
+              <div style="text-align:center; margin:30px 0;">
+                <a href="${inviteUrl}"
+                  style="
+                    background:#2563eb;
+                    color:#fff;
+                    padding:14px 24px;
+                    border-radius:8px;
+                    text-decoration:none;
+                    font-weight:bold;
+                    display:inline-block;
+                    font-size:14px;
+                  ">
+                  قبول الدعوة
+                </a>
+              </div>
+
+              <p style="font-size:13px; color:#555;">
+                إذا لم يعمل الزر، يمكنك نسخ الرابط التالي:
+              </p>
+
+              <p style="word-break:break-all; font-size:12px; color:#2563eb;">
+                ${inviteUrl}
+              </p>
+
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:20px; background:#f9fafb; text-align:center; font-size:12px; color:#888;">
+              © ${new Date().getFullYear()} ${safeCompany} — جميع الحقوق محفوظة
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>
+`;
 
   await transporter.sendMail({
     from: EMAIL_FROM,

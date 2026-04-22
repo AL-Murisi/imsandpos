@@ -2,7 +2,7 @@ import { getSession } from "@/lib/session";
 
 import { getCompany } from "@/lib/actions/createcompnayacc";
 import dynamic from "next/dynamic";
-import UpdateCompanyForm from "../_compoent/updateCompany";
+import UpdateCompanyForm from "../_component/updateCompany";
 
 type Users = {
   searchParams: Promise<{

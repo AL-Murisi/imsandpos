@@ -45,6 +45,7 @@ interface MultiExpenseFormProps {
   assignmentOptions: {
     employees: { id: string; name: string }[];
     customers: { id: string; name: string }[];
+    branch: { id: string; name: string }[];
   };
 }
 
@@ -83,7 +84,9 @@ export default function ExpenseForm({
   const [accountsByExpense, setAccountsByExpense] = useState<
     Record<string, Account[]>
   >({});
-  const [expenses, setExpenses] = useState<ExpenseItem[]>([createEmptyExpense()]);
+  const [expenses, setExpenses] = useState<ExpenseItem[]>([
+    createEmptyExpense(),
+  ]);
 
   if (!user) return null;
 
@@ -186,12 +189,20 @@ export default function ExpenseForm({
         branchId: company?.branches[0]?.id ?? "",
         basCurrncy: company?.base_currency ?? "",
         employeeId:
-          exp.expenseFor === "employee" ? exp.relatedPartyId || undefined : undefined,
+          exp.expenseFor === "employee"
+            ? exp.relatedPartyId || undefined
+            : undefined,
         customerId:
-          exp.expenseFor === "customer" ? exp.relatedPartyId || undefined : undefined,
+          exp.expenseFor === "customer"
+            ? exp.relatedPartyId || undefined
+            : undefined,
       }));
 
-      const result = await createMultipleExpenses(companyId, userId, expensesData);
+      const result = await createMultipleExpenses(
+        companyId,
+        userId,
+        expensesData,
+      );
 
       if (!result.success) {
         toast.error(result.error || "حدث خطأ أثناء إضافة المصاريف");

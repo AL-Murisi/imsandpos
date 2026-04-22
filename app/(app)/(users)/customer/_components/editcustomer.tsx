@@ -16,7 +16,7 @@ import { useCurrencyOptions } from "@/hooks/useCurrencyOptions";
 import { updatedCustomer } from "@/lib/actions/customers";
 import { fallbackCurrencyOptions } from "@/lib/actions/currnciesOptions";
 import { useAuth } from "@/lib/context/AuthContext";
-import { CreateCustomer, CreateCustomerSchema } from "@/lib/zod";
+import { CreateCustomer, CreateCustomerSchema } from "@/lib/zod/customer";
 
 export default function CustomerEditForm({ customer }: { customer: any }) {
   const {
@@ -142,7 +142,8 @@ export default function CustomerEditForm({ customer }: { customer: any }) {
             )}
             {hasEmail && !customer?.userId && !watch("password") && (
               <p className="text-xs text-amber-600">
-                إذا كان هذا العميل بلا حساب مستخدم فإدخال البريد يتطلب كلمة مرور لإنشاء الحساب.
+                إذا كان هذا العميل بلا حساب مستخدم فإدخال البريد يتطلب كلمة مرور
+                لإنشاء الحساب.
               </p>
             )}
           </div>
@@ -167,7 +168,11 @@ export default function CustomerEditForm({ customer }: { customer: any }) {
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="grid gap-2">
               <Label htmlFor="postalCode">الرمز البريدي</Label>
-              <Input id="postalCode" type="number" {...register("postalCode")} />
+              <Input
+                id="postalCode"
+                type="number"
+                {...register("postalCode")}
+              />
             </div>
 
             <div className="grid gap-2">
@@ -181,7 +186,9 @@ export default function CustomerEditForm({ customer }: { customer: any }) {
                 placeholder="اختر النوع"
               />
               {errors.customerType && (
-                <p className="text-xs text-red-500">{errors.customerType.message}</p>
+                <p className="text-xs text-red-500">
+                  {errors.customerType.message}
+                </p>
               )}
             </div>
           </div>
@@ -190,7 +197,9 @@ export default function CustomerEditForm({ customer }: { customer: any }) {
             <Label className="text-right">العملات المسموحة</Label>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
               {currencyOptions.map((option) => {
-                const isSelected = watch("preferred_currency")?.includes(option.id);
+                const isSelected = watch("preferred_currency")?.includes(
+                  option.id,
+                );
 
                 return (
                   <div
@@ -213,7 +222,9 @@ export default function CustomerEditForm({ customer }: { customer: any }) {
                   >
                     <div
                       className={`flex h-4 w-4 items-center justify-center rounded-sm border ${
-                        isSelected ? "border-primary bg-primary" : "border-gray-300"
+                        isSelected
+                          ? "border-primary bg-primary"
+                          : "border-gray-300"
                       }`}
                     >
                       {isSelected && <Check className="h-3 w-3 text-white" />}
@@ -225,16 +236,23 @@ export default function CustomerEditForm({ customer }: { customer: any }) {
               })}
             </div>
             {errors.preferred_currency && (
-              <p className="text-xs text-red-500">{errors.preferred_currency.message}</p>
+              <p className="text-xs text-red-500">
+                {errors.preferred_currency.message}
+              </p>
             )}
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
             <div className="grid gap-2">
               <Label htmlFor="creditLimit">حد الدين</Label>
-              <Input id="creditLimit" {...register("creditLimit", { valueAsNumber: true })} />
+              <Input
+                id="creditLimit"
+                {...register("creditLimit", { valueAsNumber: true })}
+              />
               {errors.creditLimit && (
-                <p className="text-xs text-red-500">{errors.creditLimit.message}</p>
+                <p className="text-xs text-red-500">
+                  {errors.creditLimit.message}
+                </p>
               )}
             </div>
 
@@ -253,7 +271,10 @@ export default function CustomerEditForm({ customer }: { customer: any }) {
 
             <div className="grid gap-2">
               <Label htmlFor="balance">رصيد افتتاحي دائن</Label>
-              <Input id="balance" {...register("balance", { valueAsNumber: true })} />
+              <Input
+                id="balance"
+                {...register("balance", { valueAsNumber: true })}
+              />
             </div>
           </div>
 

@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { updateEmployee } from "@/lib/actions/employees";
 import { useAuth } from "@/lib/context/AuthContext";
-import { CreateEmployeeInput, CreateEmployeeSchema } from "@/lib/zod";
+import { CreateEmployeeInput, CreateEmployeeSchema } from "@/lib/zod/employee";
 
 export default function EditEmployeeForm({ employee }: { employee: any }) {
   const { user } = useAuth();
@@ -108,7 +108,8 @@ export default function EditEmployeeForm({ employee }: { employee: any }) {
             )}
             {hasEmail && !employee?.userId && !watch("password") && (
               <p className="text-xs text-amber-600">
-                هذا الموظف لا يملك حسابا حتى الآن. أدخل كلمة المرور لإنشاء الحساب.
+                هذا الموظف لا يملك حسابا حتى الآن. أدخل كلمة المرور لإنشاء
+                الحساب.
               </p>
             )}
           </div>
@@ -131,7 +132,9 @@ export default function EditEmployeeForm({ employee }: { employee: any }) {
               step="0.01"
               {...register("salary", {
                 setValueAs: (value) =>
-                  value === "" || value === undefined ? undefined : Number(value),
+                  value === "" || value === undefined
+                    ? undefined
+                    : Number(value),
               })}
             />
           </div>

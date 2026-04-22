@@ -77,7 +77,7 @@ export function ExpenseEditForm({ expense }: { expense: any }) {
         {
           description: data.description,
           amount: Number(data.amount),
-          payment_method: data.payment_method,
+          payment_method: data.paymentMethod,
           status: data.status,
           notes: data.notes,
           expense_date: new Date(data.expenseDate),
@@ -100,8 +100,6 @@ export function ExpenseEditForm({ expense }: { expense: any }) {
   const paymentMethods = [
     { id: "cash", name: "نقداً" },
     { id: "bank", name: "تحويل بنكي" },
-
-    { id: "debt", name: "دين" },
   ];
 
   const statusOptions = [
@@ -115,7 +113,7 @@ export function ExpenseEditForm({ expense }: { expense: any }) {
     <Dailogreuse
       open={open}
       setOpen={setOpen}
-      btnLabl={<Edit/>}
+      btnLabl={<Edit />}
       style="bg-accent sm:max-w-md"
       titel=">إضافة فئة جديدة للمصروف"
       description="قم بإدخال المبلغ الجديد لتسديد جزء أو كل الدين."

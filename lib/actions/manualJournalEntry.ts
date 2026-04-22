@@ -22,6 +22,9 @@ interface JournalEntryLine {
   fiscal_period?: string | null;
   customer_id?: string;
   supplier_id?: string;
+  exchange_rate?: number | null;
+  foreign_amount?: number | null;
+  base_amount?: number | null;
 }
 
 interface SupplierPaymentDetails {
@@ -44,9 +47,10 @@ export async function createManualJournalEntry({
   generalDescription: string;
   companyId: string;
   paymentDetails?: SupplierPaymentDetails;
-}) {
+  }) {
   try {
-    await validateFiscalYear(companyId);
+    const firstEntryDate = entries?.[0]?.entry_date ?? new Date();
+    await validateFiscalYear(companyId, firstEntryDate);
 
     if (!entries || entries.length < 2) {
       return {
@@ -85,6 +89,23 @@ export async function createManualJournalEntry({
       `JE-${entryYear}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
     await prisma.$transaction(async (tx) => {
+      const accountIds = [...new Set(entries.map((entry) => entry.account_id))];
+      const accounts = await tx.accounts.findMany({
+        where: {
+          company_id: companyId,
+          id: { in: accountIds },
+        },
+        select: {
+          id: true,
+          account_type: true,
+        },
+      });
+
+      const accountTypeMap = new Map(
+        accounts.map((account) => [account.id, account.account_type]),
+      );
+      const accountDeltas = new Map<string, number>();
+
       await tx.journalHeader.create({
         data: {
           companyId,
@@ -103,38 +124,85 @@ export async function createManualJournalEntry({
               debit: Number(entry.debit || 0),
               credit: Number(entry.credit || 0),
               currencyCode: entry.currency_code || undefined,
+              exchangeRate:
+                paymentDetails?.exchangeRate !== null &&
+                paymentDetails?.exchangeRate !== undefined
+                  ? Number(paymentDetails?.exchangeRate)
+                  : undefined,
+              foreignAmount:
+                paymentDetails?.amountFC !== null &&
+                paymentDetails?.amountFC !== undefined
+                  ? Number(paymentDetails?.amountFC)
+                  : undefined,
+              baseAmount:
+                paymentDetails?.amountBase !== null &&
+                paymentDetails?.amountBase !== undefined
+                  ? Number(paymentDetails?.amountBase)
+                  : Number(entry.debit || 0) || Number(entry.credit || 0)
+                    ? Math.max(
+                        Number(entry.debit || 0),
+                        Number(entry.credit || 0),
+                      )
+                    : undefined,
               memo: entry.description || generalDescription,
             })),
           },
         },
       });
 
-      for (const entry of entries) {
-        const debit = Number(entry.debit || 0);
-        const credit = Number(entry.credit || 0);
+      // for (const entry of entries) {
+      //   const debit = Number(entry.debit || 0);
+      //   const credit = Number(entry.credit || 0);
+      //   const accountType = accountTypeMap.get(entry.account_id);
 
-        if (entry.customer_id) {
-          await tx.customer.update({
-            where: { id: entry.customer_id },
-            data: {
-              outstandingBalance: {
-                increment: debit - credit,
-              },
-            },
-          });
-        }
+      //   if (accountType) {
+      //     const change = debit - credit;
+      //     const isDebitNature =
+      //       accountType === "ASSET" ||
+      //       accountType === "EXPENSE" ||
+      //       accountType === "COST_OF_GOODS";
+      //     const delta = isDebitNature ? change : -change;
 
-        if (entry.supplier_id) {
-          await tx.supplier.update({
-            where: { id: entry.supplier_id },
-            data: {
-              outstandingBalance: {
-                increment: credit - debit,
-              },
-            },
-          });
-        }
-      }
+      //     accountDeltas.set(
+      //       entry.account_id,
+      //       (accountDeltas.get(entry.account_id) || 0) + delta,
+      //     );
+      //   }
+
+      //   if (entry.customer_id) {
+      //     await tx.customer.update({
+      //       where: { id: entry.customer_id },
+      //       data: {
+      //         outstandingBalance: {
+      //           increment: debit - credit,
+      //         },
+      //       },
+      //     });
+      //   }
+
+      //   if (entry.supplier_id) {
+      //     await tx.supplier.update({
+      //       where: { id: entry.supplier_id },
+      //       data: {
+      //         outstandingBalance: {
+      //           increment: credit - debit,
+      //         },
+      //       },
+      //     });
+      //   }
+
+      // await Promise.all(
+      //   Array.from(accountDeltas.entries()).map(([accountId, delta]) =>
+      //     tx.accounts.update({
+      //       where: { id: accountId },
+      //       data: {
+      //         balance: {
+      //           increment: delta,
+      //         },
+      //       },
+      //     }),
+      //   ),
+      // );
     });
 
     revalidatePath("/journal-entry");

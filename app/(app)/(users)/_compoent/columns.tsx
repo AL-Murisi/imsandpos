@@ -218,7 +218,7 @@ export const columns: ColumnDef<User>[] = [
               variant="ghost"
               size="sm"
               className="h-8 w-8 p-0 text-red-600 hover:bg-red-100"
-              disabled={userr.id === user.userId && userr.role === "customer"}
+              disabled={userr.id === user.userId || userr.role === "customer"}
             >
               <Trash2 className="h-4 w-4" />
             </Button>

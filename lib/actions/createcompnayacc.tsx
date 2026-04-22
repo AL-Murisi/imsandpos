@@ -53,6 +53,9 @@ export async function createCompany(data: CreateCompanyInput) {
 
     if (!company) {
       company = await prisma.company.create({
+        include: {
+          branches: true,
+        },
         data: {
           name,
           email,
@@ -62,6 +65,12 @@ export async function createCompany(data: CreateCompanyInput) {
           country,
           isActive: true,
           base_currency,
+          branches: {
+            create: {
+              location: address ?? "",
+              name: "الفرع الرئيسي",
+            },
+          },
           plan: normalizeSubscriptionPlan(plan),
         },
       });
@@ -125,26 +134,6 @@ export async function createCompany(data: CreateCompanyInput) {
       },
     ];
 
-    const rolesByName = new Map(
-      (
-        await prisma.role.findMany({
-          where: { name: { in: baseRoles.map((r) => r.name) } },
-        })
-      ).map((r) => [r.name, r]),
-    );
-
-    for (const roleDef of baseRoles) {
-      if (!rolesByName.has(roleDef.name)) {
-        const created = await prisma.role.create({ data: roleDef });
-        rolesByName.set(roleDef.name, created);
-      }
-    }
-
-    const adminRole = rolesByName.get("admin");
-    if (!adminRole) {
-      throw new Error("Admin role is missing");
-    }
-
     // 3️⃣ Create admin user (if not exists)
     let user = await prisma.user.findUnique({
       where: { email: adminEmail },
@@ -191,23 +180,6 @@ export async function createCompany(data: CreateCompanyInput) {
         },
       });
     }
-
-    // 4️⃣ Link admin user to admin role (if not already)
-    // const existingLink = await prisma.userRole.findFirst({
-    //   where: {
-    //     userId: user.id,
-    //     roleId: adminRole.id,
-    //   },
-    // });
-
-    // if (!existingLink) {
-    //   await prisma.userRole.create({
-    //     data: {
-    //       userId: user.id,
-    //       roleId: adminRole.id,
-    //     },
-    //   });
-    // }
 
     await prisma.userInvite.deleteMany({
       where: {

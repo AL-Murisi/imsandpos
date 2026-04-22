@@ -33,6 +33,7 @@ type ProductClientProps = {
   assignmentOptions: {
     employees: { id: string; name: string }[];
     customers: { id: string; name: string }[];
+    branch: { id: string; name: string }[];
   };
 };
 

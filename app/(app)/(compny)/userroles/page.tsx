@@ -1,6 +1,6 @@
 import { fetchRoles } from "@/lib/actions/roles";
 import React from "react";
-import Role from "../_compoent/roleTable";
+import Role from "../_component/roleTable";
 type Users = {
   searchParams: Promise<{
     from?: string;

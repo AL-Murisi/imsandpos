@@ -73,7 +73,7 @@ const LoginSkeleton = () => {
               <span className="w-full border-t border-gray-800" />
             </div>
             <div className="relative flex justify-center">
-              <span className="h-4 w-10 animate-pulse rounded bg-[#111827] bg-gray-800 px-4" />
+              <span className="h-4 w-10 animate-pulse rounded bg-[#111827] px-4" />
             </div>
           </div>
 

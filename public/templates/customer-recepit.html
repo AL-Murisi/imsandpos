@@ -2,18 +2,16 @@
 <html lang="ar" dir="rtl">
   <head>
     <meta charset="utf-8" />
-    <title>Customer Receipts</title>
+    <title>إيصالات العملاء</title>
     <link
       href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap"
       rel="stylesheet"
     />
-
     <style>
       @page {
         margin: 6mm;
         size: A4;
       }
-
       body {
         font-family: "Cairo", Arial, sans-serif;
         direction: rtl;
@@ -21,131 +19,71 @@
         padding: 0;
         background: #fff;
       }
-
       .receipt-page {
-        border: 1px solid #000;
-        border-radius: 6px;
-        min-height: 95vh;
-        box-sizing: border-box;
-        page-break-after: always;
-        padding: 15px;
+        border: 1px solid #dbe4ea;
+        border-radius: 18px;
+        padding: 20px;
         margin-bottom: 20px;
-        position: relative;
       }
-
-      .receipt-page:last-child {
-        page-break-after: auto;
-      }
-
-      /* Centered Header Layout */
       .header-flex {
-        display: flex;
-        justify-content: space-between;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
         align-items: center;
-        margin-bottom: 10px;
+        gap: 18px;
+        margin-bottom: 14px;
       }
-
-      .header-right {
-        width: 33%;
-        text-align: right;
-      }
-      .header-center {
-        width: 33%;
-        text-align: center;
-      }
+      .header-right,
       .header-left {
-        width: 33%;
-        text-align: left;
-        font-size: 13px;
-      }
-
-      hr {
-        border: 0;
-        border-top: 1px solid #000;
-        margin: 10px 0;
+        padding: 12px 14px;
+        border: 1px solid #dbe4ea;
+        border-radius: 14px;
+        background: #f8fafc;
       }
       .info-section {
-        display: flex; /* Makes items side-by-side */
-        justify-content: space-between; /* Spreads them to the edges */
-        align-items: center;
-        margin-bottom: 15px;
-        font-size: 14px;
-        border-bottom: 1px dashed #eee; /* Optional styling */
-        padding-bottom: 5px;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px 16px;
+        margin-bottom: 18px;
+        padding: 14px;
+        border: 1px solid #dbe4ea;
+        border-radius: 14px;
       }
-
-      .info-item {
-        flex: 1; /* Gives equal space to each part */
-      }
-
-      /* Stable Table Layout */
       table {
         width: 100%;
-        border-collapse: collapse;
-        table-layout: fixed;
+        border-collapse: separate;
+        border-spacing: 0;
+        border: 1px solid #dbe4ea;
+        border-radius: 16px;
       }
-
       th,
       td {
-        border: 1px solid #000;
-        padding: 6px 2px;
+        border: 1px solid #dbe4ea;
+        padding: 9px 6px;
         font-size: 11px;
         text-align: center;
-        word-wrap: break-word;
       }
-
       th {
-        background: #f0f0f0;
+        background: #0f766e;
+        color: #ffffff;
       }
-
-      /* Column Widths */
-      .col-m {
-        width: 30px;
-      }
-      .col-prod {
-        width: auto;
-      }
-      .col-wh {
-        width: 15%;
-      }
-      .col-qty {
-        width: 10%;
-      }
-      .col-unit {
-        width: 10%;
-      }
-      .col-prc {
-        width: 12%;
-      }
-      .col-tot {
-        width: 12%;
-      }
-
-      /* Totals Area */
-      .totals-section {
-        margin-top: 15px;
-        display: flex;
-        justify-content: flex-end;
-      }
-
       .totals-box {
-        width: 200px;
-        line-height: 1.8;
+        width: 240px;
         font-size: 13px;
         font-weight: bold;
+        padding: 12px;
+        border: 1px solid #dbe4ea;
+        border-radius: 14px;
+        background: #f8fafc;
       }
-
       footer {
-        border-top: 1px solid #000;
-        margin-top: 20px;
-        padding-top: 10px;
+        border-top: 1px solid #dbe4ea;
+        margin-top: 24px;
+        padding-top: 12px;
         font-size: 12px;
-        display: flex;
-        justify-content: space-between;
+        color: #64748b;
       }
     </style>
   </head>
-
   <body>
     {{#each receipts}}
     <div class="receipt-page">
@@ -154,24 +92,18 @@
           <div style="font-size: 20px; font-weight: bold; color: green">
             {{../company.name}}
           </div>
-          <div>Branch: {{../company.branchName}}</div>
+          <div>الفرع: {{../company.branchName}}</div>
         </div>
-
         <div class="header-center">
-          <img
-            src="{{../company.logoUrl}}"
-            style="width: 85px; height: 75px; object-fit: contain"
-          />
+          <img src="{{../company.logoUrl}}" style="width: 85px; height: 75px" />
         </div>
-
         <div class="header-left">
           <div>{{../company.address}}</div>
           <div>{{../company.city}}</div>
-          <div>Location: {{../company.branchLocation}}</div>
+          <div>الموقع: {{../company.branchLocation}}</div>
           <div dir="ltr">{{../company.phone}}</div>
         </div>
       </div>
-
       <hr />
       <div class="info-section">
         <div class="info-item">
@@ -184,24 +116,23 @@
           <strong>رقم الفاتورة:</strong> {{sale_number}}
         </div>
       </div>
-
       <table>
         <thead>
           <tr>
-            <th class="col-m">م</th>
-            <th class="col-prod">المنتج</th>
-            <th class="col-wh">المستودع</th>
-            <th class="col-qty">الكمية</th>
-            <th class="col-unit">النوع</th>
-            <th class="col-prc">السعر</th>
-            <th class="col-tot">الإجمالي</th>
+            <th>م</th>
+            <th>المنتج</th>
+            <th>المستودع</th>
+            <th>الكمية</th>
+            <th>النوع</th>
+            <th>السعر</th>
+            <th>الإجمالي</th>
           </tr>
         </thead>
         <tbody>
           {{#each items}}
           <tr>
             <td>{{@index}}</td>
-            <td style="text-align: right; padding-right: 5px">{{name}}</td>
+            <td>{{name}}</td>
             <td>{{warehousename}}</td>
             <td>{{selectedQty}}</td>
             <td>{{sellingUnitArabic}}</td>
@@ -211,34 +142,24 @@
           {{/each}}
         </tbody>
       </table>
-
-      <div class="totals-section">
+      <div
+        class="totals-section"
+        style="display: flex; justify-content: flex-end; margin-top: 15px"
+      >
         <div class="totals-box">
-          <div class="header-flex">
-            <span>الخصم:</span> <span>{{discount}}</span>
-          </div>
-          <div class="header-flex">
-            <span>الإجمالي:</span> <span>{{total}}</span>
-          </div>
-          <div class="header-flex">
-            <span>المدفوع:</span> <span>{{paid}}</span>
-          </div>
-          <div class="header-flex">
-            <span>المتبقي:</span> <span>{{change}}</span>
-          </div>
+          <div>الخصم: {{discount}}</div>
+          <div>الإجمالي: {{total}}</div>
+          <div>المدفوع: {{paid}}</div>
+          <div>المتبقي: {{change}}</div>
           {{#if customer_debt}}
-          <div class="header-flex" style="color: red">
-            <span>ديون سابقة:</span> <span>{{customer_debt}}</span>
-          </div>
+          <div style="color: red">ديون سابقة: {{customer_debt}}</div>
           {{/if}}
         </div>
       </div>
-
       <footer>
         <div>👨‍💼 الكاشير: {{cashier_name}}</div>
-        <div>📅 {{date}} ⏰ {{time}}</div>
+        <div>📅 {{date}} 🕒 {{time}}</div>
       </footer>
-
       <div
         style="
           text-align: center;

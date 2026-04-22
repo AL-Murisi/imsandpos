@@ -6,16 +6,22 @@ import { getSession } from "@/lib/session";
 export async function createFiscalYear(startDate: string, endDate: string) {
   const user = await getSession();
   if (!user) return;
-  console.log("hey there");
   const start = new Date(startDate);
   const end = new Date(endDate);
   const period_name = `${start.getFullYear()}-${end.getFullYear()}`;
 
-  // Deactivate any existing active FY
-  await prisma.fiscal_periods.updateMany({
-    where: { company_id: user.companyId, is_closed: true },
-    data: { is_closed: true },
+  const existing = await prisma.fiscal_periods.findUnique({
+    where: {
+      company_id_period_name: {
+        company_id: user.companyId,
+        period_name,
+      },
+    },
   });
+
+  if (existing) {
+    throw new Error("السنة المالية موجودة بالفعل");
+  }
 
   const fy = await prisma.fiscal_periods.create({
     data: {
@@ -52,14 +58,19 @@ export async function getAllFiscalYears() {
 export async function setActiveFiscalYear(fyId: string) {
   const user = await getSession();
   if (!user) return;
+
   await prisma.fiscal_periods.updateMany({
-    where: { company_id: user.companyId, is_closed: true },
-    data: { is_closed: false },
+    where: { company_id: user.companyId, is_closed: false },
+    data: { is_closed: true },
   });
 
   return await prisma.fiscal_periods.update({
     where: { id: fyId },
-    data: { is_closed: true },
+    data: {
+      is_closed: false,
+      closed_by: null,
+      closed_at: null,
+    },
   });
 }
 export async function getActiveFiscalYears() {
@@ -70,13 +81,17 @@ export async function getActiveFiscalYears() {
     orderBy: { start_date: "desc" },
   });
 }
-export async function validateFiscalYear(companyId: string) {
+export async function validateFiscalYear(
+  companyId: string,
+  targetDate?: Date | string | null,
+) {
+  const effectiveDate = targetDate ? new Date(targetDate) : new Date();
   const activeYear = await prisma.fiscal_periods.findFirst({
     where: {
       company_id: companyId,
       is_closed: false,
-      start_date: { lte: new Date() },
-      end_date: { gte: new Date() },
+      start_date: { lte: effectiveDate },
+      end_date: { gte: effectiveDate },
     },
   });
 

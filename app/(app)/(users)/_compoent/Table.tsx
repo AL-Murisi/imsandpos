@@ -12,10 +12,14 @@ const Calendar22 = dynamic(
 
 import { SelectField } from "@/components/common/selection";
 // import SearchInput from "@/components/common/SearchInput";
-
+const UserForm = dynamic(() => import("./form"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-9 w-32 rounded bg-slate-300 dark:bg-slate-700"></div>
+  ),
+});
 import SearchInput from "@/components/common/searchtest";
-import { columns } from "../../(compny)/_compoent/columns";
-import UserForm from "./form";
+import { columns } from "./columns";
 import { DataTable } from "@/components/common/ReusbleTable";
 import { ROLE_DEFINITIONS } from "@/lib/constants/roles";
 
@@ -70,7 +74,7 @@ export default function UserClinet({
       dir="rtl"
     >
       {/* Add dir="rtl" for proper RTL layout */}
-
+      sss
       <DataTable
         search={
           <div className="flex flex-wrap gap-2">

@@ -585,7 +585,6 @@ export default function ManualJournalEntryForm({
                             toast.info("لا يمكن إدخال مدين ودائن في نفس السطر");
                           }
                         }}
-                        disabled={line.credit > 0}
                         placeholder="0.00"
                         className="text-right"
                       />
@@ -610,7 +609,6 @@ export default function ManualJournalEntryForm({
                             toast.info("لا يمكن إدخال مدين ودائن في نفس السطر");
                           }
                         }}
-                        disabled={line.debit > 0}
                         placeholder="0.00"
                         className="text-right"
                       />

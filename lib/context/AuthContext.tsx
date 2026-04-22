@@ -5,6 +5,7 @@ import { SessionData } from "@/lib/session";
 import {
   signIn as nextAuthSignIn,
   signOut as nextAuthSignOut,
+  useSession,
 } from "next-auth/react";
 
 import { toast } from "sonner";
@@ -17,6 +18,7 @@ interface AuthContextType {
   ) => Promise<{ success: boolean; redirectPath?: string }>;
   logout: () => Promise<void>;
   logoutAndRedirect: () => Promise<void>;
+  initialized: boolean;
   loading: boolean;
   loggingOut: boolean;
   hasRole: (role: string) => boolean;
@@ -36,53 +38,79 @@ function getDefaultRedirectForRole(roles?: string): string {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<SessionData | null>(null);
   const [loading, setLoading] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
 
-  useEffect(() => {
-    checkAuth();
-  }, []);
+  const [user, setUser] = useState<SessionData | null>(() => {
+    // ✅ hydrate immediately from localStorage (prevents white screen)
+    if (typeof window !== "undefined") {
+      const cached = localStorage.getItem(OFFLINE_USER_CACHE_KEY);
+      return cached ? JSON.parse(cached) : null;
+    }
+    return null;
+  });
 
-  const checkAuth = async () => {
-    try {
-      const response = await fetch("/api/auth/me");
-      if (response.ok) {
-        const userData = await response.json();
-        setUser(userData);
-        if (typeof window !== "undefined") {
+  const [initialized, setInitialized] = useState(false); // ✅ NEW
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const checkAuth = async () => {
+      try {
+        const response = await fetch("/api/auth/me", {
+          cache: "no-store",
+        });
+
+        if (!isMounted) return;
+
+        if (response.ok) {
+          const userData = await response.json();
+          setUser(userData);
+
           localStorage.setItem(
             OFFLINE_USER_CACHE_KEY,
             JSON.stringify(userData),
           );
+        } else {
+          // ✅ fallback to cache if offline
+          if (!navigator.onLine) {
+            const cached = localStorage.getItem(OFFLINE_USER_CACHE_KEY);
+            if (cached) {
+              setUser(JSON.parse(cached));
+            } else {
+              setUser(null);
+            }
+          } else {
+            setUser(null);
+            localStorage.removeItem(OFFLINE_USER_CACHE_KEY);
+          }
         }
-      } else {
-        if (typeof window !== "undefined" && !navigator.onLine) {
+      } catch (error) {
+        console.error("Auth check failed:", error);
+
+        // ✅ offline fallback
+        if (!navigator.onLine) {
           const cached = localStorage.getItem(OFFLINE_USER_CACHE_KEY);
           if (cached) {
             setUser(JSON.parse(cached));
-            return;
           }
+        } else {
+          setUser(null);
         }
-        setUser(null);
-        if (typeof window !== "undefined") {
-          localStorage.removeItem(OFFLINE_USER_CACHE_KEY);
-        }
-      }
-    } catch (error) {
-      console.error("Auth check failed:", error);
-      if (typeof window !== "undefined" && !navigator.onLine) {
-        const cached = localStorage.getItem(OFFLINE_USER_CACHE_KEY);
-        if (cached) {
-          setUser(JSON.parse(cached));
-          return;
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+          setInitialized(true); // ✅ IMPORTANT
         }
       }
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    checkAuth();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const login = async (
     email: string,
@@ -203,6 +231,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         logout,
         logoutAndRedirect,
         loading,
+        initialized,
         loggingOut,
         hasRole,
         hasAnyRole,
@@ -215,8 +244,83 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
+  if (context !== undefined) return context;
+
+  // Fallback implementation when AuthProvider is not mounted.
+  // Uses next-auth's useSession to provide a compatible API surface.
+  const { data: session, status } = useSession();
+
+  const mappedUser: SessionData | null = session?.user
+    ? {
+        userId: (session.user as any).userId ?? (session.user as any).id ?? "",
+        role: (session.user as any).role ?? "",
+        name: session.user.name ?? "",
+        email: session.user.email ?? "",
+        companyId: (session.user as any).companyId ?? "",
+      }
+    : null;
+
+  const loading = status === "loading";
+  const initialized = status !== "loading";
+  const loggingOut = false;
+
+  const login = async (
+    email: string,
+    password: string,
+  ): Promise<{ success: boolean; redirectPath?: string }> => {
+    try {
+      const result = await nextAuthSignIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
+
+      if (!result?.error) {
+        return { success: true };
+      }
+      return { success: false };
+    } catch (error) {
+      console.error("Login fallback failed:", error);
+      return { success: false };
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await nextAuthSignOut({ redirect: false, callbackUrl: "/login" });
+    } catch (error) {
+      console.error("Logout fallback failed:", error);
+    }
+  };
+
+  const logoutAndRedirect = async () => {
+    try {
+      await nextAuthSignOut({ redirect: false, callbackUrl: "/login" });
+      if (typeof window !== "undefined") window.location.replace("/login");
+    } catch (err) {
+      console.error("Logout and redirect failed:", err);
+      if (typeof window !== "undefined") window.location.replace("/login");
+    }
+  };
+
+  const hasRole = (role: string): boolean => {
+    return mappedUser?.role?.includes(role) || false;
+  };
+
+  const hasAnyRole = (allowedRoles: string[]): boolean => {
+    if (!allowedRoles || allowedRoles.length === 0) return true;
+    return mappedUser?.role ? allowedRoles.includes(mappedUser.role) : false;
+  };
+
+  return {
+    user: mappedUser,
+    login,
+    logout,
+    logoutAndRedirect,
+    initialized,
+    loading,
+    loggingOut,
+    hasRole,
+    hasAnyRole,
+  };
 }

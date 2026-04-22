@@ -17,7 +17,10 @@ function SummaryCardSkeleton() {
 
 export default function Loading() {
   return (
-    <div className="space-y-6 overflow-x-hidden p-3 pb-24 md:p-4 md:pb-6" dir="rtl">
+    <div
+      className="h-[82vh] space-y-6 overflow-hidden overflow-x-hidden p-3 pb-24 md:p-4 md:pb-6"
+      dir="rtl"
+    >
       <section className="overflow-hidden rounded-[28px] bg-[#0b142a] p-5 text-white shadow-lg md:p-7">
         <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
           <div className="space-y-4">

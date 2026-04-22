@@ -211,6 +211,15 @@ const DEFAULT_ACCOUNTS_TEMPLATE = [
     allowManual: false,
   },
   {
+    code: "3210",
+    name: "تسويات الأرصدة الافتتاحية",
+    type: "EQUITY",
+    category: "OWNER_EQUITY",
+    parent: "3000",
+    level: 2,
+    allowManual: false,
+  },
+  {
     code: "3300",
     name: "المسحوبات",
     type: "EQUITY",
@@ -253,6 +262,24 @@ const DEFAULT_ACCOUNTS_TEMPLATE = [
     category: "OTHER_INCOME",
     parent: "4000",
     level: 2,
+  },
+  {
+    code: "4310",
+    name: "أرباح فروقات العملة غير المحققة",
+    type: "REVENUE",
+    category: "OTHER_INCOME",
+    parent: "4300",
+    level: 3,
+    allowManual: false,
+  },
+  {
+    code: "4320",
+    name: "أرباح فروقات العملة المحققة",
+    type: "REVENUE",
+    category: "OTHER_INCOME",
+    parent: "4300",
+    level: 3,
+    allowManual: false,
   },
 
   // EXPENSES (5000-5999)
@@ -329,6 +356,24 @@ const DEFAULT_ACCOUNTS_TEMPLATE = [
     category: "OTHER_EXPENSES",
     parent: "5000",
     level: 2,
+  },
+  {
+    code: "5510",
+    name: "خسائر فروقات العملة غير المحققة",
+    type: "EXPENSE",
+    category: "OTHER_EXPENSES",
+    parent: "5500",
+    level: 3,
+    allowManual: false,
+  },
+  {
+    code: "5520",
+    name: "خسائر فروقات العملة المحققة",
+    type: "EXPENSE",
+    category: "OTHER_EXPENSES",
+    parent: "5500",
+    level: 3,
+    allowManual: false,
   },
 ];
 

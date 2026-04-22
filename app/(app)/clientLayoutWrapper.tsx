@@ -41,7 +41,7 @@ export default function ClientLayoutWrapper({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, loading, loggingOut } = useAuth();
+  const { user, loading, loggingOut, initialized } = useAuth();
   const { loading: companyLoading } = useCompany();
   const pathname = usePathname();
   useOfflineSync();
@@ -50,42 +50,45 @@ export default function ClientLayoutWrapper({
   // Routes that don't need sidebar and header
   const authRoutes = ["/login", "/signup"];
   const isAuthRoute = authRoutes.includes(pathname);
+  if (!initialized) {
+    return <IMSLoader />; // ✅ blocks white screen completely
+  }
 
-  if (loading || loggingOut || (!!user && companyLoading)) {
+  if (loading || loggingOut) {
+    return <IMSLoader />;
+  }
+
+  if (user && companyLoading) {
     return <IMSLoader />;
   }
 
   return (
-    <Provider store={store}>
-      <NuqsAdapter>
-        <SidebarProvider
-          style={
-            {
-              "--sidebar-width": "17rem",
-              "--sidebar-width-mobile": "1rem",
-            } as React.CSSProperties
-          }
-        >
-          <SidebarInset>
-            <Appheader />
-            <ScrollArea
-              className="group @container/main flex flex-col"
-              dir="rtl"
-            >
-              {children}
-              <div className="mt-12 md:mt-0 md:hidden">
-                <BottomBar />
-              </div>
-            </ScrollArea>
-          </SidebarInset>
-          <AppSidebar
-            variant="floating"
-            className="text-2xl"
-            side="right"
-            dir="rtl"
-          />
-        </SidebarProvider>
-      </NuqsAdapter>
-    </Provider>
+    <SidebarProvider
+      style={
+        {
+          "--sidebar-width": "17rem",
+          "--sidebar-width-mobile": "1rem",
+        } as React.CSSProperties
+      }
+    >
+      <SidebarInset>
+        <Appheader />
+        <ScrollArea className="group @container/main flex flex-col" dir="rtl">
+          {" "}
+          <Provider store={store}>
+            <NuqsAdapter>{children} </NuqsAdapter>
+          </Provider>
+          <div className="mt-12 md:mt-0 md:hidden">
+            <BottomBar />
+          </div>
+        </ScrollArea>
+      </SidebarInset>
+      <AppSidebar
+        variant="floating"
+        className="text-2xl"
+        side="right"
+        dir="rtl"
+      />
+    </SidebarProvider>
   );
 }

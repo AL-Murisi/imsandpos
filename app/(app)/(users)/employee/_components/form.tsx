@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createEmployee } from "@/lib/actions/employees";
 import { useAuth } from "@/lib/context/AuthContext";
-import { CreateEmployeeInput, CreateEmployeeSchema } from "@/lib/zod";
+import { CreateEmployeeInput, CreateEmployeeSchema } from "@/lib/zod/employee";
 import { fetchRolesForSelect } from "@/lib/actions/roles";
 import { SelectField } from "@/components/common/selectproduct";
 
@@ -163,7 +163,13 @@ export default function EmployeeForm({ userLimit }: { userLimit?: LimitInfo }) {
               action={(value) =>
                 setValue(
                   "position",
-                  value as "admin" | "customer" | "accountant" | "manager_wh" | "supplier" | "cashier"
+                  value as
+                    | "admin"
+                    | "customer"
+                    | "accountant"
+                    | "manager_wh"
+                    | "supplier"
+                    | "cashier",
                 )
               }
               value={selectedRole}

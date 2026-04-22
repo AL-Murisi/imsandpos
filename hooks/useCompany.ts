@@ -62,7 +62,7 @@ export function useCompany() {
     };
 
     fetchCompany();
-  }, [user?.companyId]);
+  }, [user]);
 
   return { company, loading };
 }

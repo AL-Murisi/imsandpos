@@ -427,6 +427,29 @@ export async function POST(req: NextRequest, context: RouteContext) {
       case "profit-loss": {
         templateFile = "profit-loss-report.html";
 
+        let profitLossFrom = fromDate;
+        let profitLossTo = toDate;
+
+        if (!profitLossFrom || !profitLossTo) {
+          const fiscalYear = await prisma.fiscal_periods.findFirst({
+            where: {
+              company_id: user.companyId,
+              is_closed: false,
+            },
+            select: { start_date: true, end_date: true },
+          });
+
+          if (!fiscalYear) {
+            return new Response(
+              JSON.stringify({ error: "No open fiscal year" }),
+              { status: 400 },
+            );
+          }
+
+          profitLossFrom = new Date(fiscalYear.start_date).toISOString();
+          profitLossTo = new Date(fiscalYear.end_date).toISOString();
+        }
+
         // 1. Fetch relevant accounts grouped by their P&L role
         const [revenueAccs, cogsAccs, expenseAccs] = await Promise.all([
           prisma.accounts.findMany({
@@ -436,7 +459,8 @@ export async function POST(req: NextRequest, context: RouteContext) {
                 where: {
                   header: {
                     status: "POSTED",
-                    entryDate: { gte: fromDate, lte: toDate },
+                    entryDate: { gte: profitLossFrom, lte: profitLossTo },
+                    ...(branchId && { branchId }),
                   },
                 },
               },
@@ -445,13 +469,22 @@ export async function POST(req: NextRequest, context: RouteContext) {
           prisma.accounts.findMany({
             where: {
               company_id: user.companyId,
-              account_type: "EXPENSE",
-              account_category: "COST_OF_GOODS_SOLD",
+              OR: [
+                { account_type: "COST_OF_GOODS" },
+                {
+                  account_type: "EXPENSE",
+                  account_category: "COST_OF_GOODS_SOLD",
+                },
+              ],
             },
             include: {
               journalLines: {
                 where: {
-                  header: { entryDate: { gte: fromDate, lte: toDate } },
+                  header: {
+                    status: "POSTED",
+                    entryDate: { gte: profitLossFrom, lte: profitLossTo },
+                    ...(branchId && { branchId }),
+                  },
                 },
               },
             },
@@ -465,7 +498,11 @@ export async function POST(req: NextRequest, context: RouteContext) {
             include: {
               journalLines: {
                 where: {
-                  header: { entryDate: { gte: fromDate, lte: toDate } },
+                  header: {
+                    status: "POSTED",
+                    entryDate: { gte: profitLossFrom, lte: profitLossTo },
+                    ...(branchId && { branchId }),
+                  },
                 },
               },
             },
@@ -478,10 +515,14 @@ export async function POST(req: NextRequest, context: RouteContext) {
           return accs
             .map((acc) => {
               const total = acc.journalLines.reduce((sum: number, je: any) => {
-                const val = je.baseAmount
-                  ? Number(je.baseAmount)
-                  : Number(je.debit) - Number(je.credit);
-                return sum + val;
+                const signedValue =
+                  je.baseAmount !== null && je.baseAmount !== undefined
+                    ? Number(je.debit) > 0
+                      ? Number(je.baseAmount)
+                      : -Number(je.baseAmount)
+                    : Number(je.debit) - Number(je.credit);
+
+                return sum + signedValue;
               }, 0);
 
               // Flip sign for Revenue (Credits are positive income)
@@ -511,8 +552,8 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
         data = {
           ...baseData,
-          from: fromDate,
-          to: toDate,
+          from: profitLossFrom,
+          to: profitLossTo,
           revenue,
           cogs,
           expenses,
@@ -611,7 +652,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
           await prisma.$queryRaw<LowStockResult[]>(rawQuery);
         Handlebars.registerHelper("eq", (a, b) => a === b);
         Handlebars.registerHelper("lt", (a, b) => a < b);
-        console.log(lowStockRecords);
+
         templateFile = "out-of-stock-report.html"; // Assume you have a template
         data = {
           ...baseData,
@@ -1141,57 +1182,26 @@ export async function POST(req: NextRequest, context: RouteContext) {
           });
           const invoiceIdList = invoiceIds.map((i) => i.id);
 
-          // 2. Fetch all posted journal entries for the customer
-          const [lineEntries, journalEntries] = await Promise.all([
-            prisma.journalLine.findMany({
-              where: {
-                companyId: user.companyId,
-                accountId: arAccount,
-                header: {
-                  referenceId: { in: invoiceIdList },
-                  status: "POSTED",
-                  ...(branchId && { branchId }),
-                },
+          // 2. Fetch all posted journal lines for the customer
+          const mergedEntries = await prisma.journalLine.findMany({
+            where: {
+              companyId: user.companyId,
+              accountId: arAccount,
+              header: {
+                referenceId: { in: invoiceIdList },
+                status: "POSTED",
+                ...(branchId && { branchId }),
               },
-              select: {
-                debit: true,
-                credit: true,
-                currencyCode: true,
-                foreignAmount: true,
-              },
-            }),
-            prisma.journal_entries.findMany({
-              where: {
-                company_id: user.companyId,
-                account_id: arAccount,
-                reference_id: c.id,
-                ...(branchId && { branch_id: branchId }),
-              },
-              select: {
-                debit: true,
-                credit: true,
-                currency_code: true,
-                foreign_amount: true,
-              },
-            }),
-          ]);
+            },
+            select: {
+              debit: true,
+              credit: true,
+              currencyCode: true,
+              foreignAmount: true,
+            },
+          });
 
-          if (lineEntries.length === 0 && journalEntries.length === 0) continue;
-
-          const mergedEntries = [
-            ...lineEntries.map((e) => ({
-              currencyCode: e.currencyCode,
-              foreignAmount: e.foreignAmount,
-              debit: e.debit,
-              credit: e.credit,
-            })),
-            ...journalEntries.map((e) => ({
-              currencyCode: e.currency_code,
-              foreignAmount: e.foreign_amount,
-              debit: e.debit,
-              credit: e.credit,
-            })),
-          ];
+          if (mergedEntries.length === 0) continue;
 
           // 3. Group by currency with strict typing
           const currencyTotals = mergedEntries.reduce<CurrencyGroups>(
@@ -1402,7 +1412,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
             ...paymentIdList,
           ];
 
-          // Find all unique currencies this customer has used (journal headers + journal_entries)
+          // Find all unique currencies this customer has used in posted journal headers
           const lineCurrencies = await prisma.journalLine.findMany({
             where: {
               companyId: user.companyId,

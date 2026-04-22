@@ -24,12 +24,12 @@
       }
 
       .receipt-page {
-        border: 1px solid #000;
-        border-radius: 6px;
+        border: 1px solid #dbe4ea;
+        border-radius: 18px;
         min-height: 95vh;
         box-sizing: border-box;
         page-break-after: always;
-        padding: 15px;
+        padding: 20px;
         margin-bottom: 20px;
         position: relative;
       }
@@ -37,67 +37,113 @@
       .receipt-page:last-child {
         page-break-after: auto;
       }
-
-      .header-flex {
-        display: flex;
-        justify-content: space-between;
+      .header {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
         align-items: center;
-        margin-bottom: 10px;
+        gap: 18px;
+        margin-bottom: 22px;
+        padding: 22px 26px;
+        border: 1px solid #d9e2ec;
+        border-bottom: 3px solid #0f766e;
+        border-radius: 20px;
+        background: linear-gradient(
+          135deg,
+          #ffffff 0%,
+          #f7fbfb 55%,
+          #eef7f6 100%
+        );
+        box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+      }
+      .header-flex {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+        align-items: center;
+        gap: 18px;
+        margin-bottom: 14px;
+      }
+
+      .header-right,
+      .header-left {
+        min-width: 0;
+        padding: 12px 14px;
+        border: 1px solid #dbe4ea;
+        border-radius: 14px;
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        line-height: 1.75;
       }
 
       .header-right {
-        width: 33%;
         text-align: right;
       }
 
       .header-center {
-        width: 33%;
-        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .header-center img {
+        width: 88px !important;
+        height: 88px !important;
+        object-fit: contain;
+        padding: 10px;
+        border-radius: 18px;
+        background: #ffffff;
+        border: 1px solid #d9e2ec;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
       }
 
       .header-left {
-        width: 33%;
-        text-align: left;
+        text-align: right;
         font-size: 13px;
       }
 
       hr {
         border: 0;
-        border-top: 1px solid #000;
+        border-top: 1px solid #dbe4ea;
         margin: 10px 0;
       }
 
       .info-section {
-        display: flex; /* Makes items side-by-side */
-        justify-content: space-between; /* Spreads them to the edges */
-        align-items: center;
-        margin-bottom: 15px;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px 16px;
+        margin-bottom: 18px;
+        padding: 14px 16px;
         font-size: 14px;
-        border-bottom: 1px dashed #eee; /* Optional styling */
-        padding-bottom: 5px;
+        border: 1px solid #dbe4ea;
+        border-radius: 14px;
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
       }
 
       .info-item {
-        flex: 1; /* Gives equal space to each part */
+        min-width: 0;
       }
 
       table {
         width: 100%;
-        border-collapse: collapse;
+        border-collapse: separate;
+        border-spacing: 0;
         table-layout: fixed;
+        overflow: hidden;
+        border: 1px solid #dbe4ea;
+        border-radius: 16px;
+        background: #ffffff;
       }
 
       th,
       td {
-        border: 1px solid #000;
-        padding: 6px 2px;
+        border: 1px solid #dbe4ea;
+        padding: 9px 6px;
         font-size: 11px;
         text-align: center;
         word-wrap: break-word;
       }
 
       th {
-        background: #f0f0f0;
+        background: linear-gradient(135deg, #0f766e 0%, #115e59 100%);
+        color: #ffffff;
       }
 
       .col-m {
@@ -129,19 +175,24 @@
       }
 
       .totals-box {
-        width: 220px;
+        width: 240px;
         line-height: 1.8;
         font-size: 13px;
         font-weight: bold;
+        padding: 12px 14px;
+        border: 1px solid #dbe4ea;
+        border-radius: 14px;
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
       }
 
       footer {
-        border-top: 1px solid #000;
-        margin-top: 20px;
-        padding-top: 10px;
+        border-top: 1px solid #dbe4ea;
+        margin-top: 24px;
+        padding-top: 12px;
         font-size: 12px;
         display: flex;
         justify-content: space-between;
+        color: #64748b;
       }
     </style>
   </head>
@@ -150,26 +201,22 @@
     {{#each purchases}}
     <div class="receipt-page">
       <!-- HEADER -->
-      <div class="header-flex">
+      <div class="header">
         <div class="header-right">
-          <div style="font-size: 20px; font-weight: bold; color: green">
-            {{../company.name}}
+          <div class="green text-3xl font-bold" style="font-size: 18px">
+            {{company.name}}
           </div>
-          <div>Branch: {{../company.branchName}}</div>
+          <div>تلفون: {{company.phone}}</div>
+          <div>الفرع: {{company.branchName}}</div>
         </div>
-
-        <div class="header-center">
-          <img
-            src="{{../company.logoUrl}}"
-            style="width: 85px; height: 75px; object-fit: contain"
-          />
+        <div class="logo-title-container">
+          <img src="{{company.logoUrl}}" />
+          <div class="title-box">📋 تقرير العملاء</div>
         </div>
-
         <div class="header-left">
-          <div>المركز الرئيسي :{{../company.address}}</div>
-          <div>{{../company.city}}</div>
-          <div>Location: {{../company.branchLocation}}</div>
-          <div dir="ltr">{{../company.phone}}</div>
+          <div class="text-lg">{{company.address}}</div>
+          <div class="text-lg">{{company.city}}</div>
+          <div class="text-lg">الموقع: {{company.branchLocation}}</div>
         </div>
       </div>
 
@@ -184,7 +231,7 @@
         <div class="info-item">
           <strong>طريقة الدفع:</strong> {{#if is_cash}}نقدي{{else}}آجل{{/if}}
         </div>
-        <div class="info-item">رقم الفاتوره: {{purchase_number}}</div>
+        <div class="info-item">رقم الفاتورة: {{purchase_number}}</div>
       </div>
 
       <!-- ITEMS TABLE -->
@@ -236,21 +283,10 @@
       </div>
 
       <!-- FOOTER -->
-      <footer>
-        <div>👨‍💼 المستخدم: {{created_by}}</div>
-        <div>📅 {{date}} ⏰ {{time}}</div>
+      <footer class="footer">
+        <div>تم إنشاء هذا التقرير بواسطة نظام : {{created_by}}</div>
+        <div>{{date}} â° {{time}}</div>
       </footer>
-
-      <div
-        style="
-          text-align: center;
-          font-size: 12px;
-          margin-top: 10px;
-          font-weight: bold;
-        "
-      >
-        فاتورة شراء معتمدة
-      </div>
     </div>
     {{/each}}
   </body>

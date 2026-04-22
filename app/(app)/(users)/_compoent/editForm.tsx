@@ -3,11 +3,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 
-import { fetchRolesForSelect } from "@/lib/actions/roles";
 import { UpdatwUser } from "@/lib/actions/users"; // Note: Check for typo in 'UpdatwUser' in your actions file
 import { SelectField } from "@/components/common/selectproduct";
 import { useAuth } from "@/lib/context/AuthContext";
-import { UpdateUserSchema } from "@/lib/zod";
+import { UpdateUserSchema } from "@/lib/zod/user";
 import { toast } from "sonner";
 import Dailogreuse from "@/components/common/dailogreuse";
 import { Input } from "@/components/ui/input";

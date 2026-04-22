@@ -1,6 +1,5 @@
 // ap
 import TableSkeleton from "@/components/skeleton/table";
-import { Button } from "@/components/ui/button";
 
 export default function Loading() {
   return (

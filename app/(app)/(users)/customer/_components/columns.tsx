@@ -230,7 +230,7 @@ export const customerColumns: ColumnDef<any>[] = [
       const router = useRouter();
       const balance = Number(row.original.balance);
 
-      const isCredit = balance < 0; // customer owes company
+      const isCredit = balance > 0 || balance < 0; // customer owes company
       const [isLoading, setIsLoading] = useState(false);
 
       if (!user) return;

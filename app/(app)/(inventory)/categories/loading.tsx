@@ -1,10 +1,9 @@
+// ap
 import TableSkeleton from "@/components/skeleton/table";
-
-import React from "react";
 
 export default function Loading() {
   return (
-    <div className="p-4">
+    <div className="flex h-[82vh] flex-col overflow-hidden p-3">
       <TableSkeleton rows={20} columns={10} />
     </div>
   );

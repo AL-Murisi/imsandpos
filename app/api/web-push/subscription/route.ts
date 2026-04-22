@@ -63,7 +63,7 @@ export async function POST(request: Request) {
       rolePriority.find((role) => normalizedRoles.includes(role)) ??
       normalizedRoles[0] ??
       null;
-    console.log(fcmToken);
+
     if (fcmToken) {
       const savedToken = await upsertPushDeviceToken({
         token: fcmToken,

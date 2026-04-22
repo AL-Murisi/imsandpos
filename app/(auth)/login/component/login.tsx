@@ -14,7 +14,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import svg from "../../../public/googleicon.svg";
 
 import {
   Lock,
@@ -206,7 +205,12 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full border-gray-700 bg-transparent text-gray-300 hover:bg-gray-800 hover:text-white"
             >
-              <Image src={svg} alt="Google" width={30} height={30} />
+              <Image
+                src={"./googleicon.svg"}
+                alt="Google"
+                width={30}
+                height={30}
+              />
               متابعة باستخدام جوجل
             </Button>
           </CardFooter>

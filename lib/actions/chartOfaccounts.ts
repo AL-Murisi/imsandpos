@@ -31,6 +31,161 @@ interface CreateAccountInput {
   branchId?: string;
   currency?: string;
 }
+
+function isDebitNature(accountType: AccountType) {
+  return (
+    accountType === "ASSET" ||
+    accountType === "EXPENSE" ||
+    accountType === "COST_OF_GOODS"
+  );
+}
+
+function getMappingTypeFromCategory(accountCategory?: string | null) {
+  switch (accountCategory) {
+    case "CASH":
+      return "cash";
+    case "BANK":
+      return "bank";
+    case "ACCOUNTS_RECEIVABLE":
+      return "accounts_receivable";
+    case "INVENTORY":
+      return "inventory";
+    case "FIXED_ASSETS":
+      return "fixed_assets";
+    case "ACCUMULATED_DEPRECIATION":
+      return "accumulated_depreciation";
+    case "OTHER_CURRENT_ASSETS":
+      return "other_current_assets";
+    case "OTHER_ASSETS":
+      return "other_assets";
+    case "ACCOUNTS_PAYABLE":
+      return "accounts_payable";
+    case "CREDIT_CARD":
+      return "credit_card";
+    case "SHORT_TERM_LOANS":
+      return "short_term_loans";
+    case "SALES_TAX_PAYABLE":
+      return "sales_tax_payable";
+    case "ACCRUED_EXPENSES":
+      return "accrued_expenses";
+    case "OTHER_CURRENT_LIABILITIES":
+      return "other_current_liabilities";
+    case "LONG_TERM_LIABILITIES":
+      return "long_term_liabilities";
+    case "OWNER_EQUITY":
+      return "owner_equity";
+    case "RETAINED_EARNINGS":
+      return "retained_earnings";
+    case "DRAWINGS":
+      return "drawings";
+    case "SALES_REVENUE":
+      return "sales_revenue";
+    case "SERVICE_REVENUE":
+      return "service_revenue";
+    case "OTHER_INCOME":
+      return "other_income";
+    case "COST_OF_GOODS_SOLD":
+      return "cogs";
+    case "OPERATING_EXPENSES":
+      return "operating_expenses";
+    case "PAYROLL_EXPENSES":
+      return "payroll_expenses";
+    case "ADMINISTRATIVE_EXPENSES":
+      return "administrative_expenses";
+    case "OTHER_EXPENSES":
+      return "other_expenses";
+    case "HOUSE_EXPENSES":
+      return "house_expenses";
+    default:
+      return null;
+  }
+}
+
+async function ensureDefaultAccountMappings(
+  db: Prisma.TransactionClient | typeof prisma,
+  companyId: string,
+  accounts: Array<{
+    id: string;
+    account_code: string;
+    account_category?: string | null;
+  }>,
+) {
+  if (accounts.length === 0) return;
+
+  for (const account of accounts) {
+    const mappingType = getMappingTypeFromCategory(account.account_category);
+    if (!mappingType) continue;
+
+    const existing = await db.account_mappings.findUnique({
+      where: {
+        company_id_mapping_type: {
+          company_id: companyId,
+          mapping_type: mappingType,
+        },
+      },
+      select: { id: true },
+    });
+
+    if (existing) continue;
+
+    await db.account_mappings.create({
+      data: {
+        company_id: companyId,
+        mapping_type: mappingType,
+        account_id: account.id,
+        is_default: true,
+      },
+    });
+  }
+}
+
+async function resolveOpeningBalanceOffsetAccount(
+  tx: Prisma.TransactionClient,
+  companyId: string,
+  excludeAccountId?: string,
+) {
+  const preferredMappings = [
+    "opening_balance_equity",
+    "retained_earnings",
+    "owner_equity",
+  ];
+
+  const mappedAccounts = await tx.account_mappings.findMany({
+    where: {
+      company_id: companyId,
+      mapping_type: { in: preferredMappings },
+      is_default: true,
+    },
+    select: {
+      mapping_type: true,
+      account_id: true,
+    },
+  });
+
+  for (const mappingType of preferredMappings) {
+    const mapped = mappedAccounts.find(
+      (account) =>
+        account.mapping_type === mappingType &&
+        account.account_id !== excludeAccountId,
+    );
+    if (mapped?.account_id) {
+      return mapped.account_id;
+    }
+  }
+
+  const fallbackEquity = await tx.accounts.findFirst({
+    where: {
+      company_id: companyId,
+      account_type: "EQUITY",
+      is_active: true,
+      ...(excludeAccountId ? { id: { not: excludeAccountId } } : {}),
+    },
+    orderBy: [{ is_system: "desc" }, { account_code: "asc" }],
+    select: { id: true },
+  });
+
+  return fallbackEquity?.id ?? null;
+}
 function serializeData<T>(data: T): T {
   if (data === null || data === undefined) return data;
   if (typeof data !== "object") return data;
@@ -469,32 +624,88 @@ export async function createAccount(
 
         // Create Journal Entry for opening balance
         if (accountData.opening_balance && accountData.opening_balance !== 0) {
-          await tx.journal_entries.create({
+          const offsetAccountId = await resolveOpeningBalanceOffsetAccount(
+            tx,
+            companyId,
+            account.id,
+          );
+
+          if (!offsetAccountId) {
+            throw new Error(
+              `لا يوجد حساب مقابل مناسب للرصيد الافتتاحي للحساب ${accountData.account_code}`,
+            );
+          }
+
+          const openingAmount = Math.abs(Number(accountData.opening_balance));
+          const signedOpeningAmount = Number(accountData.opening_balance);
+          const accountLine = isDebitNature(accountData.account_type)
+            ? signedOpeningAmount >= 0
+              ? { debit: openingAmount, credit: 0 }
+              : { debit: 0, credit: openingAmount }
+            : signedOpeningAmount >= 0
+              ? { debit: 0, credit: openingAmount }
+              : { debit: openingAmount, credit: 0 };
+
+          await tx.journalHeader.create({
             data: {
-              company_id: companyId,
-              entry_number: `JE-OPEN-${account.account_code}-${Date.now()}`,
-              account_id: account.id,
-              branch_id: accountData.branchId,
-              currency_code: accountData.currency,
+              companyId,
+              entryNumber: `JE-OPEN-${account.account_code}-${Date.now()}`,
+              branchId: accountData.branchId,
               description: `رصيد افتتاحي: ${account.account_name_ar || account.account_name_en}`,
-              entry_date: new Date(),
-              debit:
-                accountData.opening_balance > 0
-                  ? accountData.opening_balance
-                  : 0,
-              credit:
-                accountData.opening_balance < 0
-                  ? Math.abs(accountData.opening_balance)
-                  : 0,
-              is_posted: true,
-              is_automated: true,
-              reference_type: "رصيد افتتاحي",
-              created_by: userId,
+              entryDate: new Date(),
+              status: "POSTED",
+              referenceType: "opening-balance",
+              referenceId: account.id,
+              createdBy: userId,
+              lines: {
+                create: [
+                  {
+                    companyId,
+                    accountId: account.id,
+                    debit: accountLine.debit,
+                    credit: accountLine.credit,
+                    currencyCode: accountData.currency_code || undefined,
+                    foreignAmount: accountData.currency_code
+                      ? openingAmount
+                      : undefined,
+                    baseAmount: openingAmount,
+                    memo: `رصيد افتتاحي للحساب ${account.account_name_ar || account.account_name_en}`,
+                  },
+                  {
+                    companyId,
+                    accountId: offsetAccountId,
+                    debit: accountLine.credit,
+                    credit: accountLine.debit,
+                    baseAmount: openingAmount,
+                    memo: `مقابل الرصيد الافتتاحي للحساب ${account.account_name_ar || account.account_name_en}`,
+                  },
+                ],
+              },
+            },
+          });
+
+          const offsetDelta = accountLine.credit - accountLine.debit;
+          await tx.accounts.update({
+            where: { id: offsetAccountId },
+            data: {
+              balance: {
+                increment: offsetDelta,
+              },
             },
           });
         }
         createdAccounts.push(account);
       }
+      await ensureDefaultAccountMappings(
+        tx,
+        companyId,
+        createdAccounts.map((account) => ({
+          id: account.id,
+          account_code: account.account_code,
+          account_category: account.account_category,
+        })),
+      );
+
       return createdAccounts;
     });
 
@@ -834,380 +1045,346 @@ export async function getAccountDetails(accountId: string) {
   }
 }
 // 9. INITIALIZE DEFAULT CHART OF ACCOUNTS
-export async function initializeDefaultAccounts() {
-  try {
-    const { companyId, userId } = await getUserCompany();
+// export async function initializeDefaultAccounts() {
+//   try {
+//     const { companyId, userId } = await getUserCompany();
 
-    // Check if accounts already exist
-    const existingCount = await prisma.accounts.count({
-      where: { company_id: companyId },
-    });
+//     // Check if accounts already exist
+//     const existingCount = await prisma.accounts.count({
+//       where: { company_id: companyId },
+//     });
 
-    if (existingCount > 0) {
-      return { success: false, error: "توجد حسابات مسبقاً لهذه الشركة" };
-    }
+//     if (existingCount > 0) {
+//       return { success: false, error: "توجد حسابات مسبقاً لهذه الشركة" };
+//     }
 
-    const defaultAccounts = [
-      // 🏦 الأصول - Assets
-      {
-        code: "1000",
-        name_en: "الأصول",
-        name_ar: "",
-        type: "ASSET",
-        category: "OTHER_ASSETS",
-        parent: null,
-      },
-      {
-        code: "1010",
-        name_en: "الأصول المتداولة",
-        name_ar: "",
-        type: "ASSET",
-        category: "OTHER_CURRENT_ASSETS",
-        parent: "1000",
-      },
-      {
-        code: "1011",
-        name_en: "النقد في الصندوق",
-        name_ar: "",
-        type: "ASSET",
-        category: "CASH_AND_BANK",
-        parent: "1010",
-        system: true,
-      },
-      {
-        code: "1012",
-        name_en: "الحساب البنكي",
-        name_ar: "",
-        type: "ASSET",
-        category: "CASH_AND_BANK",
-        parent: "1010",
-        system: true,
-      },
-      {
-        code: "1020",
-        name_en: "الذمم المدينة",
-        name_ar: "",
-        type: "ASSET",
-        category: "ACCOUNTS_RECEIVABLE",
-        parent: "1010",
-        system: true,
-      },
-      {
-        code: "1030",
-        name_en: "المخزون",
-        name_ar: "",
-        type: "ASSET",
-        category: "INVENTORY",
-        parent: "1010",
-        system: true,
-      },
-      {
-        code: "1100",
-        name_en: "الأصول الثابتة",
-        name_ar: "",
-        type: "ASSET",
-        category: "FIXED_ASSETS",
-        parent: "1000",
-      },
-      {
-        code: "1110",
-        name_en: "المعدات",
-        name_ar: "",
-        type: "ASSET",
-        category: "FIXED_ASSETS",
-        parent: "1100",
-      },
-      {
-        code: "1120",
-        name_en: "المركبات",
-        name_ar: "",
-        type: "ASSET",
-        category: "FIXED_ASSETS",
-        parent: "1100",
-      },
+//     const defaultAccounts = [
+//       // 🏦 الأصول - Assets
+//       {
+//         code: "1000",
+//         name_en: "الأصول",
+//         name_ar: "",
+//         type: "ASSET",
+//         category: "OTHER_ASSETS",
+//         parent: null,
+//       },
+//       {
+//         code: "1010",
+//         name_en: "الأصول المتداولة",
+//         name_ar: "",
+//         type: "ASSET",
+//         category: "OTHER_CURRENT_ASSETS",
+//         parent: "1000",
+//       },
+//       {
+//         code: "1011",
+//         name_en: "النقد في الصندوق",
+//         name_ar: "",
+//         type: "ASSET",
+//         category: "CASH_AND_BANK",
+//         parent: "1010",
+//         system: true,
+//       },
+//       {
+//         code: "1012",
+//         name_en: "الحساب البنكي",
+//         name_ar: "",
+//         type: "ASSET",
+//         category: "CASH_AND_BANK",
+//         parent: "1010",
+//         system: true,
+//       },
+//       {
+//         code: "1020",
+//         name_en: "الذمم المدينة",
+//         name_ar: "",
+//         type: "ASSET",
+//         category: "ACCOUNTS_RECEIVABLE",
+//         parent: "1010",
+//         system: true,
+//       },
+//       {
+//         code: "1030",
+//         name_en: "المخزون",
+//         name_ar: "",
+//         type: "ASSET",
+//         category: "INVENTORY",
+//         parent: "1010",
+//         system: true,
+//       },
+//       {
+//         code: "1100",
+//         name_en: "الأصول الثابتة",
+//         name_ar: "",
+//         type: "ASSET",
+//         category: "FIXED_ASSETS",
+//         parent: "1000",
+//       },
+//       {
+//         code: "1110",
+//         name_en: "المعدات",
+//         name_ar: "",
+//         type: "ASSET",
+//         category: "FIXED_ASSETS",
+//         parent: "1100",
+//       },
+//       {
+//         code: "1120",
+//         name_en: "المركبات",
+//         name_ar: "",
+//         type: "ASSET",
+//         category: "FIXED_ASSETS",
+//         parent: "1100",
+//       },
 
-      // 💳 الخصوم - Liabilities
-      {
-        code: "2000",
-        name_en: "الخصوم",
-        name_ar: "",
-        type: "LIABILITY",
-        category: "OTHER_CURRENT_LIABILITIES",
-        parent: null,
-      },
-      {
-        code: "2010",
-        name_en: "الخصوم المتداولة",
-        name_ar: "",
-        type: "LIABILITY",
-        category: "OTHER_CURRENT_LIABILITIES",
-        parent: "2000",
-      },
-      {
-        code: "2011",
-        name_en: "الذمم الدائنة",
-        name_ar: "",
-        type: "LIABILITY",
-        category: "ACCOUNTS_PAYABLE",
-        parent: "2010",
-        system: true,
-      },
-      {
-        code: "2012",
-        name_en: "ضريبة المبيعات المستحقة",
-        name_ar: "",
-        type: "LIABILITY",
-        category: "SALES_TAX_PAYABLE",
-        parent: "2010",
-        system: true,
-      },
-      {
-        code: "2020",
-        name_en: "القروض قصيرة الأجل",
-        name_ar: "",
-        type: "LIABILITY",
-        category: "SHORT_TERM_LOANS",
-        parent: "2010",
-      },
+//       // 💳 الخصوم - Liabilities
+//       {
+//         code: "2000",
+//         name_en: "الخصوم",
+//         name_ar: "",
+//         type: "LIABILITY",
+//         category: "OTHER_CURRENT_LIABILITIES",
+//         parent: null,
+//       },
+//       {
+//         code: "2010",
+//         name_en: "الخصوم المتداولة",
+//         name_ar: "",
+//         type: "LIABILITY",
+//         category: "OTHER_CURRENT_LIABILITIES",
+//         parent: "2000",
+//       },
+//       {
+//         code: "2011",
+//         name_en: "الذمم الدائنة",
+//         name_ar: "",
+//         type: "LIABILITY",
+//         category: "ACCOUNTS_PAYABLE",
+//         parent: "2010",
+//         system: true,
+//       },
+//       {
+//         code: "2012",
+//         name_en: "ضريبة المبيعات المستحقة",
+//         name_ar: "",
+//         type: "LIABILITY",
+//         category: "SALES_TAX_PAYABLE",
+//         parent: "2010",
+//         system: true,
+//       },
+//       {
+//         code: "2020",
+//         name_en: "القروض قصيرة الأجل",
+//         name_ar: "",
+//         type: "LIABILITY",
+//         category: "SHORT_TERM_LOANS",
+//         parent: "2010",
+//       },
 
-      // 🧾 حقوق الملكية - Equity
-      {
-        code: "3000",
-        name_en: "حقوق الملكية",
-        name_ar: "",
-        type: "EQUITY",
-        category: "OWNER_EQUITY",
-        parent: null,
-      },
-      {
-        code: "3010",
-        name_en: "رأس المال",
-        name_ar: "",
-        type: "EQUITY",
-        category: "OWNER_EQUITY",
-        parent: "3000",
-        system: true,
-      },
-      {
-        code: "3020",
-        name_en: "الأرباح المحتجزة",
-        name_ar: "",
-        type: "EQUITY",
-        category: "RETAINED_EARNINGS",
-        parent: "3000",
-        system: true,
-      },
-      {
-        code: "3030",
-        name_en: "المسحوبات الشخصية",
-        name_ar: "",
-        type: "EQUITY",
-        category: "DRAWINGS",
-        parent: "3000",
-      },
+//       // 🧾 حقوق الملكية - Equity
+//       {
+//         code: "3000",
+//         name_en: "حقوق الملكية",
+//         name_ar: "",
+//         type: "EQUITY",
+//         category: "OWNER_EQUITY",
+//         parent: null,
+//       },
+//       {
+//         code: "3010",
+//         name_en: "رأس المال",
+//         name_ar: "",
+//         type: "EQUITY",
+//         category: "OWNER_EQUITY",
+//         parent: "3000",
+//         system: true,
+//       },
+//       {
+//         code: "3020",
+//         name_en: "الأرباح المحتجزة",
+//         name_ar: "",
+//         type: "EQUITY",
+//         category: "RETAINED_EARNINGS",
+//         parent: "3000",
+//         system: true,
+//       },
+//       {
+//         code: "3030",
+//         name_en: "المسحوبات الشخصية",
+//         name_ar: "",
+//         type: "EQUITY",
+//         category: "DRAWINGS",
+//         parent: "3000",
+//       },
 
-      // 💰 الإيرادات - Revenue
-      {
-        code: "4000",
-        name_en: "الإيرادات",
-        name_ar: "",
-        type: "REVENUE",
-        category: "SALES_REVENUE",
-        parent: null,
-      },
-      {
-        code: "4010",
-        name_en: "إيرادات المبيعات",
-        name_ar: "",
-        type: "REVENUE",
-        category: "SALES_REVENUE",
-        parent: "4000",
-        system: true,
-      },
-      {
-        code: "4020",
-        name_en: "إيرادات الخدمات",
-        name_ar: "",
-        type: "REVENUE",
-        category: "SERVICE_REVENUE",
-        parent: "4000",
-      },
-      {
-        code: "4030",
-        name_en: "إيرادات أخرى",
-        name_ar: "",
-        type: "REVENUE",
-        category: "OTHER_INCOME",
-        parent: "4000",
-      },
+//       // 💰 الإيرادات - Revenue
+//       {
+//         code: "4000",
+//         name_en: "الإيرادات",
+//         name_ar: "",
+//         type: "REVENUE",
+//         category: "SALES_REVENUE",
+//         parent: null,
+//       },
+//       {
+//         code: "4010",
+//         name_en: "إيرادات المبيعات",
+//         name_ar: "",
+//         type: "REVENUE",
+//         category: "SALES_REVENUE",
+//         parent: "4000",
+//         system: true,
+//       },
+//       {
+//         code: "4020",
+//         name_en: "إيرادات الخدمات",
+//         name_ar: "",
+//         type: "REVENUE",
+//         category: "SERVICE_REVENUE",
+//         parent: "4000",
+//       },
+//       {
+//         code: "4030",
+//         name_en: "إيرادات أخرى",
+//         name_ar: "",
+//         type: "REVENUE",
+//         category: "OTHER_INCOME",
+//         parent: "4000",
+//       },
 
-      // 📦 تكلفة البضاعة المباعة - COGS
-      {
-        code: "5000",
-        name_en: "تكلفة البضاعة المباعة",
-        name_ar: "",
-        type: "EXPENSE",
-        category: "COST_OF_GOODS_SOLD",
-        parent: null,
-        system: true,
-      },
+//       // 📦 تكلفة البضاعة المباعة - COGS
+//       {
+//         code: "5000",
+//         name_en: "تكلفة البضاعة المباعة",
+//         name_ar: "",
+//         type: "EXPENSE",
+//         category: "COST_OF_GOODS_SOLD",
+//         parent: null,
+//         system: true,
+//       },
 
-      // 💸 المصروفات - Expenses
-      {
-        code: "6000",
-        name_en: "المصروفات",
-        name_ar: "",
-        type: "EXPENSE",
-        category: "OPERATING_EXPENSES",
-        parent: null,
-      },
-      {
-        code: "6010",
-        name_en: "المصاريف التشغيلية",
-        name_ar: "",
-        type: "EXPENSE",
-        category: "OPERATING_EXPENSES",
-        parent: "6000",
-      },
-      {
-        code: "6011",
-        name_en: "الرواتب",
-        name_ar: "",
-        type: "EXPENSE",
-        category: "PAYROLL_EXPENSES",
-        parent: "6010",
-      },
-      {
-        code: "6012",
-        name_en: "الإيجار",
-        name_ar: "",
-        type: "EXPENSE",
-        category: "OPERATING_EXPENSES",
-        parent: "6010",
-      },
-      {
-        code: "6013",
-        name_en: "المرافق",
-        name_ar: "",
-        type: "EXPENSE",
-        category: "OPERATING_EXPENSES",
-        parent: "6010",
-      },
-      {
-        code: "6014",
-        name_en: "التسويق",
-        name_ar: "",
-        type: "EXPENSE",
-        category: "OPERATING_EXPENSES",
-        parent: "6010",
-      },
-      {
-        code: "6020",
-        name_en: "المصاريف الإدارية",
-        name_ar: "",
-        type: "EXPENSE",
-        category: "ADMINISTRATIVE_EXPENSES",
-        parent: "6000",
-      },
-    ];
+//       // 💸 المصروفات - Expenses
+//       {
+//         code: "6000",
+//         name_en: "المصروفات",
+//         name_ar: "",
+//         type: "EXPENSE",
+//         category: "OPERATING_EXPENSES",
+//         parent: null,
+//       },
+//       {
+//         code: "6010",
+//         name_en: "المصاريف التشغيلية",
+//         name_ar: "",
+//         type: "EXPENSE",
+//         category: "OPERATING_EXPENSES",
+//         parent: "6000",
+//       },
+//       {
+//         code: "6011",
+//         name_en: "الرواتب",
+//         name_ar: "",
+//         type: "EXPENSE",
+//         category: "PAYROLL_EXPENSES",
+//         parent: "6010",
+//       },
+//       {
+//         code: "6012",
+//         name_en: "الإيجار",
+//         name_ar: "",
+//         type: "EXPENSE",
+//         category: "OPERATING_EXPENSES",
+//         parent: "6010",
+//       },
+//       {
+//         code: "6013",
+//         name_en: "المرافق",
+//         name_ar: "",
+//         type: "EXPENSE",
+//         category: "OPERATING_EXPENSES",
+//         parent: "6010",
+//       },
+//       {
+//         code: "6014",
+//         name_en: "التسويق",
+//         name_ar: "",
+//         type: "EXPENSE",
+//         category: "OPERATING_EXPENSES",
+//         parent: "6010",
+//       },
+//       {
+//         code: "6020",
+//         name_en: "المصاريف الإدارية",
+//         name_ar: "",
+//         type: "EXPENSE",
+//         category: "ADMINISTRATIVE_EXPENSES",
+//         parent: "6000",
+//       },
+//     ];
 
-    // Create accounts in order
-    const accountMap = new Map();
+//     // Create accounts in order
+//     const accountMap = new Map();
 
-    for (const acc of defaultAccounts) {
-      const parentId = acc.parent ? accountMap.get(acc.parent) : null;
+//     for (const acc of defaultAccounts) {
+//       const parentId = acc.parent ? accountMap.get(acc.parent) : null;
 
-      // Calculate level
-      let level = 1;
-      if (parentId) {
-        const parent = await prisma.accounts.findUnique({
-          where: { id: parentId },
-          select: { level: true },
-        });
-        level = (parent?.level || 0) + 1;
-      }
+//       // Calculate level
+//       let level = 1;
+//       if (parentId) {
+//         const parent = await prisma.accounts.findUnique({
+//           where: { id: parentId },
+//           select: { level: true },
+//         });
+//         level = (parent?.level || 0) + 1;
+//       }
 
-      const created = await prisma.accounts.create({
-        data: {
-          company_id: companyId,
-          account_code: acc.code,
-          account_name_en: acc.name_en,
-          account_name_ar: acc.name_ar,
-          account_type: acc.type as any,
-          account_category: acc.category as any,
-          parent_id: parentId,
-          level,
-          is_system: acc.system || false,
-          is_active: true,
-          balance: 0,
-          opening_balance: 0,
-        },
-      });
+//       const created = await prisma.accounts.create({
+//         data: {
+//           company_id: companyId,
+//           account_code: acc.code,
+//           account_name_en: acc.name_en,
+//           account_name_ar: acc.name_ar,
+//           account_type: acc.type as any,
+//           account_category: acc.category as any,
+//           parent_id: parentId,
+//           level,
+//           is_system: acc.system || false,
+//           is_active: true,
+//           balance: 0,
+//           opening_balance: 0,
+//         },
+//       });
 
-      accountMap.set(acc.code, created.id);
-    }
+//       accountMap.set(acc.code, created.id);
+//     }
 
-    // Create default account mappings
-    await prisma.account_mappings.createMany({
-      data: [
-        {
-          company_id: companyId,
-          mapping_type: "cash",
-          account_id: accountMap.get("1011"),
-          is_default: true,
-        },
-        {
-          company_id: companyId,
-          mapping_type: "bank",
-          account_id: accountMap.get("1012"),
-          is_default: true,
-        },
-        {
-          company_id: companyId,
-          mapping_type: "accounts_receivable",
-          account_id: accountMap.get("1020"),
-          is_default: true,
-        },
-        {
-          company_id: companyId,
-          mapping_type: "inventory",
-          account_id: accountMap.get("1030"),
-          is_default: true,
-        },
-        {
-          company_id: companyId,
-          mapping_type: "accounts_payable",
-          account_id: accountMap.get("2011"),
-          is_default: true,
-        },
-        {
-          company_id: companyId,
-          mapping_type: "sales_tax",
-          account_id: accountMap.get("2012"),
-          is_default: true,
-        },
-        {
-          company_id: companyId,
-          mapping_type: "sales_revenue",
-          account_id: accountMap.get("4010"),
-          is_default: true,
-        },
-        {
-          company_id: companyId,
-          mapping_type: "cogs",
-          account_id: accountMap.get("5000"),
-          is_default: true,
-        },
-      ],
-    });
+//     await ensureDefaultAccountMappings(
+//       prisma,
+//       companyId,
+//       defaultAccounts
+//         .map((account) => ({
+//           id: accountMap.get(account.code),
+//           account_code: account.code,
+//           account_category: account.category,
+//         }))
+//         .filter(
+//           (
+//             account,
+//           ): account is {
+//             id: string;
+//             account_code: string;
+//             account_category?: string | null;
+//           } => Boolean(account.id),
+//         ),
+//     );
 
-    revalidatePath("/accounting/chart-of-accounts");
-    return { success: true, message: "تم إنشاء دليل الحسابات الافتراضي بنجاح" };
-  } catch (error) {
-    console.error("Initialize accounts error:", error);
-    return { success: false, error: "فشل في إنشاء دليل الحسابات" };
-  }
-}
+//     revalidatePath("/accounting/chart-of-accounts");
+//     return { success: true, message: "تم إنشاء دليل الحسابات الافتراضي بنجاح" };
+//   } catch (error) {
+//     console.error("Initialize accounts error:", error);
+//     return { success: false, error: "فشل في إنشاء دليل الحسابات" };
+//   }
+// }
 
 // 10. EXPORT CHART OF ACCOUNTS (for Excel/CSV)
 export async function exportChartOfAccounts(format: "csv" | "excel" = "csv") {

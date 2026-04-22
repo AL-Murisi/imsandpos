@@ -44,7 +44,6 @@ model Company {
   products                                           Product[]
 
   stockMovements                                     StockMovement[]
- 
   suppliers                                          Supplier[]
   users                                              User[]
   warehouses                                         Warehouse[]
@@ -83,8 +82,6 @@ model User {
   branch    points_of_sale? @relation(fields: [branchId], references: [id])
   activityLogs                                       ActivityLogs[]
   expenses                                           expenses[]
-  journal_entries_journal_entries_created_byTousers  journal_entries[] @relation("journal_entries_created_byTousers")
-  journal_entries_journal_entries_updated_byTousers  journal_entries[] @relation("journal_entries_updated_byTousers")
   managedBranches                                     points_of_sale[]  @relation("BranchManager")
   transaction                                           FinancialTransaction[]
   stockMovements                                     StockMovement[]
@@ -229,6 +226,7 @@ model UserInvite {
   @@index([userId])
   @@map("user_invites")
 }
+
 
 model Warehouse {
   id             String          @id @default(cuid())
@@ -557,23 +555,6 @@ model FinancialTransaction {
 }
 
 
-model OfflineOperation {
-  id        String    @id @default(cuid())
-  companyId String    @map("company_id")
-  userId    String    @map("user_id")
-  operation String
-  tableName String    @map("table_name")
-  recordId  String    @map("record_id")
-  data      Json
-  status    String    @default("pending")
-  createdAt DateTime  @default(now()) @map("created_at")
-  syncedAt  DateTime? @map("synced_at")
-
-  @@index([companyId])
-  @@map("offline_operations")
-}
-
-
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model expenses {
@@ -748,8 +729,7 @@ model journal_entries {
   points_of_sale                          points_of_sale? @relation(fields: [branch_id], references: [id])                 
   accounts                                accounts  @relation(fields: [account_id], references: [id], onDelete: Cascade)
   companies                               Company   @relation(fields: [company_id], references: [id], onDelete: Cascade)
-  users_journal_entries_created_byTousers User      @relation("journal_entries_created_byTousers", fields: [created_by], references: [id])
-  users_journal_entries_updated_byTousers User?     @relation("journal_entries_updated_byTousers", fields: [updated_by], references: [id])
+
 
   @@unique([company_id, branch_id, entry_number])
   @@unique([reference_id, entry_number])
