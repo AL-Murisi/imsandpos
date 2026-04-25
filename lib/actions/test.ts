@@ -870,7 +870,7 @@ export async function getBankStatement(
     // 1️⃣ جلب حساب المدينون
 
     const bank = await prisma.bank.findFirst({
-      where: { accountId: id, companyId },
+      where: { id: id, companyId },
       select: {
         id: true,
         name: true,

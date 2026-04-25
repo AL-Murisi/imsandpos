@@ -1,10 +1,11 @@
 import { ParsedSort } from "@/hooks/sort";
-import { Prisma } from "@prisma/client";
+
 import { SortingState } from "@tanstack/react-table";
 import { getSession } from "@/lib/session";
 
 import { getPurchasesByCompany } from "@/lib/actions/suppliers";
-import Table from "./table";
+
+import PurchasesTable from "../_components/PurchasesTable";
 
 type DashboardProps = {
   searchParams: Promise<{
@@ -33,65 +34,15 @@ export default async function manageStocks({ searchParams }: DashboardProps) {
     page = "1",
     limit = "13",
     sort,
-    inventoreyquery = "",
-    supplierId,
-    warehouseId,
-    categoryId,
-    tab,
   } = params || {};
 
-  const currentTab = tab ?? "inventory";
   const pageIndex = Number(page) - 1;
   const pageSize = Number(limit);
 
-  const where: Prisma.InventoryWhereInput = {
-    warehouseId,
-  };
   const user = await getSession();
   if (!user) return;
   const parsedSort: SortingState = ParsedSort(sort);
-  const input: any = {
-    supplierId,
-    warehouseId,
-    categoryId,
-  };
-  // ✅ Run all fetches in parallelfetchAllFormData
-  //   const MultipleInventory = fetchAllFormDatas(user.companyId);
-  //   const b = await fetchPayments();
-  //   const formData = fetchAllFormData(user.companyId);
-  // Collect common params
-  const commonParams = {
-    from,
-    to,
-    pageIndex,
-    pageSize,
-    supplierId,
-    warehouseId,
-    categoryId,
-    parsedSort,
-  };
 
-  // Tab-specific params
-  let inventoryParams: any = {};
-  let movementParams: any = {};
-
-  if (currentTab === "inventory") {
-    inventoryParams = { ...commonParams, query: inventoreyquery, where };
-  } else if (currentTab === "movement") {
-    movementParams = { ...commonParams, query: movementquery, input };
-  }
-
-  //   // Then call the functions
-  //   const inventoryData = getInventoryById(
-  //     user.companyId,
-  //     inventoryParams.query,
-  //     inventoryParams.where,
-  //     inventoryParams.from,
-  //     inventoryParams.to,
-  //     inventoryParams.pageIndex,
-  //     inventoryParams.pageSize,
-  //     inventoryParams.parsedSort,
-  //   );
   const purchasesPromise = await getPurchasesByCompany(user.companyId, {
     pageIndex,
     pageSize,
@@ -103,7 +54,10 @@ export default async function manageStocks({ searchParams }: DashboardProps) {
   return (
     <div className="px-2">
       {" "}
-      <Table data={purchasesPromise.data} total={purchasesPromise.total} />
+      <PurchasesTable
+        data={purchasesPromise.data}
+        total={purchasesPromise.total}
+      />
     </div>
   );
 }

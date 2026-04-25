@@ -143,56 +143,24 @@ export default async function middleware(req: NextRequest) {
 
   const authToken = await getToken(params);
   const userRoles = authToken?.role;
+  const tokenExpiresAtMs =
+    typeof authToken?.exp === "number" ? authToken.exp * 1000 : null;
+  const tokenExpired =
+    typeof tokenExpiresAtMs === "number" && tokenExpiresAtMs <= Date.now();
 
-  const isAuthenticated = Boolean(authToken?.userId || authToken?.email);
+  const isAuthenticated = Boolean(
+    (authToken?.userId || authToken?.email) && !tokenExpired,
+  );
   const isTokenActive =
     authToken?.userActive !== false && authToken?.companyActive !== false;
   const subscriptionRoute = "/settings/subscription";
 
-  if (isAuthenticated && !isTokenActive) {
+  if (tokenExpired) {
     return NextResponse.redirect(new URL("/login", req.nextUrl));
   }
 
-  if (
-    isAuthenticated &&
-    typeof authToken?.userId === "string" &&
-    typeof (authToken as any)?.sessionKey === "string"
-  ) {
-    const internalSecret =
-      process.env.AUTH_SECRET ??
-      process.env.NEXTAUTH_SECRET ??
-      process.env.ENCRYPTION_SECRET;
-
-    if (internalSecret) {
-      try {
-        const validationUrl = new URL("/api/auth/session-state", req.nextUrl);
-        validationUrl.searchParams.set("userId", authToken.userId);
-        validationUrl.searchParams.set(
-          "sessionKey",
-          String((authToken as any).sessionKey),
-        );
-
-        const validationResponse = await fetch(validationUrl, {
-          method: "GET",
-          headers: {
-            "x-internal-auth": internalSecret,
-          },
-          cache: "no-store",
-        });
-
-        if (validationResponse.ok) {
-          const validation = (await validationResponse.json()) as {
-            active?: boolean;
-          };
-
-          if (validation.active === false) {
-            return NextResponse.redirect(new URL("/login", req.nextUrl));
-          }
-        }
-      } catch (error) {
-        return NextResponse.redirect(new URL("/login", req.nextUrl));
-      }
-    }
+  if (isAuthenticated && !isTokenActive) {
+    return NextResponse.redirect(new URL("/login", req.nextUrl));
   }
 
   if (isAuthenticated && authRoutes.has(path)) {

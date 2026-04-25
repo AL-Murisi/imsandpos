@@ -6,7 +6,18 @@ import { revalidatePath } from "next/cache";
 import { CreatePosSchema, CreatePosType } from "@/lib/zod/pos";
 import { getSession } from "../session";
 import { canCreateSubscriptionResource } from "./subscription";
-
+export async function deleteBranch(id: string) {
+  try {
+    await prisma.points_of_sale.delete({
+      where: { id },
+    });
+    revalidatePath("/branches");
+    return { success: true };
+  } catch (error) {
+    console.error("❌ Failed to delete POS:", error);
+    throw new Error("فشل حذف نقطة البيع");
+  }
+}
 export async function createPOS(data: CreatePosType, company_id: string) {
   const parsed = CreatePosSchema.safeParse(data);
   if (!parsed.success) {
@@ -96,7 +107,7 @@ export async function updateBranch(
       },
     });
 
-    revalidatePath("/sells/pos");
+    revalidatePath("/branches");
     return { success: true, pos };
   } catch (error) {
     console.error("❌ Failed to create POS:", error);
@@ -167,43 +178,15 @@ export async function getPOSById(id: string) {
 export async function fetchPOSManagers(companyId: string) {
   const where: any = { companyId };
 
-  // Filter by search query (name or phone)
-  // if (searchQuery) {
-  //   where.OR = [
-  //     { name: { contains: searchQuery, mode: "insensitive" } },
-  //     { phoneNumber: { contains: searchQuery, mode: "insensitive" } },
-  //   ];
-  // }
-
-  // // Filter by role if provided
-  // if (roleId) {
-  //   where.roles = {
-  //     some: {
-  //       role: {
-  //         id: roleId,
-  //       },
-  //     },
-  //   };
-  // }
-
-  // Filter by creation date
-  // if (from || to) {
-  //   where.createdAt = {
-  //     ...(from && { gte: new Date(from) }),
-  //     ...(to && { lte: new Date(to) }),
-  //   };
-  // }
-
-  // Fetch only id and name for POS manager selection
   const managers = await prisma.user.findMany({
-    where: { role: "admin" , companyId },
+    where: { role: "admin", companyId },
     select: {
       id: true,
       name: true,
     },
   });
   const cashiers = await prisma.user.findMany({
-    where: { role: "cashier" , companyId },
+    where: { role: "cashier", companyId },
     select: {
       id: true,
       name: true,
@@ -212,8 +195,6 @@ export async function fetchPOSManagers(companyId: string) {
 
   return { managers, cashiers };
 }
-// skip: (page - 1) * pageSize,
-// take: pageSize,
 
 export async function fetchbranches() {
   const user = await getSession();

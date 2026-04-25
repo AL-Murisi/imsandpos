@@ -32,6 +32,7 @@ interface SupplierPaymentDetails {
   accountId: string;
   selectedCurrency: string;
   amountBase: number;
+  financialAccountId: string;
   transferNumber?: number;
   exchangeRate?: number;
   amountFC?: number;
@@ -47,7 +48,7 @@ export async function createManualJournalEntry({
   generalDescription: string;
   companyId: string;
   paymentDetails?: SupplierPaymentDetails;
-  }) {
+}) {
   try {
     const firstEntryDate = entries?.[0]?.entry_date ?? new Date();
     await validateFiscalYear(companyId, firstEntryDate);

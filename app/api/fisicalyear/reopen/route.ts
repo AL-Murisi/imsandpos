@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
       });
 
       if (!fiscalYear) {
-        throw new Error("السنة المالية غير موجودة");
+        throw new Error("Fiscal year not found");
       }
 
       if (fiscalYear.company_id !== session.companyId) {
@@ -49,37 +49,47 @@ export async function POST(req: NextRequest) {
       }
 
       if (!fiscalYear.is_closed) {
-        throw new Error("السنة المالية مفتوحة بالفعل");
+        throw new Error("Fiscal year is already open");
       }
 
-      const closingHeader = await tx.journalHeader.findFirst({
+      const closingHeaders = await tx.journalHeader.findMany({
         where: {
           companyId: session.companyId,
-          referenceType: "fiscal-year-close",
+          referenceType: {
+            in: [
+              "fiscal-year-close",
+              "fiscal-year-close-revenue",
+              "fiscal-year-close-expense",
+              "fiscal-year-close-income-summary",
+              "fiscal-year-fx-revaluation",
+            ],
+          },
           referenceId: fiscalYear.id,
           status: "POSTED",
         },
         include: {
           lines: true,
         },
-        orderBy: { entryDate: "desc" },
+        orderBy: [{ entryDate: "desc" }, { createdAt: "desc" }],
       });
 
-      if (!closingHeader) {
-        throw new Error("لا يوجد قيد إقفال لعكسه");
+      if (closingHeaders.length === 0) {
+        throw new Error("No fiscal year close entries found to reverse");
       }
 
       const priorReversal = await tx.journalHeader.findFirst({
         where: {
           companyId: session.companyId,
           referenceType: "fiscal-year-close-reversal",
-          referenceId: closingHeader.id,
+          referenceId: {
+            in: closingHeaders.map((header) => header.id),
+          },
         },
         select: { id: true },
       });
 
       if (priorReversal) {
-        throw new Error("تم عكس قيد الإقفال مسبقاً");
+        throw new Error("Fiscal year close entries were already reversed");
       }
 
       const nextStart = addDays(new Date(fiscalYear.end_date), 1);
@@ -109,7 +119,9 @@ export async function POST(req: NextRequest) {
         });
 
         if (nextYearPostedEntries > 0) {
-          throw new Error("لا يمكن إعادة فتح السنة بعد وجود قيود مرحلة في السنة التالية");
+          throw new Error(
+            "Cannot reopen fiscal year because posted entries exist in the next fiscal year",
+          );
         }
 
         await tx.journalHeader.deleteMany({
@@ -125,63 +137,62 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      const reversalEntryNumber = `FYREOPEN-${fiscalYear.period_name}-${Date.now()}`;
-      await tx.journalHeader.create({
-        data: {
-          companyId: session.companyId,
-          entryNumber: reversalEntryNumber,
-          description: `Reverse fiscal year close ${closingHeader.entryNumber}`,
-          referenceType: "fiscal-year-close-reversal",
-          referenceId: closingHeader.id,
-          entryDate: new Date(),
-          status: "POSTED",
-          createdBy: session.id,
-          lines: {
-            create: closingHeader.lines.map((line) => ({
-              companyId: session.companyId,
-              accountId: line.accountId,
-              debit: Number(line.credit),
-              credit: Number(line.debit),
-              currencyCode: line.currencyCode ?? undefined,
-              foreignAmount:
-                line.foreignAmount !== null && line.foreignAmount !== undefined
-                  ? Number(line.foreignAmount)
-                  : undefined,
-              exchangeRate:
-                line.exchangeRate !== null && line.exchangeRate !== undefined
-                  ? Number(line.exchangeRate)
-                  : undefined,
-              baseAmount:
-                line.baseAmount !== null && line.baseAmount !== undefined
-                  ? Number(line.baseAmount)
-                  : undefined,
-              memo: `Reversal of ${closingHeader.entryNumber}`,
-            })),
-          },
-        },
-      });
+      let lastReversalEntryNumber: string | null = null;
 
-      const accountDeltas = new Map<string, number>();
-      for (const line of closingHeader.lines) {
-        const delta = Number(line.credit) - Number(line.debit);
-        accountDeltas.set(
-          line.accountId,
-          (accountDeltas.get(line.accountId) || 0) + delta,
-        );
+      for (const closingHeader of closingHeaders) {
+        const reversalEntryNumber = `FYREOPEN-${fiscalYear.period_name}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
+        await tx.journalHeader.create({
+          data: {
+            companyId: session.companyId,
+            entryNumber: reversalEntryNumber,
+            description: `Reverse fiscal year close ${closingHeader.entryNumber}`,
+            referenceType: "fiscal-year-close-reversal",
+            referenceId: closingHeader.id,
+            entryDate: new Date(),
+            status: "POSTED",
+            createdBy: session.userId,
+            lines: {
+              create: closingHeader.lines.map((line) => ({
+                companyId: session.companyId,
+                accountId: line.accountId,
+                debit: Number(line.credit),
+                credit: Number(line.debit),
+                currencyCode: line.currencyCode ?? undefined,
+                foreignAmount:
+                  line.foreignAmount !== null && line.foreignAmount !== undefined
+                    ? Number(line.foreignAmount)
+                    : undefined,
+                exchangeRate:
+                  line.exchangeRate !== null && line.exchangeRate !== undefined
+                    ? Number(line.exchangeRate)
+                    : undefined,
+                baseAmount:
+                  line.baseAmount !== null && line.baseAmount !== undefined
+                    ? Number(line.baseAmount)
+                    : undefined,
+                memo: `Reversal of ${closingHeader.entryNumber}`,
+              })),
+            },
+          },
+        });
+
+        lastReversalEntryNumber = reversalEntryNumber;
       }
 
-      await Promise.all(
-        Array.from(accountDeltas.entries()).map(([accountId, delta]) =>
-          tx.accounts.update({
-            where: { id: accountId },
-            data: {
-              balance: {
-                increment: delta,
-              },
-            },
-          }),
-        ),
-      );
+      await tx.journalHeader.deleteMany({
+        where: {
+          companyId: session.companyId,
+          referenceType: {
+            in: [
+              "fiscal-year-trial-balance-unadjusted",
+              "fiscal-year-trial-balance-adjusted",
+            ],
+          },
+          referenceId: fiscalYear.id,
+          status: "TRIAL_BALANCE_SNAPSHOT",
+        },
+      });
 
       await tx.fiscal_periods.update({
         where: { id: fiscalYear.id },
@@ -194,8 +205,8 @@ export async function POST(req: NextRequest) {
 
       return {
         success: true,
-        message: "تمت إعادة فتح السنة المالية وعكس قيد الإقفال",
-        reversalEntryNumber,
+        message: "Fiscal year reopened and close entries reversed",
+        reversalEntryNumber: lastReversalEntryNumber,
       };
     });
 

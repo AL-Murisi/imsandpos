@@ -535,18 +535,18 @@ export const inventoryColumns: ColumnDef<any>[] = [
       return <div>{new Date(date).toLocaleDateString("ar-EG")}</div>;
     },
   },
-  {
-    id: "actions",
-    header: "الإجراءات",
-    cell: ({ row }) => {
-      const inventory = row.original;
-      return (
-        <div className="flex gap-2 p-2">
-          <InvonteryEditFormm inventory={inventory} />
-        </div>
-      );
-    },
-  },
+  // {
+  //   id: "actions",
+  //   header: "الإجراءات",
+  //   cell: ({ row }) => {
+  //     const inventory = row.original;
+  //     return (
+  //       <div className="flex gap-2 p-2">
+  //         <InvonteryEditFormm inventory={inventory} />
+  //       </div>
+  //     );
+  //   },
+  // },
 ];
 export const purchaseColumns: ColumnDef<any>[] = [
   {

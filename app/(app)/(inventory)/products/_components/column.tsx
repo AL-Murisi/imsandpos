@@ -1,7 +1,6 @@
 "use client";
-import { deleteProduct } from "@/lib/actions/Product";
 import ProductEditFormm from "@/app/(app)/(inventory)/products/_components/formEdit";
-import Dailogreuse from "@/components/common/dailogreuse";
+import { ConfirmModal } from "@/components/common/confirm-modal";
 import { useCurrency } from "@/components/CurrencyProvider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,18 +10,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { deleteProduct } from "@/lib/actions/Product";
 import { useAuth } from "@/lib/context/AuthContext";
 import { ProductFormValues } from "@/lib/zod/product";
 import { ColumnDef } from "@tanstack/react-table";
-import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
-  CopyIcon,
-  Trash2,
-} from "lucide-react";
-import { useState, useTransition } from "react";
-import { toast } from "sonner";
+import { format } from "date-fns";
+import { ArrowDown, ArrowUp, ArrowUpDown, Trash2 } from "lucide-react";
+import { useTransition } from "react";
 
 type SortableHeaderProps = {
   column: any;
@@ -343,8 +337,6 @@ export const createColumns = (
 };
 
 export default function sortfilteringsearch() {}
-import { format } from "date-fns";
-import { ConfirmModal } from "@/components/common/confirm-modal";
 
 type ExpiryProps = {
   expiredAt?: string | Date;

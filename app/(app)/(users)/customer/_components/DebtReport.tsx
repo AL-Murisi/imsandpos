@@ -66,8 +66,12 @@ export default function DebtReport({
   const [payment, setPayment] = useState<PaymentState>({
     paymentMethod: "cash",
     accountId: "",
-    selectedCurrency: company?.base_currency ?? "",
+    financialAccountId: "",
+    selectedCurrency: company?.base_currency || "YER",
     amountBase: 0,
+    amountFC: 0,
+    exchangeRate: 1,
+    transferNumber: "",
   });
 
   const { user } = useAuth();
@@ -167,7 +171,8 @@ export default function DebtReport({
           basCurrncy: company?.base_currency ?? "",
           paymentMethod: payment.paymentMethod,
           currencyCode: payment.selectedCurrency,
-          bankId: payment.accountId,
+          accountId: payment.accountId,
+          financialAccountId: payment.financialAccountId,
           transferNumber: payment.transferNumber,
           exchange_rate: payment.exchangeRate,
           amountFC: payment.amountFC,
@@ -184,8 +189,12 @@ export default function DebtReport({
       setPayment({
         paymentMethod: "",
         accountId: "",
+        financialAccountId: "",
         selectedCurrency: company?.base_currency ?? "",
         amountBase: 0,
+        amountFC: 0,
+        exchangeRate: 1,
+        transferNumber: "",
       });
     } catch (error) {
       console.error("Payment failed:", error);
@@ -194,20 +203,6 @@ export default function DebtReport({
       setIsSubmitting(false);
     }
   };
-
-  useEffect(() => {
-    if (!open || !payment.paymentMethod) return;
-
-    async function load() {
-      try {
-        const { banks, cashAccounts } = await fetchPayments();
-        setAccounts(payment.paymentMethod === "bank" ? banks : cashAccounts);
-      } catch {
-        toast.error("فشل تحميل الحسابات");
-      }
-    }
-    load();
-  }, [open, payment.paymentMethod]);
 
   /* ───────── Outstanding only ───────── */
   const onSubmitOutstandingOnly = async () => {
@@ -315,11 +310,7 @@ export default function DebtReport({
 
         {/* ✅ Reusable payment */}
         <div className="p-3">
-          <ReusablePayment
-            value={payment}
-            action={setPayment}
-            accounts={accounts}
-          />
+          <ReusablePayment value={payment} action={setPayment} />
         </div>
         {/* Actions */}
         <div className="grid grid-cols-2 gap-2 py-3">

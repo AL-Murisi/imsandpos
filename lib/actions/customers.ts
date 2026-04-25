@@ -312,7 +312,8 @@ export async function getCustomerById(
             : [];
 
         const openingBalance = openingLines.reduce(
-          (sum, line) => sum + Number(line.debit || 0) - Number(line.credit || 0),
+          (sum, line) =>
+            sum + Number(line.debit || 0) - Number(line.credit || 0),
           0,
         );
 
@@ -432,7 +433,6 @@ export async function deleteCustomer(customerId: string, companyId: string) {
       });
 
       if (customer?.userId) {
-        await tx.userRole.deleteMany({ where: { userId: customer.userId } });
         await tx.userInvite.deleteMany({ where: { userId: customer.userId } });
         await tx.pushSubscription.deleteMany({
           where: { userId: customer.userId },
@@ -502,11 +502,6 @@ export async function createCutomer(form: CreateCustomer, companyId: string) {
       return { error: "هذا البريد الإلكتروني مستخدم بالفعل" };
     }
 
-    const customerRole = await prisma.role.findFirst({
-      where: { name: { equals: "customer", mode: "insensitive" } },
-      select: { id: true },
-    });
-
     let linkedUserId: string | null = null;
 
     if (emailValue) {
@@ -521,10 +516,6 @@ export async function createCutomer(form: CreateCustomer, companyId: string) {
 
       if (existingUser) {
         return { error: "هذا البريد مستخدم بالفعل في المستخدمين" };
-      }
-
-      if (!customerRole) {
-        return { error: "دور customer غير موجود في النظام" };
       }
 
       const createdUser = await prisma.user.create({
@@ -568,23 +559,6 @@ export async function createCutomer(form: CreateCustomer, companyId: string) {
     });
     revalidatePath("/customer");
     revalidatePath("/user");
-    await prisma.journalEvent.create({
-      data: {
-        companyId: companyId,
-        eventType: "createCutomer",
-        status: "pending",
-        entityType: "Cutomer",
-        payload: {
-          companyId: companyId,
-          customerId: customer.id,
-          outstandingBalance: outstandingBalance,
-          balance: balance,
-          createdBy: session.userId,
-        },
-
-        processed: false,
-      },
-    });
 
     return { success: true, customer };
   } catch (error) {
@@ -713,8 +687,6 @@ export async function createCustomerJournalEnteries({
   if (entries.length === 0)
     return { success: true, msg: "No opening balance detected" };
 
-  await prisma.journal_entries.createMany({ data: entries });
-
   return { success: true };
 }
 
@@ -761,18 +733,9 @@ export async function updatedCustomer(
     let userId = existingCustomer?.userId ?? null;
 
     if (emailValue) {
-      const customerRole = await prisma.role.findFirst({
-        where: { name: { equals: "customer", mode: "insensitive" } },
-        select: { id: true },
-      });
-
       if (!userId) {
         if (!password) {
           return { error: "أدخل كلمة مرور لإنشاء حساب العميل" };
-        }
-
-        if (!customerRole) {
-          return { error: "دور customer غير موجود في النظام" };
         }
 
         const createdUser = await prisma.user.create({

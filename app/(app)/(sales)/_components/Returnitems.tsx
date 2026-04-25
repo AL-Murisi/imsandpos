@@ -6,14 +6,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import Dailogreuse from "@/components/common/dailogreuse";
 import { processReturn } from "@/lib/actions/cashier";
 import { useAuth } from "@/lib/context/AuthContext";
 import { AlertCircle } from "lucide-react";
-import { SelectField } from "@/components/common/selectproduct";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useRouter } from "next/navigation";
 import {
@@ -24,10 +22,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCompany } from "@/hooks/useCompany";
-import { fallbackCurrencyOptions } from "@/lib/actions/currnciesOptions";
-import { useCurrencyOptions } from "@/hooks/useCurrencyOptions";
-import { getLatestExchangeRate } from "@/lib/actions/currency";
-import SearchInput from "@/components/common/searchlist";
+import {
+  ReusablePayment,
+  PaymentState,
+} from "@/components/common/ReusablePayment";
+import { fetchPayments } from "@/lib/actions/banks"; // تأكد من استيراد الأكشن لجلب الحسابات
 
 const returnSchema = z.object({
   saleId: z.string(),
@@ -35,15 +34,14 @@ const returnSchema = z.object({
   customerId: z.string().optional().nullable(),
   returnNumber: z.string(),
   reason: z.string().optional(),
-  paymentMethod: z.string().optional(),
   items: z
     .array(
       z.object({
         productId: z.string(),
         warehouseId: z.string(),
         name: z.string(),
-        sellingUnits: z.array(z.any()), // 🆕
-        selectedUnitId: z.string(), // 🆕
+        sellingUnits: z.array(z.any()),
+        selectedUnitId: z.string(),
         unitPrice: z.number(),
         quantitySold: z.number(),
         quantity: z.number().min(0, "أدخل الكمية المطلوبة"),
@@ -57,27 +55,34 @@ type ReturnFormValues = z.infer<typeof returnSchema>;
 interface SellingUnit {
   id: string;
   name: string;
-  nameEn?: string;
-  unitsPerParent: number;
   price: number;
-  isBase: boolean;
 }
-interface UserOption {
-  id?: string;
-  name?: string;
+interface Account {
+  id: string;
+  name: string;
 }
+
 export function ReturnForm({ sale }: { sale: any }) {
   const { user } = useAuth();
+  if (!user) return null;
   const { company } = useCompany();
+  const router = useRouter();
+
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [currency, setCurrency] = useState<UserOption | null>(null);
-  const { options } = useCurrencyOptions();
-  const currencyOptions = options.length ? options : fallbackCurrencyOptions;
-  const [isLoading, setIsLoading] = useState(false);
-  const [receivedAmount, setReceivedAmount] = useState(0);
+  const [accounts, setAccounts] = useState<Account[]>([]);
 
-  const router = useRouter();
+  // الحالة الموحدة للدفع
+  const [payment, setPayment] = useState<PaymentState>({
+    paymentMethod: "cash",
+    accountId: "",
+    financialAccountId: "",
+    selectedCurrency: company?.base_currency || "YER",
+    amountBase: 0,
+    amountFC: 0,
+    exchangeRate: 1,
+    transferNumber: "",
+  });
 
   const { handleSubmit, control, register, watch, setValue } =
     useForm<ReturnFormValues>({
@@ -88,28 +93,15 @@ export function ReturnForm({ sale }: { sale: any }) {
         customerId: sale?.customerId || null,
         returnNumber: sale?.invoiceNumber || "",
         reason: "",
-        paymentMethod:
-          sale?.payments?.find((p: any) => p.paymentMethod)?.paymentMethod ||
-          "",
         items: sale?.saleItems?.map((item: any) => {
-          // 1. Parse selling units
           const sellingUnits =
             (item.product?.sellingUnits as SellingUnit[]) || [];
-
-          /** * 2. FIND SOLD UNIT BY NAME
-           * item.sellingUnit contains the string name (e.g., "كرتون")
-           * we find the object in sellingUnits that matches that name to get its ID
-           */
-          const matchedUnit = sellingUnits.find(
-            (u) => u.name === item.unit, // item.sellingUnit is "كرتون" etc.
-          );
+          const matchedUnit = sellingUnits.find((u) => u.name === item.unit);
           return {
             productId: item.productId,
-            // Safe access to warehouseId to prevent Zod "undefined" error
             warehouseId: item.product?.warehouse?.id ?? sale?.warehouseId ?? "",
             name: item.product?.name ?? "Unknown",
             sellingUnits,
-            // Default selection is now the ID of the unit name that was sold
             selectedUnitId: matchedUnit?.id || sellingUnits[0]?.id || "",
             unitPrice: item.unitPrice,
             quantitySold: item.quantity,
@@ -119,234 +111,114 @@ export function ReturnForm({ sale }: { sale: any }) {
       },
     });
 
-  const paymentMethod = watch("paymentMethod");
-  const { fields } = useFieldArray({
-    control: control,
-    name: "items",
-  });
-
+  const { fields } = useFieldArray({ control, name: "items" });
   const watchedItems = watch("items");
 
-  if (!user) return null;
+  // حساب إجمالي الإرجاع بناءً على الكميات المدخلة
+  const totalReturnBase = watchedItems.reduce((acc, item) => {
+    return acc + (item.quantity || 0) * (item.unitPrice || 0);
+  }, 0);
 
-  const getReturnAmountForCustomer = (sale: any, totalReturn: number) => {
+  const getReturnAmountForCustomer = (sale: any, total: number) => {
     if (!sale) return 0;
-
-    switch (sale.status) {
-      case "paid":
-        return totalReturn;
-      case "partial":
-        return Math.min(sale.amountPaid, totalReturn);
-      default:
-        return 0;
-    }
+    if (sale.status === "paid") return total;
+    if (sale.status === "partial") return Math.min(sale.amountPaid, total);
+    return 0; // في حالة الآجل، يتم الخصم من المديونية فقط
   };
+
+  const returnToCustomer = getReturnAmountForCustomer(sale, totalReturnBase);
+
+  // تحديث مبلغ الدفع تلقائياً عند تغيير كميات الأصناف
+  useEffect(() => {
+    setPayment((prev) => ({
+      ...prev,
+      amountBase: returnToCustomer,
+      // إذا كانت عملة أجنبية، سيقوم المكون ReusablePayment بحساب FC بناءً على السعر المتوفر
+    }));
+  }, [returnToCustomer]);
+
+  // جلب الحسابات (صناديق/بنوك) عند تغيير طريقة الدفع
+  useEffect(() => {
+    if (!payment.paymentMethod) return;
+    async function load() {
+      try {
+        const { banks, cashAccounts } = await fetchPayments();
+        setAccounts(payment.paymentMethod === "bank" ? banks : cashAccounts);
+      } catch {
+        toast.error("فشل تحميل الحسابات");
+      }
+    }
+    load();
+  }, [payment.paymentMethod]);
+
   const onSubmit = async (values: ReturnFormValues) => {
     const selectedItems = values.items.filter((i) => i.quantity > 0);
-
-    if (selectedItems.length === 0) {
-      toast.error("يرجى تحديد كمية للإرجاع");
-      return;
-    }
-    if (!currency) {
-      toast.error("يرجى تحديد  العمله");
-      return;
-    }
-    // التحقق من الكميات (كما هي)
     const invalidItem = selectedItems.find(
       (item) => item.quantity > item.quantitySold,
     );
+
     if (invalidItem) {
       toast.error(
         `كمية الإرجاع للمنتج "${invalidItem.name}" أكبر من الكمية المباعة`,
       );
+
+      return;
+    }
+    if (selectedItems.length === 0) {
+      toast.error("يرجى تحديد كمية للإرجاع");
       return;
     }
 
-    // 1️⃣ حساب الإجمالي المحلي (Base Total)
-    const totalReturnBase = selectedItems.reduce(
-      (acc, item) => acc + item.quantity * item.unitPrice,
-      0,
-    );
+    if (!payment.paymentMethod || !payment.accountId) {
+      toast.error("يرجى اختيار طريقة الدفع والحساب");
+      return;
+    }
 
-    const returnToCustomerBase = getReturnAmountForCustomer(
-      sale,
-      totalReturnBase,
-    );
-
-    // 2️⃣ تجهيز المنتجات (Mapped Items)
-    const mappedItems = selectedItems.map((item) => {
-      const selectedUnit = item.sellingUnits.find(
-        (u: SellingUnit) => u.id === item.selectedUnitId,
-      );
-      return {
-        productId: item.productId,
-        warehouseId: item.warehouseId,
-        name: item?.name,
-        selectedUnitId: item.selectedUnitId,
-        selectedUnitName: selectedUnit?.name || "",
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-      };
-    });
-
-    // 3️⃣ تجهيز الـ Payload ليشمل بيانات العملة (Foreign Currency Data)
     const payload = {
       ...values,
-      cashierId: user.userId,
       branchId: company?.branches[0].id,
-      items: mappedItems,
-      paymentMethod: paymentMethod,
-
-      // البيانات المالية بالعملة المحلية (Base)
+      items: selectedItems,
+      financialAccountId: payment.financialAccountId,
+      paymentMethod: payment.paymentMethod,
+      accountId: payment.accountId,
       totalReturn: totalReturnBase,
-      returnToCustomer: returnToCustomerBase,
-      baseCurrency: company?.base_currency,
-      // البيانات المالية بالعملة الأجنبية (Foreign) لإنشاء القيد
-      currency: currency?.id || company?.base_currency,
-      exchangeRate: exchangeRate,
-      foreignAmount: receivedAmount, // المبلغ الفعلي الذي استلمه العميل
+      returnToCustomer: payment.amountBase,
+      currency: payment.selectedCurrency,
+      exchangeRate: payment.exchangeRate,
+      foreignAmount: payment.amountFC,
+      transferNumber: payment.transferNumber,
     };
 
     setIsSubmitting(true);
     try {
-      const result = await processReturn(payload, user.companyId);
-
+      const result = await processReturn(payload, user?.companyId);
       if (result.success) {
-        toast.success(result.message, {
-          description: `تم إرجاع ${receivedAmount} ${currency?.id || ""} بنجاح`,
-        });
-
+        toast.success("تمت عملية الإرجاع بنجاح");
         setOpen(false);
         router.refresh();
       } else {
-        toast.error(result.message || "فشل في معالجة الإرجاع");
+        toast.error(result.message);
       }
     } catch (error: any) {
-      console.error("خطأ في معالجة الإرجاع:", error);
-      toast.error(error.message || "حدث خطأ أثناء الإرجاع");
+      toast.error("حدث خطأ غير متوقع");
     } finally {
       setIsSubmitting(false);
     }
   };
-  const returnTotal = watchedItems.reduce((acc, item) => {
-    return acc + (item.quantity || 0) * (item.unitPrice || 0);
-  }, 0);
-  const [exchangeRate, setExchangeRate] = useState(1);
-  useEffect(() => {
-    if (company?.base_currency && !currency) {
-      // Find the currency object from your options that matches the base currency code
-      const base = currencyOptions.find((c) => c.id === company?.base_currency);
-      if (base) {
-        setCurrency(base);
-      } else {
-        // Fallback: create a temporary object if not found in options
-        setCurrency({
-          id: company?.base_currency,
-          name: company?.base_currency,
-        });
-      }
-    }
-  }, [company, currency]);
-  // 1️⃣ أثر تغيير العملة: جلب سعر الصرف وحساب المبلغ
-  // 1️⃣ أثر تغيير العملة: جلب سعر الصرف وحساب المبلغ
-  const returnToCustomer = getReturnAmountForCustomer(sale, returnTotal);
-  useEffect(() => {
-    async function updateRate() {
-      if (!user?.companyId || !currency?.id || !company?.base_currency) return;
 
-      // إذا كانت العملة المختارة هي نفس العملة الأساسية
-      if (currency.id === company.base_currency) {
-        setExchangeRate(1);
-        setReceivedAmount(returnToCustomer);
-        return;
-      }
-
-      setIsLoading(true);
-      try {
-        const rateData = await getLatestExchangeRate({
-          fromCurrency: company.base_currency,
-          toCurrency: currency.id,
-        });
-
-        if (rateData && rateData.rate) {
-          const rateValue = Number(rateData.rate);
-          setExchangeRate(rateValue);
-
-          /**
-           * منطق التحويل الذكي:
-           * إذا كان السعر > 1 (مثلاً 2000 ريال للدولار الواحد) -> نقسم الإجمالي بالريال على السعر لنحصل على الدولار.
-           * إذا كان السعر < 1 (مثلاً 0.0005 دولار للريال الواحد) -> نضرب الإجمالي بالريال في السعر لنحصل على الدولار.
-           */
-          let autoAmount;
-          if (rateValue > 1) {
-            autoAmount = returnToCustomer / rateValue;
-          } else {
-            autoAmount = returnToCustomer * rateValue;
-          }
-
-          setReceivedAmount(Number(autoAmount.toFixed(4)));
-        }
-      } catch (error) {
-        toast.error("خطأ في جلب سعر الصرف");
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    updateRate();
-  }, [currency?.id, returnToCustomer, user?.companyId, company?.base_currency]);
-
-  const paymentMethods = [
-    { id: "cash", name: "نقداً" },
-    { id: "bank", name: "تحويل بنكي" },
-    { id: "debt", name: "دين" },
-  ];
-
-  // ... (داخل المكون ReturnForm)
-
-  // 1️⃣ تحديث حالة الزر ليكون معطلاً أثناء التحميل
-  const isButtonDisabled = isSubmitting || isLoading || returnTotal === 0;
+  if (!user) return null;
 
   return (
     <Dailogreuse
       open={open}
       setOpen={setOpen}
-      btnLabl={"إرجاع"}
+      btnLabl={"إرجاع أصناف"}
       style="sm:max-w-5xl"
-      description="تفاصيل الإرجاع"
+      description="تحديد الأصناف المرتجعة وطريقة استرداد المبلغ"
     >
-      <form
-        onSubmit={handleSubmit(onSubmit, (errors) =>
-          console.log("Validation Errors:", errors),
-        )}
-        className="grid gap-3"
-      >
-        {/* Sale Info (كما هو) */}
-        {watchedItems[0].warehouseId}
-
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-          <div className="grid gap-2">
-            <Label>عملة الإرجاع</Label>
-            <SearchInput
-              placeholder={"اختر العملة"}
-              paramKey="currency"
-              value={currency?.id}
-              options={currencyOptions ?? []}
-              action={(curr) => setCurrency(curr)}
-            />
-          </div>
-
-          <div className="grid gap-2">
-            <Label>طريقة الدفع</Label>
-            <SelectField
-              options={paymentMethods}
-              value={paymentMethod || ""}
-              placeholder="اختر الطريقة"
-              action={(val) => setValue("paymentMethod", val)}
-            />
-          </div>
-
+      <form onSubmit={handleSubmit(onSubmit)} className="grid gap-6">
+        {/* القسم الأول: معلومات عامة */}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="grid gap-2">
             <Label htmlFor="reason">سبب الإرجاع</Label>
             <Input
@@ -357,181 +229,104 @@ export function ReturnForm({ sale }: { sale: any }) {
           </div>
         </div>
 
-        {/* عرض تفاصيل الصرف إذا كانت العملة مختلفة */}
-        {currency && currency.id !== company?.base_currency && (
-          <div className="flex items-center gap-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm dark:bg-amber-950">
-            <div className="flex-1">
-              <span className="font-medium">سعر الصرف: </span>
-              {isLoading
-                ? "جاري التحديث..."
-                : `1 ${currency.id} = ${exchangeRate} ${company?.base_currency}`}
-            </div>
-            <div className="flex-1 text-left">
-              <span className="font-medium">المبلغ بالـ {currency.id}: </span>
-              <span className="text-lg font-bold text-blue-600">
-                {isLoading ? "..." : receivedAmount.toLocaleString()}{" "}
-                {currency.id}
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* ... (جدول المنتجات كما هو في الكود الخاص بك) */}
-        <ScrollArea className="max-h-[400px] w-full overflow-y-auto rounded-lg border">
+        {/* القسم الثاني: جدول المنتجات */}
+        <ScrollArea className="max-h-[300px] w-full rounded-lg border">
           <table className="min-w-full text-sm">
             <thead className="bg-muted sticky top-0 text-right">
               <tr>
-                <th className="p-3 font-semibold">المنتج</th>
-
-                <th className="p-3 text-center font-semibold">الوحدة</th>
-
-                <th className="p-3 text-center font-semibold">
-                  الكمية المباعة
-                </th>
-
-                <th className="p-3 text-center font-semibold">سعر الوحدة</th>
-
-                <th className="p-3 text-center font-semibold">كمية الإرجاع</th>
-
-                <th className="p-3 text-center font-semibold">المجموع</th>
+                <th className="p-3">المنتج</th>
+                <th className="p-3 text-center">الوحدة</th>
+                <th className="p-3 text-center">المباع</th>
+                <th className="p-3 text-center">السعر</th>
+                <th className="p-3 text-center">كمية الإرجاع</th>
+                <th className="p-3 text-center">المجموع</th>
               </tr>
             </thead>
-
             <tbody>
-              {fields.map((field, index) => {
-                const quantity = watchedItems[index]?.quantity || 0;
-
-                const itemTotal = quantity * field.unitPrice;
-
-                const selectedUnitId = watchedItems[index]?.selectedUnitId;
-
-                return (
-                  <tr
-                    key={field.id}
-                    className="border-t hover:bg-gray-50 dark:hover:bg-gray-800"
-                  >
-                    <td className="p-3">
-                      <div className="font-medium">{field.name}</div>
-                    </td>
-
-                    {/* 🆕 Unit Selection */}
-
-                    <td className="p-3 text-center">
-                      <Select
-                        value={selectedUnitId}
-                        onValueChange={(val) =>
-                          setValue(`items.${index}.selectedUnitId`, val)
-                        }
-                      >
-                        <SelectTrigger className="w-28">
-                          <SelectValue />
-                        </SelectTrigger>
-
-                        <SelectContent>
-                          {field.sellingUnits.map((unit: SellingUnit) => (
-                            <SelectItem key={unit.id} value={unit.id}>
-                              {unit.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </td>
-
-                    <td className="p-3 text-center font-medium">
-                      {field.quantitySold}
-                    </td>
-
-                    <td className="p-3 text-center">
-                      {field.unitPrice.toFixed(2)}{" "}
-                    </td>
-
-                    <td className="p-3 text-center">
-                      <Input
-                        type="number"
-                        disabled={field.quantitySold === 0}
-                        min={0}
-                        max={field.quantitySold}
-                        step="any"
-                        className="w-28 text-center"
-                        {...register(`items.${index}.quantity`, {
-                          valueAsNumber: true,
-                        })}
-                      />
-                    </td>
-
-                    <td className="p-3 text-center font-semibold">
-                      {itemTotal > 0 ? (
-                        <span className="text-green-600">
-                          {itemTotal.toFixed(2)}
-                        </span>
-                      ) : (
-                        <span className="text-gray-400">0.00 </span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
+              {fields.map((field, index) => (
+                <tr key={field.id} className="border-t">
+                  <td className="p-3 font-medium">{field.name}</td>
+                  <td className="p-3 text-center">
+                    <Select
+                      value={watchedItems[index]?.selectedUnitId}
+                      onValueChange={(val) =>
+                        setValue(`items.${index}.selectedUnitId`, val)
+                      }
+                    >
+                      <SelectTrigger className="mx-auto w-24">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {field.sellingUnits.map((unit: any) => (
+                          <SelectItem key={unit.id} value={unit.id}>
+                            {unit.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </td>
+                  <td className="p-3 text-center">{field.quantitySold}</td>
+                  <td className="p-3 text-center">{field.unitPrice}</td>
+                  <td className="p-3 text-center">
+                    <Input
+                      type="number"
+                      className="mx-auto w-20 text-center"
+                      {...register(`items.${index}.quantity`, {
+                        valueAsNumber: true,
+                      })}
+                    />
+                  </td>
+                  <td className="p-3 text-center font-bold">
+                    {(watchedItems[index]?.quantity * field.unitPrice).toFixed(
+                      2,
+                    )}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
-
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
-        {/* Return Summary المحدث */}
-        <div className="rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-950">
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="text-lg font-semibold">
-                إجمالي المستحق للعميل:
-              </span>
-              <p className="text-xs text-gray-500">(بالعملة المحلية)</p>
-            </div>
-            <div className="text-right">
-              <span className="text-2xl font-bold text-green-600">
-                {returnToCustomer.toFixed(2)} {company?.base_currency}
-              </span>
-              {/* عرض المعادل الأجنبي أسفل المبلغ المحلي مباشرة */}
-              {currency &&
-                currency.id !== company?.base_currency &&
-                !isLoading && (
-                  <p className="text-sm font-medium text-blue-600">
-                    ≈ {receivedAmount} {currency.id}
-                  </p>
-                )}
+
+        {/* القسم الثالث: مكون الدفع الموحد */}
+        <div className="bg-secondary/20 rounded-xl border p-4">
+          <h3 className="mb-2 font-bold">تفاصيل الاسترداد المالي</h3>
+          <ReusablePayment value={payment} action={setPayment} />
+        </div>
+
+        {/* ملخص الإرجاع */}
+        <div className="flex items-center justify-between rounded-lg border border-green-200 bg-green-50 p-4 dark:bg-green-950">
+          <div>
+            <span className="text-sm font-medium">إجمالي المرتجع (محلي):</span>
+            <div className="text-2xl font-bold text-green-600">
+              {totalReturnBase.toLocaleString()} {company?.base_currency}
             </div>
           </div>
-
           {sale.customer && (
-            <div className="mt-3 text-sm text-gray-600 dark:text-gray-400">
-              <AlertCircle className="ml-1 inline-block h-4 w-4" />
-              {sale.status === "paid" || sale.status === "partial" ? (
-                <span>سيتم إعادة المبلغ للعميل ({sale.customer.name})</span>
-              ) : (
-                <span>سيتم خصم المبلغ من مديونية ({sale.customer.name})</span>
-              )}
+            <div className="text-muted-foreground max-w-[200px] text-left text-xs">
+              <AlertCircle className="ml-1 inline h-3 w-3" />
+              {sale.status === "paid"
+                ? `سيتم إعادة المبلغ نقداً للعميل ${sale.customer.name}`
+                : `سيتم تسوية المبلغ من مديونية العميل`}
             </div>
           )}
         </div>
 
-        {/* Actions المحدثة مع حالة التحميل */}
-        <div className="flex justify-end gap-3 pt-4">
+        {/* الأزرار */}
+        <div className="flex justify-end gap-3">
           <Button
             type="button"
             variant="outline"
             onClick={() => setOpen(false)}
-            disabled={isSubmitting}
           >
             إلغاء
           </Button>
           <Button
-            disabled={isButtonDisabled}
+            disabled={isSubmitting || totalReturnBase <= 0}
             type="submit"
-            className="min-w-[140px]"
+            className="min-w-[120px]"
           >
-            {isSubmitting
-              ? "جاري الحفظ..."
-              : isLoading
-                ? "جاري جلب الصرف..."
-                : "تأكيد الإرجاع"}
+            {isSubmitting ? "جاري المعالجة..." : "تأكيد الإرجاع"}
           </Button>
         </div>
       </form>

@@ -499,13 +499,16 @@ export default function MultiInventoryUpdateForm({
                     <ReusablePayment
                       value={
                         inventory.payment || {
-                          paymentMethod: "",
+                          paymentMethod: "cash",
                           accountId: "",
-                          selectedCurrency: "",
+                          financialAccountId: "",
+                          selectedCurrency: company?.base_currency || "YER",
                           amountBase: 0,
+                          amountFC: 0,
+                          exchangeRate: 1,
+                          transferNumber: "",
                         }
                       }
-                      accounts={accountsByInventory[inventory.id] || []}
                       action={(val) =>
                         updateInventory(inventory.id, "payment", val)
                       }

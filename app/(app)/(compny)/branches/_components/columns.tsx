@@ -4,8 +4,17 @@ import { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowUp, ArrowDown, ArrowUpDown, EditIcon } from "lucide-react";
+import {
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
+  EditIcon,
+  Trash2,
+} from "lucide-react";
 import EditPoS from "./EditPOS";
+import { ConfirmModal } from "@/components/common/confirm-modal";
+import { useTransition } from "react";
+import { deleteBranch } from "@/lib/actions/pos";
 
 type SortableHeaderProps = {
   column: any;
@@ -105,13 +114,13 @@ export const posColumns: ColumnDef<any>[] = [
     cell: ({ row }) => <div>{row.original.manager?.name || "—"}</div>,
   },
 
-  {
-    accessorKey: "manager.email",
-    header: ({ column }) => (
-      <SortableHeader column={column} label="البريد الإلكتروني" />
-    ),
-    cell: ({ row }) => <div>{row.original.manager?.email || "—"}</div>,
-  },
+  // {
+  //   accessorKey: "manager.email",
+  //   header: ({ column }) => (
+  //     <SortableHeader column={column} label="البريد الإلكتروني" />
+  //   ),
+  //   cell: ({ row }) => <div>{row.original.manager?.email || "—"}</div>,
+  // },
 
   {
     accessorKey: "is_active",
@@ -145,8 +154,30 @@ export const posColumns: ColumnDef<any>[] = [
     id: "actions",
     enableHiding: false,
     cell: ({ row }) => {
+      const [isPending, startTransition] = useTransition();
       const pos = row.original;
-      return <EditPoS branch={pos} />;
+      return (
+        <div className="flex gap-2">
+          <EditPoS branch={pos} />
+          <ConfirmModal
+            title="تأكيد الحذف"
+            description={`هل أنت متأكد من حذف هذا ${pos.name}؟ هذه العملية لا يمكن التراجع عنها.`}
+            action={() =>
+              startTransition(async () => {
+                deleteBranch(pos.id);
+              })
+            }
+            confirmText="حذف"
+          >
+            <Button
+              disabled={isPending}
+              className="text-red-600 hover:bg-orange-300/20 hover:text-red-700"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </ConfirmModal>
+        </div>
+      );
     },
   },
 ];

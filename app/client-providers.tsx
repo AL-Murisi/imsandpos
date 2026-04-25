@@ -22,15 +22,15 @@ export default function ClientProviders({
   messages: any;
   currencyKey: CurrencyKey;
 }) {
-  const [mounted, setMounted] = useState(false);
+  // const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  // useEffect(() => {
+  //   setMounted(true);
+  // }, []);
 
-  if (!mounted) {
-    return <IMSLoader />; // or a loader
-  }
+  // if (!mounted) {
+  //   return <IMSLoader />; // or a loader
+  // }
 
   return (
     <SessionProvider>

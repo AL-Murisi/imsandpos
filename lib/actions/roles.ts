@@ -4,14 +4,6 @@ import prisma from "@/lib/prisma";
 import {
   CreateBrandInput,
   CreateBrandSchema,
-  CreateProductInput,
-  CreateProductSchema,
-  CreateRoleInput,
-  CreateRoleSchema,
-  CreateSupplierInput,
-  CreateSupplierSchema,
-  CreateUserSchema,
-  RoleSchema,
   UpdateInventorySchema,
 } from "@/lib/zod";
 import { Prisma } from "@prisma/client";
@@ -19,63 +11,9 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getSession } from "../session";
 
-export async function createRole(input: CreateRoleInput) {
-  const parsed = CreateRoleSchema.safeParse(input);
-
-  if (!parsed.success) {
-    throw new Error("Invalid role data");
-  }
-  const { name, description, permissions } = parsed.data;
-
-  try {
-    const role = await prisma.role.create({
-      data: {
-        name,
-        description,
-        permissions,
-      },
-    });
-    return role;
-  } catch (error) {
-    console.error("Failed to create role:", error);
-    throw error;
-  }
-}
 // app/actions/roles.ts (or any server-side file)
 // app/actions/users.ts
 
-export async function fetchRoles(
-  page: number = 0, // 0-indexed page number
-  pageSize: number = 7,
-) {
-  const roles = await prisma.role.findMany({
-    select: {
-      id: true,
-      name: true,
-      description: true,
-      permissions: true,
-      createdAt: true,
-      updatedAt: true,
-    },
-
-    skip: page * pageSize,
-    take: pageSize,
-  });
-
-  return roles; // ✅ Fully typed & validated
-}
-
-export async function fetchRolesForSelect() {
-  return prisma.role.findMany({
-    select: {
-      id: true,
-      name: true,
-    },
-    orderBy: {
-      name: "asc",
-    },
-  });
-}
 export async function createBrand(form: CreateBrandInput, companyId: string) {
   const parsed = CreateBrandSchema.safeParse(form);
   if (!parsed.success) {

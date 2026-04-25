@@ -27,14 +27,30 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-function getDefaultRedirectForRole(roles?: string): string {
-  if (roles === "admin") return "/company";
-  if (roles === "cashier") return "/salesDashboard";
-  if (roles === "manager_wh") return "/dashboardUser";
-  if (roles === "supplier") return "/supplier/orders";
-  if (roles === "accountant") return "/voucher";
-  if (roles === "customer") return "/customer-portal";
+function getDefaultRedirectForRole(roleOrRoles?: string | string[]): string {
+  // Normalize role input: accept a string or an array and compare case-insensitively.
+  let role = "";
+  if (Array.isArray(roleOrRoles)) {
+    role = roleOrRoles.join(",").toLowerCase();
+  } else if (typeof roleOrRoles === "string") {
+    role = roleOrRoles.toLowerCase();
+  }
+
+  if (role.includes("admin")) return "/company";
+  if (role.includes("cashier")) return "/salesDashboard";
+  if (role.includes("manager_wh")) return "/dashboardUser";
+  if (role.includes("supplier")) return "/supplier/orders";
+  if (role.includes("accountant")) return "/voucher";
+  if (role.includes("customer")) return "/customer-portal";
   return "/landing";
+}
+
+function resolveSafePostAuthRedirect(path?: string): string {
+  // If no valid path provided, fall back to the app root `/`.
+  if (!path || path === "/login" || path === "/signup") {
+    return "/";
+  }
+  return path;
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -212,15 +228,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const hasRole = (role: string): boolean => {
-    return user?.role?.includes(role) || false;
+    const userRole = user?.role ?? "";
+    return userRole.toLowerCase().includes(role.toLowerCase());
   };
 
   const hasAnyRole = (allowedRoles: string[]): boolean => {
-    // If the item has no roles defined, maybe show it to everyone (optional)
     if (!allowedRoles || allowedRoles.length === 0) return true;
-
-    // Check if the user's single role is one of the allowed roles
-    return user?.role ? allowedRoles.includes(user.role) : false;
+    const userRole = (user?.role ?? "").toLowerCase();
+    return allowedRoles.some((r) => userRole.includes(r.toLowerCase()));
   };
 
   return (
@@ -276,7 +291,15 @@ export function useAuth() {
       });
 
       if (!result?.error) {
-        return { success: true };
+        const fallbackRedirect =
+          typeof result.url === "string" && result.url
+            ? new URL(result.url, window.location.origin).pathname
+            : "/landing";
+
+        return {
+          success: true,
+          redirectPath: resolveSafePostAuthRedirect(fallbackRedirect),
+        };
       }
       return { success: false };
     } catch (error) {
@@ -304,12 +327,14 @@ export function useAuth() {
   };
 
   const hasRole = (role: string): boolean => {
-    return mappedUser?.role?.includes(role) || false;
+    const userRole = mappedUser?.role ?? "";
+    return userRole.toLowerCase().includes(role.toLowerCase());
   };
 
   const hasAnyRole = (allowedRoles: string[]): boolean => {
     if (!allowedRoles || allowedRoles.length === 0) return true;
-    return mappedUser?.role ? allowedRoles.includes(mappedUser.role) : false;
+    const userRole = (mappedUser?.role ?? "").toLowerCase();
+    return allowedRoles.some((r) => userRole.includes(r.toLowerCase()));
   };
 
   return {

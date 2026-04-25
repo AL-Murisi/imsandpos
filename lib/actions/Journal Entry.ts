@@ -49,38 +49,6 @@ function generateEntryNumber(companyId: string) {
 }
 
 // Helper: Create journal entry
-async function createJournalEntry(data: {
-  companyId: string;
-  accountId: string;
-  description: string;
-  debit: number;
-  credit: number;
-  referenceType: string;
-  referenceId: string;
-  userId: string;
-  entryDate?: Date;
-}) {
-  const entryNumber = generateEntryNumber(data.companyId);
-  const fiscalPeriod = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
-
-  return await prisma.journal_entries.create({
-    data: {
-      company_id: data.companyId,
-      entry_number: entryNumber,
-      account_id: data.accountId,
-      description: data.description,
-      entry_date: data.entryDate || new Date(),
-      debit: data.debit,
-      credit: data.credit,
-      is_posted: true,
-      is_automated: true,
-      reference_type: data.referenceType,
-      reference_id: data.referenceId,
-      fiscal_period: fiscalPeriod,
-      created_by: data.userId,
-    },
-  });
-}
 
 /**
  * 1. SALES TRANSACTION - Creates journal entries when a sale is made

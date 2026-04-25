@@ -7,6 +7,9 @@ import {
   upsertPushDeviceToken,
 } from "@/lib/firebase/device-tokens";
 
+const NOTIFICATION_TOKEN_COOKIE = "ims.notification.token";
+const NOTIFICATION_TOKEN_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
+
 type SubscriptionPayload = {
   endpoint?: string;
   keys?: {
@@ -34,15 +37,7 @@ export async function POST(request: Request) {
       where: { id: userinf.userId },
       select: {
         companyId: true,
-        roles: {
-          select: {
-            role: {
-              select: {
-                name: true,
-              },
-            },
-          },
-        },
+        role: true,
       },
     });
 
@@ -56,9 +51,8 @@ export async function POST(request: Request) {
       typeof body.fcmToken === "string" ? body.fcmToken.trim() : "";
 
     const rolePriority = ["admin", "manager_wh", "cashier", "accountant"];
-    const normalizedRoles = user.roles
-      .map((r) => r.role.name.trim().toLowerCase())
-      .filter(Boolean);
+    const normalizedRoles = user.role;
+
     const primaryRole =
       rolePriority.find((role) => normalizedRoles.includes(role)) ??
       normalizedRoles[0] ??
@@ -73,10 +67,18 @@ export async function POST(request: Request) {
         provider: "fcm",
       });
 
-      return NextResponse.json({
+      const response = NextResponse.json({
         message: "FCM token saved successfully",
         token: savedToken?.token ?? fcmToken,
       });
+      response.cookies.set(NOTIFICATION_TOKEN_COOKIE, fcmToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: NOTIFICATION_TOKEN_COOKIE_MAX_AGE,
+      });
+      return response;
     }
 
     if (!subscription || !subscription.endpoint) {
@@ -156,7 +158,15 @@ export async function DELETE(request: Request) {
         userinf.userId,
         fcmToken.trim(),
       );
-      return NextResponse.json({ message: "FCM token deleted" });
+      const response = NextResponse.json({ message: "FCM token deleted" });
+      response.cookies.set(NOTIFICATION_TOKEN_COOKIE, "", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 0,
+      });
+      return response;
     }
 
     await prisma.pushSubscription.deleteMany({

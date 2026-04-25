@@ -66,14 +66,12 @@ export async function CreateProduct(
         brandId,
         type,
         barcode,
-        unitsPerPacket: 0,
-        packetsPerCarton: 0,
+
         costPrice,
         sellingUnits,
-        pricePerUnit: 0,
+
         expiredAt: date,
-        pricePerPacket: 0,
-        pricePerCarton: 0,
+
         wholesalePrice,
         minWholesaleQty,
         dimensions,
@@ -134,9 +132,7 @@ export async function CreateProduct(
       name: product.name,
       sku: product.sku,
       costPrice: Number(product.costPrice),
-      pricePerUnit: product.pricePerUnit ? Number(product.pricePerUnit) : null,
-      pricePerPacket: Number(product.pricePerPacket),
-      pricePerCarton: Number(product.pricePerCarton),
+
       wholesalePrice: Number(product.wholesalePrice),
     };
   } catch (error) {
@@ -162,55 +158,52 @@ export async function deleteProduct(id: string, companyId: string) {
     return { success: false, error: "فشل في حذف " };
   }
 }
-export async function fetchProductBySku(sku: string) {
-  const product = await prisma.product.findFirst({
-    where: {
-      sku,
-    },
-    select: {
-      id: true,
-      name: true,
-      sku: true,
-      barcode: true,
-      description: true,
-      categoryId: true,
-      brandId: true,
-      type: true,
-      unitsPerPacket: true,
-      packetsPerCarton: true,
-      costPrice: true,
-      pricePerUnit: true,
-      pricePerPacket: true,
-      pricePerCarton: true,
-      wholesalePrice: true,
-      minWholesaleQty: true,
-      weight: true,
-      dimensions: true,
-      supplierId: true,
-      warehouseId: true,
-      status: true,
-      isActive: true,
-    },
-  });
+// export async function fetchProductBySku(sku: string) {
+//   const product = await prisma.product.findFirst({
+//     where: {
+//       sku,
+//     },
+//     select: {
+//       id: true,
+//       name: true,
+//       sku: true,
+//       barcode: true,
+//       description: true,
+//       categoryId: true,
+//       brandId: true,
+//       type: true,
 
-  if (!product) return null; // ✅ handle not found
+//       costPrice: true,
 
-  return {
-    ...product,
-    costPrice: product.costPrice ? Number(product.costPrice) : null,
-    pricePerUnit: product.pricePerUnit ? Number(product.pricePerUnit) : null,
-    pricePerPacket: product.pricePerPacket
-      ? Number(product.pricePerPacket)
-      : null,
-    pricePerCarton: product.pricePerCarton
-      ? Number(product.pricePerCarton)
-      : null,
-    wholesalePrice: product.wholesalePrice
-      ? Number(product.wholesalePrice)
-      : null,
-    weight: product.weight ? Number(product.weight) : null,
-  };
-}
+//       wholesalePrice: true,
+//       minWholesaleQty: true,
+//       weight: true,
+//       dimensions: true,
+//       supplierId: true,
+//       warehouseId: true,
+//       status: true,
+//       isActive: true,
+//     },
+//   });
+
+//   if (!product) return null; // ✅ handle not found
+
+//   return {
+//     ...product,
+//     costPrice: product.costPrice ? Number(product.costPrice) : null,
+//     pricePerUnit: product.pricePerUnit ? Number(product.pricePerUnit) : null,
+//     pricePerPacket: product.pricePerPacket
+//       ? Number(product.pricePerPacket)
+//       : null,
+//     pricePerCarton: product.pricePerCarton
+//       ? Number(product.pricePerCarton)
+//       : null,
+//     wholesalePrice: product.wholesalePrice
+//       ? Number(product.wholesalePrice)
+//       : null,
+//     weight: product.weight ? Number(product.weight) : null,
+//   };
+// }
 type SortState = {
   id: string;
   desc: boolean;
@@ -526,11 +519,7 @@ export async function UpdateProduct(
     return {
       ...updatedProduct,
       costPrice: Number(updatedProduct.costPrice),
-      pricePerUnit: updatedProduct.pricePerUnit
-        ? Number(updatedProduct.pricePerUnit)
-        : null,
-      pricePerPacket: Number(updatedProduct.pricePerPacket),
-      pricePerCarton: Number(updatedProduct.pricePerCarton),
+
       wholesalePrice: Number(updatedProduct.wholesalePrice),
       inventory: updatedInventory,
     };

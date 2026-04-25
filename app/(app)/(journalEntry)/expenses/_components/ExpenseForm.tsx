@@ -59,10 +59,14 @@ function createEmptyExpense(): ExpenseItem {
     expenseFor: "general",
     relatedPartyId: "",
     payment: {
-      paymentMethod: "",
+      paymentMethod: "cash",
       accountId: "",
+      financialAccountId: "",
       selectedCurrency: "",
       amountBase: 0,
+      amountFC: 0,
+      exchangeRate: 1,
+      transferNumber: "",
     },
   };
 }
@@ -184,6 +188,8 @@ export default function ExpenseForm({
         bankId: exp.payment?.accountId || undefined,
         baseAmount: exp.payment?.amountBase || 0,
         exchangeRate: exp.payment?.exchangeRate || undefined,
+        financialAccountId: exp.payment?.financialAccountId || "",
+        accountId: exp.payment?.accountId || "",
         amountFC: exp.payment?.amountFC || undefined,
         notes: exp.notes || undefined,
         branchId: company?.branches[0]?.id ?? "",
@@ -384,13 +390,17 @@ export default function ExpenseForm({
                   <ReusablePayment
                     value={
                       expense.payment || {
-                        paymentMethod: "",
+                        paymentMethod: "cash",
                         accountId: "",
-                        selectedCurrency: "",
+                        financialAccountId: "",
+                        selectedCurrency: company?.base_currency || "YER",
+                        amountFC: 0,
+                        exchangeRate: 1,
+                        transferNumber: "",
+
                         amountBase: parseFloat(expense.amount) || 0,
                       }
                     }
-                    accounts={accountsByExpense[expense.id] || []}
                     action={(val) => updateExpense(expense.id, "payment", val)}
                   />
                 </div>

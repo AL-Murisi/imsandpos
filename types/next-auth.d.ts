@@ -9,6 +9,11 @@ declare module "next-auth" {
       userId: string;
       companyId: string;
       role?: string;
+      isActive?: boolean;
+      companyActive?: boolean;
+      subscriptionActive?: boolean;
+      subscriptionEndsAt?: string | null;
+      expiresAt?: string | null;
     };
   }
 }
@@ -18,5 +23,10 @@ declare module "next-auth/jwt" {
     userId?: string;
     companyId?: string;
     role?: string;
+    userActive?: boolean;
+    companyActive?: boolean;
+    subscriptionActive?: boolean;
+    subscriptionEndsAt?: string | Date | null;
+    expiresAt?: string | null;
   }
 }

@@ -31,7 +31,6 @@ export default async function manageStocks({ searchParams }: DashboardProps) {
   const {
     from,
     to,
-    movementquery = "",
     query = "",
     page = "1",
     limit = "13",
@@ -60,14 +59,7 @@ export default async function manageStocks({ searchParams }: DashboardProps) {
   const user = await getSession();
   if (!user) return;
   const parsedSort: SortingState = ParsedSort(sort);
-  const input: any = {
-    supplierId,
-    warehouseId,
-    categoryId,
-  };
-  // ✅ Run all fetches in parallelfetchAllFormData
-  let inventoryParams: any = {};
-  let movementParams: any = {};
+
   const [b, formData, MultipleInventory, inventoryData] = await Promise.all([
     fetchPayments(),
     fetchAllFormData(user.companyId),

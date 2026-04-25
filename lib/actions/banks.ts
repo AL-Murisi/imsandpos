@@ -106,7 +106,7 @@ export async function createBank(data: BankForm, companyId: string) {
         companyId,
       },
     });
-
+    revalidatePath("/banks");
     return { success: true };
   } catch (error) {
     if (
@@ -118,7 +118,7 @@ export async function createBank(data: BankForm, companyId: string) {
         error: "اسم البنك موجود مسبقًا داخل الشركة",
       };
     }
-    revalidatePath("/banks");
+
     return {
       success: false,
       error: "حدث خطأ أثناء إضافة البنك",
@@ -153,12 +153,13 @@ export async function deletBnk(id: string, companyId: string) {
 }
 export async function getbanks() {
   const company = await getSession();
-  if (!company) return [];
+  if (!company) return { banks: [], branches: [] }; // Consistency: always return the object
+
   const expenseAccounts = await prisma.accounts.findMany({
     where: {
       company_id: company.companyId,
       is_active: true,
-      account_category: "BANK",
+      account_category: { in: ["BANK", "CASH"] },
     },
     select: {
       id: true,
@@ -168,11 +169,23 @@ export async function getbanks() {
       account_code: "asc",
     },
   });
+
+  const branches = await prisma.points_of_sale.findMany({
+    where: {
+      company_id: company.companyId,
+    },
+    select: {
+      id: true,
+      name: true,
+    },
+  });
+
   const name = expenseAccounts.map((i) => ({
     id: i.id,
     name: i.account_name_en,
   }));
-  return name;
+
+  return { banks: name, branches };
 }
 export async function Fetchbanks() {
   const company = await getSession();
@@ -205,8 +218,10 @@ export async function fetchPayments() {
     where: {
       companyId: company.companyId,
       isActive: true,
+      type: "BANK",
     },
     select: {
+      id: true,
       accountId: true,
       name: true,
       account: { select: { currency_code: true } },
@@ -218,32 +233,32 @@ export async function fetchPayments() {
 
   // Map banks to { id, name }
   const mappedBanks = banks.map((i) => ({
-    id: i.accountId,
+    id: i.id,
     name: i.name,
-    currency: i.account.currency_code,
+    accountId: i.accountId,
   }));
 
   // Fetch cash accounts
-  const cashAccounts = await prisma.accounts.findMany({
+  const cashAccounts = await prisma.bank.findMany({
     where: {
-      company_id: company.companyId,
-      account_category: "CASH", // adjust category if needed
-      is_active: true,
+      companyId: company.companyId,
+      type: "CASH", // adjust category if needed
+      isActive: true,
     },
     select: {
       id: true,
-      account_name_en: true,
-      currency_code: true,
+      name: true,
+      accountId: true,
     },
     orderBy: {
-      account_name_ar: "asc",
+      name: "asc",
     },
   });
 
   const mappedCash = cashAccounts.map((i) => ({
     id: i.id,
-    name: i.account_name_en,
-    currency: i.currency_code,
+    name: i.name,
+    accountId: i.accountId,
   }));
 
   return { banks: mappedBanks, cashAccounts: mappedCash };
@@ -270,17 +285,16 @@ export async function createExchangeRate({
   });
 }
 export async function getLatestExchangeRate({
-  companyId,
   fromCurrency,
   toCurrency,
 }: {
-  companyId: string;
   fromCurrency: string;
   toCurrency: string;
 }) {
+  const company = await getSession();
   const exchange_rates = await prisma.exchange_rates.findFirst({
     where: {
-      company_id: companyId,
+      company_id: company?.id,
       from_currency: fromCurrency,
       to_currency: toCurrency,
     },

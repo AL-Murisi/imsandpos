@@ -89,34 +89,16 @@ export default function ManualJournalEntryForm({
   // ✅ Payment tracking (optional - for cash/bank entries)
   const [includePayment, setIncludePayment] = useState(false);
   const [payment, setPayment] = useState<PaymentState>({
-    paymentMethod: "",
+    paymentMethod: "cash",
     accountId: "",
-    selectedCurrency: "",
+    financialAccountId: "",
+    selectedCurrency: company?.base_currency || "YER",
     amountBase: 0,
+    amountFC: 0,
+    exchangeRate: 1,
+    transferNumber: "",
   });
   const [accountsForPayment, setAccountsForPayment] = useState<bankcash[]>([]);
-
-  // ✅ Load accounts for payment component
-  useEffect(() => {
-    if (!includePayment || !payment.paymentMethod) {
-      setAccountsForPayment([]);
-      return;
-    }
-
-    async function loadAccounts() {
-      try {
-        const { banks, cashAccounts } = await fetchPayments();
-        setAccountsForPayment(
-          payment.paymentMethod === "bank" ? banks : cashAccounts,
-        );
-      } catch (err) {
-        console.error(err);
-        toast.error("فشل في جلب الحسابات");
-      }
-    }
-
-    loadAccounts();
-  }, [includePayment, payment.paymentMethod]);
 
   // Calculate totals
   const totalDebit = lines.reduce((sum, line) => sum + (line.debit || 0), 0);
@@ -329,6 +311,7 @@ export default function ManualJournalEntryForm({
               paymentMethod: payment.paymentMethod ?? "",
               accountId: payment.accountId ?? "",
               selectedCurrency: payment.selectedCurrency ?? "",
+              financialAccountId: payment.financialAccountId ?? "",
               amountBase: payment.amountBase ?? 0,
               transferNumber:
                 typeof payment.transferNumber === "string"
@@ -347,10 +330,14 @@ export default function ManualJournalEntryForm({
         setGeneralDescription("");
         setIncludePayment(false);
         setPayment({
-          paymentMethod: "",
+          paymentMethod: "cash",
           accountId: "",
-          selectedCurrency: "",
+          financialAccountId: "",
+          selectedCurrency: company?.base_currency || "YER",
           amountBase: 0,
+          amountFC: 0,
+          exchangeRate: 1,
+          transferNumber: "",
         });
         setLines([
           {
@@ -456,11 +443,7 @@ export default function ManualJournalEntryForm({
             <h3 className="mb-3 text-sm font-semibold text-blue-900">
               تفاصيل الدفع
             </h3>
-            <ReusablePayment
-              value={payment}
-              action={setPayment}
-              accounts={accountsForPayment}
-            />
+            <ReusablePayment value={payment} action={setPayment} />
           </div>
         )}
 

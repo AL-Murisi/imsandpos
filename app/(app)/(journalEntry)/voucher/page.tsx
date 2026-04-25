@@ -240,7 +240,7 @@ export default async function Voucher({ searchParams }: VoucherPageProps) {
                     <div className="min-w-0">
                       <div className="truncate font-medium text-slate-900">
                         {item.customer?.name ||
-                          item.supplier?.name ||
+                          item.supplier?.name + `سند:${item.voucherNumber}` ||
                           item.invoice?.invoiceNumber ||
                           `سند ${item.voucherNumber}`}
                       </div>

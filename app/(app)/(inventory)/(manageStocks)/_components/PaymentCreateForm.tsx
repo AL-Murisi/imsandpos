@@ -52,27 +52,16 @@ export function PaymentCreateForm({
   const { company } = useCompany();
 
   const [payment, setPayment] = useState<PaymentState>({
-    paymentMethod: "",
+    paymentMethod: "cash",
     accountId: "",
-    selectedCurrency: company?.base_currency ?? "",
+    financialAccountId: "",
+    selectedCurrency: company?.base_currency || "YER",
     amountBase: 0,
+    amountFC: 0,
+    exchangeRate: 1,
+    transferNumber: "",
   });
   const [accounts, setAccounts] = useState<bankcash[]>([]);
-
-  useEffect(() => {
-    if (!isOpen || !payment.paymentMethod) return;
-
-    async function load() {
-      try {
-        const { banks, cashAccounts } = await fetchPayments();
-        setAccounts(payment.paymentMethod === "bank" ? banks : cashAccounts);
-      } catch {
-        toast.error("فشل تحميل الحسابات");
-      }
-    }
-
-    load();
-  }, [isOpen, payment.paymentMethod]);
 
   const paymentMethod = watch("paymentMethod");
   const selectedAccountId = watch("accountId");
@@ -105,12 +94,6 @@ export function PaymentCreateForm({
     }
   }, [selectedAccountId, accounts, setValue]);
 
-  const paymentMethods = [
-    { id: "cash", name: "نقداً" },
-    { id: "bank", name: "تحويل بنكي" },
-    { id: "debt", name: "دين" },
-  ];
-
   const onSubmit = async (data: any) => {
     try {
       if (!user) return;
@@ -134,7 +117,8 @@ export function PaymentCreateForm({
           note: payment.transferNumber,
           amountFC: payment.amountFC ?? 0, // إن وُجد
           baseCurrency: company?.base_currency ?? "",
-
+          financialAccountId: payment.financialAccountId,
+          accountId: payment.accountId,
           paymentDate: new Date(data.paymentDate),
         },
       );
@@ -176,11 +160,7 @@ export function PaymentCreateForm({
           <Label>المبلغ المتبقي:</Label>
           {supplier.amountDue}
         </div>
-        <ReusablePayment
-          value={payment}
-          accounts={accounts}
-          action={setPayment}
-        />
+        <ReusablePayment value={payment} action={setPayment} />
 
         <div className="grid gap-2">
           <Label>تاريخ الدفع</Label>

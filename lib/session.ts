@@ -11,6 +11,7 @@ export interface SessionData {
   companyId: string;
   subscriptionActive?: boolean;
   subscriptionEndsAt?: string | null;
+  expiresAt?: string | null;
   [key: string]: any;
 }
 
@@ -25,8 +26,10 @@ export async function getSession(): Promise<SessionData | null> {
         companyId?: string;
         isActive?: boolean;
         companyActive?: boolean;
+        branchId: string;
         subscriptionActive?: boolean;
         subscriptionEndsAt?: string | null;
+        expiresAt?: string | null;
       }
     | undefined;
 
@@ -47,5 +50,6 @@ export async function getSession(): Promise<SessionData | null> {
     companyId: user.companyId,
     subscriptionActive: user.subscriptionActive ?? true,
     subscriptionEndsAt: user.subscriptionEndsAt ?? null,
+    expiresAt: user.expiresAt ?? null,
   };
 }

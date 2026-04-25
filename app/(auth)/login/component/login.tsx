@@ -53,15 +53,16 @@ export default function LoginPage() {
 
     try {
       const result = await login(email, password);
-      if (result.success) {
-        toast.success("تم تسجيل الدخول بنجاح");
-        window.location.replace(result.redirectPath ?? "/salesDashboard");
-      } else {
+      if (!result.success) {
         setError("بيانات الاعتماد غير صحيحة");
-        setLoading(false);
+      } else {
+        toast.success("تم تسجيل الدخول بنجاح");
+        router.replace(result.redirectPath ?? "/landing");
+        router.refresh();
       }
     } catch {
       setError("حدث خطأ ما، يرجى المحاولة لاحقاً");
+    } finally {
       setLoading(false);
     }
   };
@@ -69,7 +70,7 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     setLoading(true);
     await signIn("google", {
-      callbackUrl: "/",
+      callbackUrl: "/auth/redirect",
     });
   };
 

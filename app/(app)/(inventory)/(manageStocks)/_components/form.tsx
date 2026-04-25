@@ -1,7 +1,7 @@
 "use client";
 
 import { fetchAllFormData } from "@/lib/actions/roles";
-import { updateInventory } from "@/lib/actions/warehouse";
+// import { updateInventory } from "@/lib/actions/warehouse";
 import Dailogreuse from "@/components/common/dailogreuse";
 import { SelectField } from "@/components/common/selectproduct";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ import {
   PaymentState,
   ReusablePayment,
 } from "@/components/common/ReusablePayment";
+import { useCompany } from "@/hooks/useCompany";
 
 type FormValues = z.infer<typeof UpdateInventorySchema> & {
   currency_code?: string;
@@ -57,13 +58,19 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
+  const { company } = useCompany();
 
   // ✅ Payment state using ReusablePayment
+  // الحالة الموحدة للدفع
   const [payment, setPayment] = useState<PaymentState>({
-    paymentMethod: "",
+    paymentMethod: "cash",
     accountId: "",
-    selectedCurrency: "",
+    financialAccountId: "",
+    selectedCurrency: company?.base_currency || "YER",
     amountBase: 0,
+    amountFC: 0,
+    exchangeRate: 1,
+    transferNumber: "",
   });
 
   // ✅ Accounts for payment component
@@ -120,10 +127,14 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
       reset();
       setUpdateType("manual");
       setPayment({
-        paymentMethod: "",
+        paymentMethod: "cash",
         accountId: "",
-        selectedCurrency: "",
+        financialAccountId: "",
+        selectedCurrency: company?.base_currency || "YER",
         amountBase: 0,
+        amountFC: 0,
+        exchangeRate: 1,
+        transferNumber: "",
       });
       return;
     }
@@ -144,24 +155,6 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
   }, [open, user.companyId, reset, setValue]);
 
   // ✅ Load accounts based on payment method
-  useEffect(() => {
-    if (!open || !payment.paymentMethod) {
-      setAccounts([]);
-      return;
-    }
-
-    const loadAccounts = async () => {
-      try {
-        const { banks, cashAccounts } = await fetchPayments();
-        setAccounts(payment.paymentMethod === "bank" ? banks : cashAccounts);
-      } catch (err) {
-        console.error(err);
-        toast.error("فشل في جلب الحسابات");
-      }
-    };
-
-    loadAccounts();
-  }, [open, payment.paymentMethod]);
 
   // ✅ Total cost
   const totalCost = (quantity || 0) * (unitCost || 0);
@@ -223,22 +216,26 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
         amountFC: updateType === "supplier" ? payment.amountFC : undefined,
       };
 
-      await updateInventory(payload, user.userId, user.companyId);
-      toast.success(
-        updateType === "supplier"
-          ? "✅ تم استقبال المخزون من المورد بنجاح"
-          : "✅ تم تحديث المخزون بنجاح",
-      );
+      // await updateInventory(payload, user.userId, user.companyId);
+      // toast.success(
+      //   updateType === "supplier"
+      //     ? "✅ تم استقبال المخزون من المورد بنجاح"
+      //     : "✅ تم تحديث المخزون بنجاح",
+      // );
 
       setIsSubmitting(false);
       reset();
       setOpen(false);
       setUpdateType("manual");
       setPayment({
-        paymentMethod: "",
+        paymentMethod: "cash",
         accountId: "",
-        selectedCurrency: "",
+        financialAccountId: "",
+        selectedCurrency: company?.base_currency || "YER",
         amountBase: 0,
+        amountFC: 0,
+        exchangeRate: 1,
+        transferNumber: "",
       });
     } catch (error) {
       toast.error("حدث خطأ في التحديث");
@@ -354,11 +351,7 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
           )}
           {updateType === "supplier" && (
             <div className="rounded-lg border border-t border-blue-200 p-4 pt-4">
-              <ReusablePayment
-                value={payment}
-                action={setPayment}
-                accounts={accounts}
-              />
+              <ReusablePayment value={payment} action={setPayment} />
             </div>
           )}
           {/* Stock Quantities */}
@@ -446,10 +439,14 @@ export default function InventoryEditForm({ inventory }: { inventory: any }) {
                 reset();
                 setUpdateType("manual");
                 setPayment({
-                  paymentMethod: "",
+                  paymentMethod: "cash",
                   accountId: "",
-                  selectedCurrency: "",
+                  financialAccountId: "",
+                  selectedCurrency: company?.base_currency || "YER",
                   amountBase: 0,
+                  amountFC: 0,
+                  exchangeRate: 1,
+                  transferNumber: "",
                 });
               }}
             >

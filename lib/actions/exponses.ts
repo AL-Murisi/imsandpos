@@ -400,7 +400,8 @@ interface ExpenseData {
   branchId: string;
   referenceNumber?: string;
   basCurrncy: string;
-
+  accountId: string;
+  financialAccountId: string;
   bankId?: string;
   exchangeRate?: number;
 
@@ -545,6 +546,7 @@ export async function createMultipleExpenses(
                 referenceNumber: expenseData.referenceNumber,
                 notes: expenseData.description,
                 status: "paid",
+                financialAccountId: expenseData.financialAccountId,
                 employeeId: expenseData.employeeId,
                 customerId: expenseData.customerId,
                 date: expenseData.expense_date,
@@ -555,11 +557,11 @@ export async function createMultipleExpenses(
             transactions: true,
           },
         });
-
+        const createdTransaction = expense.transactions[0];
         // ب- إنشاء المعاملة المالية المرتبطة (FinancialTransaction)
         // هذا يمثل "سند الصرف" الفعلي في الخزينة
         const voucherFromDb = expense.transactions?.[0]?.voucherNumber || "N/A";
-
+        const paymenacount = expenseData.accountId;
         const entryNumber = `EXP-${new Date().getFullYear()}-${voucherFromDb}`;
         const journalHeader = await tx.journalHeader.create({
           data: {
@@ -568,7 +570,7 @@ export async function createMultipleExpenses(
             description: expenseData.description,
             branchId: expenseData.branchId,
             referenceType: "سند صرف",
-            referenceId: expense.id,
+            referenceId: createdTransaction.id,
             entryDate: expenseData.expense_date,
             status: "POSTED",
             createdBy: userId,
@@ -589,7 +591,7 @@ export async function createMultipleExpenses(
                 ),
                 buildExpenseJournalLine(
                   companyId,
-                  settlementAccount,
+                  paymenacount,
                   `${expenseData.description} - payment`,
                   0,
                   baseAmount,
@@ -707,30 +709,6 @@ export async function createExpense(
         details: `Expense: ${data.description}, Amount: ${data.amount}`,
       },
     });
-    await prisma.journalEvent.create({
-      data: {
-        companyId,
-        eventType: "expense",
-        status: "pending",
-        entityType: "expense",
-        payload: {
-          companyId,
-          expense: {
-            id: expense.id,
-            accountId: data.account_id, // 🔑 THIS is the key
-            amount: data.amount,
-            paymentMethod: data.paymentMethod,
-            referenceNumber: data.referenceNumber,
-            description: data.description,
-            expenseDate: data.expense_date,
-            bankId: data.bankId ?? "",
-            currency_code: data.currency_code ?? "YER",
-          },
-          userId,
-        },
-        processed: false,
-      },
-    });
 
     revalidatePath("/expenses");
     return { success: true, expense };
@@ -749,8 +727,13 @@ export async function updateExpense(
   userId: string,
   data: {
     account_id: string;
+    financialAccountId: string;
     description?: string;
+    exchangeRate?: number;
+    amountFC?: number;
+    accountId: string;
     amount?: number;
+    currecny: string;
     expense_date?: Date;
     payment_method?: string;
     status?: string;
@@ -771,6 +754,12 @@ export async function updateExpense(
           notes: true,
           account_id: true,
           branchId: true,
+          transactions: {
+            select: {
+              id: true,
+              financialAccountId: true,
+            },
+          },
         },
       });
 
@@ -817,7 +806,7 @@ export async function updateExpense(
       const journalHeader = await tx.journalHeader.findFirst({
         where: {
           companyId,
-          referenceId: expenseId,
+          referenceId: existingExpense.transactions[0].id,
         },
         include: {
           lines: true,
@@ -874,7 +863,7 @@ export async function updateExpense(
           await tx.journalLine.update({
             where: { id: creditLine.id },
             data: {
-              accountId: settlementAccount,
+              accountId: data.accountId,
               debit: 0,
               credit: finalAmount,
               baseAmount: finalAmount,
@@ -892,6 +881,10 @@ export async function updateExpense(
         data: {
           amount: finalAmount,
           baseAmount: finalAmount,
+          financialAccountId:
+            data.financialAccountId !== undefined
+              ? data.financialAccountId
+              : (existingExpense.transactions[0].financialAccountId ?? ""),
           paymentMethod: finalPaymentMethod,
           notes:
             data.notes !== undefined

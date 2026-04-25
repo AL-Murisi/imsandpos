@@ -1029,7 +1029,10 @@ export async function POST(req: NextRequest, context: RouteContext) {
           }
 
           acc[currency].items.push({
-            name: p.customer?.name ?? p.supplier?.name ?? "N/A",
+            name:
+              p.type === "RECEIPT"
+                ? baseData.company.name
+                : (p.customer?.name ?? p.supplier?.name ?? "N/A"),
             voucherNumber: p.voucherNumber,
             amount: Number(p.amount).toFixed(2),
             type: p.type === "PAYMENT" ? "دفعة" : "استلام",

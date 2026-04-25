@@ -328,21 +328,11 @@ export default function PurchaseReturnForm({
             <div className="grid grid-cols-1 gap-4 rounded-lg bg-blue-50/50 p-4 md:grid-cols-3">
               <div className="space-y-2">
                 <Label>وحدة الإرجاع</Label>
-                <Select
+                <SelectField
+                  options={inventory.product.sellingUnits}
                   value={selectedUnitId}
-                  onValueChange={(v) => setValue("selectedUnitId", v)}
-                >
-                  <SelectTrigger className="bg-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {inventory.product.sellingUnits.map((u: any) => (
-                      <SelectItem key={u.id} value={u.id}>
-                        {u.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  action={(v) => setValue("selectedUnitId", v)}
+                />
               </div>
               <div className="space-y-2">
                 <Label>الكمية</Label>
@@ -375,7 +365,9 @@ export default function PurchaseReturnForm({
                   return (
                     <Input
                       type="number"
-                      disabled={Number(inventory.purchaseItem.quantity ?? 0) === 0}
+                      disabled={
+                        Number(inventory.purchaseItem.quantity ?? 0) === 0
+                      }
                       min={0}
                       max={Number(inventory.purchaseItem.quantity ?? 0)}
                       step="any"

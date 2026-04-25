@@ -5,6 +5,7 @@ import {
   findPushDeviceTokens,
   type PushDeviceTokenRecord,
 } from "@/lib/firebase/device-tokens";
+import { Roles } from "@prisma/client";
 
 type PushRecipientOptions = {
   companyId: string;
@@ -29,17 +30,11 @@ async function resolveTargetUserIds(companyId: string, roles: string[]) {
   const users = await prisma.user.findMany({
     where: {
       companyId,
-      roles: {
-        some: {
-          role: {
-            OR: roles.map((roleName) => ({
-              name: {
-                equals: roleName,
-                mode: "insensitive",
-              },
-            })),
-          },
-        },
+
+      role: {
+        // Use 'in' to match any role in the array
+        // We cast 'roles' to the Enum type to satisfy TypeScript
+        in: roles as Roles[],
       },
     },
     select: { id: true },

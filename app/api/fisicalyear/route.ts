@@ -21,6 +21,23 @@ type ProfitLossSnapshot = {
   signedBase: number;
 };
 
+type TrialBalanceLine = {
+  accountId: string;
+  accountCode: string;
+  accountNameAr: string | null;
+  accountNameEn: string;
+  debit: number;
+  credit: number;
+};
+
+type TrialBalanceSnapshot = {
+  lines: TrialBalanceLine[];
+  totalDebit: number;
+  totalCredit: number;
+  difference: number;
+  isBalanced: boolean;
+};
+
 function addDays(date: Date, days: number) {
   const next = new Date(date);
   next.setDate(next.getDate() + days);
@@ -41,6 +58,10 @@ function endOfDay(date: Date) {
 
 function buildPeriodName(startDate: Date, endDate: Date) {
   return `${startDate.getFullYear()}-${endDate.getFullYear()}`;
+}
+
+function round2(value: number) {
+  return Number(value.toFixed(2));
 }
 
 function isDebitNature(accountType: AccountType) {
@@ -74,6 +95,81 @@ function buildSignedAmounts(
   return signedAmount >= 0
     ? { debit: 0, credit: Math.abs(signedAmount) }
     : { debit: Math.abs(signedAmount), credit: 0 };
+}
+
+async function buildTrialBalanceSnapshot(
+  tx: Parameters<typeof prisma.$transaction>[0] extends (arg: infer T) => any ? T : never,
+  companyId: string,
+  toDate: Date,
+) {
+  const [accounts, groupedLines] = await Promise.all([
+    tx.accounts.findMany({
+      where: { company_id: companyId },
+      select: {
+        id: true,
+        account_code: true,
+        account_name_ar: true,
+        account_name_en: true,
+      },
+    }),
+    tx.journalLine.groupBy({
+      by: ["accountId"],
+      where: {
+        companyId,
+        header: {
+          status: "POSTED",
+          entryDate: {
+            lte: endOfDay(toDate),
+          },
+        },
+      },
+      _sum: {
+        debit: true,
+        credit: true,
+      },
+    }),
+  ]);
+
+  const accountMap = new Map(
+    accounts.map((account) => [account.id, account]),
+  );
+
+  const lines: TrialBalanceLine[] = groupedLines
+    .map((group) => {
+      const account = accountMap.get(group.accountId);
+      if (!account) return null;
+
+      const debitSum = Number(group._sum.debit ?? 0);
+      const creditSum = Number(group._sum.credit ?? 0);
+      const net = round2(debitSum - creditSum);
+
+      const debit = net > 0 ? net : 0;
+      const credit = net < 0 ? Math.abs(net) : 0;
+      if (Math.abs(net) < 0.005) return null;
+
+      return {
+        accountId: group.accountId,
+        accountCode: account.account_code,
+        accountNameAr: account.account_name_ar,
+        accountNameEn: account.account_name_en,
+        debit,
+        credit,
+      };
+    })
+    .filter((line): line is TrialBalanceLine => Boolean(line))
+    .sort((a, b) => a.accountCode.localeCompare(b.accountCode));
+
+  const totalDebit = round2(lines.reduce((sum, line) => sum + line.debit, 0));
+  const totalCredit = round2(lines.reduce((sum, line) => sum + line.credit, 0));
+  const difference = round2(totalDebit - totalCredit);
+
+  return {
+    lines,
+    totalDebit,
+    totalCredit,
+    difference,
+    isBalanced: Math.abs(difference) < 0.01,
+  } satisfies TrialBalanceSnapshot;
 }
 
 async function buildBalanceSnapshots(
@@ -293,6 +389,46 @@ export async function POST(req: NextRequest) {
           throw new Error("السنة المالية مقفلة بالفعل");
         }
 
+        const fiscalYearEndDate = new Date(fiscalYear.end_date);
+        const unadjustedTrialBalance = await buildTrialBalanceSnapshot(
+          tx,
+          session.companyId,
+          fiscalYearEndDate,
+        );
+
+        if (!unadjustedTrialBalance.isBalanced) {
+          throw new Error(
+            `Cannot close fiscal year: unadjusted trial balance is not balanced (difference ${unadjustedTrialBalance.difference})`,
+          );
+        }
+
+        let unadjustedTrialBalanceEntryNumber: string | null = null;
+        if (unadjustedTrialBalance.lines.length > 0) {
+          unadjustedTrialBalanceEntryNumber = `FYTB-UNADJ-${fiscalYear.period_name}-${Date.now()}`;
+          await tx.journalHeader.create({
+            data: {
+              companyId: session.companyId,
+              entryNumber: unadjustedTrialBalanceEntryNumber,
+              description: `Unadjusted trial balance snapshot for fiscal year ${fiscalYear.period_name}`,
+              referenceType: "fiscal-year-trial-balance-unadjusted",
+              referenceId: fiscalYear.id,
+              entryDate: endOfDay(fiscalYearEndDate),
+              status: "TRIAL_BALANCE_SNAPSHOT",
+              createdBy: session.userId,
+              lines: {
+                create: unadjustedTrialBalance.lines.map((line) => ({
+                  companyId: session.companyId,
+                  accountId: line.accountId,
+                  debit: line.debit,
+                  credit: line.credit,
+                  baseAmount: Math.abs(line.debit - line.credit),
+                  memo: `Unadjusted TB snapshot ${line.accountCode}`,
+                })),
+              },
+            },
+          });
+        }
+
         const mappings = await tx.account_mappings.findMany({
           where: {
             company_id: session.companyId,
@@ -308,12 +444,17 @@ export async function POST(req: NextRequest) {
           mappings.find((mapping) => mapping.mapping_type === mappingType)?.account_id;
 
         const retainedEarningsId = getMappedAccount("retained_earnings");
+        const incomeSummaryId = getMappedAccount("income_summary");
         const openingBalanceEquityId = getMappedAccount("opening_balance_equity");
         const fxGainId = getMappedAccount("fx_gain");
         const fxLossId = getMappedAccount("fx_loss");
 
         if (!retainedEarningsId) {
           throw new Error("حساب الأرباح المحتجزة غير مضبوط في الربط المحاسبي");
+        }
+
+        if (!incomeSummaryId) {
+          throw new Error("Income summary account mapping is required");
         }
 
         const baseCurrency = fiscalYear.companies.base_currency;
@@ -364,7 +505,6 @@ export async function POST(req: NextRequest) {
           baseAmount?: number;
           memo: string;
         }> = [];
-        const accountBalanceAdjustments = new Map<string, number>();
 
         if (fxGainId && fxLossId) {
           for (const snapshot of nonBaseSnapshots) {
@@ -406,15 +546,6 @@ export async function POST(req: NextRequest) {
                 : `Unrealized FX loss on ${snapshot.currencyCode}`,
             });
 
-            accountBalanceAdjustments.set(
-              snapshot.accountId,
-              (accountBalanceAdjustments.get(snapshot.accountId) || 0) + delta,
-            );
-            accountBalanceAdjustments.set(
-              counterpartyAccountId,
-              (accountBalanceAdjustments.get(counterpartyAccountId) || 0) +
-                (counterpartyIsGain ? Math.abs(delta) : -Math.abs(delta)),
-            );
           }
         }
 
@@ -430,25 +561,51 @@ export async function POST(req: NextRequest) {
               referenceId: fiscalYear.id,
               entryDate: endOfDay(new Date(fiscalYear.end_date)),
               status: "POSTED",
-              createdBy: session.id,
+              createdBy: session.userId,
               lines: {
                 create: fxRevaluationLines,
               },
             },
           });
 
-          await Promise.all(
-            Array.from(accountBalanceAdjustments.entries()).map(([accountId, delta]) =>
-              tx.accounts.update({
-                where: { id: accountId },
-                data: {
-                  balance: {
-                    increment: delta,
-                  },
-                },
-              }),
-            ),
+        }
+
+        const adjustedTrialBalance = await buildTrialBalanceSnapshot(
+          tx,
+          session.companyId,
+          fiscalYearEndDate,
+        );
+        if (!adjustedTrialBalance.isBalanced) {
+          throw new Error(
+            `Cannot close fiscal year: adjusted trial balance is not balanced (difference ${adjustedTrialBalance.difference})`,
           );
+        }
+
+        let adjustedTrialBalanceEntryNumber: string | null = null;
+        if (adjustedTrialBalance.lines.length > 0) {
+          adjustedTrialBalanceEntryNumber = `FYTB-ADJ-${fiscalYear.period_name}-${Date.now()}`;
+          await tx.journalHeader.create({
+            data: {
+              companyId: session.companyId,
+              entryNumber: adjustedTrialBalanceEntryNumber,
+              description: `Adjusted trial balance snapshot for fiscal year ${fiscalYear.period_name}`,
+              referenceType: "fiscal-year-trial-balance-adjusted",
+              referenceId: fiscalYear.id,
+              entryDate: endOfDay(fiscalYearEndDate),
+              status: "TRIAL_BALANCE_SNAPSHOT",
+              createdBy: session.userId,
+              lines: {
+                create: adjustedTrialBalance.lines.map((line) => ({
+                  companyId: session.companyId,
+                  accountId: line.accountId,
+                  debit: line.debit,
+                  credit: line.credit,
+                  baseAmount: Math.abs(line.debit - line.credit),
+                  memo: `Adjusted TB snapshot ${line.accountCode}`,
+                })),
+              },
+            },
+          });
         }
 
         const profitLossSnapshots = await buildProfitLossSnapshots(
@@ -478,87 +635,135 @@ export async function POST(req: NextRequest) {
         const netResult = Number((totalRevenue - totalExpenses).toFixed(2));
 
         let closingEntryNumber: string | null = null;
+        let closeRevenueEntryNumber: string | null = null;
+        let closeExpenseEntryNumber: string | null = null;
+        let closeIncomeSummaryEntryNumber: string | null = null;
         if (
           revenueAccounts.length > 0 ||
           expenseAccounts.length > 0 ||
           netResult !== 0
         ) {
-          closingEntryNumber = `FYCLOSE-${fiscalYear.period_name}-${Date.now()}`;
+          if (revenueAccounts.length > 0) {
+            closeRevenueEntryNumber = `FYCLOSE-REV-${fiscalYear.period_name}-${Date.now()}`;
 
-          await tx.journalHeader.create({
-            data: {
-              companyId: session.companyId,
-              entryNumber: closingEntryNumber,
-              description: `Closing entries for fiscal year ${fiscalYear.period_name}`,
-              referenceType: "fiscal-year-close",
-              referenceId: fiscalYear.id,
-              entryDate: endOfDay(new Date(fiscalYear.end_date)),
-              status: "POSTED",
-              createdBy: session.id,
-              lines: {
-                create: [
-                  ...revenueAccounts.map((account) => ({
-                    companyId: session.companyId,
-                    accountId: account.accountId,
-                    debit: Math.abs(account.signedBase),
-                    credit: 0,
-                    baseAmount: Math.abs(account.signedBase),
-                    memo: `Closing revenue account ${account.accountNameEn || account.accountNameAr || account.accountId}`,
-                  })),
-                  ...expenseAccounts.map((account) => ({
-                    companyId: session.companyId,
-                    accountId: account.accountId,
-                    debit: 0,
-                    credit: Math.abs(account.signedBase),
-                    baseAmount: Math.abs(account.signedBase),
-                    memo: `Closing expense account ${account.accountNameEn || account.accountNameAr || account.accountId}`,
-                  })),
-                  ...(netResult !== 0
-                    ? [
-                        {
-                          companyId: session.companyId,
-                          accountId: retainedEarningsId,
-                          debit: netResult < 0 ? Math.abs(netResult) : 0,
-                          credit: netResult > 0 ? netResult : 0,
-                          baseAmount: Math.abs(netResult),
-                          memo:
-                            netResult > 0
-                              ? "Transfer net profit to retained earnings"
-                              : "Transfer net loss to retained earnings",
-                        },
-                      ]
-                    : []),
-                ],
-              },
-            },
-          });
-
-          await Promise.all([
-            ...revenueAccounts.map((account) =>
-              tx.accounts.update({
-                where: { id: account.accountId },
-                data: { balance: 0 },
-              }),
-            ),
-            ...expenseAccounts.map((account) =>
-              tx.accounts.update({
-                where: { id: account.accountId },
-                data: { balance: 0 },
-              }),
-            ),
-            ...(netResult !== 0
-              ? [
-                  tx.accounts.update({
-                    where: { id: retainedEarningsId },
-                    data: {
-                      balance: {
-                        increment: netResult,
-                      },
+            await tx.journalHeader.create({
+              data: {
+                companyId: session.companyId,
+                entryNumber: closeRevenueEntryNumber,
+                description: `Close revenue accounts for fiscal year ${fiscalYear.period_name}`,
+                referenceType: "fiscal-year-close-revenue",
+                referenceId: fiscalYear.id,
+                entryDate: endOfDay(new Date(fiscalYear.end_date)),
+                status: "POSTED",
+                createdBy: session.userId,
+                lines: {
+                  create: [
+                    ...revenueAccounts.map((account) => ({
+                      companyId: session.companyId,
+                      accountId: account.accountId,
+                      debit: Math.abs(account.signedBase),
+                      credit: 0,
+                      baseAmount: Math.abs(account.signedBase),
+                      memo: `Close revenue account ${account.accountNameEn || account.accountNameAr || account.accountId}`,
+                    })),
+                    {
+                      companyId: session.companyId,
+                      accountId: incomeSummaryId,
+                      debit: 0,
+                      credit: Math.abs(totalRevenue),
+                      baseAmount: Math.abs(totalRevenue),
+                      memo: "Transfer total revenue to income summary",
                     },
-                  }),
-                ]
-              : []),
-          ]);
+                  ],
+                },
+              },
+            });
+          }
+
+          if (expenseAccounts.length > 0) {
+            closeExpenseEntryNumber = `FYCLOSE-EXP-${fiscalYear.period_name}-${Date.now()}`;
+
+            await tx.journalHeader.create({
+              data: {
+                companyId: session.companyId,
+                entryNumber: closeExpenseEntryNumber,
+                description: `Close expense accounts for fiscal year ${fiscalYear.period_name}`,
+                referenceType: "fiscal-year-close-expense",
+                referenceId: fiscalYear.id,
+                entryDate: endOfDay(new Date(fiscalYear.end_date)),
+                status: "POSTED",
+                createdBy: session.userId,
+                lines: {
+                  create: [
+                    {
+                      companyId: session.companyId,
+                      accountId: incomeSummaryId,
+                      debit: Math.abs(totalExpenses),
+                      credit: 0,
+                      baseAmount: Math.abs(totalExpenses),
+                      memo: "Transfer total expenses to income summary",
+                    },
+                    ...expenseAccounts.map((account) => ({
+                      companyId: session.companyId,
+                      accountId: account.accountId,
+                      debit: 0,
+                      credit: Math.abs(account.signedBase),
+                      baseAmount: Math.abs(account.signedBase),
+                      memo: `Close expense account ${account.accountNameEn || account.accountNameAr || account.accountId}`,
+                    })),
+                  ],
+                },
+              },
+            });
+          }
+
+          if (netResult !== 0) {
+            closeIncomeSummaryEntryNumber = `FYCLOSE-IS-${fiscalYear.period_name}-${Date.now()}`;
+
+            await tx.journalHeader.create({
+              data: {
+                companyId: session.companyId,
+                entryNumber: closeIncomeSummaryEntryNumber,
+                description: `Close income summary for fiscal year ${fiscalYear.period_name}`,
+                referenceType: "fiscal-year-close-income-summary",
+                referenceId: fiscalYear.id,
+                entryDate: endOfDay(new Date(fiscalYear.end_date)),
+                status: "POSTED",
+                createdBy: session.userId,
+                lines: {
+                  create: [
+                    {
+                      companyId: session.companyId,
+                      accountId: incomeSummaryId,
+                      debit: netResult > 0 ? Math.abs(netResult) : 0,
+                      credit: netResult < 0 ? Math.abs(netResult) : 0,
+                      baseAmount: Math.abs(netResult),
+                      memo:
+                        netResult > 0
+                          ? "Close income summary (net income)"
+                          : "Close income summary (net loss)",
+                    },
+                    {
+                      companyId: session.companyId,
+                      accountId: retainedEarningsId,
+                      debit: netResult < 0 ? Math.abs(netResult) : 0,
+                      credit: netResult > 0 ? Math.abs(netResult) : 0,
+                      baseAmount: Math.abs(netResult),
+                      memo:
+                        netResult > 0
+                          ? "Transfer net income to retained earnings"
+                          : "Transfer net loss to retained earnings",
+                    },
+                  ],
+                },
+              },
+            });
+          }
+
+          closingEntryNumber =
+            closeIncomeSummaryEntryNumber ??
+            closeExpenseEntryNumber ??
+            closeRevenueEntryNumber;
         }
 
         const currentStart = startOfDay(new Date(fiscalYear.start_date));
@@ -658,7 +863,7 @@ export async function POST(req: NextRequest) {
               referenceId: nextFiscalYear.id,
               entryDate: startOfDay(nextStart),
               status: "OPENING_SNAPSHOT",
-              createdBy: session.id,
+              createdBy: session.userId,
               lines: {
                 create: openingSnapshotLines,
               },
@@ -670,7 +875,7 @@ export async function POST(req: NextRequest) {
           where: { id: fiscalYear.id },
           data: {
             is_closed: true,
-            closed_by: session.id,
+            closed_by: session.userId,
             closed_at: new Date(),
           },
         });
@@ -680,7 +885,24 @@ export async function POST(req: NextRequest) {
           message: "تم إغلاق السنة المالية وإنشاء سنة مالية جديدة مع قيود الإقفال وسجل افتتاحي",
           fxRevaluationEntryNumber,
           closingEntryNumber,
+          closeRevenueEntryNumber,
+          closeExpenseEntryNumber,
+          closeIncomeSummaryEntryNumber,
           openingSnapshotEntryNumber,
+          unadjustedTrialBalanceEntryNumber,
+          adjustedTrialBalanceEntryNumber,
+          unadjustedTrialBalance: {
+            totalDebit: unadjustedTrialBalance.totalDebit,
+            totalCredit: unadjustedTrialBalance.totalCredit,
+            difference: unadjustedTrialBalance.difference,
+            isBalanced: unadjustedTrialBalance.isBalanced,
+          },
+          adjustedTrialBalance: {
+            totalDebit: adjustedTrialBalance.totalDebit,
+            totalCredit: adjustedTrialBalance.totalCredit,
+            difference: adjustedTrialBalance.difference,
+            isBalanced: adjustedTrialBalance.isBalanced,
+          },
           nextFiscalYearId: nextFiscalYear.id,
           nextPeriodName,
           netResult: Number(netResult.toFixed(2)),

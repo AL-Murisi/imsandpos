@@ -185,7 +185,6 @@ export async function deleteUser(userId: string, companyId: string) {
         data: { userId: null },
       });
       await tx.employee.deleteMany({ where: { userId, companyId } });
-      await tx.userRole.deleteMany({ where: { userId } });
       await tx.userInvite.deleteMany({ where: { userId } });
       await tx.pushSubscription.deleteMany({ where: { userId } });
       return await tx.user.delete({

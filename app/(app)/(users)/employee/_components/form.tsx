@@ -12,7 +12,6 @@ import { Label } from "@/components/ui/label";
 import { createEmployee } from "@/lib/actions/employees";
 import { useAuth } from "@/lib/context/AuthContext";
 import { CreateEmployeeInput, CreateEmployeeSchema } from "@/lib/zod/employee";
-import { fetchRolesForSelect } from "@/lib/actions/roles";
 import { SelectField } from "@/components/common/selectproduct";
 
 type LimitInfo = {

@@ -129,13 +129,7 @@ export async function getCompanySubscriptionUsageByCompanyId(
       prisma.user.count({
         where: {
           companyId,
-          roles: {
-            some: {
-              role: {
-                name: "cashier",
-              },
-            },
-          },
+          role: "cashier",
         },
       }),
       prisma.warehouse.count({

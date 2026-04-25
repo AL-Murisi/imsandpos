@@ -33,7 +33,11 @@ export async function getSalesOverview(
       },
       header: { status: "POSTED", entryDate: { gte: startDate, lte: endDate } },
     },
-    select: { debit: true, credit: true, header: { select: { entryDate: true } } },
+    select: {
+      debit: true,
+      credit: true,
+      header: { select: { entryDate: true } },
+    },
     orderBy: { header: { entryDate: "asc" } },
   });
 
@@ -47,7 +51,11 @@ export async function getSalesOverview(
       },
       header: { status: "POSTED", entryDate: { gte: startDate, lte: endDate } },
     },
-    select: { debit: true, credit: true, header: { select: { entryDate: true } } },
+    select: {
+      debit: true,
+      credit: true,
+      header: { select: { entryDate: true } },
+    },
     orderBy: { header: { entryDate: "asc" } },
   });
 
@@ -242,7 +250,10 @@ export async function getExpenseBreakdown(
     include: {
       journalLines: {
         where: {
-          header: { status: "POSTED", entryDate: { gte: startDate, lte: endDate } },
+          header: {
+            status: "POSTED",
+            entryDate: { gte: startDate, lte: endDate },
+          },
         },
         select: { debit: true, credit: true },
       },
@@ -453,8 +464,6 @@ export async function getProductStats(companyId: string) {
       reorderLevel: true,
       product: {
         select: {
-          packetsPerCarton: true,
-          unitsPerPacket: true,
           expiredAt: true,
         },
       },

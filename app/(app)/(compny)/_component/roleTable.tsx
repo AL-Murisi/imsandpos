@@ -3,12 +3,11 @@
 import { useTablePrams } from "@/hooks/useTableParams";
 
 import { role } from "./columns";
-import dynamic from "next/dynamic";
-import TableSkeleton from "@/components/skeleton/table";
+
 import { DataTable } from "@/components/common/ReusbleTable";
 
 type ProductClientProps = {
-  Role: any[];
+  Role: any;
 };
 
 export default function Role({ Role }: ProductClientProps) {

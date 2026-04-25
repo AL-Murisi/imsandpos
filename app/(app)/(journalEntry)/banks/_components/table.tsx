@@ -27,7 +27,7 @@ type ChartOfAccountsClientProps = {
   total: number;
 
   accountType?: string;
-  banks?: { id: string; name: string }[];
+  banks: { banks: { id: string; name: string }[], branches: { id: string; name: string }[] };
 };
 
 export default function BanksTable({
@@ -93,7 +93,7 @@ export default function BanksTable({
                 action={(value) => setParam("accountType", value)}
                 options={optines}
               />{" "}
-              <BankFormDialog mode="create" banks={banks} />
+              <BankFormDialog mode="create" banks={banks??[]} />
             </div>
           }
           data={data ?? []}

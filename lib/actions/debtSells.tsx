@@ -367,7 +367,8 @@ export async function updateSalesBulk(
     basCurrncy: string;
     paymentMethod: string;
     currencyCode: string;
-    bankId: string;
+    financialAccountId: string;
+    accountId: string;
     exchange_rate?: number;
     transferNumber?: string;
     baseAmount?: number;
@@ -491,6 +492,7 @@ export async function updateSalesBulk(
             voucherNumber,
             type: TransactionType.RECEIPT,
             paymentMethod: paymentDetails.paymentMethod,
+            financialAccountId: paymentDetails.financialAccountId,
             amount:
               paymentDetails.currencyCode !== paymentDetails.basCurrncy
                 ? paymentDetails.amountFC
@@ -510,7 +512,7 @@ export async function updateSalesBulk(
         createdPayments.push(payment);
 
         const entryNumber = `Debt-${new Date().getFullYear()}-${voucherNumber}`;
-
+        const paymentacc = paymentDetails.accountId;
         const desc = `Debt payment for invoice: ${p.invoiceNumber}`;
 
         await tx.journalHeader.create({
@@ -528,7 +530,7 @@ export async function updateSalesBulk(
               create: [
                 buildDebtJournalLine(
                   companyId,
-                  settlementAccount,
+                  paymentacc,
                   `${desc} - فاتوره`,
                   p.amount,
                   0,

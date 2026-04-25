@@ -128,6 +128,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     process.env.ENCRYPTION_SECRET,
   session: {
     strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   providers,
   callbacks: {
@@ -182,9 +183,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             ? (user as any).subscriptionActive
             : true;
         token.subscriptionEndsAt = (user as any).subscriptionEndsAt ?? null;
+        token.expiresAt =
+          typeof token.exp === "number"
+            ? new Date(token.exp * 1000).toISOString()
+            : null;
       }
 
-      if (token.userId && token.companyId && Array.isArray(token.roles)) {
+      if (
+        token.userId &&
+        token.companyId &&
+        typeof token.role === "string" &&
+        token.role.trim().length > 0
+      ) {
         return token;
       }
 
@@ -208,12 +218,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             token.companyId = appUser.companyId;
             token.userActive = appUser.isActive;
             token.companyActive = appUser.company?.isActive ?? false;
-            token.roles = appUser.role;
+            token.role = appUser.role ?? "";
             const subscription = await ensureTrialSubscription(
               appUser.companyId,
             );
             token.subscriptionActive = isSubscriptionActive(subscription);
             token.subscriptionEndsAt = subscription?.endsAt ?? null;
+            token.expiresAt =
+              typeof token.exp === "number"
+                ? new Date(token.exp * 1000).toISOString()
+                : null;
           }
         } catch (error) {
           return token;
@@ -233,6 +247,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           token.subscriptionActive ?? true;
         (session.user as any).subscriptionEndsAt =
           token.subscriptionEndsAt ?? null;
+        (session.user as any).expiresAt = token.expiresAt ?? null;
       }
       return session;
     },

@@ -9,6 +9,8 @@ import { cache } from "react";
 import { getSession } from "@/lib/session";
 import { getActiveFiscalYears } from "./fiscalYear";
 import { getNextVoucherNumber } from "./cashier";
+import { sendRoleBasedNotification } from "../push-notifications";
+type CustomerPayments = Record<string, number>;
 function serializeData<T>(data: T): T {
   if (data === null || data === undefined) return data;
 
@@ -214,24 +216,6 @@ export async function createSupplier(
     });
     revalidatePath("/suppliers");
     revalidatePath("/products");
-    await prisma.journalEvent.create({
-      data: {
-        companyId: companyId,
-        eventType: "createsupplier",
-        status: "pending",
-        entityType: "supplier",
-        payload: {
-          supplierId: user.id,
-          supplierName: user.name,
-          // outstandingBalance: outstandingBalance,
-          // totalPaid: totalPaid,
-          // totalPurchased: totalPurchased,
-          createdBy: session.userId,
-        },
-
-        processed: false,
-      },
-    });
 
     const users = serializeData(user);
     return users;
@@ -678,6 +662,63 @@ export async function updateSupplierPayment(
     throw error;
   }
 }
+async function sendPaymentNotifications(
+  companyId: string,
+  totals: Record<string, number>, // Type for { [id]: amount }
+  label: string,
+  type: "CUSTOMER" | "SUPPLIER" = "CUSTOMER", // Default to Customer for safety
+) {
+  try {
+    const ids = Object.keys(totals);
+    if (ids.length === 0) return;
+
+    // Fetch either Customer or Supplier names based on the type
+    const entities =
+      type === "SUPPLIER"
+        ? await prisma.supplier.findMany({
+            where: { companyId, id: { in: ids } },
+            select: { id: true, name: true },
+          })
+        : await prisma.customer.findMany({
+            where: { companyId, id: { in: ids } },
+            select: { id: true, name: true },
+          });
+
+    const entityNameMap = new Map(entities.map((e) => [e.id, e.name]));
+
+    await Promise.all(
+      ids.map(async (id) => {
+        const name =
+          entityNameMap.get(id) || (type === "SUPPLIER" ? "مورد" : "عميل");
+        const amount = totals[id] || 0;
+
+        // Dynamic content based on type
+        const title = type === "SUPPLIER" ? "دفع للمورد" : "سداد مديونية عميل";
+        const body =
+          type === "SUPPLIER"
+            ? `تم دفع مبلغ ${amount} للمورد ${name} - ${label}`
+            : `تم استلام مبلغ ${amount} من العميل ${name} - ${label}`;
+        const url =
+          type === "SUPPLIER" ? `/suppliers/${id}` : `/customers/${id}`;
+
+        await sendRoleBasedNotification(
+          {
+            companyId,
+            targetRoles: ["admin"],
+          },
+          {
+            title,
+            body,
+            url,
+            tag: `payment-${type.toLowerCase()}-${id}`,
+          },
+        );
+      }),
+    );
+  } catch (err) {
+    console.error("Failed to send payment notifications:", err);
+  }
+}
 export async function createSupplierPaymentFromPurchases(
   userId: string,
   companyId: string,
@@ -692,6 +733,8 @@ export async function createSupplierPaymentFromPurchases(
     bankId?: string;
     branchId: string;
     currency_code: string;
+    financialAccountId: string;
+    accountId: string;
     amountFC?: number;
     exchangeRate?: number;
     referenceNumber?: string;
@@ -713,7 +756,9 @@ export async function createSupplierPaymentFromPurchases(
       amount,
       paymentMethod,
       referenceNumber,
+      financialAccountId,
       note,
+      accountId,
       bankId,
       paymentDate,
     } = data;
@@ -809,7 +854,9 @@ export async function createSupplierPaymentFromPurchases(
             voucherNumber,
             paymentMethod,
             status: "paid",
-            notes: note,
+            financialAccountId,
+            notes:
+              note || `دفع مبلغ  للمورد - فاتورة ${purchase.invoiceNumber}`,
             userId: createdBy,
             createdAt: paymentDate ?? new Date(),
           },
@@ -847,9 +894,7 @@ export async function createSupplierPaymentFromPurchases(
         });
 
         const entryYear = new Date().getFullYear();
-        const entryNumber = `SP-${entryYear}-${Date.now()}-${Math.floor(
-          Math.random() * 1000,
-        )}`;
+        const entryNumber = `PUR-${entryYear}-${supplierPayment.voucherNumber}`;
         const isForeign =
           Boolean(currency_code) &&
           Boolean(baseCurrency) &&
@@ -891,7 +936,7 @@ export async function createSupplierPaymentFromPurchases(
                 },
                 {
                   companyId,
-                  accountId: paymentAccount,
+                  accountId: accountId,
                   debit: 0,
                   credit: amount,
                   memo: `${description} - ${paymentMethod}`,
@@ -911,7 +956,7 @@ export async function createSupplierPaymentFromPurchases(
             },
           },
         });
-        revalidatePath("/suppliers");
+        revalidatePath("/purchases");
         return {
           supplierPayment,
           updatedPurchase,
@@ -945,13 +990,14 @@ export async function createSupplierPaymentFromPurchases(
       },
     });
 
-    // createPurchaseJournalEntriesWithRetry({
-    //   payment: supplierPayment,
-    //   companyId,
-    //   userId,
-    // }).catch((err) => {
-    //   console.error("Failed to create supplier payment journal entries:", err);
-    // });
+    // Replace the old notification block with this:
+    if (updatedPurchase) {
+      await sendPaymentNotifications(
+        companyId,
+        { [supplierId]: amount }, // ✅ Pass the actual amount paid
+        `فاتورة رقم ${updatedPurchase.invoiceNumber || updatedPurchase.id}`,
+      );
+    }
     return {
       success: true,
       payment: serializeData(supplierPayment),
@@ -1056,40 +1102,7 @@ export async function createSupplierPaymentJournalEntries({
   };
 
   // 1️⃣ Debit Accounts Payable
-  await prisma.journal_entries.create({
-    data: {
-      company_id: companyId,
-      account_id: payableAccount,
-      description,
-      debit: payment.amount,
-      credit: 0,
-      fiscal_period: fy.period_name,
-      reference_type: "سداد_دين_المورد",
 
-      reference_id: payment.supplierId,
-      entry_number: entry_number + "-D",
-      created_by: userId,
-      is_automated: true,
-    },
-  });
-  await updateAccountBalance(payableAccount, payment.amount, 0);
-
-  // 2️⃣ Credit Cash/Bank
-  await prisma.journal_entries.create({
-    data: {
-      company_id: companyId,
-      account_id: paymentAccount,
-      description,
-      debit: payment.amount,
-      fiscal_period: fy.period_name,
-      credit: 0,
-      reference_type: "سداد_دين_المورد",
-      reference_id: payment.id,
-      entry_number: entry_number + "-C",
-      created_by: userId,
-      is_automated: true,
-    },
-  });
   await updateAccountBalance(paymentAccount, payment.amount, 0);
 }
 

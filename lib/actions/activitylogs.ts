@@ -44,15 +44,7 @@ export async function getActivityLogs(
           select: {
             id: true,
             name: true,
-            roles: {
-              select: {
-                role: {
-                  select: {
-                    name: true,
-                  },
-                },
-              },
-            },
+            role: true,
           },
         },
       },

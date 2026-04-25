@@ -641,12 +641,9 @@ export async function getAllActiveProductsForSale(
         sku: true,
         type: true,
         sellingUnits: true,
-        pricePerUnit: true,
-        pricePerPacket: true,
-        pricePerCarton: true,
+
         barcode: true,
-        packetsPerCarton: true,
-        unitsPerPacket: true,
+
         expiredAt: true,
         warehouseId: true,
         inventory: { select: { availableQuantity: true } },
@@ -748,6 +745,8 @@ export async function processReturn(data: any, companyId: string) {
     cashierId,
     customerId,
     branchId,
+    accountId,
+    financialAccountId,
     returnNumber,
     reason,
     items,
@@ -758,6 +757,7 @@ export async function processReturn(data: any, companyId: string) {
     currency,
     foreignAmount,
     paymentMethod,
+    transferNumber,
   } = data;
 
   const returnItems = items.filter((item: any) => item.quantity > 0);
@@ -807,34 +807,6 @@ export async function processReturn(data: any, companyId: string) {
 
       if (originalSale.sale_type !== "SALE") {
         throw new Error("يمكن تنفيذ الإرجاع على فاتورة بيع فقط");
-      }
-
-      const existingReturnSale = await tx.invoice.findFirst({
-        where: {
-          companyId,
-          sale_type: "RETURN_SALE",
-          invoiceNumber: originalSale.invoiceNumber,
-        },
-        select: {
-          id: true,
-          totalAmount: true,
-          amountPaid: true,
-          currencyCode: true,
-          foreignAmount: true,
-          baseAmount: true,
-          items: {
-            select: {
-              productId: true,
-              quantity: true,
-            },
-          },
-        },
-      });
-
-      if (existingReturnSale) {
-        throw new Error(
-          "تم إرجاع هذه الفاتورة مسبقاً، لا يمكن إرجاعها مرة أخرى",
-        );
       }
 
       const returnedQuantityMap = new Map<string, number>();
@@ -975,7 +947,7 @@ export async function processReturn(data: any, companyId: string) {
       }
 
       returnSubtotal = Number(returnSubtotal.toFixed(2));
-
+      let referenceid;
       const returnSale = await tx.invoice.create({
         data: {
           companyId,
@@ -1014,11 +986,13 @@ export async function processReturn(data: any, companyId: string) {
         tx,
       );
       const customerOperations: Prisma.PrismaPromise<any>[] = [];
+      let transactionId = null; // To store the ID
+
+      // 1. Handle Balance Decrement (Add to queue)
       const returnAgainstReceivable = Math.min(
         originalSaleAmountDue,
         Math.max(0, returnSubtotal - returnToCustomer),
       );
-
       if (customerId && returnAgainstReceivable > 0) {
         customerOperations.push(
           tx.customer.update({
@@ -1031,24 +1005,26 @@ export async function processReturn(data: any, companyId: string) {
       }
 
       if (returnToCustomer > 0) {
-        customerOperations.push(
-          tx.financialTransaction.create({
-            data: {
-              companyId,
-              branchId,
-              currencyCode: currency,
-              invoiceId: returnSale.id,
-              userId: cashierId,
-              voucherNumber,
-              customerId: originalSale.customerId,
-              paymentMethod: paymentMethod || "cash",
-              type: "PAYMENT",
-              amount: returnToCustomer,
-              status: "paid",
-              notes: reason || "مرتجع بيع",
-            },
-          }),
-        );
+        const payment = await tx.financialTransaction.create({
+          data: {
+            companyId,
+            branchId,
+            currencyCode: currency,
+            invoiceId: returnSale.id,
+            userId: cashierId,
+            voucherNumber,
+            financialAccountId, // Now correctly linked
+            customerId: originalSale.customerId,
+            paymentMethod: paymentMethod || "cash",
+            type: "PAYMENT",
+            amount: returnToCustomer,
+            status: "paid",
+            notes:
+              reason + (paymentMethod === "bank" ? ` - ${transferNumber}` : ""),
+          },
+        });
+
+        transactionId = payment.id; // ✅ Here is your ID
       }
 
       if (customerOperations.length > 0) {
@@ -1090,7 +1066,12 @@ export async function processReturn(data: any, companyId: string) {
       // Fix your entryNumber logic:
       const entryNumber = `RET-${new Date().getFullYear()}-${voucherFromDb}`;
 
-      const desc = `Sales return: ${returnSale.invoiceNumber} / original ${originalSale.invoiceNumber}`;
+      const desc =
+        `مرتجع بيع: ${returnSale.invoiceNumber} / original ${originalSale.invoiceNumber}` +
+          paymentMethod ===
+        "bank"
+          ? ` رقم التحويله{ transferNumber }`
+          : "";
       const isForeign =
         currency &&
         baseCurrency &&
@@ -1137,7 +1118,7 @@ export async function processReturn(data: any, companyId: string) {
       if (returnToCustomer > 0) {
         journalLines.push(
           createLine(
-            cash,
+            accountId,
             `${desc} - refund`,
             0,
             returnToCustomer,
@@ -1178,7 +1159,7 @@ export async function processReturn(data: any, companyId: string) {
           description: desc,
           branchId,
           referenceType: "ارجاع مبيعات",
-          referenceId: returnSale.id,
+          referenceId: transactionId,
           entryDate: new Date(),
           status: "POSTED",
           createdBy: cashierId,
@@ -1207,6 +1188,6 @@ export async function processReturn(data: any, companyId: string) {
     },
   );
 
-  revalidatePath("/sells");
+  revalidatePath("/salesDashboard");
   return result;
 }

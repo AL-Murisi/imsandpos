@@ -263,11 +263,6 @@ export async function updateEmployee(
     let userId = existingEmployee.userId ?? null;
 
     if (normalizedEmail) {
-      const employeeRole = await prisma.role.findFirst({
-        where: { name: { equals: "employee", mode: "insensitive" } },
-        select: { id: true },
-      });
-
       if (!userId) {
         const userCapacity = await canCreateSubscriptionResource(
           companyId,
@@ -283,10 +278,6 @@ export async function updateEmployee(
           return { error: "أدخل كلمة مرور لإنشاء حساب الموظف" };
         }
 
-        if (!employeeRole) {
-          return { error: "دور employee غير موجود في النظام" };
-        }
-
         const createdUser = await prisma.user.create({
           data: {
             companyId,
@@ -294,13 +285,6 @@ export async function updateEmployee(
             name: name ?? "",
             phoneNumber: normalizeOptionalString(phone),
             password,
-          },
-        });
-
-        await prisma.userRole.create({
-          data: {
-            userId: createdUser.id,
-            roleId: employeeRole.id,
           },
         });
 
@@ -390,7 +374,6 @@ export async function deleteEmployee(employeeId: string, companyId: string) {
           where: { userId: employee.userId, companyId },
           data: { userId: null },
         });
-        await tx.userRole.deleteMany({ where: { userId: employee.userId } });
         await tx.userInvite.deleteMany({ where: { userId: employee.userId } });
         await tx.pushSubscription.deleteMany({
           where: { userId: employee.userId },

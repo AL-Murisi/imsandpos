@@ -12,13 +12,18 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { Fetchbanks } from "@/lib/actions/banks";
 import { Edit } from "lucide-react";
+import {
+  PaymentState,
+  ReusablePayment,
+} from "@/components/common/ReusablePayment";
+import { useCompany } from "@/hooks/useCompany";
 
 export function ExpenseEditForm({ expense }: { expense: any }) {
   const { register, handleSubmit, setValue, watch } = useForm({
     defaultValues: {
       description: expense.description,
       amount: Number(expense.amount),
-      payment_method: expense.payment_method,
+      payment_method: expense.paymentMethod,
       status: expense.status,
       notes: expense.notes || "",
       expenseDate: new Date(expense.expenseDate).toISOString().slice(0, 16),
@@ -27,8 +32,18 @@ export function ExpenseEditForm({ expense }: { expense: any }) {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const paymentMethod = watch("payment_method");
-  const [banks, setBanks] = useState<{ id: string; name: string }[]>([]);
-  const [selectedBankId, setSelectedBankId] = useState("");
+  const { company } = useCompany();
+
+  const [payment, setPayment] = useState<PaymentState>({
+    paymentMethod: "cash",
+    accountId: "",
+    financialAccountId: "",
+    selectedCurrency: company?.base_currency || "YER",
+    amountBase: 0,
+    amountFC: 0,
+    exchangeRate: 1,
+    transferNumber: "",
+  });
 
   const status = watch("status");
   const account_id = watch("account_id");
@@ -47,25 +62,7 @@ export function ExpenseEditForm({ expense }: { expense: any }) {
       setValue("account_id", expense.account_id); // تعيين القيمة الافتراضية بعد تحميل الفئات
     }
   }, [categories, expense.account_id, setValue]);
-  useEffect(() => {
-    if (paymentMethod !== "bank" || !open) {
-      setBanks([]);
-      setSelectedBankId("");
-      return;
-    }
 
-    const loadBanks = async () => {
-      try {
-        const result = await Fetchbanks();
-        setBanks(result);
-      } catch (err) {
-        console.error(err);
-        toast.error("فشل في جلب البنوك");
-      }
-    };
-
-    loadBanks();
-  }, [open, paymentMethod]);
   const onSubmit = async (data: any) => {
     try {
       if (!user) return;
@@ -76,12 +73,17 @@ export function ExpenseEditForm({ expense }: { expense: any }) {
         user.userId,
         {
           description: data.description,
-          amount: Number(data.amount),
-          payment_method: data.paymentMethod,
+          amount: payment.amountBase,
+          exchangeRate: payment.exchangeRate ?? 0,
+          amountFC: payment.amountFC ?? 0, // إن وُجد
+          financialAccountId: payment.financialAccountId,
+          payment_method: payment.paymentMethod,
           status: data.status,
           notes: data.notes,
+          currecny: payment.selectedCurrency,
           expense_date: new Date(data.expenseDate),
-          account_id: data.account_id ?? "",
+          account_id: account_id,
+          accountId: payment.accountId ?? "",
         },
       );
 
@@ -135,20 +137,8 @@ export function ExpenseEditForm({ expense }: { expense: any }) {
           />
         </div>
 
-        <div className="grid gap-2">
-          <Label>المبلغ</Label>
-          <Input type="number" step="0.01" {...register("amount")} />
-        </div>
-
-        <div className="grid gap-2">
-          ` <Label>طريقة الدفع</Label>
-          <SelectField
-            options={paymentMethods}
-            value={paymentMethod}
-            action={(val) => setValue("payment_method", val)}
-            placeholder="اختر الفئة"
-          />
-          `
+        <div className="border-t pt-3">
+          <ReusablePayment value={payment} action={setPayment} />
         </div>
 
         <div className="grid gap-2">
