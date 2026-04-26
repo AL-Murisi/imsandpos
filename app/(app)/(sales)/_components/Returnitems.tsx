@@ -26,6 +26,7 @@ import {
   ReusablePayment,
   PaymentState,
 } from "@/components/common/ReusablePayment";
+import { fetchPayments } from "@/lib/actions/banks";
 
 const returnSchema = z.object({
   saleId: z.string(),
@@ -49,13 +50,22 @@ const returnSchema = z.object({
 
 type ReturnFormValues = z.infer<typeof returnSchema>;
 
+interface SellingUnit {
+  id: string;
+  name: string;
+  price: number;
+}
+
 export function ReturnForm({ sale }: { sale: any }) {
   const { user } = useAuth();
   const { company } = useCompany();
   const router = useRouter();
 
+  if (!user) return null;
+
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [accounts, setAccounts] = useState<any[]>([]);
 
   const [payment, setPayment] = useState<PaymentState>({
     paymentMethod: "cash",
@@ -68,222 +78,279 @@ export function ReturnForm({ sale }: { sale: any }) {
     transferNumber: "",
   });
 
-  const { control, register, watch, setValue, handleSubmit } =
-    useForm<ReturnFormValues>({
-      resolver: zodResolver(returnSchema),
-      defaultValues: {
-        saleId: sale?.id || "",
-        cashierId: user?.userId || "",
-        customerId: sale?.customerId || null,
-        returnNumber: sale?.invoiceNumber || "",
-        reason: "",
-        items:
-          sale?.saleItems?.map((item: any) => {
-            const sellingUnits = Array.isArray(item.product?.sellingUnits)
-              ? item.product.sellingUnits
-              : [];
-
-            const matchedUnit = sellingUnits.find(
-              (u: any) => u.name === item.unit
-            );
-
-            return {
-              productId: item.productId,
-              warehouseId:
-                item.product?.warehouse?.id ?? sale?.warehouseId ?? "",
-              name: item.product?.name ?? "Unknown",
-              sellingUnits,
-              selectedUnitId:
-                matchedUnit?.id || sellingUnits?.[0]?.id || "",
-              unitPrice: item.unitPrice,
-              quantitySold: item.quantity,
-              quantity: 0,
-            };
-          }) || [],
-      },
-    });
+  const {
+    handleSubmit,
+    control,
+    register,
+    watch,
+    setValue,
+    reset,
+  } = useForm<ReturnFormValues>({
+    resolver: zodResolver(returnSchema),
+    defaultValues: {
+      saleId: "",
+      cashierId: user.userId,
+      customerId: null,
+      returnNumber: "",
+      reason: "",
+      items: [],
+    },
+  });
 
   const { fields } = useFieldArray({ control, name: "items" });
   const watchedItems = watch("items");
 
-  // ✅ safe total
-  const totalReturnBase = watchedItems.reduce((acc, item) => {
-    const qty = Number(item?.quantity || 0);
-    const price = Number(item?.unitPrice || 0);
-    return acc + qty * price;
-  }, 0);
+  /* =======================
+     RESET FORM WHEN SALE LOADS
+  ======================== */
+  useEffect(() => {
+    if (!sale) return;
 
-  // ✅ show payment ONLY if customer + paid/partial + value > 0
-  const showPayment =
-    !!sale?.customerId &&
-    totalReturnBase > 0 &&
-    (sale?.status === "paid" || sale?.status === "partial");
+    const mappedItems =
+      sale.saleItems?.map((item: any) => {
+        const sellingUnits: SellingUnit[] = Array.isArray(
+          item.product?.sellingUnits
+        )
+          ? item.product.sellingUnits
+          : [];
 
+        return {
+          productId: item.productId,
+          warehouseId:
+            item.product?.warehouse?.id ?? sale?.warehouseId ?? "",
+          name: item.product?.name ?? "Unknown",
+          sellingUnits,
+          selectedUnitId: sellingUnits[0]?.id || "",
+          unitPrice: item.unitPrice,
+          quantitySold: item.quantity,
+          quantity: 0,
+        };
+      }) || [];
+
+    reset({
+      saleId: sale.id,
+      cashierId: user.userId,
+      customerId: sale.customerId,
+      returnNumber: sale.invoiceNumber,
+      reason: "",
+      items: mappedItems,
+    });
+  }, [sale]);
+
+  /* =======================
+     CALC TOTAL RETURN
+  ======================== */
+  const totalReturnBase = watchedItems.reduce(
+    (acc, item) =>
+      acc + (item.quantity ?? 0) * (item.unitPrice ?? 0),
+    0
+  );
+
+  const returnToCustomer =
+    sale?.status === "paid"
+      ? totalReturnBase
+      : sale?.status === "partial"
+      ? Math.min(sale.amountPaid, totalReturnBase)
+      : 0;
+
+  /* =======================
+     AUTO PAYMENT UPDATE
+  ======================== */
   useEffect(() => {
     setPayment((prev) => ({
       ...prev,
-      amountBase: totalReturnBase,
+      amountBase: returnToCustomer,
     }));
-  }, [totalReturnBase]);
+  }, [returnToCustomer]);
 
+  /* =======================
+     SUBMIT
+  ======================== */
   const onSubmit = async (values: ReturnFormValues) => {
     const selectedItems = values.items.filter((i) => i.quantity > 0);
 
-    if (selectedItems.length === 0) {
+    if (!selectedItems.length) {
       toast.error("يرجى تحديد كمية للإرجاع");
       return;
     }
 
-    if (showPayment && (!payment.paymentMethod || !payment.accountId)) {
-      toast.error("يرجى اختيار طريقة الدفع");
+    const invalid = selectedItems.find(
+      (i) => i.quantity > i.quantitySold
+    );
+
+    if (invalid) {
+      toast.error(`كمية ${invalid.name} أكبر من المباعة`);
       return;
     }
 
-    const payload = {
-      ...values,
-      branchId: company?.branches?.[0]?.id,
-      items: selectedItems,
-      paymentMethod: payment.paymentMethod,
-      accountId: payment.accountId,
-      financialAccountId: payment.financialAccountId,
-      totalReturn: totalReturnBase,
-      returnToCustomer: payment.amountBase,
-    };
+    if (
+      payment.amountBase > 0 &&
+      (!payment.paymentMethod || !payment.accountId)
+    ) {
+      toast.error("يرجى اختيار طريقة الدفع والحساب");
+      return;
+    }
 
     setIsSubmitting(true);
 
     try {
-      const res = await processReturn(payload, user?.companyId);
+      const result = await processReturn(
+        {
+          ...values,
+          branchId: company?.branches?.[0]?.id,
+          items: selectedItems,
+          financialAccountId: payment.financialAccountId,
+          paymentMethod: payment.paymentMethod,
+          accountId: payment.accountId,
+          totalReturn: totalReturnBase,
+          returnToCustomer: payment.amountBase,
+          currency: payment.selectedCurrency,
+          exchangeRate: payment.exchangeRate,
+          foreignAmount: payment.amountFC,
+          transferNumber: payment.transferNumber,
+        },
+        user.companyId
+      );
 
-      if (res.success) {
+      if (result.success) {
         toast.success("تم الإرجاع بنجاح");
         setOpen(false);
         router.refresh();
       } else {
-        toast.error(res.message);
+        toast.error(result.message);
       }
     } catch {
-      toast.error("خطأ غير متوقع");
+      toast.error("حدث خطأ غير متوقع");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (!user) return null;
-
+  /* =======================
+     UI
+  ======================== */
   return (
     <Dailogreuse
       open={open}
       setOpen={setOpen}
       btnLabl="إرجاع أصناف"
-      style="max-w-6xl"
-      description="تحديد الأصناف المرتجعة"
+      description="تحديد الأصناف وطريقة الإرجاع"
+      style="max-w-90 md:max-w-4xl lg:max-w-6xl"
     >
-      <ScrollArea className="h-[70vh]">
-        <form onSubmit={handleSubmit(onSubmit)} className="grid gap-6">
-          <div className="grid gap-2">
-            <Label>سبب الإرجاع</Label>
-            <Input {...register("reason")} />
-          </div>
+      <form onSubmit={handleSubmit(onSubmit)} className="grid gap-6">
 
-          {/* TABLE */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr>
-                  <th>المنتج</th>
-                  <th>الوحدة</th>
-                  <th>المباع</th>
-                  <th>السعر</th>
-                  <th>الكمية</th>
+        {/* Reason */}
+        <div className="grid gap-2">
+          <Label>سبب الإرجاع</Label>
+          <Input {...register("reason")} />
+        </div>
+
+        {/* TABLE */}
+        <ScrollArea className="h-[30vh] w-full rounded-lg border p-2">
+          <table className="min-w-[700px] w-full text-sm">
+            <thead>
+              <tr>
+                <th>المنتج</th>
+                <th>الوحدة</th>
+                <th>المباع</th>
+                <th>السعر</th>
+                <th>الإرجاع</th>
+                <th>المجموع</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {fields.map((field, index) => (
+                <tr key={field.id}>
+                  <td>{field.name}</td>
+
+                  <td>
+                    <Select
+                      value={watchedItems[index]?.selectedUnitId}
+                      onValueChange={(val) =>
+                        setValue(`items.${index}.selectedUnitId`, val, {
+                          shouldDirty: true,
+                        })
+                      }
+                    >
+                      <SelectTrigger className="w-24">
+                        <SelectValue />
+                      </SelectTrigger>
+
+                      <SelectContent>
+                        {(field.sellingUnits ?? []).map((u: any) => (
+                          <SelectItem key={u.id} value={u.id}>
+                            {u.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </td>
+
+                  <td>{field.quantitySold}</td>
+                  <td>{field.unitPrice}</td>
+
+                  <td>
+                    <Input
+                      type="number"
+                      className="w-20"
+                      {...register(`items.${index}.quantity`, {
+                        valueAsNumber: true,
+                      })}
+                    />
+                  </td>
+
+                  <td>
+                    {(
+                      (watchedItems[index]?.quantity ?? 0) *
+                      (field.unitPrice ?? 0)
+                    ).toFixed(2)}
+                  </td>
                 </tr>
-              </thead>
+              ))}
+            </tbody>
+          </table>
 
-              <tbody>
-                {fields.map((field, index) => {
-                  const selectedUnitId =
-                    watchedItems?.[index]?.selectedUnitId;
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
 
-                  return (
-                    <tr key={field.id}>
-                      <td>{field.name}</td>
+        {/* PAYMENT (ONLY IF NEEDED) */}
+        {sale?.customerId && returnToCustomer > 0 && (
+          <div className="p-3">
+            <ReusablePayment value={payment} action={setPayment} />
+          </div>
+        )}
 
-                      {/* UNIT SELECT with disable */}
-                      <td>
-                        <Select
-                          value={selectedUnitId}
-                          onValueChange={(val) =>
-                            setValue(
-                              `items.${index}.selectedUnitId`,
-                              val
-                            )
-                          }
-                        >
-                          <SelectTrigger className="w-28">
-                            <SelectValue />
-                          </SelectTrigger>
-
-                          <SelectContent>
-                            {(field.sellingUnits ?? []).map(
-                              (unit: any) => {
-                                const isDisabled =
-                                  unit.name !== sale?.unit;
-
-                                return (
-                                  <SelectItem
-                                    key={unit.id}
-                                    value={unit.id}
-                                    disabled={isDisabled}
-                                  >
-                                    {unit.name}
-                                  </SelectItem>
-                                );
-                              }
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </td>
-
-                      <td>{field.quantitySold}</td>
-                      <td>{field.unitPrice}</td>
-
-                      <td>
-                        <Input
-                          type="number"
-                          {...register(`items.${index}.quantity`, {
-                            valueAsNumber: true,
-                          })}
-                        />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+        {/* SUMMARY */}
+        <div className="flex justify-between rounded-lg bg-green-50 p-4">
+          <div>
+            <p>إجمالي المرتجع</p>
+            <p className="font-bold text-green-600">
+              {totalReturnBase.toLocaleString()} {company?.base_currency}
+            </p>
           </div>
 
-          {/* PAYMENT ONLY WHEN NEEDED */}
-          {showPayment && (
-            <div className="rounded border p-3 overflow-x-auto">
-              <ReusablePayment
-                value={payment}
-                action={setPayment}
-              />
+          {sale?.customer && (
+            <div className="text-xs text-muted-foreground">
+              <AlertCircle className="inline h-3 w-3" />
+              {sale.status === "paid"
+                ? "سيتم استرجاع المبلغ"
+                : "سيتم خصم من المديونية"}
             </div>
           )}
+        </div>
 
-          {/* TOTAL */}
-          <div className="font-bold">
-            الإجمالي: {totalReturnBase}
-          </div>
-
-          <Button disabled={isSubmitting} type="submit">
-            تأكيد
+        {/* ACTIONS */}
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            إلغاء
           </Button>
-        </form>
 
-        <ScrollBar />
-      </ScrollArea>
+          <Button type="submit" disabled={isSubmitting || totalReturnBase <= 0}>
+            {isSubmitting ? "جاري..." : "تأكيد الإرجاع"}
+          </Button>
+        </div>
+      </form>
     </Dailogreuse>
   );
 }
