@@ -153,11 +153,6 @@ saleUnitId: saleUnit?.id || "",
       acc + (item.quantity ?? 0) * (item.unitPrice ?? 0),
     0
   );
-const saleUnit = fields.sellingUnits?.find(
-  (u: any) => u.id === fields.saleUnitId
-);
-
-const isBaseUnit = saleUnit?.isBase;
   const returnToCustomer =
     sale?.status === "paid"
       ? totalReturnBase
