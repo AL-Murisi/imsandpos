@@ -35,17 +35,22 @@ const returnSchema = z.object({
   returnNumber: z.string(),
   reason: z.string().optional(),
   items: z.array(
-    z.object({
-      productId: z.string(),
-      warehouseId: z.string(),
-      name: z.string(),
-      sellingUnits: z.array(z.any()),
-      selectedUnitId: z.string(),
-      unitPrice: z.number(),
-      quantitySold: z.number(),
-      quantity: z.number().min(0),
-    })
-  ),
+  z.object({
+    productId: z.string(),
+    warehouseId: z.string(),
+    name: z.string(),
+    sellingUnits: z.array(z.any()),
+
+    selectedUnitId: z.string(),
+
+    // ✅ ADD THIS
+    saleUnitId: z.string(),
+
+    unitPrice: z.number(),
+    quantitySold: z.number(),
+    quantity: z.number().min(0),
+  })
+),
 });
 
 type ReturnFormValues = z.infer<typeof returnSchema>;
