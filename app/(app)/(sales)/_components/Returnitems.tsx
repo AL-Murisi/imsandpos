@@ -279,55 +279,68 @@ const isBaseUnit = saleUnit?.isBase;
               </tr>
             </thead>
 
-            <tbody>
-              {fields.map((field, index) => (
-                <tr key={field.id}>
-                  <td>{field.name}</td>
+         <tbody>
+  {fields.map((field, index) => {
+    const saleUnit = field.sellingUnits?.find(
+      (u: any) => u.id === field.saleUnitId
+    );
 
-                  <td>
-                    <Select
-                      value={watchedItems[index]?.selectedUnitId}
-                      onValueChange={(val) =>
-                        setValue(`items.${index}.selectedUnitId`, val, {
-                          shouldDirty: true,
-                        })
-                      }
-                    >
-                      <SelectTrigger className="w-24">
-                        <SelectValue />
-                      </SelectTrigger>
+    const isBaseUnit = saleUnit?.isBase;
 
-                      <SelectContent>
-                        {(field.sellingUnits ?? []).map((u: any) => (
-                          <SelectItem disabled={isBaseUnit && u.id !== field.saleUnitId}  key={u.id} value={u.id}>
-                            {u.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </td>
+    return (
+      <tr key={field.id}>
+        <td>{field.name}</td>
 
-                  <td>{field.quantitySold}</td>
-                  <td>{field.unitPrice}</td>
+        <td>
+          <Select
+            value={watchedItems[index]?.selectedUnitId}
+            onValueChange={(val) =>
+              setValue(`items.${index}.selectedUnitId`, val, {
+                shouldDirty: true,
+              })
+            }
+          >
+            <SelectTrigger className="w-24">
+              <SelectValue />
+            </SelectTrigger>
 
-                  <td>
-                    <Input
-                      type="number"
-                      className="w-20"
-                      {...register(`items.${index}.quantity`, {
-                        valueAsNumber: true,
-                      })}
-                    />
-                  </td>
-
-                  <td>
-                    {(
-                      (watchedItems[index]?.quantity ?? 0) *
-                      (field.unitPrice ?? 0)
-                    ).toFixed(2)}
-                  </td>
-                </tr>
+            <SelectContent>
+              {(field.sellingUnits ?? []).map((u: any) => (
+                <SelectItem
+                  key={u.id}
+                  value={u.id}
+                  disabled={isBaseUnit && u.id !== field.saleUnitId}
+                >
+                  {u.name}
+                </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+        </td>
+
+        <td>{field.quantitySold}</td>
+        <td>{field.unitPrice}</td>
+
+        <td>
+          <Input
+            type="number"
+            className="w-20"
+            {...register(`items.${index}.quantity`, {
+              valueAsNumber: true,
+            })}
+          />
+        </td>
+
+        <td>
+          {(
+            (watchedItems[index]?.quantity ?? 0) *
+            (field.unitPrice ?? 0)
+          ).toFixed(2)}
+        </td>
+      </tr>
+    );
+  })}
+
             </tbody>
           </table>
 
