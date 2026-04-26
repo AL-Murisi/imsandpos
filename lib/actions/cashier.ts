@@ -898,12 +898,20 @@ export async function processReturn(data: any, companyId: string) {
 
         const newStock = inventory.stockQuantity + quantityInUnits;
         const newAvailable = inventory.availableQuantity + quantityInUnits;
+const selectedUnit = (saleItem.product.sellingUnits as any[])?.find(
+  (u) => u.id === returnItem.selectedUnitId
+);
+
+if (!selectedUnit) {
+  throw new Error(`الوحدة غير صحيحة للصنف ${returnItem.name}`);
+}
+
 
         invoiceItemsData.push({
           companyId,
           productId: returnItem.productId,
           quantity: returnItem.quantity,
-          unit: returnItem.selectedUnitName,
+unit: selectedUnit.name,
           price: saleItem.price,
           totalPrice: saleItem.price.toNumber() * returnItem.quantity,
         });
@@ -1159,7 +1167,7 @@ export async function processReturn(data: any, companyId: string) {
           description: desc,
           branchId,
           referenceType: "ارجاع مبيعات",
-          referenceId: transactionId,
+          referenceId: transactionId??returnSale.id,
           entryDate: new Date(),
           status: "POSTED",
           createdBy: cashierId,
