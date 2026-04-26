@@ -318,7 +318,7 @@ export default function DebtReport({
         </div>
         {/* Actions */}
         <div className="grid grid-cols-2 gap-2 py-3">
-          <Button onClick={onSubmit} disabled={isSubmitting || loading}>
+          <Button onClick={onSubmit} disabled={isSubmitting ||payment.amountBase}>
             تسديد الفواتير
           </Button>
 
