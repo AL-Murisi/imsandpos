@@ -258,14 +258,14 @@ saleUnitId: saleUnit?.id || "",
    
     
       <form onSubmit={handleSubmit(onSubmit)} className="">
-        <div className="w-80 grid gap-6 p-3 sm:w-[480px] md:w-3xl lg:w-full">
+
         {/* Reason */}
         <div className="grid gap-2">
           <Label>سبب الإرجاع</Label>
           <Input {...register("reason")} />
         </div>
 
-        {/* TABLE */}
+            <div className="w-80 grid gap-6 p-3 sm:w-[480px] md:w-3xl lg:w-full">
        <ScrollArea className="h-[30vh] w-full rounded-2xl border border-amber-300 p-2">
           <table className="min-w-[700px] w-full text-sm">
             <thead>
@@ -346,6 +346,7 @@ saleUnitId: saleUnit?.id || "",
 
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
+            </div>
 
         {/* PAYMENT (ONLY IF NEEDED) */}
         {sale?.customerId && returnToCustomer > 0 && (
@@ -382,7 +383,7 @@ saleUnitId: saleUnit?.id || "",
           <Button type="submit" disabled={isSubmitting || totalReturnBase <= 0}>
             {isSubmitting ? "جاري..." : "تأكيد الإرجاع"}
           </Button>
-        </div></div>
+        </div>
       </form>        </ScrollArea>
     </Dailogreuse>
   );
