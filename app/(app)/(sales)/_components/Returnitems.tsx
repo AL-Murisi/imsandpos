@@ -267,8 +267,8 @@ saleUnitId: saleUnit?.id || "",
 
             <div className="w-80 grid gap-6 p-3 sm:w-[480px] md:w-3xl lg:w-full">
        <ScrollArea className="h-[30vh] w-full rounded-2xl border border-amber-300 p-2">
-          <table className="min-w-[700px] w-full text-sm">
-            <thead>
+          <table className="w-full">
+           < thead>
               <tr>
                 <th>المنتج</th>
                 <th>الوحدة</th>
