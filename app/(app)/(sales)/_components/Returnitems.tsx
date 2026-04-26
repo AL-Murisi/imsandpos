@@ -237,6 +237,14 @@ export function ReturnForm({ sale }: { sale: any }) {
       description="تحديد الأصناف وطريقة الإرجاع"
       style="max-w-90 md:max-w-4xl lg:max-w-6xl"
     >
+       <ScrollArea dir="rtl" className="h-[70vh] space-y-4">
+        {/* Header */}
+
+
+        {/* Table */}
+        <div className="w-80 p-3 sm:w-[480px] md:w-3xl lg:w-full">
+   
+    
       <form onSubmit={handleSubmit(onSubmit)} className="grid gap-6">
 
         {/* Reason */}
@@ -246,7 +254,7 @@ export function ReturnForm({ sale }: { sale: any }) {
         </div>
 
         {/* TABLE */}
-        <ScrollArea className="h-[30vh] w-full rounded-lg border p-2">
+       <ScrollArea className="h-[30vh] w-full rounded-2xl border border-amber-300 p-2">
           <table className="min-w-[700px] w-full text-sm">
             <thead>
               <tr>
@@ -350,7 +358,7 @@ export function ReturnForm({ sale }: { sale: any }) {
             {isSubmitting ? "جاري..." : "تأكيد الإرجاع"}
           </Button>
         </div>
-      </form>
+      </form>       </div> </ScrollArea>
     </Dailogreuse>
   );
 }
