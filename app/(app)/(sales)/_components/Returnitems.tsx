@@ -128,7 +128,7 @@ export function ReturnForm({ sale }: { sale: any }) {
           name: item.product?.name ?? "Unknown",
           sellingUnits,
 saleUnitId: saleUnit?.id || "",
-      selectedUnitId: saleUnit?.id || ",
+      selectedUnitId: saleUnit?.id ||"",
           unitPrice: item.unitPrice,
           quantitySold: item.quantity,
           quantity: 0,
