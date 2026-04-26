@@ -81,10 +81,11 @@ export default function DebtReport({
 
   /* ───────── Fetch debts ───────── */
   useEffect(() => {
-    if (!open || !user) return;
+  if (!open || !user) return;
 
-    async function load() {
-      setLoading(true);
+  async function load() {
+    setLoading(true);
+    try {
       const sales = await FetchCustomerDebtReport(customerID, companyid);
 
       const mapped: Debt[] = sales.map((d: any) => ({
@@ -100,12 +101,15 @@ export default function DebtReport({
       }));
 
       setDebts(mapped);
+    } catch (err) {
+      console.error("Failed to load debts:", err);
+    } finally {
       setLoading(false);
     }
+  }
 
-    load();
-  }, [open, customerID, companyid, user]);
-
+  load();
+}, [open, customerID, companyid, user]);
   const allSelected = debts.length > 0 && selectedIds.length === debts.length;
 
   const toggleSelectAll = () =>
