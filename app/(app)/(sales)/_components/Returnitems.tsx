@@ -242,11 +242,11 @@ export function ReturnForm({ sale }: { sale: any }) {
 
 
         {/* Table */}
-        <div className="w-80 p-3 sm:w-[480px] md:w-3xl lg:w-full">
+
    
     
       <form onSubmit={handleSubmit(onSubmit)} className="grid gap-6">
-
+        <div className="w-80 p-3 sm:w-[480px] md:w-3xl lg:w-full">
         {/* Reason */}
         <div className="grid gap-2">
           <Label>سبب الإرجاع</Label>
@@ -357,8 +357,8 @@ export function ReturnForm({ sale }: { sale: any }) {
           <Button type="submit" disabled={isSubmitting || totalReturnBase <= 0}>
             {isSubmitting ? "جاري..." : "تأكيد الإرجاع"}
           </Button>
-        </div>
-      </form>       </div> </ScrollArea>
+        </div></div>
+      </form>        </ScrollArea>
     </Dailogreuse>
   );
 }
