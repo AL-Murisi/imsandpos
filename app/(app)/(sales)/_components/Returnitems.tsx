@@ -113,14 +113,22 @@ export function ReturnForm({ sale }: { sale: any }) {
         )
           ? item.product.sellingUnits
           : [];
+   // ✅ find unit by name
+    const saleUnit = sellingUnits.find(
+      (u) => u.name === item.unit
+    );
 
+    if (!saleUnit) {
+      console.warn("Unit not found for:", item.unit);
+    }
         return {
           productId: item.productId,
           warehouseId:
             item.product?.warehouse?.id ?? sale?.warehouseId ?? "",
           name: item.product?.name ?? "Unknown",
           sellingUnits,
-          selectedUnitId: sellingUnits[0]?.id || "",
+saleUnitId: saleUnit?.id || "",
+      selectedUnitId: saleUnit?.id || ",
           unitPrice: item.unitPrice,
           quantitySold: item.quantity,
           quantity: 0,
@@ -145,7 +153,11 @@ export function ReturnForm({ sale }: { sale: any }) {
       acc + (item.quantity ?? 0) * (item.unitPrice ?? 0),
     0
   );
+const saleUnit = field.sellingUnits?.find(
+  (u: any) => u.id === field.saleUnitId
+);
 
+const isBaseUnit = saleUnit?.isBase;
   const returnToCustomer =
     sale?.status === "paid"
       ? totalReturnBase
@@ -245,8 +257,8 @@ export function ReturnForm({ sale }: { sale: any }) {
 
    
     
-      <form onSubmit={handleSubmit(onSubmit)} className="grid gap-6">
-        <div className="w-80 p-3 sm:w-[480px] md:w-3xl lg:w-full">
+      <form onSubmit={handleSubmit(onSubmit)} className="">
+        <div className="w-80 grid gap-6 p-3 sm:w-[480px] md:w-3xl lg:w-full">
         {/* Reason */}
         <div className="grid gap-2">
           <Label>سبب الإرجاع</Label>
@@ -287,7 +299,7 @@ export function ReturnForm({ sale }: { sale: any }) {
 
                       <SelectContent>
                         {(field.sellingUnits ?? []).map((u: any) => (
-                          <SelectItem key={u.id} value={u.id}>
+                          <SelectItem disabled={isBaseUnit && u.id !== field.saleUnitId}  key={u.id} value={u.id}>
                             {u.name}
                           </SelectItem>
                         ))}
