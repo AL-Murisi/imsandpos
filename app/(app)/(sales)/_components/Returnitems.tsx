@@ -217,9 +217,10 @@ export function ReturnForm({ sale }: { sale: any }) {
       description="تحديد الأصناف المرتجعة وطريقة استرداد المبلغ"
     style="max-w-90 overflow-hidden md:max-w-4xl lg:max-w-6xl"
     >
-
+<ScrollArea dir="rtl" className="h-[70vh] space-y-4">
         {/* Header */}
       <form onSubmit={handleSubmit(onSubmit)} className="grid gap-6">
+              
         {/* القسم الأول: معلومات عامة */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="grid gap-2">
@@ -233,7 +234,9 @@ export function ReturnForm({ sale }: { sale: any }) {
         </div>
 
         {/* القسم الثاني: جدول المنتجات */}
-      <ScrollArea dir="rtl" className="h-[70vh] space-y-4">
+<div className="w-80 p-3 sm:w-[480px] md:w-3xl lg:w-full">
+          <ScrollArea className="h-[30vh] w-full rounded-2xl border border-amber-300 p-2">
+    
           <table className="min-w-full text-sm">
             <thead className="bg-muted sticky top-0 text-right">
               <tr>
@@ -290,6 +293,7 @@ export function ReturnForm({ sale }: { sale: any }) {
           </table>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
+</div>
 
         {/* القسم الثالث: مكون الدفع الموحد */}
         <div className=" p-4">
@@ -333,6 +337,7 @@ export function ReturnForm({ sale }: { sale: any }) {
           </Button>
         </div>
       </form>
+          </ScrollArea>
     </Dailogreuse>
   );
 }
