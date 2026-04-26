@@ -213,9 +213,12 @@ export function ReturnForm({ sale }: { sale: any }) {
       open={open}
       setOpen={setOpen}
       btnLabl={"إرجاع أصناف"}
-      style="sm:max-w-5xl"
+    
       description="تحديد الأصناف المرتجعة وطريقة استرداد المبلغ"
+    style="max-w-90 overflow-hidden md:max-w-4xl lg:max-w-6xl"
     >
+
+        {/* Header */}
       <form onSubmit={handleSubmit(onSubmit)} className="grid gap-6">
         {/* القسم الأول: معلومات عامة */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -230,7 +233,7 @@ export function ReturnForm({ sale }: { sale: any }) {
         </div>
 
         {/* القسم الثاني: جدول المنتجات */}
-        <ScrollArea className="max-h-[300px] w-full rounded-lg border">
+      <ScrollArea dir="rtl" className="h-[70vh] space-y-4">
           <table className="min-w-full text-sm">
             <thead className="bg-muted sticky top-0 text-right">
               <tr>
@@ -289,8 +292,8 @@ export function ReturnForm({ sale }: { sale: any }) {
         </ScrollArea>
 
         {/* القسم الثالث: مكون الدفع الموحد */}
-        <div className="bg-secondary/20 rounded-xl border p-4">
-          <h3 className="mb-2 font-bold">تفاصيل الاسترداد المالي</h3>
+        <div className=" p-4">
+          
           <ReusablePayment value={payment} action={setPayment} />
         </div>
 
