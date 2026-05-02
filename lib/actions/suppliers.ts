@@ -379,7 +379,6 @@ export const getPurchasesByCompany = cache(
       to,
       pageIndex = 0,
       pageSize = 13,
-      parsedSort,
     }: {
       productQuery?: string;
       where?: string;
@@ -387,7 +386,6 @@ export const getPurchasesByCompany = cache(
       to?: string;
       pageIndex?: number;
       pageSize?: number;
-      parsedSort?: { id: string; desc: boolean }[];
     } = {},
   ) => {
     try {
@@ -398,59 +396,39 @@ export const getPurchasesByCompany = cache(
         },
       };
 
-      // Status filter
-      if (where && where !== "all") {
-        filters.status = where;
-      }
+      if (where && where !== "all") filters.status = where;
 
-      // Date range filter
       if (from || to) {
         filters.invoiceDate = {};
         if (from) filters.invoiceDate.gte = new Date(from);
         if (to) filters.invoiceDate.lte = new Date(to);
       }
 
-      // Product name/SKU filter
       if (productQuery) {
-        const items = await prisma.invoice.findMany({
-          where: {
-            companyId,
-            // product: {
-            //   OR: [
-            //     { name: { contains: productQuery, mode: "insensitive" } },
-            //     { sku: { contains: productQuery, mode: "insensitive" } },
-            //   ],
-            // },
+        filters.items = {
+          some: {
+            product: {
+              OR: [
+                { name: { contains: productQuery, mode: "insensitive" } },
+                { sku: { contains: productQuery, mode: "insensitive" } },
+              ],
+            },
           },
-          select: { invoiceNumber: true },
-        });
-
-        const purchaseIds = items.map((i) => i.invoiceNumber);
-        if (purchaseIds.length === 0) return { data: [], total: 0 };
-        filters.id = { in: purchaseIds };
+        };
       }
 
-      // Count total
-      const total = await prisma.invoice.count({
-        where: { companyId, ...filters },
-      });
+      const total = await prisma.invoice.count({ where: filters });
 
-      // Sorting
-
-      // Fetch data
       const purchases = await prisma.invoice.findMany({
         where: filters,
         include: {
           items: {
             include: {
               product: {
-                select: {
-                  id: true,
-                  name: true,
-                  sku: true,
-                  costPrice: true,
-                  sellingUnits: true,
-                  warehouse: { select: { name: true } },
+                include: {
+                  inventory: {
+                    include: { warehouse: { select: { name: true } } },
+                  },
                 },
               },
             },
@@ -458,33 +436,79 @@ export const getPurchasesByCompany = cache(
           supplier: { select: { id: true, name: true } },
           transactions: { select: { paymentMethod: true, status: true } },
         },
-
         skip: pageIndex * pageSize,
         take: pageSize,
         orderBy: { invoiceDate: "desc" },
       });
-      // const paymentMethod = await prisma.financialTransaction.findFirst({
-      //   where: { companyId: companyId, purchaseId: purchases[0].id },
-      //   select: {
-      //     paymentMethod: true,
-      //   },
-      // });
 
-      const purchasesWithPaymentInfo = purchases.map((p) => ({
-        ...p,
-        purchaseItems: p.items,
-        status: p.status,
-        purchaseType: p.sale_type,
-        createdAt: p.invoiceDate,
+      // --- منطق الربط المطور ---
 
-        // استخراج وسيلة الدفع من أول معاملة مالية (إن وجدت)
-        paymentMethod:
-          p.transactions.map((t) => t.paymentMethod).find(Boolean) || "نقدي",
-      }));
+      // 1. استخراج الجزء الرقمي فقط من رقم الفاتورة (مثلاً 2026-00001)
+      const extractCoreId = (invNum: string) => {
+        return invNum
+          .replace("مشتريات-", "")
+          .replace("-مشتريات", "")
+          .replace("مرتجع-", "")
+          .replace("-مرتجع", "")
+          .trim();
+      };
 
-      const serialized = serializeData(purchasesWithPaymentInfo);
+      // 2. تحديد أرقام الفواتير (الشراء فقط) الموجودة في الصفحة الحالية
+      const currentPurchaseCoreIds = purchases
+        .filter((p) => p.sale_type === "PURCHASE")
+        .map((p) => extractCoreId(p.invoiceNumber));
 
-      return { data: serialized, total };
+      // 3. البحث عن أي "مرتجعات" في قاعدة البيانات تحمل نفس الأرقام الأساسية
+      const existingReturns =
+        currentPurchaseCoreIds.length > 0
+          ? await prisma.invoice.findMany({
+              where: {
+                companyId,
+                sale_type: "RETURN_PURCHASE",
+                OR: currentPurchaseCoreIds.map((coreId) => ({
+                  invoiceNumber: { contains: coreId },
+                })),
+              },
+              select: { invoiceNumber: true },
+            })
+          : [];
+
+      // 4. وضع الأرقام الأساسية للمرتجعات في Set للبحث السريع
+      const returnedCoreIdsSet = new Set(
+        existingReturns.map((r) => extractCoreId(r.invoiceNumber)),
+      );
+
+      // 5. دمج البيانات
+      const purchasesWithPaymentInfo = purchases.map((p) => {
+        const coreId = extractCoreId(p.invoiceNumber);
+
+        // إذا كان نوع الفاتورة PURCHASE، نتحقق هل الرقم الأساسي موجود في مجموعة المرتجعات
+        const hasAlreadyBeenReturned =
+          p.sale_type === "PURCHASE" && returnedCoreIdsSet.has(coreId);
+
+        return {
+          ...p,
+          purchaseItems: p.items.map((item) => ({
+            ...item,
+            product: {
+              ...item.product,
+              warehouse: {
+                name: item.product.inventory?.[0]?.warehouse?.name ?? "—",
+              },
+            },
+          })),
+          purchaseNumer: p.invoiceNumber, // تصحيح التسمية إذا كانت مستخدمة في الفرونت
+          hasReturnSale: hasAlreadyBeenReturned,
+          status: p.status,
+          purchaseType: p.sale_type,
+          createdAt: p.invoiceDate,
+          paymentMethod:
+            p.transactions.find((t) => t.paymentMethod)?.paymentMethod ||
+            "نقدي",
+        };
+      });
+
+      return { data: serializeData(purchasesWithPaymentInfo), total };
     } catch (error) {
       console.error("Error fetching company purchases:", error);
       throw error;

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { fetchAllFormData } from "@/lib/actions/roles";
 import {
@@ -19,24 +19,15 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
-import { AlertCircle, Info, Loader2 } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Loader2 } from "lucide-react";
+
 import { useCompany } from "@/hooks/useCompany";
-import {
-  fallbackCurrencyOptions,
-  UserOption,
-} from "@/lib/actions/currnciesOptions";
-import { useCurrencyOptions } from "@/hooks/useCurrencyOptions";
-import { getLatestExchangeRate } from "@/lib/actions/currency";
-import SearchInput from "@/components/common/searchlist";
 import { SellingUnit } from "@/lib/zod";
 import { FormValue, PurchaseReturnSchema } from "@/lib/zod/inventory";
+import {
+  PaymentState,
+  ReusablePayment,
+} from "@/components/common/ReusablePayment";
 
 // --- Types & Schema ---
 interface PurchaseReturnData {
@@ -89,102 +80,87 @@ export default function PurchaseReturnForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { company } = useCompany();
-  const [currency, setCurrency] = useState<UserOption | null>(null);
-  const { options } = useCurrencyOptions();
-  const currencyOptions = options.length ? options : fallbackCurrencyOptions;
-  const [exchangeRate, setExchangeRate] = useState(1);
   const { user } = useAuth();
-
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-    reset,
-    formState: { errors },
-  } = useForm<FormValue>({
-    resolver: zodResolver(PurchaseReturnSchema),
-    defaultValues: {
-      paymentMethod: "cash",
-
-      refundAmount: 0,
-    },
+  const companyId = user?.companyId;
+  const [payment, setPayment] = useState<PaymentState>({
+    paymentMethod: "cash",
+    accountId: "",
+    financialAccountId: "",
+    selectedCurrency: company?.base_currency || "YER",
+    amountBase: 0,
+    amountFC: 0,
+    exchangeRate: 1,
+    transferNumber: "",
   });
+
+  const { register, handleSubmit, setValue, watch, reset } = useForm<FormValue>(
+    {
+      resolver: zodResolver(PurchaseReturnSchema),
+      defaultValues: {
+        paymentMethod: "cash",
+
+        refundAmount: 0,
+      },
+    },
+  );
 
   const quantity = watch("returnQuantity");
   const selectedUnitId = watch("selectedUnitId");
   const unitCost = watch("unitCost");
   const supplierId = watch("supplierId");
   const warehouseId = watch("warehouseId");
-  const paymentMethod = watch("paymentMethod");
-  const refundAmount = watch("refundAmount"); // المبلغ المدخل بالعملة المختارة
-  // حساب الإجمالي بالعملة الأساسية
+
   const totalCostBase = (quantity || 0) * (unitCost || 0);
-
-  // تحديث سعر الصرف والمبلغ المستلم تلقائياً
+  const maxRefundAllowed = Math.min(
+    totalCostBase,
+    inventory?.purchase?.amountPaid || 0,
+  );
   useEffect(() => {
-    async function updateRate() {
-      if (!user?.companyId || !currency?.id || !company?.base_currency) return;
+    if (!company?.base_currency) return;
+    setPayment((prev) => ({
+      ...prev,
+      selectedCurrency: prev.selectedCurrency || company.base_currency || "YER",
+    }));
+  }, [company?.base_currency]);
 
-      if (currency.id === company.base_currency) {
-        setExchangeRate(1);
-        setValue("refundAmount", Number(totalCostBase.toFixed(2)));
-        return;
-      }
-
-      setIsLoading(true);
-      try {
-        const rateData = await getLatestExchangeRate({
-          fromCurrency: company.base_currency,
-          toCurrency: currency.id,
-        });
-
-        if (rateData && rateData.rate) {
-          const rateValue = Number(rateData.rate);
-          setExchangeRate(rateValue);
-
-          const autoAmount =
-            rateValue > 1
-              ? totalCostBase / rateValue
-              : totalCostBase * rateValue;
-
-          setValue("refundAmount", Number(autoAmount.toFixed(2)));
-        }
-      } catch (error) {
-        console.error("Exchange rate error:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    updateRate();
-  }, [currency?.id, totalCostBase, company?.base_currency, setValue]);
-
-  // تهيئة العملة الافتراضية
   useEffect(() => {
-    if (company?.base_currency && !currency) {
-      const base = currencyOptions.find((c) => c.id === company?.base_currency);
-      setCurrency(
-        base || { id: company.base_currency, name: company.base_currency },
-      );
-    }
-  }, [company, currency]);
+    const baseCurrency = company?.base_currency || "YER";
+    const isForeign = payment.selectedCurrency !== baseCurrency;
+    const refundAmount = isForeign
+      ? Number(payment.amountFC || 0)
+      : Number(payment.amountBase || 0);
 
+    setValue("paymentMethod", payment.paymentMethod || "cash");
+    setValue("transferNumber", payment.transferNumber || "");
+    setValue("refundAmount", refundAmount);
+  }, [payment, company?.base_currency, setValue]);
+  useEffect(() => {
+    if (!inventory?.product?.sellingUnits) return;
+
+    const base = inventory.product.sellingUnits.find((u: any) => u.isBase);
+
+    if (base) {
+      setValue("selectedUnitId", base.id, {
+        shouldValidate: true,
+        shouldDirty: true,
+      });
+    }
+  }, [inventory, setValue]);
   // تحميل بيانات المرتجع
   useEffect(() => {
-    if (!open || !user) {
-      if (!open) {
-        reset();
-        setInventory(null);
-      }
+    if (!open) {
+      reset();
+      setInventory(null);
       return;
     }
+    if (!companyId) return;
 
     const loadData = async () => {
       setIsLoading(true);
       try {
         const [result, formData] = await Promise.all([
-          getPurchaseReturnData(purchaseId, user.companyId),
-          fetchAllFormData(user.companyId),
+          getPurchaseReturnData(purchaseId, companyId),
+          fetchAllFormData(companyId),
         ]);
 
         if (!result.success || !result.data) {
@@ -197,16 +173,21 @@ export default function PurchaseReturnForm({
         setWarehouses(formData.warehouses || []);
 
         const data = result.data as unknown as PurchaseReturnData;
+        if (!data?.product) {
+          toast.error("بيانات المنتج غير مكتملة لهذا الشراء");
+          setOpen(false);
+          return;
+        }
         setInventory(data);
 
         // Set Default Form Values
         const defaultUnit =
-          data.product.sellingUnits.find((u) => u.isbase) ||
+          data.product.sellingUnits.find((u) => u.isBase) ||
           data.product.sellingUnits[0];
 
         setValue("supplierId", data.supplier.id);
-        setValue("warehouseId", data.product.warehouseId || "");
-        setValue("selectedUnitId", defaultUnit?.name || "");
+        setValue("warehouseId", data.product?.warehouseId || "");
+        setValue("selectedUnitId", defaultUnit?.id || "");
         setValue("unitCost", data.purchaseItem.unitCost); // Default to purchase cost
       } catch (error) {
         toast.error("حدث خطأ أثناء تحميل البيانات");
@@ -216,16 +197,50 @@ export default function PurchaseReturnForm({
     };
 
     loadData();
-  }, [open, purchaseId, user]);
+  }, [open, purchaseId, companyId]);
   // تحديث السعر بناءً على الوحدة المختارة
+  const units = inventory?.product?.sellingUnits || [];
   useEffect(() => {
-    if (!inventory || !selectedUnitId) return;
+    // 1. Calculate the monetary value of the return quantity
+    const returnValue = (quantity || 0) * (unitCost || 0);
+
+    // 2. Get the maximum possible refund (cannot exceed what was paid)
+    const maxRefundAllowed = Math.min(
+      returnValue,
+      inventory?.purchase?.amountPaid || 0,
+    );
+
+    if (payment.amountBase > maxRefundAllowed) {
+      setPayment((prev) => {
+        const newAmountBase = maxRefundAllowed;
+        const newAmountFC = prev.exchangeRate
+          ? newAmountBase / prev.exchangeRate
+          : 0;
+
+        return {
+          ...prev,
+          amountBase: newAmountBase,
+          amountFC: Number(newAmountFC.toFixed(2)),
+        };
+      });
+
+      // Inform the user why the change happened
+      if (returnValue < payment.amountBase) {
+        toast.info("تم تعديل المبلغ ليتناسب مع قيمة الكمية المرتجعة");
+      } else {
+        toast.info("تم تعديل المبلغ ليتناسب مع ما تم دفعه مسبقاً");
+      }
+    }
+  }, [quantity, unitCost, inventory?.purchase?.amountPaid]);
+  const baseUnit = units.find((u: any) => u.isBase);
+  useEffect(() => {
+    if (!inventory?.product || !selectedUnitId) return;
 
     const selectedUnit = inventory.product.sellingUnits.find(
       (u: any) => u.id === selectedUnitId,
     );
     if (selectedUnit) {
-      const baseUnitPrice = inventory.purchaseItem.unitCost; // افترضنا أن السعر المخزن هو للوحدة الأساسية
+      const baseUnitPrice = inventory.purchaseItem.unitCost; // نفترض أن السعر المخزن هو للوحدة الأساسية
       const calculatedReturnCost = selectedUnit.isBase
         ? baseUnitPrice
         : baseUnitPrice * selectedUnit.unitsPerParent;
@@ -233,30 +248,58 @@ export default function PurchaseReturnForm({
       setValue("unitCost", calculatedReturnCost);
     }
   }, [selectedUnitId, inventory, setValue]);
-  const isForeign = currency?.id !== company?.base_currency;
+
   const onSubmit = async (data: FormValue) => {
     if (!user || !inventory) return;
+    if (
+      payment.amountBase > 0 &&
+      (!payment.paymentMethod || !payment.accountId)
+    ) {
+      toast.error("يرجى اختيار طريقة الدفع والحساب");
+      return;
+    }
+    const returnItemsValue = (data.returnQuantity || 0) * (data.unitCost || 0);
+
+    // 2. Get the amount the user is trying to refund (in Base Currency)
+    const requestedRefundBase = Number(payment.amountBase || 0);
+
+    // 3. Validation Check
+    if (requestedRefundBase > returnItemsValue) {
+      toast.error(
+        `لا يمكن استرداد مبلغ أكبر من قيمة الكمية المرتجعة (${returnItemsValue.toFixed(2)})`,
+      );
+      return;
+    }
+
+    if (requestedRefundBase > inventory.purchase.amountPaid) {
+      toast.error(
+        `لا يمكن استرداد مبلغ أكبر مما تم دفعه فعلياً (${inventory.purchase.amountPaid.toFixed(2)})`,
+      );
+      return;
+    }
     setIsSubmitting(true);
     try {
-      const baseAmount = isForeign
-        ? exchangeRate > 1
-          ? refundAmount * exchangeRate // مثال: 10$ * 2000 = 20000 ريال
-          : refundAmount / exchangeRate // مثال: 10$ / 0.0005 = 20000 ريال
-        : refundAmount; // إذا كانت نفس العملة
+      const baseCurrency = company?.base_currency || "YER";
+      const selectedCurrency = payment.selectedCurrency || baseCurrency;
+      const isForeign = selectedCurrency !== baseCurrency;
+      const refundAmount = isForeign
+        ? Number(payment.amountFC || 0)
+        : Number(payment.amountBase || 0);
+      const baseAmount = Number(payment.amountBase || 0);
       const payload = {
         ...data,
         purchaseId: inventory.purchase.id,
         purchaseItemId: inventory.purchaseItem.id,
         productId: inventory.product.id,
         branchId: company?.branches[0].id ?? "",
-        returnUnit: data.selectedUnitId,
-        // المبالغ المطلوبة:
-        // المبلغ بالعملة الأجنبية (مثلاً 10$)
-        baseCurrency: company?.base_currency ?? "",
-
+        returnUnit: baseUnit ? baseUnit.name : data.selectedUnitId,
+        paymentMethod: payment.paymentMethod,
+        transferNumber: payment.transferNumber || "",
+        refundAmount,
+        baseCurrency,
         baseAmount: Number(baseAmount.toFixed(4)),
-        currency: currency?.id ?? "",
-        exchangeRate: exchangeRate,
+        currency: selectedCurrency,
+        exchangeRate: Number(payment.exchangeRate || 1),
       };
 
       const result = await processPurchaseReturn(
@@ -293,10 +336,10 @@ export default function PurchaseReturnForm({
           </div>
         ) : inventory ? (
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {/* تفاصيل المنتج والمخزن (نفس الكود السابق الخاص بك) */}
+            {/* تفاصيل المنتج والمخزن */}
             <div className="rounded-xl border bg-gray-50 p-4 dark:bg-slate-900">
               <h3 className="font-bold text-blue-700">
-                {inventory.product.name}
+                المنتج:{inventory.product.name}
               </h3>
               <div className="mt-2 grid grid-cols-2 gap-4">
                 <p className="text-sm">المورد: {inventory.supplier.name}</p>
@@ -329,6 +372,7 @@ export default function PurchaseReturnForm({
               <div className="space-y-2">
                 <Label>وحدة الإرجاع</Label>
                 <SelectField
+                  disabled={!!baseUnit}
                   options={inventory.product.sellingUnits}
                   value={selectedUnitId}
                   action={(v) => setValue("selectedUnitId", v)}
@@ -388,73 +432,21 @@ export default function PurchaseReturnForm({
               </div>
             </div>
 
-            {/* القسم المالي - ظاهر دائماً الآن */}
+            {/* القسم المالي */}
             <div className="space-y-4 border-t pt-4">
               <div className="flex items-center justify-between rounded-lg bg-green-50 p-4">
-                <div className="w-1/2">
-                  <Label>عملة الاستلام</Label>
-                  <SearchInput
-                    placeholder="اختر العملة"
-                    options={currencyOptions}
-                    value={currency?.id}
-                    action={(c) => setCurrency(c)}
-                    paramKey={""}
-                  />
-                </div>
+                <div className="w-1/2" />
                 <div className="text-left">
                   <p className="text-xs text-gray-500">
                     إجمالي المرتجع (أساسي)
                   </p>
                   <p className="text-xl font-black text-green-700">
-                    {totalCostBase.toFixed(2)}
+                    {maxRefundAllowed}
                   </p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>طريقة الاستلام</Label>
-                  <SelectField
-                    options={[
-                      { id: "cash", name: "نقداً" },
-                      { id: "bank", name: "تحويل بنكي" },
-                      { id: "credit", name: "آجل (رصيد للمورد)" },
-                    ]}
-                    value={paymentMethod}
-                    action={(v) => setValue("paymentMethod", v)}
-                  />
-                </div>
-                {paymentMethod === "bank" && (
-                  <div className="animate-in fade-in slide-in-from-right-2 space-y-2">
-                    <Label className="font-bold text-blue-600">
-                      رقم العملية / التحويل
-                    </Label>
-                    <Input
-                      {...register("transferNumber")}
-                      placeholder="أدخل رقم التحويل البنكي"
-                      className={
-                        errors.transferNumber
-                          ? "border-red-500"
-                          : "border-blue-300"
-                      }
-                    />
-                    {errors.transferNumber && (
-                      <p className="text-[10px] text-red-500">
-                        {errors.transferNumber.message}
-                      </p>
-                    )}
-                  </div>
-                )}
-                <div className="space-y-2">
-                  <Label>المبلغ المستلم فعلياً ({currency?.name})</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    {...register("refundAmount", { valueAsNumber: true })}
-                    className="border-green-300 focus:ring-green-500"
-                  />
-                </div>
-              </div>
+              <ReusablePayment value={payment} action={setPayment} />
             </div>
 
             <div className="space-y-2">

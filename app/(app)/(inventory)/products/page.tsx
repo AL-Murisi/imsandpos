@@ -40,8 +40,6 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
   const pageIndex = Number(page) - 1;
   const pageSize = Number(limit);
   const where: Prisma.ProductWhereInput = {
-    supplierId,
-    warehouseId,
     categoryId,
   };
 
@@ -51,35 +49,6 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
   const thirtyDaysLater = new Date();
   thirtyDaysLater.setDate(thirtyDaysLater.getDate() + 30);
   thirtyDaysLater.setHours(23, 59, 59, 999);
-
-  if (expiryStatus === "expired") {
-    where.expiredAt = { lte: endOfToday };
-  } else if (expiryStatus === "expiring-soon") {
-    where.expiredAt = {
-      gt: endOfToday,
-      lte: thirtyDaysLater,
-    };
-  } else if (expiryStatus === "attention") {
-    where.OR = [
-      { expiredAt: { lte: endOfToday } },
-      {
-        expiredAt: {
-          gt: endOfToday,
-          lte: thirtyDaysLater,
-        },
-      },
-    ];
-  }
-
-  if (stockStatus === "out_of_stock") {
-    where.inventory = {
-      some: {
-        availableQuantity: {
-          lte: 0,
-        },
-      },
-    };
-  }
 
   const parsedSort = sort
     ? [

@@ -5,7 +5,6 @@ import { getSession } from "@/lib/session";
 import { Prisma } from "@prisma/client";
 import { SortingState } from "@tanstack/react-table";
 
-import { fetchPayments } from "@/lib/actions/banks";
 import ManageStocksClient from "../_components/manageinvetoryClient";
 
 type DashboardProps = {
@@ -60,8 +59,7 @@ export default async function manageStocks({ searchParams }: DashboardProps) {
   if (!user) return;
   const parsedSort: SortingState = ParsedSort(sort);
 
-  const [b, formData, MultipleInventory, inventoryData] = await Promise.all([
-    fetchPayments(),
+  const [formData, MultipleInventory, inventoryData] = await Promise.all([
     fetchAllFormData(user.companyId),
     fetchAllFormDatas(user.companyId),
     getInventoryById(
@@ -84,7 +82,6 @@ export default async function manageStocks({ searchParams }: DashboardProps) {
         total={inventoryData.totalCount}
         formData={formData}
         multipleInventory={MultipleInventory}
-        payments={b}
       />
     </div>
   );

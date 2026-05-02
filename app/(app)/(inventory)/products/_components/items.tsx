@@ -44,10 +44,8 @@ type ProductClientProps = {
   products: any[];
   total: number;
   formData: {
-    warehouses: { id: string; name: string }[];
     categories: { id: string; name: string }[];
-    brands: { id: string; name: string }[];
-    suppliers: { id: string; name: string }[];
+    warehouses: { id: string; name: string }[];
   };
 };
 
@@ -84,22 +82,13 @@ export default function Items({
       <div className="flex flex-wrap gap-2 md:flex-row lg:flex-row">
         <Calendar22 />
         <SearchInput placeholder={"بحث "} paramKey={"product"} />
-        <SelectField
-          options={formData.warehouses}
-          paramKey="warehouseId"
-          placeholder={tt("warehouseId")}
-        />
+
         <SelectField
           options={formData.categories}
           paramKey="categoryId"
           placeholder={tt("categoryId")}
         />
 
-        <SelectField
-          options={formData.suppliers}
-          paramKey={"supplierId"}
-          placeholder={tt("supplierId")}
-        />
         <ProductForm formData={formData} />
         {/* <Link href={"/inventory/products/new"}>
           <Button>{t("new")}</Button>

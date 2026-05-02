@@ -28,7 +28,7 @@ const ScrollArea = dynamic(
 
 type Forsale = ProductForSale & {
   warehousename: string;
-  sellingMode: string;
+
   sellingUnits: SellingUnit[];
   barcode: string;
   availableStock: Record<string, number>;
@@ -188,7 +188,7 @@ export default function List({ selecteditemId }: Props) {
     (p: Forsale, selectedUnit?: SellingUnit) => {
       const targetUnit =
         selectedUnit ||
-        p.sellingUnits.find((u) => u.isbase) ||
+        p.sellingUnits.find((u) => u.isBase) ||
         p.sellingUnits[0];
 
       if (!targetUnit) return;
@@ -208,7 +208,7 @@ export default function List({ selecteditemId }: Props) {
           warehousename: p.warehousename,
           warehouseId: p.warehouseId,
           originalStockQuantity: p.availableStock?.[targetUnit.id] || 0,
-          sellingMode: p.sellingMode,
+
           sellingUnits: p.sellingUnits,
           selectedUnitId: targetUnit.id,
           selectedUnitName: targetUnit.name,
@@ -222,6 +222,7 @@ export default function List({ selecteditemId }: Props) {
       dispatch(
         updateProductStockOptimistic({
           productId: p.id,
+          warehouseId: p.warehouseId,
           sellingUnit: targetUnit.id,
           quantity: 1,
           mode: "consume",
@@ -239,7 +240,7 @@ export default function List({ selecteditemId }: Props) {
       <div className="grid auto-rows-fr grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-x-5 gap-y-4">
         {products.map((prod) => (
           <ProductCard
-            key={prod.id}
+            key={`${prod.id}-${prod.warehouseId}`}
             product={prod}
             onAdd={handleAdd}
             t={t}
@@ -252,7 +253,7 @@ export default function List({ selecteditemId }: Props) {
   );
 
   return (
-    <ScrollArea className="h-[85vh]">
+    <ScrollArea className="h-[80vh]">
       <DraggableDailogreuse
         open={opens}
         setOpen={setOpens}
@@ -304,7 +305,7 @@ export default function List({ selecteditemId }: Props) {
           />
         </div>
       </DraggableDailogreuse>{" "}
-      {products.length > 0 && <div className="mt-4 px-4">{productGrid}</div>}
+      {products.length > 0 && <div className="mt-4 px-2">{productGrid}</div>}
     </ScrollArea>
   );
 }

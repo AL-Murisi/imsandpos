@@ -29,7 +29,6 @@ type ProductClientProps = {
   total: any;
 
   formData: { id: string; name: string }[];
-  payment: any;
   assignmentOptions: {
     employees: { id: string; name: string }[];
     customers: { id: string; name: string }[];
@@ -43,7 +42,6 @@ export default function ExpensesPage({
   data,
   total,
   formData,
-  payment,
   assignmentOptions,
 }: ProductClientProps) {
   const {
@@ -83,7 +81,6 @@ export default function ExpensesPage({
             <ExpenseForm
               companyId={user.companyId}
               userId={user.userId}
-              payment={payment}
               categories={formData}
               assignmentOptions={assignmentOptions}
             />

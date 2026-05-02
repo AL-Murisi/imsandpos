@@ -97,16 +97,6 @@ export const createColumns = (
     },
 
     {
-      accessorKey: "warehouse.name",
-      header: ({ column }) => (
-        <SortableHeader column={column} label={tt("warehouseId")} />
-      ),
-    },
-    {
-      accessorKey: "supplier.name",
-      header: tt("supplierId"),
-    },
-    {
       accessorKey: "sellingUnits",
       header: "وحدات البيع", // تأكد من إضافة الترجمة في ملفات الـ i18n
       cell: ({ row }) => {
@@ -222,14 +212,7 @@ export const createColumns = (
       accessorKey: "minWholesaleQty",
       header: tt("minWholesaleQty"),
     },
-    {
-      accessorKey: "expiredAt",
-      header: "تاريخ الانتهاء",
-      cell: ({ row }) => {
-        const date = row.original;
-        return <ExpiryStatus expiredAt={date.expiredAt} />;
-      },
-    },
+
     {
       accessorKey: "wholesalePrice",
       header: tt("wholesalePrice"),
@@ -245,21 +228,7 @@ export const createColumns = (
           : "N/A";
       },
     },
-    {
-      accessorKey: "costPrice",
-      header: tt("costPrice"),
-      cell: ({ row }) => {
-        const price = row.getValue("costPrice") as number;
-        const { currency } = useCurrency();
-        return price
-          ? new Intl.NumberFormat(currency.locale, {
-              style: "currency",
-              currency: currency.currency,
-              numberingSystem: "latn",
-            }).format(price)
-          : "N/A";
-      },
-    },
+
     // {
     //   accessorKey: "weight",
     //   header: tt("weight"),

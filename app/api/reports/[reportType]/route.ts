@@ -377,12 +377,18 @@ export async function POST(req: NextRequest, context: RouteContext) {
               ...(branchId && { branchId }),
             },
           },
-          include: { product: true },
+          include: {
+            product: {
+              select: {
+                name: true,
+              },
+            },
+          },
         });
 
         const profitByProduct = salesItems.reduce(
           (acc, item) => {
-            const cost = Number(item.product.costPrice) * Number(item.quantity);
+            const cost = Number(item.price) * Number(item.quantity);
             const revenue = Number(item.totalPrice);
             const profit = revenue - cost;
 
@@ -581,7 +587,13 @@ export async function POST(req: NextRequest, context: RouteContext) {
               select: {
                 name: true,
                 sku: true,
+              },
+            },
+            batches: {
+              select: {
                 costPrice: true,
+                remainingQuantity: true,
+
                 supplier: { select: { name: true } },
               },
             },
@@ -594,23 +606,39 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
         data = {
           ...baseData,
-          inventory: inventory.map((i) => ({
-            product: i.product.name,
-            stock: i.availableQuantity,
-            supplier: i.product.supplier?.name,
-            warehouse: i.warehouse.name,
-            lastStockTake: i.lastStockTake?.toLocaleDateString("ar-EG"),
-            value: Number(i.product.costPrice) * i.availableQuantity,
-          })),
-          totalInventoryValue: inventory.reduce(
-            (sum, i) => sum + Number(i.product.costPrice) * i.availableQuantity,
-            0,
-          ),
+          inventory: inventory.map((i) => {
+            const mainBatch = i.batches.sort(
+              (a, b) => (b.remainingQuantity ?? 0) - (a.remainingQuantity ?? 0),
+            )[0];
+            const inventoryValue = i.batches.reduce(
+              (sum, b) =>
+                sum +
+                Number(i.availableQuantity ?? 0) * Number(b.costPrice ?? 0),
+              0,
+            );
+            return {
+              product: i.product.name,
+              stock: i.availableQuantity,
+              supplier: mainBatch.supplier?.name,
+              warehouse: i.warehouse.name,
+              lastStockTake: i.lastStockTake?.toLocaleDateString("ar-EG"),
+              value: inventoryValue,
+            };
+          }),
+          totalInventoryValue: inventory.reduce((sum, i) => {
+            const value = i.batches.reduce(
+              (s, b) =>
+                s + Number(i.availableQuantity ?? 0) * Number(b.costPrice ?? 0),
+              0,
+            );
+            return sum + value;
+          }, 0),
           period: {
             from: fromDate,
             to: toDate,
           },
         };
+
         break;
       }
 
@@ -695,54 +723,80 @@ export async function POST(req: NextRequest, context: RouteContext) {
         const today = new Date();
         const thirtyDaysFromNow = new Date();
         thirtyDaysFromNow.setDate(today.getDate() + 30);
+
         const longTimeAgo = new Date();
         longTimeAgo.setFullYear(today.getFullYear() - 10);
 
-        const expiringProducts = await prisma.product.findMany({
+        const inventoryWithExpiringBatches = await prisma.inventory.findMany({
           where: {
             companyId: user.companyId,
             warehouseId: warehouseId,
             ...(branchId && { branch_id: branchId }),
-            expiredAt: {
-              lte: thirtyDaysFromNow,
-              gte: longTimeAgo,
-            },
-          },
-          select: {
-            name: true,
-            sku: true,
-            expiredAt: true,
-            inventory: {
-              select: {
-                stockQuantity: true,
-                warehouse: { select: { name: true } },
+            batches: {
+              some: {
+                expiredAt: {
+                  lte: thirtyDaysFromNow,
+                  gte: longTimeAgo,
+                },
               },
             },
           },
-          orderBy: { expiredAt: "asc" },
+          select: {
+            product: { select: { name: true, sku: true } },
+            warehouse: { select: { name: true } },
+            stockQuantity: true,
+            batches: {
+              where: {
+                expiredAt: {
+                  lte: thirtyDaysFromNow,
+                  gte: longTimeAgo,
+                },
+              },
+              select: {
+                expiredAt: true,
+                remainingQuantity: true, // Useful to show how much of the batch is left
+              },
+              orderBy: { expiredAt: "asc" },
+            },
+          },
+        });
+
+        // FlatMap allows us to create one row per expiring batch
+        const reportRows = inventoryWithExpiringBatches.flatMap((inv) => {
+          return inv.batches.map((batch) => {
+            const expiryDate = new Date(batch.expiredAt ?? "");
+            const daysDiff = Math.ceil(
+              (expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+            );
+
+            let status = "غير معروف";
+
+            if (daysDiff < 0) {
+              status = "منتهي الصلاحية";
+            } else if (daysDiff === 0) {
+              status = "ينتهي اليوم";
+            } else if (daysDiff <= 3) {
+              status = "ينتهي قريباً (خلال 3 أيام)";
+            } else if (daysDiff <= 30) {
+              status = "ينتهي خلال 30 يوم";
+            } else {
+              status = "صالح";
+            }
+            return {
+              name: inv.product?.name,
+              sku: inv.product?.sku,
+              expiryDate: expiryDate.toLocaleDateString("ar-EG"),
+              stock: batch.remainingQuantity ?? 0, // Showing batch stock is more accurate for reports
+              warehouse: inv.warehouse?.name ?? "N/A",
+              daysUntilExpiry: daysDiff,
+              status,
+            };
+          });
         });
 
         data = {
           ...baseData,
-          expiringProducts: expiringProducts.map((p) => {
-            const daysDiff = Math.ceil(
-              (p.expiredAt.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
-            );
-            let status = "Unknown";
-            if (daysDiff < 0) status = "Expired";
-            else if (daysDiff <= 3) status = "Expiring Soon (3 Days)";
-            else if (daysDiff <= 30) status = "Expiring (30 Days)";
-
-            return {
-              name: p.name,
-              sku: p.sku,
-              expiryDate: p.expiredAt.toLocaleDateString("ar-EG"),
-              stock: p.inventory[0]?.stockQuantity ?? 0,
-              warehouse: p.inventory[0]?.warehouse?.name ?? "N/A",
-              daysUntilExpiry: daysDiff,
-              status,
-            };
-          }),
+          expiringProducts: reportRows,
         };
         break;
       }
@@ -753,7 +807,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
           where: {
             companyId: user.companyId,
             warehouseId: warehouseId,
-            ...(branchId && { branchId }),
+
             lastStockTake: createDateFilter(fromDate, toDate),
           },
           include: {
@@ -761,7 +815,6 @@ export async function POST(req: NextRequest, context: RouteContext) {
             warehouse: true,
           },
         });
-        console.log("stockTake", stockTake);
         data = {
           ...baseData,
           stockTake: stockTake.map((s) => ({
@@ -2071,15 +2124,16 @@ async function fetchReceiptsByCustomer(
           name: true,
         },
       },
+      warehouse: {
+        select: {
+          name: true,
+        },
+      },
       items: {
         include: {
           product: {
-            include: {
-              warehouse: {
-                select: {
-                  name: true,
-                },
-              },
+            select: {
+              name: true,
             },
           },
         },
@@ -2105,7 +2159,7 @@ async function fetchReceiptsByCustomer(
 
     items: inv.items.map((item) => ({
       name: item.product.name,
-      warehousename: item.product.warehouse?.name ?? "",
+      warehousename: inv.warehouse?.name ?? "",
 
       selectedQty: item.quantity,
       sellingUnit: item.unit?.toLowerCase() ?? "unit",
@@ -2184,15 +2238,16 @@ async function fetchReceiptsBySupplier(
           name: true,
         },
       },
+      warehouse: {
+        select: {
+          name: true,
+        },
+      },
       items: {
         include: {
           product: {
-            include: {
-              warehouse: {
-                select: {
-                  name: true,
-                },
-              },
+            select: {
+              name: true,
             },
           },
         },
@@ -2218,7 +2273,7 @@ async function fetchReceiptsBySupplier(
 
     items: inv.items.map((item) => ({
       product_name: item.product.name,
-      warehouse_name: item.product.warehouse?.name ?? "",
+      warehouse_name: inv.warehouse?.name ?? "",
       quantity: item.quantity,
 
       // 🔑 IMPORTANT: keep frontend variable names

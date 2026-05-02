@@ -110,7 +110,7 @@ const ProductListRedux = dynamic(() => import("./ProductList"), {
 });
 type forsale = ProductForSale & {
   warehousename: string;
-  sellingMode: string;
+
   sellingUnits: SellingUnit[];
   barcode: string;
   availableStock: Record<string, number>;
@@ -182,9 +182,12 @@ export default function Clientwraper({
 
   const hydratedData = useMemo(() => {
     return {
-      users: users && users.length > 0 ? users : (offlineBootstrap?.users ?? []),
+      users:
+        users && users.length > 0 ? users : (offlineBootstrap?.users ?? []),
       product:
-        product && product.length > 0 ? product : (offlineBootstrap?.product ?? []),
+        product && product.length > 0
+          ? product
+          : (offlineBootstrap?.product ?? []),
       formData:
         formData.categories.length || formData.warehouses.length
           ? formData
@@ -194,7 +197,7 @@ export default function Clientwraper({
   }, [users, product, formData, nextnumber, offlineBootstrap]);
 
   return (
-    <div className="grid grid-cols-1 gap-4 py-2 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
       <Suspense>
         <ProductListRedux
           product={hydratedData.product}

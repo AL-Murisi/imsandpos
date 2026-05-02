@@ -41,7 +41,6 @@ interface MultiExpenseFormProps {
   companyId: string;
   userId: string;
   categories: { id: string; name: string }[];
-  payment: any;
   assignmentOptions: {
     employees: { id: string; name: string }[];
     customers: { id: string; name: string }[];
@@ -75,7 +74,6 @@ export default function ExpenseForm({
   companyId,
   userId,
   categories,
-  payment,
   assignmentOptions,
 }: MultiExpenseFormProps) {
   const [open, setOpen] = useState(false);
@@ -93,34 +91,6 @@ export default function ExpenseForm({
   ]);
 
   if (!user) return null;
-
-  useEffect(() => {
-    if (!open) return;
-
-    try {
-      const { banks, cashAccounts } = payment;
-      const nextAccountsByExpense: Record<string, Account[]> = {};
-
-      expenses.forEach((exp) => {
-        if (exp.payment?.paymentMethod === "bank") {
-          nextAccountsByExpense[exp.id] = banks;
-        } else if (exp.payment?.paymentMethod === "cash") {
-          nextAccountsByExpense[exp.id] = cashAccounts;
-        } else {
-          nextAccountsByExpense[exp.id] = [];
-        }
-      });
-
-      setAccountsByExpense(nextAccountsByExpense);
-    } catch (error) {
-      console.error(error);
-      toast.error("فشل في جلب الحسابات");
-    }
-  }, [
-    open,
-    payment,
-    expenses.map((exp) => `${exp.id}-${exp.payment?.paymentMethod}`).join(","),
-  ]);
 
   const addExpense = () => {
     setExpenses((current) => [...current, createEmptyExpense()]);

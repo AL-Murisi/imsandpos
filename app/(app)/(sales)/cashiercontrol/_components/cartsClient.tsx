@@ -86,7 +86,7 @@ const Receipt = dynamic(
 export type discountType = "fixed" | "percentage";
 type forsale = ProductForSale & {
   warehousename: string;
-  sellingMode: string;
+
   barcode: string;
   sellingUnits: SellingUnit[];
   availableStock: Record<string, number>;
@@ -268,11 +268,17 @@ export default function CartDisplay({
     (
       id: string,
       selectedUnitId: string,
-
+      warehouseId: string,
       quantity: number,
       action: string,
     ) => {
-      dispatch(updateQty({ id, selectedUnitId, quantity, action }));
+      // derive warehouseId from current items
+      const current = items.find(
+        (it) => it.id === id && it.selectedUnitId === selectedUnitId,
+      );
+      dispatch(
+        updateQty({ id, selectedUnitId, quantity, action, warehouseId } as any),
+      );
     },
 
     [dispatch],
@@ -296,7 +302,8 @@ export default function CartDisplay({
           id,
           fromUnitId: item.selectedUnitId, // المعرف القديم للسطر
           toUnitId: toUnit.id, // المعرف الجديد للسطر
-        }),
+          warehouseId: item.warehouseId,
+        } as any),
       );
 
       // 3️⃣ تحديث المخزون (Optimistic)
@@ -304,6 +311,7 @@ export default function CartDisplay({
       dispatch(
         updateProductStockOptimistic({
           productId: id,
+          warehouseId: item.warehouseId,
           sellingUnit: item.selectedUnitId,
           quantity: item.selectedQty,
           mode: "restore",
@@ -314,6 +322,7 @@ export default function CartDisplay({
       dispatch(
         updateProductStockOptimistic({
           productId: id,
+          warehouseId: item.warehouseId,
           sellingUnit: toUnit.id,
           quantity: 1,
           mode: "consume",
@@ -326,13 +335,16 @@ export default function CartDisplay({
   const handleRemoveItem = useCallback(
     (id: string, unitId: string) => {
       // 1️⃣ Find the item in the current cart items before removing it
-      const itemToRestore = items.find((item) => item.id === id);
+      const itemToRestore = items.find(
+        (item) => item.id === id && item.selectedUnitId === unitId,
+      );
 
       if (itemToRestore) {
         // 2️⃣ Restore the stock
         dispatch(
           updateProductStockOptimistic({
             productId: id,
+            warehouseId: itemToRestore.warehouseId,
             sellingUnit: itemToRestore.selectedUnitId,
             quantity: itemToRestore.selectedQty,
             mode: "restore",
@@ -344,6 +356,7 @@ export default function CartDisplay({
         removeFromCart({
           productId: id,
           unitId: unitId,
+          warehouseId: itemToRestore?.warehouseId,
         }),
       );
       // 3️⃣ Remove from cart
@@ -590,11 +603,11 @@ export default function CartDisplay({
           {" "}
           <SearchInput
             placeholder={"عمله البيع"}
-            paramKey="users"
+            paramKey=""
             value={currency?.id}
             options={filteredCurrencyOptions ?? []}
-            action={(user) => {
-              setCurrency(user); // now `user` is single UserOption
+            action={(currency) => {
+              setCurrency(currency); // now `user` is single UserOption
             }}
           />
           <Button
@@ -926,6 +939,7 @@ export default function CartDisplay({
                     dispatch(
                       updateProductStockOptimistic({
                         productId: item.id,
+                        warehouseId: item.warehouseId,
                         sellingUnit: item.selectedUnitId,
                         quantity: item.selectedQty,
                         mode: "restore",

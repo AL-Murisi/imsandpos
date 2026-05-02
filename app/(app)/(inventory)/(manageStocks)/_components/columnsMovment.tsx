@@ -1,13 +1,13 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import Dailogreuse from "@/components/common/dailogreuse";
-import { Badge } from "@/components/ui/badge";
+import { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ColumnDef } from "@tanstack/react-table";
-import { Edit, Eye } from "lucide-react";
-import InvonteryEditFormm from "./form";
+
+import { Clock, Edit, Eye } from "lucide-react";
+
 import PurchaseReturnForm from "./returnform";
 import { PaymentCreateForm } from "./PaymentCreateForm";
 import { PurchaseReceipt } from "@/components/common/purchasreceitp";
@@ -413,19 +413,7 @@ export const inventoryColumns: ColumnDef<any>[] = [
     accessorKey: "product.name",
     header: "المنتج",
   },
-  {
-    accessorKey: "warehouse.name",
-    header: "المستودع",
-  },
-  {
-    accessorKey: "product.supplier.name",
-    header: "المورد",
-  },
 
-  {
-    accessorKey: "warehouse.location",
-    header: "الموقع",
-  },
   {
     accessorKey: "reservedByUnit",
     header: "الكمية المحجوزة",
@@ -475,6 +463,7 @@ export const inventoryColumns: ColumnDef<any>[] = [
       );
     },
   },
+  { accessorKey: "warehouse.name", header: "المستودع" },
   {
     accessorKey: "stockByUnit",
     header: "إجمالي المخزون",
@@ -535,18 +524,29 @@ export const inventoryColumns: ColumnDef<any>[] = [
       return <div>{new Date(date).toLocaleDateString("ar-EG")}</div>;
     },
   },
-  // {
-  //   id: "actions",
-  //   header: "الإجراءات",
-  //   cell: ({ row }) => {
-  //     const inventory = row.original;
-  //     return (
-  //       <div className="flex gap-2 p-2">
-  //         <InvonteryEditFormm inventory={inventory} />
-  //       </div>
-  //     );
-  //   },
-  // },
+  {
+    id: "actions",
+    header: "الإجراءات",
+    cell: ({ row }) => {
+      const router = useRouter();
+      const inventory = row.original;
+      const [isLoading, setIsLoading] = useState(false);
+      return (
+        <div className="flex gap-2 p-2">
+          <Button
+            disabled={isLoading}
+            onClick={() => {
+              setIsLoading(true);
+              router.push(`/batches?inventoryId=${inventory.id}`);
+            }}
+          >
+            {isLoading && <Clock className="h-4 w-4 animate-spin" />}
+            {isLoading ? "جاري الفتح..." : "الدفعات"}
+          </Button>
+        </div>
+      );
+    },
+  },
 ];
 export const purchaseColumns: ColumnDef<any>[] = [
   {
@@ -627,7 +627,7 @@ export const purchaseColumns: ColumnDef<any>[] = [
     },
   },
   {
-    accessorKey: "sale_type",
+    accessorKey: "purchaseType",
     header: " نوع الشراء",
     cell: ({ row }) => {
       // التأكد من وجود القيمة قبل عرضها
@@ -693,6 +693,11 @@ export const purchaseColumns: ColumnDef<any>[] = [
         </Dailogreuse>
       );
     },
+  },
+  {
+    accessorKey: "purchaseNumer",
+    header: "رقم الفاتورة",
+    cell: ({ row }) => <div>{row.getValue("purchaseNumer")}</div>,
   },
 
   {
@@ -767,16 +772,19 @@ export const purchaseColumns: ColumnDef<any>[] = [
       return (
         <div className="flex gap-2 p-2">
           {" "}
-          {amountDue > 0 && status != "RETURN_PURCHASE" && (
-            <PaymentCreateForm
-              purchaseId={purchaseId}
-              supplier={supplierId}
-              supplier_name={supplier_name}
-            />
-          )}{" "}
-          {status != "RETURN_PURCHASE" && (
-            <PurchaseReturnForm purchaseId={purchaseId} />
-          )}
+          {amountDue > 0 &&
+            status != "RETURN_PURCHASE" &&
+            !supplierId.hasReturnSale && (
+              <PaymentCreateForm
+                purchaseId={purchaseId}
+                supplier={supplierId}
+                supplier_name={supplier_name}
+              />
+            )}{" "}
+          {supplierId.purchaseType != "RETURN_PURCHASE" &&
+            !supplierId.hasReturnSale && (
+              <PurchaseReturnForm purchaseId={purchaseId} />
+            )}
           <PurchaseReceipt
             purchaseNumber={supplierId.invoiceNumber}
             purchasType={status === "RETURN_PURCHASE" ? "مرتجع شراء" : "شراء"}
@@ -839,3 +847,144 @@ export const purchaseColumns: ColumnDef<any>[] = [
     },
   },
 ];
+
+import { Badge } from "@/components/ui/badge";
+import { format } from "date-fns";
+import { useRouter } from "next/navigation";
+
+export const batchColumns: ColumnDef<any>[] = [
+  {
+    id: "select",
+    header: ({ table }) => (
+      <Checkbox
+        className="pr-4"
+        checked={
+          table.getIsAllPageRowsSelected() ||
+          (table.getIsSomePageRowsSelected() && "indeterminate")
+        }
+        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+        aria-label="تحديد الكل"
+      />
+    ),
+    cell: ({ row }) => (
+      <Checkbox
+        checked={row.getIsSelected()}
+        onCheckedChange={(value) => row.toggleSelected(!!value)}
+        aria-label="تحديد الصف"
+      />
+    ),
+    enableSorting: false,
+    enableHiding: false,
+  },
+  {
+    id: "product",
+    header: "المنتج",
+    cell: ({ row }) => {
+      return row.original.inventory?.product?.name || "-";
+    },
+  },
+  {
+    id: "sku",
+    header: "SKU",
+    cell: ({ row }) => {
+      return row.original.inventory?.product?.sku || "-";
+    },
+  },
+  {
+    id: "warehouse",
+    header: "المستودع",
+    cell: ({ row }) => {
+      const warehouse = row.original.inventory?.warehouse;
+
+      return (
+        <div className="space-y-1">
+          <div>{warehouse?.name}</div>
+          <div className="text-muted-foreground text-xs">
+            {warehouse?.location}
+          </div>
+        </div>
+      );
+    },
+  },
+  {
+    id: "supplier",
+    header: "المورد",
+    cell: ({ row }) => {
+      return row.original.supplier?.name ?? "-";
+    },
+  },
+  {
+    accessorKey: "quantity",
+    header: "الكمية",
+  },
+  {
+    accessorKey: "remainingQuantity",
+    header: "المتبقي",
+  },
+  {
+    id: "costPrice",
+    header: "سعر التكلفة",
+    cell: ({ row }) => {
+      const price = Number(row.original.costPrice);
+
+      return new Intl.NumberFormat("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(price);
+    },
+  },
+  {
+    id: "receivedAt",
+    header: "تاريخ الاستلام",
+    cell: ({ row }) => {
+      return format(new Date(row.original.receivedAt), "yyyy-MM-dd");
+    },
+  },
+  {
+    accessorKey: "expiredAt",
+    header: "تاريخ الانتهاء",
+    cell: ({ row }) => {
+      const date = row.original;
+      return <ExpiryStatus expiredAt={date.expiredAt} />;
+    },
+  },
+  // {
+  //   id: "status",
+  //   header: "الحالة",
+  //   cell: ({ row }) => {
+  //     const expiry = ExpiryStatus(row.original.expiredAt);
+
+  //     return <Badge className={expiry.tone}>{expiry.label}</Badge>;
+  //   },
+  // },
+];
+type ExpiryProps = {
+  expiredAt?: string | Date;
+};
+export function ExpiryStatus({ expiredAt }: ExpiryProps) {
+  if (!expiredAt) return <span className="text-gray-500">—</span>;
+
+  const expiryDate = new Date(expiredAt);
+  const today = new Date();
+
+  const diffInDays = Math.ceil(
+    (expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+  );
+
+  let color = "text-green-600"; // default: not close to expiry
+  let label = "صالح";
+
+  if (diffInDays <= 0) {
+    color = "text-red-600";
+    label = "منتهي";
+  } else if (diffInDays <= 30) {
+    color = "text-yellow-600";
+    label = "قارب على الانتهاء";
+  }
+
+  return (
+    <span className={color}>
+      {format(expiryDate, "yyyy-MM-dd")} — {label}
+    </span>
+  );
+}

@@ -128,6 +128,8 @@ export async function FetchDebtSales(
       transactions: {
         select: { notes: true, status: true, paymentMethod: true },
       },
+      warehouse: { select: { id: true, name: true } },
+
       items: {
         select: {
           productId: true,
@@ -138,7 +140,6 @@ export async function FetchDebtSales(
           product: {
             select: {
               name: true,
-              warehouse: { select: { id: true, name: true } },
               sellingUnits: true,
             },
           },
@@ -194,7 +195,7 @@ export async function FetchDebtSales(
         quantity: Number(item.quantity),
         unitPrice: Number(item.price),
         unit: item.unit,
-        warehouse: item.product.warehouse?.name || "بدون مستودع",
+        warehouse: sale.warehouse?.name || "بدون مستودع",
         totalPrice: Number(item.totalPrice),
       })),
       saleNumber: sale.invoiceNumber,

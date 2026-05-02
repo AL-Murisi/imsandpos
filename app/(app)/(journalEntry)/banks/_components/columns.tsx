@@ -19,6 +19,7 @@ export type BankRow = {
   swiftCode?: string | null;
   currencyCode: string;
   isActive: boolean;
+  type: "BANK" | "CASH";
   account: {
     id: string;
     account_code: string;
@@ -34,7 +35,7 @@ export const bankColumns: ColumnDef<BankRow>[] = [
   },
   {
     accessorKey: "name",
-    header: "اسم البنك",
+    header: "اسم ",
     cell: ({ row }) => <div className="font-semibold">{row.original.name}</div>,
   },
   {
@@ -53,7 +54,21 @@ export const bankColumns: ColumnDef<BankRow>[] = [
     accessorKey: "accountNumber",
     header: "رقم الحساب",
   },
-
+  {
+    accessorKey: "type",
+    header: "النوع",
+    cell: ({ row }) => (
+      <Badge
+        className={
+          row.original.type === "BANK"
+            ? "bg-blue-100 text-blue-800"
+            : "bg-yellow-100 text-yellow-800"
+        }
+      >
+        {row.original.type === "BANK" ? "بنك" : "نقد"}
+      </Badge>
+    ),
+  },
   {
     accessorKey: "isActive",
     header: "الحالة",
@@ -80,11 +95,12 @@ export const bankColumns: ColumnDef<BankRow>[] = [
       return (
         <div className="flex gap-2">
           <BankFormDialog bank={row.original} mode="edit" />
+
           <Button
             disabled={isLoading}
             onClick={() => {
               setIsLoading(true);
-              router.push(`/banks/${bank.account.id}`);
+              router.push(`/banks/${bank.id}`);
             }}
           >
             {isLoading && <Clock className="h-4 w-4 animate-spin" />}

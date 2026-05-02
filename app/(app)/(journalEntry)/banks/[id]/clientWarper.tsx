@@ -1,7 +1,7 @@
 "use client";
 
-import { Decimal } from "@prisma/client/runtime/library";
 import dynamic from "next/dynamic";
+import CashStatement from "./cashstatemnt";
 
 const BankStatement = dynamic(() => import("./BankStatement"), {
   ssr: false,
@@ -12,7 +12,6 @@ interface BankStatement {
     id: string;
     name: string;
     accountNumber: string | null;
-    account: { opening_balance: Decimal | null };
   };
 
   openingBalance: number;
@@ -38,10 +37,20 @@ interface BankStatement {
 
 export default function ClientWrapper({
   bank,
+  type,
   fiscalYear,
 }: {
   bank: BankStatement | undefined;
+  type?: string;
   fiscalYear: any;
 }) {
-  return <BankStatement banks={bank} fiscalYear={fiscalYear} />;
+  return (
+    <>
+      {type === "CASH" ? (
+        <CashStatement cashes={bank} fiscalYear={fiscalYear} />
+      ) : (
+        <BankStatement banks={bank} fiscalYear={fiscalYear} />
+      )}
+    </>
+  );
 }

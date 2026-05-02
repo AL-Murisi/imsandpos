@@ -48,7 +48,6 @@ export default async function manageStocks({ searchParams }: DashboardProps) {
     pageSize,
     from,
     to,
-    parsedSort,
   });
 
   return (

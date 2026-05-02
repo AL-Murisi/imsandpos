@@ -22,7 +22,7 @@ import { memo, useCallback } from "react";
 // تم تعديل النوع ليشمل مصفوفة الوحدات الديناميكية
 type props = ProductForSale & {
   warehousename: string;
-  sellingMode: string;
+
   sellingUnits: SellingUnit[];
   availableStock: Record<string, number>; // التعديل هنا: سجل يحتوي على الكمية لكل وحدة ID
 };
@@ -57,7 +57,9 @@ export const CartItemRow = memo(
 
     // حساب الحد الأقصى للكمية بناءً على المخزون المتاح لهذه الوحدة المحددة
     const getMaxQty = useCallback(() => {
-      const product = products.find((p: any) => p.id === item.id);
+      const product = products.find(
+        (p: any) => p.id === item.id && p.warehouseId === item.warehouseId,
+      );
       if (!product || !product.availableStock) return 0;
       // نستخدم ID الوحدة لجلب المخزون المتاح لها
       return product.availableStock[item.selectedUnitId] || 0;
@@ -81,12 +83,19 @@ export const CartItemRow = memo(
                 dispatch(
                   updateProductStockOptimistic({
                     productId: item.id,
+                    warehouseId: item.warehouseId,
                     sellingUnit: item.selectedUnitId,
                     quantity: 1,
                     mode: "restore",
                   }),
                 );
-                onUpdateQty(item.id, item.selectedUnitId, 1, "mins");
+                onUpdateQty(
+                  item.id,
+                  item.selectedUnitId,
+                  item.warehouseId,
+                  1,
+                  "mins",
+                );
               }}
               className="bg-primary text-background rounded p-1 disabled:bg-gray-400"
             >
@@ -103,12 +112,19 @@ export const CartItemRow = memo(
                 dispatch(
                   updateProductStockOptimistic({
                     productId: item.id,
+                    warehouseId: item.warehouseId,
                     sellingUnit: item.selectedUnitId,
                     quantity: 1,
                     mode: "consume",
                   }),
                 );
-                onUpdateQty(item.id, item.selectedUnitId, 1, "plus");
+                onUpdateQty(
+                  item.id,
+                  item.selectedUnitId,
+                  item.warehouseId,
+                  1,
+                  "plus",
+                );
               }}
               className="bg-primary text-background rounded p-1 disabled:bg-gray-400"
             >
@@ -196,9 +212,20 @@ export const ProductCard = memo(
     if (!product.sellingUnits || product.sellingUnits.length === 0) return null;
 
     return (
-      <div className="border-primary rounded-2xl border-2 shadow-sm transition hover:scale-[1.02] hover:shadow-md">
-        <Card className="group relative flex h-48 cursor-pointer flex-col justify-between overflow-hidden p-2">
-          {/* قسم الوحدات */}
+      <div className="border-primary bg-primary-foreground rounded-2xl border-2 shadow-sm transition hover:scale-[1.02] hover:shadow-md">
+        <div className="group relative flex flex-col justify-between overflow-hidden p-2">
+          <div className="text-foreground mt-1 flex h-[30px] items-center justify-center rounded-md">
+            <Label className="line-clamp-2 px-2 text-center text-xs font-bold">
+              {product.name}
+            </Label>
+          </div>
+          {product.warehousename && (
+            <div className="mt-1 flex items-center justify-center">
+              <span className="text-muted-foreground text-xs">
+                {product.warehousename}
+              </span>
+            </div>
+          )}
           <div className="bg-primary text-background flex flex-col rounded-md px-2 py-1 text-[11px] font-bold">
             {product.sellingUnits.map((unit: any) => {
               const stock = product.availableStock?.[unit.id] || 0;
@@ -209,7 +236,7 @@ export const ProductCard = memo(
                     e.stopPropagation(); // منع تفعيل الضغط على الكارت
                     if (stock > 0) onAdd(product, unit);
                   }}
-                  className={`flex items-center justify-between rounded border-b border-white/20 px-1 py-1 transition-colors last:border-0 hover:bg-white/10 ${stock <= 0 ? "cursor-not-allowed opacity-40" : "cursor-pointer"}`}
+                  className={`flex cursor-pointer items-center justify-between rounded border-b border-white/20 px-1 py-1 transition-colors last:border-0 hover:bg-white/10 ${stock <= 0 ? "cursor-not-allowed opacity-40" : "cursor-pointer"}`}
                 >
                   <span className="w-6 rounded-sm bg-white/20 text-center text-white dark:text-black">
                     {stock}
@@ -231,12 +258,7 @@ export const ProductCard = memo(
           </div>
 
           {/* قسم اسم المنتج */}
-          <div className="bg-primary-foreground text-foreground mt-1 flex h-[50px] items-center justify-center rounded-md">
-            <Label className="line-clamp-2 cursor-pointer px-2 text-center text-xs font-bold">
-              {product.name}
-            </Label>
-          </div>
-        </Card>
+        </div>
       </div>
     );
   },

@@ -4,7 +4,7 @@ import type { CashierItem, ProductForSale, SellingUnit } from "@/lib/zod";
 type CategoryItem = { label: string; value: string; checked: boolean };
 type forsale = ProductForSale & {
   warehousename: string;
-  sellingMode: string;
+
   sellingUnits: SellingUnit[];
   barcode: string;
   availableStock: Record<string, number>;
@@ -111,7 +111,7 @@ const productsSlice = createSlice({
           if (unit.unitsPerParent > 0) {
             updatedStock[unit.id] = Math.floor(baseQty / unit.unitsPerParent);
           } else {
-            updatedStock[unit.id] = unit.isbase ? baseQty : 0;
+            updatedStock[unit.id] = unit.isBase ? baseQty : 0;
           }
         });
 
@@ -211,12 +211,18 @@ const productsSlice = createSlice({
       state,
       action: PayloadAction<{
         productId: string;
+        warehouseId?: string;
         sellingUnit: string; // تأكد أنك تمرر الـ ID الخاص بالوحدة هنا
         quantity: number;
         mode: "consume" | "restore";
       }>,
     ) {
-      const p = state.products.find((x) => x.id === action.payload.productId);
+      const { productId, warehouseId } = action.payload;
+      const p = state.products.find(
+        (x) =>
+          x.id === productId &&
+          (warehouseId ? x.warehouseId === warehouseId : true),
+      );
       if (!p || !p.availableStock) return;
 
       const { sellingUnit, quantity, mode } = action.payload;

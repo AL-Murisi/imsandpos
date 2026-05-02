@@ -34,7 +34,31 @@ export async function shouldSendNotificationDigest(
   try {
     await ensureDigestTable();
 
-    const rows = await prisma.$queryRaw<Array<{ inserted: number }>>`
+    const rows = await prisma.$queryRaw<Array<{ exists: number }>>`
+      SELECT 1 AS exists
+      FROM notification_digests
+      WHERE company_id = ${companyId}
+        AND digest_type = ${digestType}
+        AND sent_date = CURRENT_DATE
+        AND digest_key = ${digestKey}
+      LIMIT 1
+    `;
+
+    return rows.length === 0;
+  } catch (error) {
+    console.error("Notification digest guard failed; sending anyway.", error);
+    return true;
+  }
+}
+
+export async function markNotificationDigestSent(
+  companyId: string,
+  digestType: string,
+  digestKey: string,
+) {
+  try {
+    await ensureDigestTable();
+    await prisma.$executeRaw`
       INSERT INTO notification_digests (
         company_id,
         digest_type,
@@ -44,13 +68,9 @@ export async function shouldSendNotificationDigest(
       )
       VALUES (${companyId}, ${digestType}, CURRENT_DATE, ${digestKey}, now())
       ON CONFLICT (company_id, digest_type, sent_date, digest_key)
-      DO NOTHING
-      RETURNING 1 AS inserted
+      DO UPDATE SET last_sent_at = EXCLUDED.last_sent_at
     `;
-
-    return rows.length > 0;
   } catch (error) {
-    console.error("Notification digest guard failed; sending anyway.", error);
-    return true;
+    console.error("Failed to mark notification digest as sent.", error);
   }
 }

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,6 @@ import {
   PaymentState,
   ReusablePayment,
 } from "@/components/common/ReusablePayment";
-import { fetchPayments } from "@/lib/actions/banks";
 import { useCompany } from "@/hooks/useCompany";
 
 interface Account {
@@ -69,6 +68,9 @@ export default function ManualJournalEntryForm({
   userId,
   onSuccess,
 }: ManualJournalEntryFormProps) {
+  const [entryMode, setEntryMode] = useState<"manual" | "opening_balance">(
+    "manual",
+  );
   const [entryDate, setEntryDate] = useState(
     new Date().toISOString().split("T")[0],
   );
@@ -194,7 +196,8 @@ export default function ManualJournalEntryForm({
     const year = new Date().getFullYear();
     const randomSuffix = Math.floor(Math.random() * 100000);
     const timestamp = Date.now().toString().slice(-6);
-    return `JE-${year}-MANUAL-${timestamp}-${randomSuffix}`;
+    const entryKind = entryMode === "opening_balance" ? "OPENING" : "MANUAL";
+    return `JE-${year}-${entryKind}-${timestamp}-${randomSuffix}`;
   };
 
   // Submit form
@@ -232,18 +235,26 @@ export default function ManualJournalEntryForm({
 
     // Validate AR/AP lines have customer/supplier
     for (const line of lines) {
-      if (isAccountsReceivable(line.accountId) && !line.customerId) {
+      if (
+        entryMode === "manual" &&
+        isAccountsReceivable(line.accountId) &&
+        !line.customerId
+      ) {
         toast.error("يجب تحديد عميل لحساب الذمم المدينة");
         return;
       }
-      if (isAccountsPayable(line.accountId) && !line.supplierId) {
+      if (
+        entryMode === "manual" &&
+        isAccountsPayable(line.accountId) &&
+        !line.supplierId
+      ) {
         toast.error("يجب تحديد مورد لحساب الذمم الدائنة");
         return;
       }
     }
 
     // Validate payment if included
-    if (includePayment) {
+    if (entryMode === "manual" && includePayment) {
       if (!payment.paymentMethod || !payment.accountId) {
         toast.error("الرجاء إكمال معلومات الدفع");
         return;
@@ -263,16 +274,25 @@ export default function ManualJournalEntryForm({
       const entries = lines.map((line, index) => {
         // Determine reference_id based on account type and debit/credit
         let referenceId = entryNumber;
-        let referenceType = "قيد يدوي";
+        let referenceType =
+          entryMode === "opening_balance" ? "opening_balance" : "قيد يدوي";
 
-        if (isAccountsReceivable(line.accountId) && line.customerId) {
+        if (
+          entryMode === "manual" &&
+          isAccountsReceivable(line.accountId) &&
+          line.customerId
+        ) {
           if (line.debit > 0) {
             referenceType = "مديونية على عميل";
           } else if (line.credit > 0) {
             referenceType = "تحصيل من عميل";
           }
           referenceId = line.customerId;
-        } else if (isAccountsPayable(line.accountId) && line.supplierId) {
+        } else if (
+          entryMode === "manual" &&
+          isAccountsPayable(line.accountId) &&
+          line.supplierId
+        ) {
           if (line.credit > 0) {
             referenceType = "مديونية لمورد";
           } else if (line.debit > 0) {
@@ -306,21 +326,22 @@ export default function ManualJournalEntryForm({
         generalDescription,
         companyId,
         // ✅ Include payment details if provided
-        paymentDetails: includePayment
-          ? {
-              paymentMethod: payment.paymentMethod ?? "",
-              accountId: payment.accountId ?? "",
-              selectedCurrency: payment.selectedCurrency ?? "",
-              financialAccountId: payment.financialAccountId ?? "",
-              amountBase: payment.amountBase ?? 0,
-              transferNumber:
-                typeof payment.transferNumber === "string"
-                  ? parseFloat(payment.transferNumber) || 0
-                  : (payment.transferNumber ?? 0),
-              exchangeRate: payment.exchangeRate ?? 1, // Default to 1 if undefined
-              amountFC: payment.amountFC ?? 0,
-            }
-          : undefined,
+        paymentDetails:
+          entryMode === "manual" && includePayment
+            ? {
+                paymentMethod: payment.paymentMethod ?? "",
+                accountId: payment.accountId ?? "",
+                selectedCurrency: payment.selectedCurrency ?? "",
+                financialAccountId: payment.financialAccountId ?? "",
+                amountBase: payment.amountBase ?? 0,
+                transferNumber:
+                  typeof payment.transferNumber === "string"
+                    ? parseFloat(payment.transferNumber) || 0
+                    : (payment.transferNumber ?? 0),
+                exchangeRate: payment.exchangeRate ?? 1, // Default to 1 if undefined
+                amountFC: payment.amountFC ?? 0,
+              }
+            : undefined,
       });
 
       if (result.success) {
@@ -328,6 +349,7 @@ export default function ManualJournalEntryForm({
 
         // Reset form
         setGeneralDescription("");
+        setEntryMode("manual");
         setIncludePayment(false);
         setPayment({
           paymentMethod: "cash",
@@ -377,7 +399,7 @@ export default function ManualJournalEntryForm({
       <div className="space-y-6">
         {/* Header Section */}
         <div className="bg-card space-y-4 rounded-lg border p-4">
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="entry-date">تاريخ القيد</Label>
               <Input
@@ -387,6 +409,23 @@ export default function ManualJournalEntryForm({
                 onChange={(e) => setEntryDate(e.target.value)}
                 className="w-full"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="entry-mode">نوع القيد</Label>
+              <select
+                id="entry-mode"
+                value={entryMode}
+                onChange={(e) => {
+                  const mode = e.target.value as "manual" | "opening_balance";
+                  setEntryMode(mode);
+                  if (mode === "opening_balance") setIncludePayment(false);
+                }}
+                className="border-input bg-background h-10 w-full rounded-md border px-3 py-2 text-sm"
+              >
+                <option value="manual">قيد يدوي</option>
+                <option value="opening_balance">رصيد افتتاحي</option>
+              </select>
             </div>
 
             <div className="space-y-2">
@@ -418,7 +457,7 @@ export default function ManualJournalEntryForm({
           </div>
 
           {/* ✅ Payment Section Toggle */}
-          {hasCashOrBankAccount() && (
+          {entryMode === "manual" && hasCashOrBankAccount() && (
             <div className="border-t pt-3">
               <div className="flex items-center gap-2">
                 <input
@@ -438,7 +477,7 @@ export default function ManualJournalEntryForm({
         </div>
 
         {/* ✅ Payment Details (conditional) */}
-        {includePayment && (
+        {entryMode === "manual" && includePayment && (
           <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
             <h3 className="mb-3 text-sm font-semibold text-blue-900">
               تفاصيل الدفع

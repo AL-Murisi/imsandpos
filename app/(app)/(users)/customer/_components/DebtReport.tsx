@@ -22,7 +22,6 @@ import {
   PaymentState,
   ReusablePayment,
 } from "@/components/common/ReusablePayment";
-import { fetchPayments } from "@/lib/actions/banks";
 import { useCompany } from "@/hooks/useCompany";
 
 type Account = {
@@ -81,35 +80,35 @@ export default function DebtReport({
 
   /* ───────── Fetch debts ───────── */
   useEffect(() => {
-  if (!open || !user) return;
+    if (!open || !user) return;
 
-  async function load() {
-    setLoading(true);
-    try {
-      const sales = await FetchCustomerDebtReport(customerID, companyid);
+    async function load() {
+      setLoading(true);
+      try {
+        const sales = await FetchCustomerDebtReport(customerID, companyid);
 
-      const mapped: Debt[] = sales.map((d: any) => ({
-        id: d.id,
-        date: new Date(d.saleDate).toLocaleDateString(),
-        invoiceNo: d.saleNumber,
-        items: d.saleItems
-          .map((i: any) => `${i.product.name} x${i.quantity}`)
-          .join(", "),
-        total: +d.totalAmount,
-        paid: +d.amountPaid,
-        remaining: +d.amountDue,
-      }));
+        const mapped: Debt[] = sales.map((d: any) => ({
+          id: d.id,
+          date: new Date(d.saleDate).toLocaleDateString(),
+          invoiceNo: d.saleNumber,
+          items: d.saleItems
+            .map((i: any) => `${i.product.name} x${i.quantity}`)
+            .join(", "),
+          total: +d.totalAmount,
+          paid: +d.amountPaid,
+          remaining: +d.amountDue,
+        }));
 
-      setDebts(mapped);
-    } catch (err) {
-      console.error("Failed to load debts:", err);
-    } finally {
-      setLoading(false);
+        setDebts(mapped);
+      } catch (err) {
+        console.error("Failed to load debts:", err);
+      } finally {
+        setLoading(false);
+      }
     }
-  }
 
-  load();
-}, [open, customerID, companyid, user]);
+    load();
+  }, [open, customerID, companyid, user]);
   const allSelected = debts.length > 0 && selectedIds.length === debts.length;
 
   const toggleSelectAll = () =>
@@ -318,7 +317,10 @@ export default function DebtReport({
         </div>
         {/* Actions */}
         <div className="grid grid-cols-2 gap-2 py-3">
-          <Button onClick={onSubmit} disabled={isSubmitting ||payment.amountBase<=0}>
+          <Button
+            onClick={onSubmit}
+            disabled={isSubmitting || payment.amountBase <= 0}
+          >
             تسديد الفواتير
           </Button>
 

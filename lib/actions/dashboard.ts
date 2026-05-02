@@ -7,6 +7,7 @@ import prisma from "@/lib/prisma";
 
 import { unstable_cache } from "next/cache";
 import { subDays } from "date-fns/subDays";
+import { SellingUnit } from "../zod";
 
 // 🚀 SINGLE OPTIMIZED FUNCTION - uses only Prisma methods
 
@@ -455,6 +456,7 @@ export async function getProductStats(companyId: string) {
   const now = new Date();
   const oneMonthLater = new Date();
   oneMonthLater.setMonth(now.getMonth() + 1);
+
   // 1️⃣ Fetch all inventory with product info
   const inventory = await prisma.inventory.findMany({
     where: { companyId },
@@ -462,40 +464,60 @@ export async function getProductStats(companyId: string) {
       stockQuantity: true,
       availableQuantity: true,
       reorderLevel: true,
-      product: {
+      batches: {
         select: {
           expiredAt: true,
         },
+        orderBy: {
+          expiredAt: "asc", // Optional: get the soonest expiry first
+        },
       },
-    }, // need unitsPerPacket & packetsPerCarton
+      product: {
+        select: {
+          sellingUnits: true,
+        },
+      },
+    },
   });
 
-  // 2️⃣ Convert quantities to cartons
+  // 2️⃣ Convert quantities and handle stats
   const convertedInventory = inventory.map((item) => {
-    const stockCartons = convertToCartons(
-      item.product,
-      item.stockQuantity ?? 0,
-    );
-    const availableCartons = convertToCartons(
-      item.product,
-      item.availableQuantity ?? 0,
-    );
-    const expiryDate = item.product.expiredAt
-      ? new Date(item.product.expiredAt)
-      : null;
+    const baseStock = item.availableQuantity || 0;
+    const availableStock: Record<string, number> = {};
+    const sellingUnits = (item.product.sellingUnits as any[]) || [];
+
+    // Logic to calculate cartons or units
+    sellingUnits.forEach((unit) => {
+      if (unit.unitsPerParent > 0) {
+        availableStock[unit.id] = Math.floor(baseStock / unit.unitsPerParent);
+      } else {
+        availableStock[unit.id] = unit.isBase ? baseStock : 0;
+      }
+    });
+
+    // Fix the Null/Date error and the Syntax error
+    const expiryDate = item.batches[0]?.expiredAt || null;
+
+    // Corrected isExpired logic
+    const isExpired = expiryDate ? new Date(expiryDate) < now : false;
+
+    const isExpiringSoon = expiryDate
+      ? expiryDate >= now && expiryDate <= oneMonthLater
+      : false;
 
     return {
       ...item,
-      stockCartons,
-      availableCartons,
-      isExpired: expiryDate ? expiryDate < now : false,
-      isExpiringSoon: expiryDate
-        ? expiryDate >= now && expiryDate <= oneMonthLater
-        : false,
+      baseStock,
+      availableStock,
+      isExpired,
+      isExpiringSoon,
+      // Fixed: Defined stockCartons so it can be used below
+      // Using baseStock or a specific unit calculation
+      stockCartons: baseStock,
     };
   });
-  // 3️⃣ Compute totals
 
+  // 3️⃣ Compute totals using the correctly named properties
   const lowStockCount = convertedInventory.filter(
     (item) => item.stockCartons <= (item.reorderLevel ?? 0),
   ).length;
@@ -503,9 +525,11 @@ export async function getProductStats(companyId: string) {
   const zeroStockCount = convertedInventory.filter(
     (item) => item.stockCartons === 0,
   ).length;
+
   const expiredCount = convertedInventory.filter(
     (item) => item.isExpired,
   ).length;
+
   const expiringSoonCount = convertedInventory.filter(
     (item) => item.isExpiringSoon,
   ).length;

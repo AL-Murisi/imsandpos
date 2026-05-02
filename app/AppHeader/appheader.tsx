@@ -30,6 +30,7 @@ export default function Appheader() {
     // --- المخزون (Inventory) ---
     { title: t("manageInventory"), url: "/inventory" },
     { title: t("manageStocks"), url: "/manageStocks" },
+    { title: "الدُفعات", url: "/batches" },
     { title: t("brand"), url: "/brand" },
     { title: t("categories"), url: "/categories" },
     { title: t("products"), url: "/products" },

@@ -5,10 +5,8 @@ type ProductClientProps = {
   products: any[];
   total: number;
   formData: {
-    warehouses: { id: string; name: string }[];
     categories: { id: string; name: string }[];
-    brands: { id: string; name: string }[];
-    suppliers: { id: string; name: string }[];
+    warehouses: { id: string; name: string }[];
   };
 };
 

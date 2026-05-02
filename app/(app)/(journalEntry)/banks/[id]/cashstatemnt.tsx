@@ -2,13 +2,10 @@
 
 import { useState } from "react";
 import { useCompany } from "@/hooks/useCompany";
-import { Calendar22 } from "@/components/common/DatePicker";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import SupplierStatementPrint from "./SupplierStatementPrint";
 import { Card } from "@/components/ui/card";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 
-import { Decimal } from "@prisma/client/runtime/library";
 import {
   Select,
   SelectTrigger,
@@ -17,7 +14,9 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-interface BankStatement {
+import CashStatementPrint from "./cashpdf";
+
+interface CashStatementData {
   bank: {
     id: string;
     name: string;
@@ -44,15 +43,17 @@ interface BankStatement {
     to: string;
   };
 }
+
 interface FiscalYearType {
   start_date: Date | string;
   end_date: Date | string;
 }
-export default function BankStatement({
-  banks,
+
+export default function CashStatement({
+  cashes,
   fiscalYear,
 }: {
-  banks: BankStatement | undefined;
+  cashes: CashStatementData | undefined;
   fiscalYear: any;
 }) {
   const [loading, setLoading] = useState(false);
@@ -67,39 +68,27 @@ export default function BankStatement({
 
   const handleYearChange = (value: string) => {
     const [start, end] = value.split("_");
-
-    // إنشاء كائن URLSearchParams جديد للحفاظ على أي بارامترات أخرى موجودة
     const params = new URLSearchParams(searchParams.toString());
 
-    // تحديث التواريخ
     params.set("from", new Date(start).toISOString().split("T")[0]);
     params.set("to", new Date(end).toISOString().split("T")[0]);
 
-    // دفع التغييرات إلى الرابط
     replace(`${pathname}?${params.toString()}`);
   };
+
   return (
     <Card className="bg-accent @container/card border-transparent p-2">
-      {/* Header */}
-
       {/* Statement Display */}
-      {banks && (
+      {cashes && (
         <div className="bg-accent flex h-[89vh] w-full flex-col rounded-lg p-6 shadow">
-          <h1 className="text-3xl font-bold">كشف حساب مورد</h1>
+          <h1 className="text-3xl font-bold">كشف حساب الصندوق</h1>
           <div className="grid grid-cols-1 justify-center gap-3 md:grid-cols-1 lg:grid-cols-2 print:hidden">
             <div className="grid grid-cols-1 gap-3 md:grid-cols-1 lg:grid-cols-2">
               <div className="grid grid-rows-2 gap-2">
-                {" "}
                 <Label className="text-right">الفترة المالية</Label>
-                <Select
-                  onValueChange={(value: any) => {
-                    handleYearChange(value);
-                    // logic to reload data based on this year's dates
-                    // window.location.search = `?from=${start}&to=${end}`
-                  }}
-                >
+                <Select onValueChange={(value: any) => handleYearChange(value)}>
                   <SelectTrigger className="bg-background w-full">
-                    <SelectValue placeholder="اختر السنة المالية" />
+                    <SelectValue placeholder="اخter السنة المالية" />
                   </SelectTrigger>
                   <SelectContent>
                     {fiscalYear?.map((year: FiscalYearType, index: number) => {
@@ -125,30 +114,28 @@ export default function BankStatement({
               </div>{" "}
               <div className="grid grid-rows-2 gap-2">
                 <Label className="text-right"> طباعه الكشف</Label>
-                <SupplierStatementPrint banks={banks} />{" "}
+                <CashStatementPrint cashes={cashes} />{" "}
               </div>
             </div>
 
             <div className="inline-block rounded px-6 py-3">
               <strong className="text-lg">الرصيد الحالي: </strong>
               <span className="text-2xl font-bold text-red-600">
-                {banks.closingBalance.toFixed(2)} ر.ي
+                {cashes.closingBalance.toFixed(2)} ر.ي
               </span>
             </div>
           </div>
-          {/* Supplier Information */}
+
+          {/* Cash Account Information */}
           <div className="mb-6 rounded p-4">
             <div className="grid grid-cols-2 gap-4">
-              <h1 className="text-3xl font-bold">كشف حساب بنك</h1>
-              <strong>اسم البنك:</strong> {banks.bank?.name}
-              <strong>رقم الحساب:</strong> {banks.bank?.accountNumber}
-              {/* <strong>العملة:</strong> {banks.bank?.currency} */}
+              <h1 className="text-3xl font-bold">كشف حساب الصندوق</h1>
+              <strong>اسم الحساب:</strong> {cashes.bank?.name}
+              <strong>رقم الحساب:</strong> {cashes.bank?.accountNumber}
             </div>
           </div>
 
           <ScrollArea className="h-[65vh] p-2" dir="rtl">
-            {" "}
-            {/* Transactions Table */}
             <table className="w-full border">
               <thead>
                 <tr>
@@ -167,28 +154,24 @@ export default function BankStatement({
                   <td className="border p-2"></td>
                   <td className="border p-2 text-center">رصيد افتتاحي</td>
                   <td className="border p-2 text-center">—</td>
-                  <td className="border p-2 text-center">
-                    رصيد افتتاحي للمورد
-                  </td>
+                  <td className="border p-2 text-center">رصيد افتتاحي</td>
                   <td className="border p-2 text-center text-green-700">
-                    {banks.openingBalance > 0
-                      ? banks.openingBalance.toFixed(2)
+                    {cashes.openingBalance > 0
+                      ? cashes.openingBalance.toFixed(2)
                       : "0.00"}
                   </td>
-
-                  {/* خانة الدائن: تظهر القيمة (موجبة) إذا كان الرصيد الأصلي سالباً */}
                   <td className="border p-2 text-center text-red-700">
-                    {banks.openingBalance < 0
-                      ? Math.abs(banks.openingBalance).toFixed(2)
+                    {cashes.openingBalance < 0
+                      ? Math.abs(cashes.openingBalance).toFixed(2)
                       : "0.00"}
                   </td>
                   <td className="border p-2 text-center">
-                    <strong>{banks.openingBalance.toFixed(2)}</strong>
+                    <strong>{cashes.openingBalance.toFixed(2)}</strong>
                   </td>
                 </tr>
 
                 {/* Transactions */}
-                {banks.transactions.map((trans, idx) => (
+                {cashes.transactions.map((trans, idx) => (
                   <tr key={idx}>
                     <td className="border p-2">
                       {new Date(trans.date).toLocaleDateString("ar-EG")}
@@ -215,13 +198,13 @@ export default function BankStatement({
                   </td>
                   <td className="border p-2"></td>
                   <td className="border p-2 text-center">
-                    {banks.totalDebit.toFixed(2)}
+                    {cashes.totalDebit.toFixed(2)}
                   </td>
                   <td className="border p-2 text-center">
-                    {banks.totalCredit.toFixed(2)}
+                    {cashes.totalCredit.toFixed(2)}
                   </td>
                   <td className="border p-2 text-center">
-                    {banks.closingBalance.toFixed(2)}
+                    {cashes.closingBalance.toFixed(2)}
                   </td>
                 </tr>
               </tbody>

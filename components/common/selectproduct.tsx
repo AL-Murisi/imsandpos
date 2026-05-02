@@ -45,7 +45,7 @@ export function SelectField({
 
   return (
     <Popover onOpenChange={setOpen} open={open}>
-      <PopoverTrigger asChild disabled={disabled}>
+      <PopoverTrigger asChild>
         <button
           className={cn(
             "border-input bg-background flex w-full items-center justify-between rounded-md border px-3 py-2 text-sm shadow-sm",
@@ -67,6 +67,7 @@ export function SelectField({
                 <CommandItem
                   key={opt.id}
                   value={opt.name}
+                  disabled={disabled}
                   onSelect={() => {
                     setOpen(false);
                     action(opt.id);

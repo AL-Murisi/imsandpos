@@ -17,7 +17,10 @@ import { SellingUnit } from "../zod";
 import { console } from "inspector";
 import { stat } from "fs";
 import { sendRoleBasedNotification } from "../push-notifications";
-import { shouldSendNotificationDigest } from "./notificationDigest";
+import {
+  markNotificationDigestSent,
+  shouldSendNotificationDigest,
+} from "./notificationDigest";
 
 type CartItem = {
   id: string;
@@ -59,6 +62,39 @@ function toBaseQty(
 
   return qty * unit.unitsPerParent;
 }
+
+type BatchAllocation = {
+  batchId: string;
+  quantity: number;
+};
+
+function buildBatchAllocationNote(
+  reason: string | undefined,
+  allocations: BatchAllocation[],
+) {
+  const payload = JSON.stringify({ allocations });
+  return reason ? `${reason}\nBATCH_FIFO:${payload}` : `BATCH_FIFO:${payload}`;
+}
+
+function parseBatchAllocationNote(note?: string | null): BatchAllocation[] {
+  if (!note) return [];
+  const marker = "BATCH_FIFO:";
+  const idx = note.indexOf(marker);
+  if (idx === -1) return [];
+  const jsonPart = note.slice(idx + marker.length).trim();
+  try {
+    const parsed = JSON.parse(jsonPart) as { allocations?: BatchAllocation[] };
+    if (!Array.isArray(parsed.allocations)) return [];
+    return parsed.allocations
+      .filter((a) => a && a.batchId && Number(a.quantity) > 0)
+      .map((a) => ({
+        batchId: String(a.batchId),
+        quantity: Number(a.quantity),
+      }));
+  } catch {
+    return [];
+  }
+}
 export async function generateSaleNumber(companyId: string): Promise<string> {
   const currentYear = new Date().getFullYear();
   const prefix = `-${currentYear}-بيع`;
@@ -67,6 +103,7 @@ export async function generateSaleNumber(companyId: string): Promise<string> {
   const allInvoices = await prisma.invoice.findMany({
     where: {
       companyId,
+      sale_type: "SALE",
       invoiceNumber: {
         endsWith: prefix,
       },
@@ -98,46 +135,6 @@ export async function generateSaleNumber(companyId: string): Promise<string> {
   return `${formattedNumber}${prefix}`;
 }
 
-/**
- * Alternative: Simpler format without year
- * Format: SALE-000001
- */
-// export async function generateSimpleSaleNumber(
-//   companyId: string,
-// ): Promise<string> {
-//   const prefix = "SALE-";
-
-//   const lastSale = await prisma.sale.findFirst({
-//     where: {
-//       companyId,
-//       saleNumber: {
-//         startsWith: prefix,
-//       },
-//     },
-//     orderBy: {
-//       saleNumber: "desc",
-//     },
-//     select: {
-//       saleNumber: true,
-//     },
-//   });
-
-//   let nextNumber = 1;
-
-//   if (lastSale) {
-//     const lastNumberStr = lastSale.saleNumber.split("-").pop();
-//     const lastNumber = parseInt(lastNumberStr || "0", 10);
-//     nextNumber = lastNumber + 1;
-//   }
-
-//   const formattedNumber = nextNumber.toString().padStart(6, "0");
-//   return `${prefix}${formattedNumber}`;
-// }
-
-/**
- * Transaction-safe version: Uses database sequence to prevent duplicates
- * This is the RECOMMENDED approach for high-concurrency scenarios
- */
 export async function generateSaleNumberSafe(
   companyId: string,
 ): Promise<string> {
@@ -349,6 +346,7 @@ export async function processSale(data: any, companyId: string) {
           const saleItems: any[] = [];
           const stockMovements: any[] = [];
           const inventoryUpdates: any[] = [];
+          const batchUpdates: Prisma.PrismaPromise<any>[] = [];
           let returnTotalCOGS = 0;
           // ==========================================
           // 3. معالجة كل سطر في السلة
@@ -366,15 +364,6 @@ export async function processSale(data: any, companyId: string) {
               item.selectedUnitId,
               item.sellingUnits,
             );
-            const costPerBaseUnit = inventory.product.costPrice.toNumber();
-            // حساب إجمالي التكلفة لهذا السطر باستخدام الكمية الأساسية
-            // مثال: 880 حبة × تكلفة الحبة الواحدة
-            const lineCOGS = baseQty * costPerBaseUnit;
-            // io.emit("refresh");
-
-            // إضافة الناتج إلى إجمالي تكلفة المبيعات
-            returnTotalCOGS += lineCOGS;
-            console.log("lineCOGS", lineCOGS);
             // بند البيع بالوحدة المختارة
             saleItems.push({
               companyId,
@@ -389,7 +378,23 @@ export async function processSale(data: any, companyId: string) {
               totalPrice: item.selectedQty * item.selectedUnitPrice,
             });
 
-            // حركة المخزون بالوحدة الأساسية
+            inventoryUpdates.push({
+              id: inventory.id,
+              stockQuantity: inventory.stockQuantity - baseQty,
+              availableQuantity: inventory.availableQuantity - baseQty,
+            });
+
+            batchUpdates.push(
+              tx.inventoryBatch.updateMany({
+                where: { inventoryId: inventory.id },
+                data: {
+                  remainingQuantity: { decrement: item.selectedQty },
+                  invoiceItemId: saleItems[saleItems.length - 1].id,
+                },
+              }),
+            );
+
+            // حركة المخزون بالوحدة الأساسية مع تتبع FIFO للباتشات
             stockMovements.push({
               companyId,
               productId: item.id,
@@ -399,14 +404,9 @@ export async function processSale(data: any, companyId: string) {
               quantityBefore: inventory.stockQuantity,
               quantityAfter: inventory.stockQuantity - baseQty,
               referenceType: "فاتوره مبيعات",
-              referenceId: sale.invoiceNumber,
+              referenceId: sale.id,
               userId: cashierId,
-            });
-
-            inventoryUpdates.push({
-              id: inventory.id,
-              stockQuantity: inventory.stockQuantity - baseQty,
-              availableQuantity: inventory.availableQuantity - baseQty,
+              notes: "بيع",
             });
           }
 
@@ -429,6 +429,9 @@ export async function processSale(data: any, companyId: string) {
               }),
             ),
           );
+          if (batchUpdates.length > 0) {
+            await Promise.all(batchUpdates);
+          }
 
           // ==========================================
           // 5. تحديث رصيد العميل
@@ -611,15 +614,19 @@ function getExpiryStatus(expiryDateInput: string | Date) {
 export async function getAllActiveProductsForSale(
   where: Prisma.ProductWhereInput,
   companyId: string,
+  warehouse?: string,
   searchQuery?: string,
 ) {
+  const warehouseId = warehouse;
+  // If a warehouse is provided, only consider inventory in that warehouse
+  const inventorySome: any = warehouseId
+    ? { warehouseId, availableQuantity: { gt: 0 } }
+    : { availableQuantity: { gt: 0 } };
+
   const combinedWhere: Prisma.ProductWhereInput = {
     ...where,
     companyId,
     isActive: true,
-    inventory: {
-      some: { availableQuantity: { gt: 0 } },
-    },
   };
 
   if (searchQuery) {
@@ -639,15 +646,39 @@ export async function getAllActiveProductsForSale(
         id: true,
         name: true,
         sku: true,
-        type: true,
         sellingUnits: true,
 
         barcode: true,
 
-        expiredAt: true,
-        warehouseId: true,
-        inventory: { select: { availableQuantity: true } },
+        inventory: {
+          where: {
+            ...(warehouseId && { warehouseId }),
+            availableQuantity: { gt: 0 },
+          },
+          select: {
+            id: true,
+            availableQuantity: true,
+            warehouse: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+
+            batches: {
+              select: {
+                remainingQuantity: true,
+                expiredAt: true,
+                costPrice: true,
+              },
+              orderBy: {
+                expiredAt: "asc",
+              },
+            },
+          },
+        },
       },
+
       take: 100,
     }),
     prisma.warehouse.findMany({ select: { id: true, name: true } }),
@@ -659,16 +690,24 @@ export async function getAllActiveProductsForSale(
   const expiredAlready: string[] = [];
 
   activeProducts.forEach((product) => {
-    if (product.expiredAt) {
-      const status = getExpiryStatus(new Date(product.expiredAt));
-      if (status.isExpired) {
-        expiredAlready.push(product.name);
-      } else if (status.isExpiringSoon) {
-        expiringSoon.push(product.name);
-      }
-    }
-  });
+    // 1. Iterate through each inventory record for this product
+    product.inventory.forEach((inv) => {
+      // 2. Iterate through each batch in that inventory
+      inv.batches.forEach((batch) => {
+        // Ensure the batch has an expiry date
+        if (batch.expiredAt) {
+          const status = getExpiryStatus(new Date(batch.expiredAt));
 
+          if (status.isExpired) {
+            // You might want to include the batch info or warehouse name here
+            expiredAlready.push(product.name);
+          } else if (status.isExpiringSoon) {
+            expiringSoon.push(product.name);
+          }
+        }
+      });
+    });
+  });
   // إرسال إشعار واحد ملخص في الخلفية بدون await
   if (expiredAlready.length > 0 || expiringSoon.length > 0) {
     const totalIssues = expiredAlready.length + expiringSoon.length;
@@ -694,49 +733,61 @@ export async function getAllActiveProductsForSale(
 
     if (shouldSend) {
       // لا نستخدم await هنا لكي لا ينتظر الكاشير
-      sendRoleBasedNotification(
+      void sendRoleBasedNotification(
         { companyId, targetRoles: ["admin", "cashier", "manager_wh"] },
         {
           title: "⚠️ تنبيه صلاحية المنتجات",
           body: `يوجد ${totalIssues} منتجات تحتاج انتباهك: ${bodyText}`,
-          url: "/products?expiryStatus=attention",
+          url: "/batches?expiryStatus=expired",
           tag: `expiry-summary-${companyId}-${new Date().toISOString().split("T")[0]}`,
         },
-      ).catch((err) => console.error("Notification Error:", err));
+      )
+        .then(async (result) => {
+          if (result.successful > 0) {
+            await markNotificationDigestSent(
+              companyId,
+              "expiry-summary",
+              digestKey,
+            );
+          }
+        })
+        .catch((err) => console.error("Notification Error:", err));
     }
   }
 
-  return activeProducts.map((product) => {
-    const sellingUnits = (product.sellingUnits as SellingUnit[]) || [];
-    const availableUnits = product.inventory[0]?.availableQuantity ?? 0;
+  // Return one entry per product-inventory (so same product in different warehouses appears separately)
+  return activeProducts
+    .flatMap((product) => {
+      const sellingUnits = (product.sellingUnits as SellingUnit[]) || [];
+      if (!product.inventory || product.inventory.length === 0) return [];
 
-    const baseStock = product.inventory[0]?.availableQuantity || 0;
-    const availableStock: Record<string, number> = {};
+      return product.inventory.map((inv) => {
+        const baseStock = inv.availableQuantity || 0;
+        const availableStock: Record<string, number> = {};
 
-    sellingUnits.forEach((unit) => {
-      // بما أن unitsPerParent تمثل عدد الوحدات الأساسية داخل هذه الوحدة
-      // نقسم إجمالي baseStock على معامل الوحدة مباشرة
-      if (unit.unitsPerParent > 0) {
-        availableStock[unit.id] = Math.floor(baseStock / unit.unitsPerParent);
-      } else {
-        // لتجنب القسمة على صفر في حال وجود خطأ في البيانات
-        availableStock[unit.id] = unit.isbase ? baseStock : 0;
-      }
-    });
+        sellingUnits.forEach((unit) => {
+          if (unit.unitsPerParent > 0) {
+            availableStock[unit.id] = Math.floor(
+              baseStock / unit.unitsPerParent,
+            );
+          } else {
+            availableStock[unit.id] = unit.isBase ? baseStock : 0;
+          }
+        });
 
-    return {
-      id: product.id,
-      name: product.name,
-      sku: product.sku,
-      sellingUnits,
-      availableStock,
-      warehouseId: product.warehouseId,
-      warehousename: warehouseMap.get(product.warehouseId) ?? "",
-      barcode: product.barcode ?? "",
-
-      sellingMode: product.type ?? "", // Optional: helpful for debugging
-    };
-  });
+        return {
+          id: product.id,
+          name: product.name,
+          sku: product.sku,
+          sellingUnits,
+          availableStock,
+          warehouseId: inv.warehouse.id,
+          warehousename: warehouseMap.get(inv.warehouse.id) ?? "",
+          barcode: product.barcode ?? "",
+        };
+      });
+    })
+    .filter(Boolean) as any[];
 }
 
 export async function processReturn(data: any, companyId: string) {
@@ -773,7 +824,7 @@ export async function processReturn(data: any, companyId: string) {
   const result = await prisma.$transaction(
     async (tx) => {
       const originalSale = await tx.invoice.findUnique({
-        where: { id: saleId },
+        where: { id: saleId, sale_type: "SALE" },
         select: {
           id: true,
           invoiceNumber: true,
@@ -792,7 +843,6 @@ export async function processReturn(data: any, companyId: string) {
                 select: {
                   id: true,
                   name: true,
-                  costPrice: true,
                   sellingUnits: true,
                 },
               },
@@ -803,10 +853,6 @@ export async function processReturn(data: any, companyId: string) {
 
       if (!originalSale) {
         throw new Error("فاتورة البيع غير موجودة");
-      }
-
-      if (originalSale.sale_type !== "SALE") {
-        throw new Error("يمكن تنفيذ الإرجاع على فاتورة بيع فقط");
       }
 
       const returnedQuantityMap = new Map<string, number>();
@@ -840,6 +886,7 @@ export async function processReturn(data: any, companyId: string) {
       const invoiceItemsData: any[] = [];
       const stockMovementsData: any[] = [];
       const inventoryUpdatesPromises: Prisma.PrismaPromise<any>[] = [];
+      const batchRestoreOps: Prisma.PrismaPromise<any>[] = [];
 
       for (const returnItem of returnItems) {
         const saleItem = saleItemsMap.get(returnItem.productId);
@@ -879,9 +926,6 @@ export async function processReturn(data: any, companyId: string) {
           returnItem.selectedUnitId,
           sellingUnits,
         );
-        const costPerBaseUnit = product.costPrice.toNumber();
-        const lineCOGS = quantityInUnits * costPerBaseUnit;
-        returnTotalCOGS += lineCOGS;
 
         if (
           !(typeof totalReturn === "number" && Number.isFinite(totalReturn))
@@ -898,21 +942,21 @@ export async function processReturn(data: any, companyId: string) {
 
         const newStock = inventory.stockQuantity + quantityInUnits;
         const newAvailable = inventory.availableQuantity + quantityInUnits;
-const selectedUnit = (saleItem.product.sellingUnits as any[])?.find(
-  (u) => u.id === returnItem.selectedUnitId
-);
+        const selectedUnit = (saleItem.product.sellingUnits as any[])?.find(
+          (u) => u.id === returnItem.selectedUnitId,
+        );
 
-if (!selectedUnit) {
-  throw new Error(`الوحدة غير صحيحة للصنف ${returnItem.name}`);
-}
-
+        if (!selectedUnit) {
+          throw new Error(`الوحدة غير صحيحة للصنف ${returnItem.name}`);
+        }
 
         invoiceItemsData.push({
           companyId,
           productId: returnItem.productId,
           quantity: returnItem.quantity,
-unit: selectedUnit.name,
+          unit: selectedUnit.name,
           price: saleItem.price,
+
           totalPrice: saleItem.price.toNumber() * returnItem.quantity,
         });
 
@@ -952,6 +996,15 @@ unit: selectedUnit.name,
             },
           }),
         );
+
+        batchRestoreOps.push(
+          tx.inventoryBatch.updateMany({
+            where: {
+              invoiceItemId: invoiceItemsData[invoiceItemsData.length - 1].id,
+            },
+            data: { remainingQuantity: { increment: returnItem.quantity } },
+          }),
+        );
       }
 
       returnSubtotal = Number(returnSubtotal.toFixed(2));
@@ -986,6 +1039,7 @@ unit: selectedUnit.name,
 
       await Promise.all([
         tx.stockMovement.createMany({ data: stockMovementsData }),
+        ...batchRestoreOps,
         ...inventoryUpdatesPromises,
       ]);
       const voucherNumber = await getNextVoucherNumber(
@@ -1032,7 +1086,7 @@ unit: selectedUnit.name,
           },
         });
 
-        transactionId = payment.id; // ✅ Here is your ID
+        transactionId = payment; // ✅ Here is your ID
       }
 
       if (customerOperations.length > 0) {
@@ -1069,11 +1123,10 @@ unit: selectedUnit.name,
       const voucherFromDb =
         createdTransactions.length > 0
           ? createdTransactions[0].voucherNumber
-          : "N/A";
-
+          : returnSale.invoiceNumber;
       // Fix your entryNumber logic:
       const entryNumber = `RET-${new Date().getFullYear()}-${voucherFromDb}`;
-
+      const referenceId = transactionId?.id ?? returnSale.id;
       const desc =
         `مرتجع بيع: ${returnSale.invoiceNumber} / original ${originalSale.invoiceNumber}` +
           paymentMethod ===
@@ -1167,7 +1220,7 @@ unit: selectedUnit.name,
           description: desc,
           branchId,
           referenceType: "ارجاع مبيعات",
-          referenceId: transactionId??returnSale.id,
+          referenceId,
           entryDate: new Date(),
           status: "POSTED",
           createdBy: cashierId,

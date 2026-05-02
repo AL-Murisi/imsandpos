@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 const CartDisplay = dynamic(() => import("./cartsClient")); // 1. قم بتعريف النوع مرة واحدة فقط هنا أو استورده من ملف خارجي
 type FullProductForSale = ProductForSale & {
   warehousename: string;
-  sellingMode: string;
+
   sellingUnits: SellingUnit[];
   barcode: string;
   availableStock: Record<string, number>;

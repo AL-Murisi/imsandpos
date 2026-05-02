@@ -26,6 +26,11 @@ export default async function StocksLayout({
       href: "/purchases",
       roles: ["admin", "manager_wh"],
     },
+    {
+      label: "الدُفعات",
+      href: "/batches",
+      roles: ["admin", "manager_wh"],
+    },
 
     {
       label: "حركات المخزون",

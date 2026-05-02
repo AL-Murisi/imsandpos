@@ -71,13 +71,20 @@ export async function fetchBanks() {
       where: {
         companyId,
       },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        iban: true,
+        swiftCode: true,
+        preferred_currency: true,
+        accountNumber: true,
+        isActive: true,
+        type: true,
         account: {
           select: {
             id: true,
             account_name_ar: true,
             account_name_en: true,
-            balance: true,
           },
         },
       },

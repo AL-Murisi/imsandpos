@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useAuth } from "@/lib/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,7 +43,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-
+  const [isPending, startTransition] = useTransition();
   const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -53,20 +53,23 @@ export default function LoginPage() {
 
     try {
       const result = await login(email, password);
+
       if (!result.success) {
         setError("بيانات الاعتماد غير صحيحة");
-      } else {
-        toast.success("تم تسجيل الدخول بنجاح");
-        router.replace(result.redirectPath ?? "/landing");
-        router.refresh();
+        setLoading(false);
+        return;
       }
+
+      toast.success("تم تسجيل الدخول بنجاح");
+
+      startTransition(() => {
+        router.replace(result.redirectPath ?? "/landing");
+      });
     } catch {
       setError("حدث خطأ ما، يرجى المحاولة لاحقاً");
-    } finally {
       setLoading(false);
     }
   };
-
   const handleGoogleLogin = async () => {
     setLoading(true);
     await signIn("google", {
@@ -203,7 +206,7 @@ export default function LoginPage() {
               type="button"
               variant="outline"
               onClick={handleGoogleLogin}
-              disabled={loading}
+              disabled={loading || isPending}
               className="w-full border-gray-700 bg-transparent text-gray-300 hover:bg-gray-800 hover:text-white"
             >
               <Image

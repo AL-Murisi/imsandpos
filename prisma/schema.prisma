@@ -219,7 +219,7 @@ model Warehouse {
   createdAt      DateTime        @default(now()) @map("created_at")
   updatedAt      DateTime        @updatedAt @map("updated_at")
   inventory      Inventory[]
-  products       Product[]
+
   stockMovements StockMovement[]
   company        Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
  invoices Invoice[]
@@ -291,8 +291,9 @@ model Supplier {
   totalPurchased     Decimal           @default(0) @map("total_purchased") @db.Decimal(12, 2)
   totalPaid          Decimal           @default(0) @map("total_paid") @db.Decimal(12, 2)
   outstandingBalance Decimal           @default(0) @map("outstanding_balance") @db.Decimal(12, 2)
-  products           Product[]
+
  
+  batches InventoryBatch[]
 
   company            Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
   transaction           FinancialTransaction[]
@@ -309,15 +310,12 @@ model Product {
   sku              String
   barcode          String?
   description      String?
-  branch_id        String?
+  
   categoryId       String          @map("category_id")
   brandId          String?         @map("brand_id")
-  supplierId       String?         @map("supplier_id")
-  warehouseId      String          @map("warehouse_id")
   type             String?
   sellingUnits     Json? 
  
-  costPrice        Decimal         @map("cost_price") @db.Decimal(10, 2)
 
   wholesalePrice   Decimal         @map("wholesale_price") @db.Decimal(10, 2)
   minWholesaleQty  Int             @map("min_wholesale_qty")
@@ -326,16 +324,12 @@ model Product {
   image            String?
   status           String          @default("active")
   isActive         Boolean         @default(true) @map("is_active")
-  expiredAt        DateTime        @default(now()) @map("  expired_at")
   createdAt        DateTime        @default(now()) @map("created_at")
   updatedAt        DateTime        @updatedAt @map("updated_at")
   inventory        Inventory[]
   brand            Brand?          @relation(fields: [brandId], references: [id])
   category         Category        @relation(fields: [categoryId], references: [id])
   company          Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  supplier         Supplier?       @relation(fields: [supplierId], references: [id])
-  warehouse        Warehouse       @relation(fields: [warehouseId], references: [id])
-  points_of_sale points_of_sale? @relation(fields: [branch_id], references: [id])
 
 
   stockMovements   StockMovement[]
@@ -345,8 +339,7 @@ model Product {
   @@index([companyId])
   @@index([categoryId])
   @@index([brandId])
-  @@index([supplierId])
-  @@index([warehouseId])
+
   @@index([status])
   @@index([createdAt], map: "idx_product_created_at")
   @@map("products")
@@ -363,30 +356,50 @@ model Inventory {
   reorderLevel      Int       @default(0) @map("reorder_level")
   maxStockLevel     Int?      @map("max_stock_level")
   location          String?
-  branchId            String?
-  purchaseReceipt    String?  
-  lastPurchaseId     String?
-  lastPurchaseItemId String?
-  receiptNo     String?   @unique
+ 
   status            String    @default("available")
   lastStockTake     DateTime? @map("last_stock_take")
   createdAt         DateTime  @default(now()) @map("created_at")
   updatedAt         DateTime  @updatedAt @map("updated_at")
+  batches InventoryBatch[]
 
   // RELATIONS
-   branch  points_of_sale? @relation(fields: [branchId], references: [id])
 
   company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
   warehouse Warehouse @relation(fields: [warehouseId], references: [id])
+  @@unique([companyId, productId, warehouseId])
 
   // NEW RELATIONS
 
-  @@unique([companyId, productId, warehouseId])
   @@map("inventory")
 }
 
+model InventoryBatch {
+  id                String      @id @default(cuid())
+  
+  // Maps the TypeScript property 'inventoryId' to the DB column 'inventory_id'
+  inventoryId       String      @map("inventory_id")
+  inventory         Inventory   @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+  
+  quantity          Int
+  remainingQuantity Int         @map("remaining_quantity")
+  costPrice         Decimal     @map("cost_price") @db.Decimal(10, 2)
+  expiredAt         DateTime?   @map("expired_at")
+  receivedAt        DateTime    @default(now()) @map("received_at")
+  
+  supplierId        String?     @map("supplier_id")
+  supplier          Supplier?   @relation(fields: [supplierId], references: [id])
+  
+  invoiceItemId     String?     @map("invoice_item_id")
+  invoiceItem       InvoiceItem? @relation(fields: [invoiceItemId], references: [id])
 
+  @@index([inventoryId])
+  @@index([expiredAt])
+  
+  // If your table in the DB is lowercase 'inventory_batch'
+  @@map("inventorybatch") 
+}
 model StockMovement {
   id             String    @id @default(cuid())
   companyId      String    @map("company_id")
@@ -726,14 +739,14 @@ model points_of_sale {
    // 👈 all users with branchId = this.id
   bank               Bank[]
   expense           expenses[]
-  products       Product[]
+  
   customers      Customer[]
   transactions   FinancialTransaction[]
 
   journalHeaders JournalHeader[]
   invoices       Invoice[]
   warehouses  Warehouse[]
-  inventory    Inventory[]
+ 
   @@map("points_of_sale")
 }
 
@@ -804,6 +817,7 @@ model InvoiceItem {
 
   // في المبيعات نحتاج لخصم، في المشتريات قد لا نحتاجه دائماً
   discountAmount  Decimal? @default(0) @db.Decimal(12, 2)
+  batches InventoryBatch[] // 👈 reverse relation
 
   invoice         Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   product         Product  @relation(fields: [productId], references: [id])

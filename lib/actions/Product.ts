@@ -5,7 +5,11 @@ import prisma from "@/lib/prisma";
 
 import { revalidatePath } from "next/cache";
 
-import { CreateProductSchemas, UpdateProductFormValues } from "@/lib/zod";
+import {
+  CreateProductSchemas,
+  UpdateProductFormValues,
+  UpdateProducts,
+} from "@/lib/zod/product";
 import { success } from "zod";
 
 function getExpiryStatus(expiryDateInput: string | Date) {
@@ -41,20 +45,15 @@ export async function CreateProduct(
     categoryId,
     brandId,
     barcode,
-    type,
+
     sellingUnits,
-    costPrice,
-    expiredAt,
+    warehouseId,
     wholesalePrice,
     minWholesaleQty,
     dimensions,
-    supplierId,
-    warehouseId,
   } = parsed.data;
 
   try {
-    const date = new Date(data.expiredAt).toISOString() as any;
-
     // ✅ Create product FIRST (outside transaction to avoid issues)
     const product = await prisma.product.create({
       data: {
@@ -64,19 +63,15 @@ export async function CreateProduct(
         description,
         categoryId,
         brandId,
-        type,
+
         barcode,
 
-        costPrice,
         sellingUnits,
-
-        expiredAt: date,
 
         wholesalePrice,
         minWholesaleQty,
         dimensions,
-        supplierId,
-        warehouseId,
+
         inventory: {
           create: {
             companyId,
@@ -131,8 +126,6 @@ export async function CreateProduct(
       id: product.id,
       name: product.name,
       sku: product.sku,
-      costPrice: Number(product.costPrice),
-
       wholesalePrice: Number(product.wholesalePrice),
     };
   } catch (error) {
@@ -158,51 +151,7 @@ export async function deleteProduct(id: string, companyId: string) {
     return { success: false, error: "فشل في حذف " };
   }
 }
-// export async function fetchProductBySku(sku: string) {
-//   const product = await prisma.product.findFirst({
-//     where: {
-//       sku,
-//     },
-//     select: {
-//       id: true,
-//       name: true,
-//       sku: true,
-//       barcode: true,
-//       description: true,
-//       categoryId: true,
-//       brandId: true,
-//       type: true,
 
-//       costPrice: true,
-
-//       wholesalePrice: true,
-//       minWholesaleQty: true,
-//       weight: true,
-//       dimensions: true,
-//       supplierId: true,
-//       warehouseId: true,
-//       status: true,
-//       isActive: true,
-//     },
-//   });
-
-//   if (!product) return null; // ✅ handle not found
-
-//   return {
-//     ...product,
-//     costPrice: product.costPrice ? Number(product.costPrice) : null,
-//     pricePerUnit: product.pricePerUnit ? Number(product.pricePerUnit) : null,
-//     pricePerPacket: product.pricePerPacket
-//       ? Number(product.pricePerPacket)
-//       : null,
-//     pricePerCarton: product.pricePerCarton
-//       ? Number(product.pricePerCarton)
-//       : null,
-//     wholesalePrice: product.wholesalePrice
-//       ? Number(product.wholesalePrice)
-//       : null,
-//     weight: product.weight ? Number(product.weight) : null,
-//   };
 // }
 type SortState = {
   id: string;
@@ -258,31 +207,12 @@ export async function fetchProduct(
         categoryId: true,
 
         type: true,
-        // unitsPerPacket: true,
-        // packetsPerCarton: true,
-        costPrice: true,
-        // pricePerUnit: true,
         sellingUnits: true,
-        expiredAt: true,
-        // pricePerPacket: true,
-        // pricePerCarton: true,
         wholesalePrice: true,
         minWholesaleQty: true,
         category: true,
         weight: true,
         dimensions: true,
-        supplier: {
-          select: {
-            name: true,
-          },
-        },
-        supplierId: true,
-        warehouse: {
-          select: {
-            name: true,
-          },
-        },
-        warehouseId: true,
         status: true,
         isActive: true,
         createdAt: true,
@@ -295,7 +225,6 @@ export async function fetchProduct(
 
     const formattedProducts = products.map((product) => ({
       ...product,
-      costPrice: product.costPrice ? Number(product.costPrice) : null,
       sellingUnits: Array.isArray(product.sellingUnits)
         ? product.sellingUnits.map((u: any) => ({
             ...u,
@@ -384,7 +313,7 @@ export async function UpdateProduct(
   companyId: string,
   userId: string,
 ) {
-  const parsed = CreateProductSchemas.safeParse(data);
+  const parsed = UpdateProducts.safeParse(data);
   if (!parsed.success) {
     console.error(parsed.error.format());
     throw new Error("Invalid product data");
@@ -400,21 +329,16 @@ export async function UpdateProduct(
     // type,
     // unitsPerPacket,
     // packetsPerCarton,
-    costPrice,
-    // pricePerUnit,
-    expiredAt,
+
     sellingUnits,
     // pricePerPacket,
     // pricePerCarton,
     wholesalePrice,
     minWholesaleQty,
     dimensions,
-    supplierId,
-    warehouseId,
   } = parsed.data;
 
   try {
-    console.log(expiredAt);
     // ✅ Find product with inventory array
     const existing = await prisma.product.findUnique({
       where: {
@@ -448,59 +372,15 @@ export async function UpdateProduct(
         description,
         categoryId,
         barcode,
-        // brandId,
-        // type,
-        // unitsPerPacket,
-        // packetsPerCarton,
-        costPrice,
-        // pricePerUnit,
-        sellingUnits,
-        expiredAt: new Date(expiredAt).toISOString() as any,
-        // pricePerPacket,
-        // pricePerCarton,
 
+        sellingUnits,
         wholesalePrice,
         minWholesaleQty,
         dimensions,
-        supplierId,
-        warehouseId,
       },
     });
 
-    // ✅ Update inventory (if it exists)
-    let updatedInventory = null;
-    if (existingInventory) {
-      updatedInventory = await prisma.inventory.update({
-        where: { id: existingInventory.id },
-        data: {
-          warehouseId,
-
-          reorderLevel: existingInventory.reorderLevel ?? 10,
-          status:
-            existingInventory.availableQuantity > 0
-              ? "in_stock"
-              : "out_of_stock",
-        },
-      });
-    }
-
     // ✅ Record stock movement if warehouse changed
-    if (existingInventory && existingInventory.warehouseId !== warehouseId) {
-      await prisma.stockMovement.create({
-        data: {
-          companyId,
-          productId: existing.id,
-          warehouseId,
-          userId,
-          movementType: "transfer",
-          quantity: 0,
-          reason: "warehouse_change",
-          quantityBefore: existingInventory.stockQuantity,
-          quantityAfter: existingInventory.stockQuantity,
-          notes: `Warehouse changed for product ${name}`,
-        },
-      });
-    }
 
     // ✅ Log activity
     await prisma.activityLogs.create({
@@ -518,10 +398,7 @@ export async function UpdateProduct(
 
     return {
       ...updatedProduct,
-      costPrice: Number(updatedProduct.costPrice),
-
       wholesalePrice: Number(updatedProduct.wholesalePrice),
-      inventory: updatedInventory,
     };
   } catch (error) {
     console.error("❌ Failed to update product:", error);

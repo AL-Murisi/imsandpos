@@ -38,6 +38,16 @@ interface SupplierPaymentDetails {
   amountFC?: number;
 }
 
+const ALLOWED_REFERENCE_TYPES = new Set([
+  "manual-journal",
+  "opening_balance",
+  "قيد يدوي",
+  "مديونية على عميل",
+  "تحصيل من عميل",
+  "مديونية لمورد",
+  "دفع لمورد",
+]);
+
 export async function createManualJournalEntry({
   entries,
   generalDescription,
@@ -64,6 +74,27 @@ export async function createManualJournalEntry({
       return {
         success: false,
         error: "??? ????? ??? ??? ?????",
+      };
+    }
+
+    const invalidReferenceTypeEntry = entries.find(
+      (entry) =>
+        !entry.reference_type || !ALLOWED_REFERENCE_TYPES.has(entry.reference_type),
+    );
+    if (invalidReferenceTypeEntry) {
+      return {
+        success: false,
+        error: "Invalid reference type in journal entry",
+      };
+    }
+
+    const hasOpeningBalanceReference = entries.some(
+      (entry) => entry.reference_type === "opening_balance",
+    );
+    if (hasOpeningBalanceReference && paymentDetails) {
+      return {
+        success: false,
+        error: "Payment details are not allowed for opening balance entries",
       };
     }
 

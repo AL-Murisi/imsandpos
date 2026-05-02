@@ -6,6 +6,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import Dailogreuse from "@/components/common/dailogreuse";
@@ -26,7 +34,6 @@ import {
   ReusablePayment,
   PaymentState,
 } from "@/components/common/ReusablePayment";
-import { fetchPayments } from "@/lib/actions/banks";
 
 const returnSchema = z.object({
   saleId: z.string(),
@@ -35,22 +42,22 @@ const returnSchema = z.object({
   returnNumber: z.string(),
   reason: z.string().optional(),
   items: z.array(
-  z.object({
-    productId: z.string(),
-    warehouseId: z.string(),
-    name: z.string(),
-    sellingUnits: z.array(z.any()),
+    z.object({
+      productId: z.string(),
+      warehouseId: z.string(),
+      name: z.string(),
+      sellingUnits: z.array(z.any()),
 
-    selectedUnitId: z.string(),
+      selectedUnitId: z.string(),
 
-    // ✅ ADD THIS
-    saleUnitId: z.string(),
+      // ✅ ADD THIS
+      saleUnitId: z.string(),
 
-    unitPrice: z.number(),
-    quantitySold: z.number(),
-    quantity: z.number().min(0),
-  })
-),
+      unitPrice: z.number(),
+      quantitySold: z.number(),
+      quantity: z.number().min(0),
+    }),
+  ),
 });
 
 type ReturnFormValues = z.infer<typeof returnSchema>;
@@ -83,24 +90,18 @@ export function ReturnForm({ sale }: { sale: any }) {
     transferNumber: "",
   });
 
-  const {
-    handleSubmit,
-    control,
-    register,
-    watch,
-    setValue,
-    reset,
-  } = useForm<ReturnFormValues>({
-    resolver: zodResolver(returnSchema),
-    defaultValues: {
-      saleId: "",
-      cashierId: user.userId,
-      customerId: null,
-      returnNumber: "",
-      reason: "",
-      items: [],
-    },
-  });
+  const { handleSubmit, control, register, watch, setValue, reset } =
+    useForm<ReturnFormValues>({
+      resolver: zodResolver(returnSchema),
+      defaultValues: {
+        saleId: "",
+        cashierId: user.userId,
+        customerId: null,
+        returnNumber: "",
+        reason: "",
+        items: [],
+      },
+    });
 
   const { fields } = useFieldArray({ control, name: "items" });
   const watchedItems = watch("items");
@@ -114,26 +115,23 @@ export function ReturnForm({ sale }: { sale: any }) {
     const mappedItems =
       sale.saleItems?.map((item: any) => {
         const sellingUnits: SellingUnit[] = Array.isArray(
-          item.product?.sellingUnits
+          item.product?.sellingUnits,
         )
           ? item.product.sellingUnits
           : [];
-   // ✅ find unit by name
-    const saleUnit = sellingUnits.find(
-      (u) => u.name === item.unit
-    );
+        // ✅ find unit by name
+        const saleUnit = sellingUnits.find((u) => u.name === item.unit);
 
-    if (!saleUnit) {
-      console.warn("Unit not found for:", item.unit);
-    }
+        if (!saleUnit) {
+          console.warn("Unit not found for:", item.unit);
+        }
         return {
           productId: item.productId,
-          warehouseId:
-            item.product?.warehouse?.id ?? sale?.warehouseId ?? "",
+          warehouseId: item.product?.warehouse?.id ?? sale?.warehouseId ?? "",
           name: item.product?.name ?? "Unknown",
           sellingUnits,
-saleUnitId: saleUnit?.id || "",
-      selectedUnitId: saleUnit?.id ||"",
+          saleUnitId: saleUnit?.id || "",
+          selectedUnitId: saleUnit?.id || "",
           unitPrice: item.unitPrice,
           quantitySold: item.quantity,
           quantity: 0,
@@ -154,16 +152,15 @@ saleUnitId: saleUnit?.id || "",
      CALC TOTAL RETURN
   ======================== */
   const totalReturnBase = watchedItems.reduce(
-    (acc, item) =>
-      acc + (item.quantity ?? 0) * (item.unitPrice ?? 0),
-    0
+    (acc, item) => acc + (item.quantity ?? 0) * (item.unitPrice ?? 0),
+    0,
   );
   const returnToCustomer =
     sale?.status === "paid"
       ? totalReturnBase
       : sale?.status === "partial"
-      ? Math.min(sale.amountPaid, totalReturnBase)
-      : 0;
+        ? Math.min(sale.amountPaid, totalReturnBase)
+        : 0;
 
   /* =======================
      AUTO PAYMENT UPDATE
@@ -186,9 +183,7 @@ saleUnitId: saleUnit?.id || "",
       return;
     }
 
-    const invalid = selectedItems.find(
-      (i) => i.quantity > i.quantitySold
-    );
+    const invalid = selectedItems.find((i) => i.quantity > i.quantitySold);
 
     if (invalid) {
       toast.error(`كمية ${invalid.name} أكبر من المباعة`);
@@ -221,7 +216,7 @@ saleUnitId: saleUnit?.id || "",
           foreignAmount: payment.amountFC,
           transferNumber: payment.transferNumber,
         },
-        user.companyId
+        user.companyId,
       );
 
       if (result.success) {
@@ -247,144 +242,152 @@ saleUnitId: saleUnit?.id || "",
       setOpen={setOpen}
       btnLabl="إرجاع أصناف"
       description="تحديد الأصناف وطريقة الإرجاع"
-      style="max-w-90 md:max-w-4xl lg:max-w-6xl"
+      style="max-w-90 overflow-hidden md:max-w-4xl lg:max-w-6xl"
     >
-       <ScrollArea dir="rtl" className="h-[70vh] space-y-4">
+      <ScrollArea dir="rtl" className="h-[70vh] space-y-4">
         {/* Header */}
-
-
         {/* Table */}
-
-   
-    
-      <form onSubmit={handleSubmit(onSubmit)} className="">
-
-        {/* Reason */}
-        <div className="grid gap-2">
-          <Label>سبب الإرجاع</Label>
-          <Input {...register("reason")} />
-        </div>
-
-            <div className="w-80 grid gap-6 p-3 sm:w-[480px] md:w-3xl lg:w-full">
-       <ScrollArea className="h-[30vh] w-full rounded-2xl border border-amber-300 p-2">
-          <table className="w-full">
-           < thead>
-              <tr>
-                <th>المنتج</th>
-                <th>الوحدة</th>
-                <th>المباع</th>
-                <th>السعر</th>
-                <th>الإرجاع</th>
-                <th>المجموع</th>
-              </tr>
-            </thead>
-
-         <tbody>
-  {fields.map((field, index) => {
-    const saleUnit = field.sellingUnits?.find(
-      (u: any) => u.id === field.saleUnitId
-    );
-
-    const isBaseUnit = saleUnit?.isBase;
-
-    return (
-      <tr key={field.id}>
-        <td>{field.name}</td>
-
-        <td>
-          <Select
-            value={watchedItems[index]?.selectedUnitId}
-            onValueChange={(val) =>
-              setValue(`items.${index}.selectedUnitId`, val, {
-                shouldDirty: true,
-              })
-            }
-          >
-            <SelectTrigger className="w-24">
-              <SelectValue />
-            </SelectTrigger>
-
-            <SelectContent>
-              {(field.sellingUnits ?? []).map((u: any) => (
-                <SelectItem
-                  key={u.id}
-                  value={u.id}
-                  disabled={isBaseUnit && u.id !== field.saleUnitId}
-                >
-                  {u.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </td>
-
-        <td>{field.quantitySold}</td>
-        <td>{field.unitPrice}</td>
-
-        <td>
-          <Input
-            type="number"
-            className="w-20"
-            {...register(`items.${index}.quantity`, {
-              valueAsNumber: true,
-            })}
-          />
-        </td>
-
-        <td>
-          {(
-            (watchedItems[index]?.quantity ?? 0) *
-            (field.unitPrice ?? 0)
-          ).toFixed(2)}
-        </td>
-      </tr>
-    );
-  })}
-
-            </tbody>
-          </table>
-
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
-            </div>
-
-        {/* PAYMENT (ONLY IF NEEDED) */}
-        {sale?.customerId && returnToCustomer > 0 && (
-          <div className="p-3">
-            <ReusablePayment value={payment} action={setPayment} />
-          </div>
-        )}
-
-        {/* SUMMARY */}
-        <div className="flex justify-between rounded-lg bg-green-50 p-4">
-          <div>
-            <p>إجمالي المرتجع</p>
-            <p className="font-bold text-green-600">
-              {totalReturnBase.toLocaleString()} {company?.base_currency}
-            </p>
+        <form onSubmit={handleSubmit(onSubmit)} className="grid gap-6">
+          {/* Reason */}
+          <div className="grid gap-2">
+            <Label>سبب الإرجاع</Label>
+            <Input {...register("reason")} />
           </div>
 
-          {sale?.customer && (
-            <div className="text-xs text-muted-foreground">
-              <AlertCircle className="inline h-3 w-3" />
-              {sale.status === "paid"
-                ? "سيتم استرجاع المبلغ"
-                : "سيتم خصم من المديونية"}
+          <div className="w-80 p-3 sm:w-[480px] md:w-3xl lg:w-full">
+            <ScrollArea className="h-[30vh] w-full rounded-2xl border border-amber-300 p-2">
+              <Table className="w-full">
+                <TableHeader>
+                  {" "}
+                  <TableRow>
+                    <TableHead>المنتج</TableHead>
+                    <TableHead>الوحدة</TableHead>
+                    <TableHead>المباع</TableHead>
+                    <TableHead>السعر</TableHead>
+                    <TableHead>الإرجاع</TableHead>
+                    <TableHead>المجموع</TableHead>
+                  </TableRow>
+                </TableHeader>
+
+                <TableBody>
+                  {fields.map((field, index) => {
+                    const saleUnit = field.sellingUnits?.find(
+                      (u: any) => u.id === field.saleUnitId,
+                    );
+
+                    const isBaseUnit = saleUnit?.isBase;
+
+                    return (
+                      <TableRow key={field.id}>
+                        <TableCell>{field.name}</TableCell>
+
+                        <TableCell>
+                          <Select
+                            value={watchedItems[index]?.selectedUnitId}
+                            onValueChange={(val) =>
+                              setValue(`items.${index}.selectedUnitId`, val, {
+                                shouldDirty: true,
+                              })
+                            }
+                          >
+                            <SelectTrigger className="w-24">
+                              <SelectValue />
+                            </SelectTrigger>
+
+                            <SelectContent>
+                              {(field.sellingUnits ?? []).map((u: any) => (
+                                <SelectItem
+                                  key={u.id}
+                                  value={u.id}
+                                  disabled={
+                                    isBaseUnit && u.id !== field.saleUnitId
+                                  }
+                                >
+                                  {u.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+
+                        <TableCell>{field.quantitySold}</TableCell>
+                        <TableCell>{field.unitPrice}</TableCell>
+
+                        <TableCell>
+                          <Input
+                            type="number"
+                            className="w-20"
+                            disabled={
+                              field.quantitySold >=
+                              watchedItems[index]?.quantity
+                            }
+                            {...register(`items.${index}.quantity`, {
+                              valueAsNumber: true,
+                            })}
+                          />
+                        </TableCell>
+
+                        <TableCell>
+                          {(
+                            (watchedItems[index]?.quantity ?? 0) *
+                            (field.unitPrice ?? 0)
+                          ).toFixed(2)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+          </div>
+
+          {/* PAYMENT (ONLY IF NEEDED) */}
+          {returnToCustomer > 0 && (
+            <div className="p-3">
+              <ReusablePayment value={payment} action={setPayment} />
             </div>
           )}
-        </div>
 
-        {/* ACTIONS */}
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-            إلغاء
-          </Button>
+          {/* SUMMARY */}
+          <div className="flex justify-between rounded-lg bg-green-50 p-4">
+            <div>
+              <p>إجمالي المرتجع</p>
+              <p className="font-bold text-green-600">
+                {totalReturnBase.toLocaleString()} {company?.base_currency}
+              </p>
+            </div>
 
-          <Button type="submit" disabled={isSubmitting || totalReturnBase <= 0}>
-            {isSubmitting ? "جاري..." : "تأكيد الإرجاع"}
-          </Button>
-        </div>
-      </form>        </ScrollArea>
+            {sale?.customer && (
+              <div className="text-muted-foreground text-xs">
+                <AlertCircle className="inline h-3 w-3" />
+                {sale.status === "paid"
+                  ? "سيتم استرجاع المبلغ"
+                  : "سيتم خصم من المديونية"}
+              </div>
+            )}
+          </div>
+
+          {/* ACTIONS */}
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+            >
+              إلغاء
+            </Button>
+
+            <Button
+              type="submit"
+              disabled={isSubmitting || totalReturnBase <= 0}
+            >
+              {isSubmitting ? "جاري..." : "تأكيد الإرجاع"}
+            </Button>
+          </div>
+        </form>{" "}
+      </ScrollArea>
     </Dailogreuse>
   );
 }

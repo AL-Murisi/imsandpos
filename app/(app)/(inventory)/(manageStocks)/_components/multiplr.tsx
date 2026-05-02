@@ -49,6 +49,7 @@ interface InventoryUpdateItem {
   baseUnitCost: number; // 🆕 لتخزين سعر التكلفة الأساسي للرجوع إليه عند الحساب
   currency_code: string;
   notes?: string;
+  expiredAt: Date;
   updateType: "manual" | "supplier";
   warehousesForProduct?: { id: string; name: string }[];
   payment?: PaymentState;
@@ -60,9 +61,7 @@ interface MultiInventoryUpdateFormProps {
       id: string;
       sku: string;
       name: string;
-      supplierId: string | null;
-      warehouseId: string | null;
-      costPrice: any;
+
       sellingUnits: any;
     }[];
     warehouses: {
@@ -81,10 +80,13 @@ interface MultiInventoryUpdateFormProps {
       product: {
         sku: string;
         name: string;
-        supplierId: string | null;
-        costPrice: any;
+
         sellingUnits: any;
       };
+      batches: {
+        supplierId: string | null;
+        costPrice: any;
+      }[];
       productId: string;
       stockQuantity: number;
       availableQuantity: number;
@@ -96,12 +98,10 @@ interface MultiInventoryUpdateFormProps {
       };
     }[];
   };
-  payments: any;
 }
 
 export default function MultiInventoryUpdateForm({
   multipleInventory,
-  payments,
 }: MultiInventoryUpdateFormProps) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -125,6 +125,7 @@ export default function MultiInventoryUpdateForm({
     reservedQuantity: "0",
     unitCost: "",
     baseUnitCost: 0,
+    expiredAt: new Date(),
     currency_code: company?.base_currency ?? "",
     notes: "",
     updateType: "supplier",
@@ -134,56 +135,50 @@ export default function MultiInventoryUpdateForm({
   const [inventoryUpdates, setInventoryUpdates] = useState<
     InventoryUpdateItem[]
   >([initialRow()]);
-
-  useEffect(() => {
-    if (!open) return;
-    const newAccountsByInventory: Record<string, any[]> = {};
-    inventoryUpdates.forEach((inv) => {
-      if (inv.payment?.paymentMethod === "bank") {
-        newAccountsByInventory[inv.id] = payments.banks;
-      } else if (inv.payment?.paymentMethod === "cash") {
-        newAccountsByInventory[inv.id] = payments.cashAccounts;
-      } else {
-        newAccountsByInventory[inv.id] = [];
-      }
-    });
-    setAccountsByInventory(newAccountsByInventory);
-  }, [
-    open,
-    inventoryUpdates
-      .map((i) => `${i.id}-${i.payment?.paymentMethod}`)
-      .join(","),
-  ]);
-
   const loadProductData = (updateId: string, productId: string) => {
-    const product = multipleInventory.products.find((p) => p.id === productId);
-    if (!product) return;
+    // 1. Find the product details from the main products list OR inventories
+    const productInfo = multipleInventory.products.find(
+      (p) => p.id === productId,
+    );
 
-    const sellingUnits = (product.sellingUnits as SellingUnit[]) || [];
-    const productInventories = multipleInventory.inventories.filter(
+    // 2. Find all current stock records for this product to get the latest price/supplier
+    const existingInventories = multipleInventory.inventories.filter(
       (inv) => inv.productId === productId,
     );
-    const warehousesForProduct = productInventories.map((inv) => ({
-      id: inv.warehouseId,
-      name: inv.warehouse.name,
-    }));
 
-    const basePrice = Number(product.costPrice || 0);
+    if (!productInfo) return;
+
+    const sellingUnits = (productInfo.sellingUnits as SellingUnit[]) || [];
+    const baseUnit = sellingUnits.find((u) => u.isBase) || sellingUnits[0];
+
+    // 3. Get Price and Supplier from the most recent inventory batch available
+    let latestCost = 0;
+    let latestSupplierId = "";
+
+    if (existingInventories.length > 0) {
+      // Sort by most recent if possible, or just take the first one found
+      const latestInv = existingInventories[0];
+      if (latestInv.batches && latestInv.batches.length > 0) {
+        latestCost = Number(latestInv.batches[0].costPrice) || 0;
+        latestSupplierId = latestInv.batches[0].supplierId || "";
+      }
+    }
 
     setInventoryUpdates((prev) =>
       prev.map((inv) =>
         inv.id === updateId
           ? {
               ...inv,
-              warehouseId: product.warehouseId || "",
-              supplierId: product.supplierId || "",
-              sellingUnits,
-              selectedUnitId:
-                sellingUnits.find((u) => u.isBase)?.id ||
-                sellingUnits[0]?.id ||
-                "",
-              baseUnitCost: basePrice,
-              unitCost: basePrice.toString(),
+              productId: productId,
+              // We don't force a warehouse yet, or we pick the first existing one
+              warehouseId: existingInventories[0]?.warehouseId || "",
+              supplierId: latestSupplierId,
+              sellingUnits: sellingUnits,
+              selectedUnitId: baseUnit?.id || "",
+              baseUnitCost: latestCost,
+              unitCost: latestCost.toString(),
+              // If it's a new warehouse, stock will be 0 later in updateInventory
+              currentStock: existingInventories[0]?.stockQuantity || 0,
             }
           : inv,
       ),
@@ -214,9 +209,14 @@ export default function MultiInventoryUpdateForm({
           }
 
           if (field === "productId") {
+            // Reset dependent fields immediately to prevent UI flicker with old data
             updated.warehouseId = "";
+            updated.supplierId = "";
+            updated.unitCost = "";
             updated.currentStock = undefined;
-            setTimeout(() => loadProductData(id, value), 50);
+
+            // Trigger the data load
+            loadProductData(id, value);
           }
 
           if (field === "warehouseId" && inv.productId) {
@@ -263,6 +263,7 @@ export default function MultiInventoryUpdateForm({
         supplierId: inv.updateType === "supplier" ? inv.supplierId : undefined,
         unitCost: inv.updateType === "supplier" ? inv.baseUnitCost : undefined,
         currency_code: inv.currency_code,
+        expiredAt: new Date(inv.expiredAt),
         baseCurrency: company?.base_currency ?? "",
         notes: inv.notes,
         lastStockTake: new Date(updateDate),
@@ -381,11 +382,30 @@ export default function MultiInventoryUpdateForm({
                       placeholder="ابحث عن المنتج..."
                     />
                   </div>
+                  <div className="space-y-2">
+                    <Label>تارخ الانتهاء</Label>
+                    <Input
+                      value={
+                        new Date(inventory.expiredAt)
+                          .toISOString()
+                          .split("T")[0]
+                      }
+                      onChange={(e) =>
+                        updateInventory(
+                          inventory.id,
+                          "expiredAt",
+                          e.target.value,
+                        )
+                      }
+                      type="date"
+                    />
+                  </div>
 
                   <div className="space-y-2">
                     <Label>المستودع</Label>
                     <SelectField
-                      options={multipleInventory.warehouses || []}
+                      // Use warehouses filtered for this product if they exist, otherwise show all
+                      options={multipleInventory.warehouses}
                       value={inventory.warehouseId || ""}
                       action={(val) =>
                         updateInventory(inventory.id, "warehouseId", val)

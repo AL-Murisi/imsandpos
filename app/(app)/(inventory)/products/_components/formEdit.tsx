@@ -83,16 +83,8 @@ export default function ProductEditForm({
     resolver: zodResolver(UpdateProducts),
   });
 
-  const watchedWarehouseId = watch("warehouseId");
   const watchedCategoryId = watch("categoryId");
-  const watchedSupplierId = watch("supplierId");
-  const costPrice = watch("costPrice");
-  // const unitsPerPacket = watch("unitsPerPacket");
-  // const packetsPerCarton = watch("packetsPerCarton");
-  // const pricePerCarton = watch("pricePerCarton");
-  // const pricePerUnit = watch("pricePerUnit");
-  // const pricePerPacket = watch("pricePerPacket");
-  const expiredAt = watch("expiredAt");
+
   const t = useTranslations("productForm");
   const sellingUnits = watch("sellingUnits");
 
@@ -133,10 +125,8 @@ export default function ProductEditForm({
       sku: product.sku || "",
       barcode: product.barcode || "",
       categoryId: product.categoryId || "",
-      supplierId: product.supplierId || "",
-      warehouseId: product.warehouseId || "",
+
       description: product.description || "",
-      costPrice: product.costPrice || undefined, // ✅ ADD THIS
 
       wholesalePrice: product.wholesalePrice || undefined,
       minWholesaleQty: product.minWholesaleQty || undefined,
@@ -177,10 +167,6 @@ export default function ProductEditForm({
 
       const payload: UpdateProductFormValues = {
         ...data,
-        expiredAt:
-          data.expiredAt !== undefined
-            ? data.expiredAt
-            : toDateTimeLocal(product.expiredAt), // ✅ fallback
       };
       await UpdateProduct(payload, user.companyId, user.userId);
       toast.success("✅ تم تحديث المنتج بنجاح!");
@@ -268,84 +254,9 @@ export default function ProductEditForm({
                 />
               </div>
 
-              <div className="grid gap-3">
-                <Label htmlFor="costPrice">سعر التكلفة (للوحدة الأساسية)</Label>
-                <Input
-                  id="costPrice"
-                  type="number"
-                  step="0.01"
-                  {...register("costPrice", { valueAsNumber: true })}
-                  placeholder="0.00"
-                />{" "}
-                {errors.costPrice && (
-                  <p className="text-right text-xs text-red-500">
-                    {errors.costPrice.message}
-                  </p>
-                )}
-              </div>
               {/* Warehouse and Dimensions */}
             </div>{" "}
             <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-              <div className="grid gap-2">
-                <Label htmlFor="warehouseId">المستودع</Label>
-                <SelectField
-                  options={formData.warehouses}
-                  value={watchedWarehouseId}
-                  action={(val) => setValue("warehouseId", val)}
-                  placeholder="اختر المستودع"
-                  add={<WarehouseForm />}
-                />
-                {errors.warehouseId && (
-                  <p className="text-right text-xs text-red-500">
-                    {errors.warehouseId.message}
-                  </p>
-                )}
-              </div>
-              <div className="grid gap-2">
-                <Label>تاريخ الانتهاء</Label>
-                <Input
-                  type="datetime-local"
-                  className="text-end"
-                  // Use defaultValue so it shows the existing date but stays editable
-                  defaultValue={toDateTimeLocal(product?.expiredAt)}
-                  {...register("expiredAt")}
-                />
-                {errors.expiredAt && (
-                  <p className="text-right text-xs text-red-500">
-                    {errors.expiredAt.message}
-                  </p>
-                )}
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="supplierId">المورد</Label>
-                <SelectField
-                  options={formData.suppliers}
-                  value={watchedSupplierId}
-                  action={(val) => setValue("supplierId", val)}
-                  placeholder="اختر المورد"
-                  add={<SupplierForm />}
-                />
-                {errors.supplierId && (
-                  <p className="text-right text-xs text-red-500">
-                    {errors.supplierId.message}
-                  </p>
-                )}
-              </div>{" "}
-              <div className="grid gap-2">
-                <Label htmlFor="categoryId">الفئة</Label>
-                <SelectField
-                  options={formData.categories}
-                  value={watchedCategoryId}
-                  action={(val) => setValue("categoryId", val)}
-                  placeholder="اختر الفئة"
-                  add={<CategoryForm />}
-                />
-                {errors.categoryId && (
-                  <p className="text-right text-xs text-red-500">
-                    {errors.categoryId.message}
-                  </p>
-                )}
-              </div>
               <div className="grid gap-2">
                 <Label htmlFor="wholesalePrice">السعر الجملي</Label>
                 <Input

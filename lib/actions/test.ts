@@ -860,7 +860,7 @@ export async function getBankStatement(
       select: { start_date: true, end_date: true },
     });
     if (!fiscalYear) return;
-    console.log(fiscalYear.start_date, fiscalYear.end_date);
+
     const fromDate = new Date(fiscalYear.start_date);
     fromDate.setHours(0, 0, 0, 0); // Start of day
 
@@ -875,15 +875,29 @@ export async function getBankStatement(
         id: true,
         name: true,
         accountNumber: true,
-        account: { select: { opening_balance: true } },
+        accountId: true,
+        type: true,
       },
     });
+    const paymentIds = await prisma.financialTransaction.findMany({
+      where: {
+        companyId,
+        financialAccountId: id,
+      },
+      select: { id: true },
+    });
+
+    const paymentIdList = paymentIds.map((p) => p.id);
+    const banksReferenceIds = [id, ...paymentIdList];
     const openingEntries = await prisma.journalLine.findMany({
       where: {
         companyId,
-        accountId: id,
+        accountId: bank?.accountId ?? "",
         header: {
-          entryDate: { lt: fromDate },
+          is: {
+            referenceId: { in: banksReferenceIds },
+            entryDate: { lt: fromDate },
+          },
         },
       },
       select: {
@@ -905,17 +919,23 @@ export async function getBankStatement(
     const entries = await prisma.journalLine.findMany({
       where: {
         companyId,
-        accountId: id,
+        accountId: bank?.accountId ?? "",
         header: {
-          entryDate: { gte: fromDate, lte: toDate },
+          is: {
+            referenceId: { in: banksReferenceIds },
+            entryDate: { gte: fromDate, lte: toDate },
+          },
         },
       },
-      orderBy: { header: { entryDate: "asc" } },
+      orderBy: {
+        header: {
+          entryDate: "asc",
+        },
+      },
       include: {
         header: true,
       },
     });
-
     // 4️⃣ بناء كشف الحساب
     let runningBalance = openingBalance;
     const transactions = entries.map((entry) => {
@@ -1324,437 +1344,3 @@ async function storeOpeningBalancesAsJournalEntries(
 
   return entries;
 }
-// 1. Close 2024 fiscal year
-// await closeFiscalYear(
-//   companyId,
-//   "fiscal-year-2024-id",
-//   userId
-// );
-
-// // 2. Open 2025 fiscal year
-// await openNewFiscalYear(
-//   companyId,
-//   "2025",
-//   new Date("2025-01-01"),
-//   new Date("2025-12-31"),
-//   userId
-// );
-
-// // 3. Get statements (works across fiscal years)
-// const customerStatement = await getCustomerStatement(
-//   customerId,
-//   companyId,
-//   "2025-01-01",
-//   "2025-12-31"
-// );
-// ============================================
-// 4️⃣ OPEN NEW FISCAL YEAR
-// ============================================
-export async function openNewFiscalYear(
-  companyId: string,
-  periodName: string,
-  startDate: Date,
-  endDate: Date,
-  userId: string,
-) {
-  try {
-    const result = await prisma.$transaction(async (tx) => {
-      // Check if period already exists
-      const existing = await tx.fiscal_periods.findUnique({
-        where: {
-          company_id_period_name: {
-            company_id: companyId,
-            period_name: periodName,
-          },
-        },
-      });
-
-      if (existing) {
-        throw new Error("السنة المالية موجودة بالفعل");
-      }
-
-      // Create new fiscal year
-      const newFiscalYear = await tx.fiscal_periods.create({
-        data: {
-          company_id: companyId,
-          period_name: periodName,
-          start_date: startDate,
-          end_date: endDate,
-          is_closed: false,
-        },
-      });
-
-      return {
-        success: true,
-        message: "تم فتح السنة المالية الجديدة بنجاح",
-        fiscalYear: newFiscalYear,
-      };
-    });
-
-    return result;
-  } catch (error: any) {
-    console.error("Error opening fiscal year:", error);
-    return { success: false, error: error.message };
-  }
-}
-
-// ============================================
-// 5️⃣ FIXED CUSTOMER STATEMENT
-// ============================================
-// export async function getCustomerStatement(
-//   customerId: string,
-//   companyId: string,
-//   dateFrom: string,
-//   dateTo: string
-// ) {
-//   try {
-//     const fromDate = new Date(dateFrom);
-//     const toDate = new Date(dateTo);
-//     toDate.setHours(23, 59, 59, 999);
-
-//     const customer = await prisma.customer.findUnique({
-//       where: { id: customerId, companyId },
-//       select: {
-//         id: true,
-//         name: true,
-//         email: true,
-//         address: true,
-//         city: true,
-//         phoneNumber: true,
-//         balance: true,
-//         outstandingBalance: true,
-//       },
-//     });
-
-//     if (!customer) {
-//       return { success: false, error: "العميل غير موجود" };
-//     }
-
-//     // Calculate opening balance from journal entries before period
-//     const openingEntries = await prisma.journal_entries.findMany({
-//       where: {
-//         company_id: companyId,
-//         reference_id: customerId,
-//         entry_date: { lt: fromDate },
-//       },
-//       select: { debit: true, credit: true },
-//     });
-
-//     const openingBalance = openingEntries.reduce(
-//       (sum, e) => sum + Number(e.debit) - Number(e.credit),
-//       0
-//     );
-
-//     // Get period entries
-//     const entries = await prisma.journal_entries.findMany({
-//       where: {
-//         company_id: companyId,
-//         reference_id: customerId,
-//         entry_date: { gte: fromDate, lte: toDate },
-//       },
-//       orderBy: { entry_date: "asc" },
-//       select: {
-//         id: true,
-//         entry_date: true,
-//         debit: true,
-//         credit: true,
-//         description: true,
-//         entry_number: true,
-//         reference_type: true,
-//       },
-//     });
-
-//     // Build statement with running balance
-//     let runningBalance = openingBalance;
-//     const transactions = entries.map((entry) => {
-//       const debit = Number(entry.debit);
-//       const credit = Number(entry.credit);
-
-//       runningBalance = runningBalance + debit - credit;
-
-//       return {
-//         date: entry.entry_date,
-//         debit,
-//         credit,
-//         balance: runningBalance,
-//         description: entry.description,
-//         docNo: entry.entry_number,
-//         typeName: mapType(entry.reference_type),
-//       };
-//     });
-
-//     const totalDebit = transactions.reduce((s, t) => s + t.debit, 0);
-//     const totalCredit = transactions.reduce((s, t) => s + t.credit, 0);
-//     const closingBalance = openingBalance + totalDebit - totalCredit;
-
-//     return {
-//       success: true,
-//       data: {
-//         customer: serializeData(customer),
-//         openingBalance: Number(openingBalance.toFixed(2)),
-//         closingBalance: Number(closingBalance.toFixed(2)),
-//         totalDebit: Number(totalDebit.toFixed(2)),
-//         totalCredit: Number(totalCredit.toFixed(2)),
-//         transactions: transactions.map(t => ({
-//           ...t,
-//           balance: Number(Number(t.balance).toFixed(2)),
-//         })),
-//         period: { from: dateFrom, to: dateTo },
-//       },
-//     };
-//   } catch (error) {
-//     console.error("Error loading customer statement:", error);
-//     return { success: false, error: "خطأ في جلب كشف الحساب" };
-//   }
-// }
-
-// // ============================================
-// // 6️⃣ SUPPLIER STATEMENT
-// // ============================================
-// export async function getSupplierStatement(
-//   supplierId: string,
-//   companyId: string,
-//   dateFrom: string,
-//   dateTo: string
-// ) {
-//   try {
-//     const fromDate = new Date(dateFrom);
-//     const toDate = new Date(dateTo);
-//     toDate.setHours(23, 59, 59, 999);
-
-//     const supplier = await prisma.supplier.findUnique({
-//       where: { id: supplierId, companyId },
-//       select: {
-//         id: true,
-//         name: true,
-//         email: true,
-//         address: true,
-//         city: true,
-//         phoneNumber: true,
-//         totalPurchased: true,
-//         totalPaid: true,
-//         outstandingBalance: true,
-//       },
-//     });
-
-//     if (!supplier) {
-//       return { success: false, error: "المورد غير موجود" };
-//     }
-
-//     // Calculate opening balance from journal entries before period
-//     const openingEntries = await prisma.journal_entries.findMany({
-//       where: {
-//         company_id: companyId,
-//         reference_id: supplierId,
-//         entry_date: { lt: fromDate },
-//       },
-//       select: { debit: true, credit: true },
-//     });
-
-//     // For suppliers: Credit - Debit (we owe them)
-//     const openingBalance = openingEntries.reduce(
-//       (sum, e) => sum + Number(e.credit) - Number(e.debit),
-//       0
-//     );
-
-//     // Get period entries
-//     const entries = await prisma.journal_entries.findMany({
-//       where: {
-//         company_id: companyId,
-//         reference_id: supplierId,
-//         entry_date: { gte: fromDate, lte: toDate },
-//       },
-//       orderBy: { entry_date: "asc" },
-//       select: {
-//         id: true,
-//         entry_date: true,
-//         debit: true,
-//         credit: true,
-//         description: true,
-//         entry_number: true,
-//         currency_code: true,
-//         reference_type: true,
-//       },
-//     });
-
-//     // Build statement
-//     let runningBalance = openingBalance;
-//     const transactions = entries.map((entry) => {
-//       const debit = Number(entry.debit);
-//       const credit = Number(entry.credit);
-
-//       runningBalance = runningBalance + credit - debit;
-
-//       return {
-//         date: entry.entry_date,
-//         debit,
-//         credit,
-//         balance: runningBalance,
-//         description: entry.description,
-//         docNo: entry.entry_number,
-//         Currency: entry.currency_code || "YER",
-//         typeName: mapType(entry.reference_type),
-//       };
-//     });
-
-//     const totalDebit = transactions.reduce((s, t) => s + t.debit, 0);
-//     const totalCredit = transactions.reduce((s, t) => s + t.credit, 0);
-//     const closingBalance = openingBalance + totalCredit - totalDebit;
-
-//     return {
-//       success: true,
-//       data: {
-//         supplier: serializeData(supplier),
-//         openingBalance: Number(openingBalance.toFixed(2)),
-//         closingBalance: Number(closingBalance.toFixed(2)),
-//         totalDebit: Number(totalDebit.toFixed(2)),
-//         totalCredit: Number(totalCredit.toFixed(2)),
-//         transactions: transactions.map(t => ({
-//           ...t,
-//           balance: Number(Number(t.balance).toFixed(2)),
-//         })),
-//         period: { from: dateFrom, to: dateTo },
-//       },
-//     };
-//   } catch (error) {
-//     console.error("Error loading supplier statement:", error);
-//     return { success: false, error: "خطأ في جلب كشف الحساب" };
-//   }
-// }
-
-// // ============================================
-// // 7️⃣ BANK STATEMENT
-// // ============================================
-// export async function getBankStatement(
-//   accountId: string,
-//   companyId: string,
-//   dateFrom: string,
-//   dateTo: string
-// ) {
-//   try {
-//     const fromDate = new Date(dateFrom);
-//     const toDate = new Date(dateTo);
-//     toDate.setHours(23, 59, 59, 999);
-
-//     const bank = await prisma.bank.findFirst({
-//       where: { accountId, companyId },
-//       select: {
-//         id: true,
-//         name: true,
-//         accountNumber: true,
-//         accountId: true,
-//         account: {
-//           select: {
-//             opening_balance: true,
-//             account_type: true,
-//           },
-//         },
-//       },
-//     });
-
-//     if (!bank) {
-//       return { success: false, error: "الحساب البنكي غير موجود" };
-//     }
-
-//     // Calculate opening balance
-//     const openingEntries = await prisma.journal_entries.findMany({
-//       where: {
-//         company_id: companyId,
-//         account_id: accountId,
-//         entry_date: { lt: fromDate },
-//       },
-//       select: { debit: true, credit: true },
-//     });
-
-//     const calculatedOpening = openingEntries.reduce(
-//       (sum, e) => sum + Number(e.debit) - Number(e.credit),
-//       0
-//     );
-
-//     const openingBalance =
-//       calculatedOpening !== 0
-//         ? calculatedOpening
-//         : Number(bank.account.opening_balance || 0);
-
-//     // Get period entries
-//     const entries = await prisma.journal_entries.findMany({
-//       where: {
-//         company_id: companyId,
-//         account_id: accountId,
-//         entry_date: { gte: fromDate, lte: toDate },
-//       },
-//       orderBy: { entry_date: "asc" },
-//       select: {
-//         id: true,
-//         entry_date: true,
-//         debit: true,
-//         credit: true,
-//         description: true,
-//         entry_number: true,
-//         reference_type: true,
-//       },
-//     });
-
-//     // Build statement
-//     let runningBalance = openingBalance;
-//     const transactions = entries.map((entry) => {
-//       const debit = Number(entry.debit);
-//       const credit = Number(entry.credit);
-
-//       runningBalance = runningBalance + debit - credit;
-
-//       return {
-//         date: entry.entry_date,
-//         debit,
-//         credit,
-//         balance: runningBalance,
-//         description: entry.description,
-//         docNo: entry.entry_number,
-//         typeName: mapType(entry.reference_type),
-//       };
-//     });
-
-//     const totalDebit = transactions.reduce((s, t) => s + t.debit, 0);
-//     const totalCredit = transactions.reduce((s, t) => s + t.credit, 0);
-//     const closingBalance = openingBalance + totalDebit - totalCredit;
-
-//     return {
-//       success: true,
-//       data: {
-//         bank: serializeData(bank),
-//         openingBalance: Number(openingBalance.toFixed(2)),
-//         closingBalance: Number(closingBalance.toFixed(2)),
-//         totalDebit: Number(totalDebit.toFixed(2)),
-//         totalCredit: Number(totalCredit.toFixed(2)),
-//         transactions: transactions.map(t => ({
-//           ...t,
-//           balance: Number(Number(t.balance).toFixed(2)),
-//         })),
-//         period: { from: dateFrom, to: dateTo },
-//       },
-//     };
-//   } catch (error) {
-//     console.error("Error loading bank statement:", error);
-//     return { success: false, error: "خطأ في جلب كشف الحساب البنكي" };
-//   }
-// }
-
-// // ============================================
-// // HELPER FUNCTIONS
-// // ============================================
-// function mapType(ref: string | null) {
-//   if (!ref) return "عملية";
-//   if (ref.includes("opening")) return "رصيد افتتاحي";
-//   if (ref.includes("إقفال")) return "قيد إقفال";
-//   if (ref.includes("مدفوع")) return "دفعة";
-//   if (ref.includes("غير مدفوع")) return "فاتورة غير مدفوعة";
-//   if (ref.includes("تكلفة")) return "قيد مخزون";
-//   if (ref.includes("مرتجع")) return "مرتجع";
-//   return ref;
-// }
-
-// function serializeData(obj: any) {
-//   return JSON.parse(
-//     JSON.stringify(obj, (_k, v) => (typeof v === "bigint" ? Number(v) : v))
-//   );
-// }

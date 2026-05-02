@@ -6,7 +6,6 @@ import dynamic from "next/dynamic";
 
 // import SearchInput from "@/components/common/SearchInput";
 import SearchInput from "@/components/common/searchtest";
-import TableSkeleton from "@/components/skeleton/table";
 
 import { useTranslations } from "next-intl";
 import { inventoryColumns } from "./columnsMovment";
@@ -26,9 +25,7 @@ type ProductClientProps = {
       id: string;
       sku: string;
       name: string;
-      supplierId: string | null;
-      warehouseId: string | null;
-      costPrice: Prisma.Decimal;
+
       sellingUnits: any;
     }[];
     warehouses: {
@@ -44,11 +41,14 @@ type ProductClientProps = {
       id: string;
       warehouseId: string;
       status: string;
+      batches: {
+        supplierId: string | null;
+        costPrice: Prisma.Decimal;
+      }[];
       product: {
         sku: string;
         name: string;
-        supplierId: string | null;
-        costPrice: Prisma.Decimal;
+
         sellingUnits: any;
       };
       productId: string;
@@ -62,7 +62,7 @@ type ProductClientProps = {
       };
     }[];
   };
-  payments: any;
+
   formData: {
     warehouses: { id: string; name: string }[];
     categories: { id: string; name: string }[];
@@ -76,7 +76,6 @@ export default function ManageStocksClient({
   multipleInventory,
   total,
   formData,
-  payments,
 }: ProductClientProps) {
   const {
     pagination,
@@ -145,10 +144,7 @@ export default function ManageStocksClient({
               paramKey="warehouseId"
               placeholder={t("warehouseId")}
             />
-            <MultiInventoryUpdateForm
-              multipleInventory={multipleInventory}
-              payments={payments}
-            />
+            <MultiInventoryUpdateForm multipleInventory={multipleInventory} />
             <SelectField
               options={formData.categories}
               paramKey="categoryId"

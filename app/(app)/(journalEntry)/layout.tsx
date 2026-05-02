@@ -17,7 +17,7 @@ export default function StocksLayout({
 
   const navItems = [
     {
-      label: "قيود يومية",
+      label: " يومية",
       href: "/journal",
       roles: ["admin", "accountant"],
     },
@@ -39,6 +39,11 @@ export default function StocksLayout({
     {
       label: "المصاريف",
       href: "/expenses",
+      roles: ["admin", "accountant"],
+    },
+    {
+      label: "حسابات ماليه",
+      href: "/banks",
       roles: ["admin", "accountant"],
     },
   ];

@@ -15,7 +15,8 @@ export interface CartItem extends CashierItem {
   selectedQty: number;
   action: string;
   warehousename: string;
-  sellingMode: string;
+  warehouseId: string;
+
   originalStockQuantity: number;
   sellingUnits: SellingUnit[];
   availableStock: Record<string, number>;
@@ -115,7 +116,9 @@ const cartSlice = createSlice({
       const existing = cart.items.find(
         (i) =>
           i.id === action.payload.id &&
-          i.selectedUnitId === action.payload.selectedUnitId,
+          i.selectedUnitId === action.payload.selectedUnitId &&
+          // also match warehouse to allow same product in different warehouses
+          (i as any).warehouseId === (action.payload as any).warehouseId,
       );
 
       // 2️⃣ جلب المخزون المتاح لهذه الوحدة تحديداً من البيانات المرسلة
@@ -142,7 +145,11 @@ const cartSlice = createSlice({
     },
     removeFromCart: (
       state,
-      action: PayloadAction<{ productId: string; unitId: string }>,
+      action: PayloadAction<{
+        productId: string;
+        unitId: string;
+        warehouseId?: string;
+      }>,
     ) => {
       const cart = state.carts.find((c) => c.id === state.activeCartId);
       if (!cart) return;
@@ -153,7 +160,11 @@ const cartSlice = createSlice({
         (i) =>
           !(
             i.id === action.payload.productId &&
-            i.selectedUnitId === action.payload.unitId
+            i.selectedUnitId === action.payload.unitId &&
+            // if warehouseId provided, also match it
+            (action.payload.warehouseId
+              ? (i as any).warehouseId === action.payload.warehouseId
+              : true)
           ),
       );
     },
@@ -165,15 +176,18 @@ const cartSlice = createSlice({
         quantity: number;
         selectedUnitId: string; // نستخدم ID بدلاً من Name
         action: string;
+        warehouseId?: string;
       }>,
     ) {
       const cart = state.carts.find((c) => c.id === state.activeCartId);
       if (!cart) return;
 
-      const item = cart.items.find(
-        (i) =>
-          i.id === action.payload.id &&
-          i.selectedUnitId === action.payload.selectedUnitId,
+      const item = cart.items.find((i) =>
+        i.id === action.payload.id &&
+        i.selectedUnitId === action.payload.selectedUnitId &&
+        (action.payload as any).warehouseId
+          ? (i as any).warehouseId === (action.payload as any).warehouseId
+          : true,
       );
 
       if (item) {
@@ -201,6 +215,7 @@ const cartSlice = createSlice({
         id: string;
         fromUnitId: string;
         toUnitId: string;
+        warehouseId?: string;
       }>,
     ) => {
       const cart = state.carts.find((c) => c.id === state.activeCartId);
@@ -210,7 +225,10 @@ const cartSlice = createSlice({
       const item = cart.items.find(
         (i) =>
           i.id === action.payload.id &&
-          i.selectedUnitId === action.payload.fromUnitId,
+          i.selectedUnitId === action.payload.fromUnitId &&
+          (action.payload.warehouseId
+            ? (i as any).warehouseId === action.payload.warehouseId
+            : true),
       );
 
       if (item) {

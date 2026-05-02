@@ -66,7 +66,7 @@ export async function getWarehouseDashboardData() {
             reorderLevel: true,
             maxStockLevel: true,
             lastStockTake: true,
-            product: {
+            batches: {
               select: {
                 expiredAt: true,
               },
@@ -89,6 +89,10 @@ export async function getWarehouseDashboardData() {
             id: true,
             name: true,
             sku: true,
+          },
+        },
+        batches: {
+          select: {
             expiredAt: true,
             supplier: {
               select: {

@@ -33,8 +33,6 @@ interface ExpenseFormProps {
   formData: {
     warehouses: Option[];
     categories: Option[];
-    brands: Option[];
-    suppliers: Option[];
   };
 }
 const arabicToEnglish: { [key: string]: string } = {
@@ -121,15 +119,11 @@ export default function ProductForm({ formData }: ExpenseFormProps) {
   const isUpdatingRef = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false); // حالة التحميل
   if (!user) return;
-  const watchedWarehouseId = watch("warehouseId");
+
   const watchedCategoryId = watch("categoryId");
-  const watchedSupplierId = watch("supplierId");
+  const watchedWarehouseId = watch("warehouseId");
   const watchedName = watch("name");
-  // const unitsPerPacket = watch("unitsPerPacket");
-  // const packetsPerCarton = watch("packetsPerCarton");
-  // const pricePerCarton = watch("pricePerCarton");
-  // const pricePerUnit = watch("pricePerUnit");
-  // const pricePerPacket = watch("pricePerPacket");
+
   const { fields, append, remove } = useFieldArray({
     control,
     name: "sellingUnits",
@@ -203,11 +197,11 @@ export default function ProductForm({ formData }: ExpenseFormProps) {
         reset({
           name: "",
           sku: "",
-          costPrice: 0,
+
           barcode: "",
-          warehouseId: "",
+
           categoryId: "",
-          supplierId: "",
+
           sellingUnits: [
             {
               id: "unit-1",
@@ -222,9 +216,10 @@ export default function ProductForm({ formData }: ExpenseFormProps) {
       }
     } catch (error) {
       toast.error("❌ حدث خطأ أثناء إضافة المنتج");
+      setIsSubmitting(false);
       console.error(error);
     } finally {
-      // setIsSubmitting(false);
+      setOpen(false);
     }
   };
 
@@ -261,15 +256,6 @@ export default function ProductForm({ formData }: ExpenseFormProps) {
                 />
               </div>
 
-              <div className="grid gap-3">
-                <Label>سعر التكلفة (للوحدة الأساسية)</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  {...register("costPrice", { valueAsNumber: true })}
-                  placeholder="0.00"
-                />
-              </div>
               {/* Warehouse and Dimensions */}
             </div>{" "}
             <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
@@ -288,29 +274,7 @@ export default function ProductForm({ formData }: ExpenseFormProps) {
                   </p>
                 )}
               </div>
-              <div className="grid gap-2">
-                <Label>تاريخ الانتهاء</Label>
-                <Input
-                  type="datetime-local"
-                  className="text-end"
-                  {...register("expiredAt")}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="supplierId">المورد</Label>
-                <SelectField
-                  options={formData.suppliers}
-                  value={watchedSupplierId}
-                  action={(val) => setValue("supplierId", val)}
-                  placeholder="اختر المورد"
-                  add={<SupplierForm />}
-                />
-                {errors.supplierId && (
-                  <p className="text-right text-xs text-red-500">
-                    {errors.supplierId.message}
-                  </p>
-                )}
-              </div>{" "}
+
               <div className="grid gap-2">
                 <Label htmlFor="categoryId">الفئة</Label>
                 <SelectField

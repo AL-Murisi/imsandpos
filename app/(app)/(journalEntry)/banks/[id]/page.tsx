@@ -56,7 +56,11 @@ export default async function SupplierStatementPage({
 
   return (
     <div className="p-3">
-      <ClientWarper bank={bankStatement} fiscalYear={fiscalYear ?? []} />
+      <ClientWarper
+        bank={bankStatement}
+        type={bankStatement?.bank.type}
+        fiscalYear={fiscalYear ?? []}
+      />
     </div>
   );
 }

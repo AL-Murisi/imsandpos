@@ -78,15 +78,16 @@ export default async function Chart() {
       } else {
         acc.healthy += 1;
       }
-
-      if (item.product?.expiredAt) {
-        const expiryKey = toDateKey(item.product.expiredAt);
-        if (expiryKey <= todayKey) {
-          acc.expired += 1;
-        } else if (expiryKey <= expiringSoonLimitKey) {
-          acc.expiringSoon += 1;
+      item.batches.forEach((p) => {
+        if (p.expiredAt) {
+          const expiryKey = toDateKey(p.expiredAt);
+          if (expiryKey <= todayKey) {
+            acc.expired += 1;
+          } else if (expiryKey <= expiringSoonLimitKey) {
+            acc.expiringSoon += 1;
+          }
         }
-      }
+      });
 
       return acc;
     },
@@ -138,13 +139,22 @@ export default async function Chart() {
       0,
     );
     const expiredItems = warehouseItem.inventory.filter((entry) => {
-      if (!entry.product?.expiredAt) return false;
-      return toDateKey(entry.product.expiredAt) <= todayKey;
+      entry.batches.forEach((p) => {
+        if (!p.expiredAt) return false;
+        return toDateKey(p.expiredAt) <= todayKey;
+      });
     }).length;
     const expiringSoonItems = warehouseItem.inventory.filter((entry) => {
-      if (!entry.product?.expiredAt) return false;
-      const expiryKey = toDateKey(entry.product.expiredAt);
-      return expiryKey > todayKey && expiryKey <= expiringSoonLimitKey;
+      entry.batches.forEach((p) => {
+        if (!p.expiredAt) return false;
+        const expiryKey = toDateKey(p.expiredAt);
+        return expiryKey > todayKey && expiryKey <= expiringSoonLimitKey;
+      });
+      entry.batches.forEach((p) => {
+        if (!p.expiredAt) return false;
+        const expiryKey = toDateKey(p.expiredAt);
+        return expiryKey > todayKey && expiryKey <= expiringSoonLimitKey;
+      });
     }).length;
     const lowItems = warehouseItem.inventory.filter(
       (entry) =>
@@ -196,7 +206,6 @@ export default async function Chart() {
       lastStockTake: formatRelativeDate(latestStockTake),
     };
   });
-
   const urgentItems = inventories
     .filter((item) => item.availableQuantity <= item.reorderLevel)
     .slice(0, 6)
@@ -205,7 +214,8 @@ export default async function Chart() {
       productName: item.product.name,
       sku: item.product.sku,
       warehouseName: item.warehouse.name,
-      supplierName: item.product.supplier?.name ?? "بدون مورد",
+      supplierName:
+        item.batches.find((b) => b.supplier)?.supplier?.name ?? "بدون مورد",
       availableQuantity: item.availableQuantity,
       reorderLevel: item.reorderLevel,
       status: item.availableQuantity <= 0 ? "نفد المخزون" : "مخزون منخفض",
@@ -219,7 +229,8 @@ export default async function Chart() {
       productName: item.product.name,
       sku: item.product.sku,
       warehouseName: item.warehouse.name,
-      supplierName: item.product.supplier?.name ?? "بدون مورد",
+      supplierName:
+        item.batches.find((p) => p.supplier)?.supplier?.name ?? "بدون مورد",
       availableQuantity: item.availableQuantity,
       reorderLevel: item.reorderLevel,
       status: "مستقر",

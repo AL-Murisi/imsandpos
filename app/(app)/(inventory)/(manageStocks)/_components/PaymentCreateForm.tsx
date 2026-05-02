@@ -9,8 +9,7 @@ import { useAuth } from "@/lib/context/AuthContext";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { SelectField } from "@/components/common/selectproduct";
-import { fetchPayments } from "@/lib/actions/banks";
+
 import {
   ReusablePayment,
   PaymentState,
@@ -66,26 +65,6 @@ export function PaymentCreateForm({
   const paymentMethod = watch("paymentMethod");
   const selectedAccountId = watch("accountId");
 
-  // Load bank/cash accounts
-  // useEffect(() => {
-  //   if (!isOpen) return;
-
-  //   const loadAccounts = async () => {
-  //     try {
-  //       const { banks, cashAccounts } = await fetchPayments();
-  //       setBanks(banks);
-  //       setCash(cashAccounts);
-  //     } catch (err) {
-  //       console.error(err);
-  //       toast.error("فشل في جلب الحسابات");
-  //     }
-  //   };
-
-  //   loadAccounts();
-  // }, [isOpen]);
-  // Automatically set currency_code from selected account
-
-  // Automatically set currency code when account changes
   useEffect(() => {
     const allAccounts = [...accounts];
     const selected = allAccounts.find((acc) => acc.id === selectedAccountId);
