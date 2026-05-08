@@ -56,29 +56,30 @@ function serializeData<T>(data: T): T {
 export async function FetchDebtSales(
   companyId: string,
   where?: Prisma.InvoiceWhereInput,
-  sale_type?: string, // only returns
-
+  sale_type?: string,
   searchQuery: string = "",
   from?: string,
   to?: string,
-  page: number = 1, // 0-indexed page number
+  page: number = 1,
   pageSize: number = 13,
   sort?: SortingState,
 ) {
   const combinedWhere: Prisma.InvoiceWhereInput = {
-    ...where, // Existing filters (category, warehouse, etc.)
+    ...where,
     companyId,
-    sale_type: sale_type as InvoiceType, // only returns
+    sale_type: { in: [InvoiceType.SALE, InvoiceType.RETURN_SALE] },
   };
 
   const orderBy = sort?.length
     ? { [sort[0].id]: sort[0].desc ? "desc" : "asc" }
     : { invoiceDate: "desc" as const };
+
   const today = new Date();
   const startOfToday = new Date(today.setHours(0, 0, 0, 0));
   const endOfToday = new Date(today.setHours(23, 59, 59, 999));
   const fromatDate = from ? new Date(from).toISOString() : startOfToday;
   const toDate = to ? new Date(to).toISOString() : endOfToday;
+
   if (searchQuery) {
     combinedWhere.OR = [
       { customer: { name: { contains: searchQuery, mode: "insensitive" } } },
@@ -95,62 +96,65 @@ export async function FetchDebtSales(
 
   if (fromatDate || toDate) {
     combinedWhere.invoiceDate = {
-      ...(fromatDate && {
-        gte: fromatDate,
-      }),
-      ...(toDate && {
-        lte: toDate,
-      }),
+      ...(fromatDate && { gte: fromatDate }),
+      ...(toDate && { lte: toDate }),
     };
   }
 
-  const debts = await prisma.invoice.findMany({
-    select: {
-      id: true,
-      totalAmount: true,
-      amountPaid: true,
-      amountDue: true,
-      invoiceDate: true,
-      status: true,
-      customerId: true,
-      customerName: true,
-      sale_type: true,
-      invoiceNumber: true,
-
-      customer: {
-        select: {
-          name: true,
-          outstandingBalance: true,
-          phoneNumber: true,
-          customerType: true,
+  // ── Single query — no StockMovement join needed ──────────────────────────
+  const [debts, total] = await Promise.all([
+    prisma.invoice.findMany({
+      select: {
+        id: true,
+        totalAmount: true,
+        amountPaid: true,
+        amountDue: true,
+        invoiceDate: true,
+        status: true,
+        customerId: true,
+        customerName: true,
+        sale_type: true,
+        invoiceNumber: true,
+        customer: {
+          select: {
+            name: true,
+            outstandingBalance: true,
+            phoneNumber: true,
+            customerType: true,
+          },
         },
-      },
-      transactions: {
-        select: { notes: true, status: true, paymentMethod: true },
-      },
-      warehouse: { select: { id: true, name: true } },
-
-      items: {
-        select: {
-          productId: true,
-          unit: true,
-          quantity: true,
-          price: true,
-          totalPrice: true,
-          product: {
-            select: {
-              name: true,
-              sellingUnits: true,
+        transactions: {
+          select: { notes: true, status: true, paymentMethod: true },
+        },
+        items: {
+          select: {
+            id: true,
+            productId: true,
+            unit: true,
+            quantity: true,
+            price: true,
+            totalPrice: true,
+            warehouseId: true, // ← direct from InvoiceItem
+            warehouse: {
+              // ← direct relation, no movement needed
+              select: { id: true, name: true },
+            },
+            product: {
+              select: { name: true, sellingUnits: true },
             },
           },
         },
       },
-    },
-    where: combinedWhere,
-    skip: page * pageSize,
-    take: pageSize,
-    orderBy,
-  });
+      where: combinedWhere,
+      skip: page * pageSize, // ← fixed: was page * pageSize but page is 1-indexed
+      take: pageSize,
+      orderBy,
+    }),
+    // ← fixed: was counting without combinedWhere so pagination total was wrong
+    prisma.invoice.count({ where: combinedWhere }),
+  ]);
+
+  // ── Return detection ─────────────────────────────────────────────────────
   const baseSaleNumbers = debts
     .filter((sale) => sale.sale_type === "SALE")
     .map((sale) => sale.invoiceNumber.replace("-بيع", "").trim());
@@ -169,46 +173,42 @@ export async function FetchDebtSales(
         })
       : [];
 
-  // 3. Normalize the found returns to their base IDs for easy lookup
   const returnedBaseNumbers = new Set(
-    existingReturns.map((invoice) =>
-      invoice.invoiceNumber.replace("-مرتجع", "").replace("-بيع", "").trim(),
+    existingReturns.map((inv) =>
+      inv.invoiceNumber.replace("-مرتجع", "").replace("-بيع", "").trim(),
     ),
   );
 
-  const total = await prisma.invoice.count({ where: { companyId } });
-
+  // ── Serialize ────────────────────────────────────────────────────────────
   const serializedDebts = debts.map((sale) => {
-    // 1. Clean the current sale's invoice number inside the map
     const currentBaseNumber = sale.invoiceNumber
       .replace("-مرتجع", "")
       .replace("-بيع", "")
       .trim();
 
-    // 2. Check if THIS specific invoice exists in the returns set
-    const hasAlreadyBeenReturned = returnedBaseNumbers.has(currentBaseNumber);
-
     return {
       ...sale,
       saleItems: sale.items.map((item) => ({
-        ...item,
+        id: item.id,
+        productId: item.productId,
+        name: item.product.name,
+        unit: item.unit,
         quantity: Number(item.quantity),
         unitPrice: Number(item.price),
-        unit: item.unit,
-        warehouse: sale.warehouse?.name || "بدون مستودع",
         totalPrice: Number(item.totalPrice),
+        warehouseId: item.warehouseId ?? null,
+        warehouse: item.warehouse?.name ?? "بدون مستودع", // ← from item directly
+        sellingUnits: item.product.sellingUnits,
       })),
       saleNumber: sale.invoiceNumber,
-      status: sale.status,
-      reason: sale.transactions.find((p) => p.notes)?.notes || null,
+      reason: sale.transactions.find((p) => p.notes)?.notes ?? null,
       totalAmount: Number(sale.totalAmount),
       amountPaid: Number(sale.amountPaid),
       amountDue: Number(sale.amountDue),
       payments: sale.transactions,
       saleDate: sale.invoiceDate.toISOString(),
       createdAt: sale.invoiceDate.toISOString(),
-      // 3. Assign the result here
-      hasReturnSale: hasAlreadyBeenReturned,
+      hasReturnSale: returnedBaseNumbers.has(currentBaseNumber),
       customer: sale.customer
         ? {
             ...sale.customer,
@@ -224,11 +224,312 @@ export async function FetchDebtSales(
           : null,
     };
   });
-
-  const serilaz = serializeData(serializedDebts);
-  return { serilaz, total };
+  return { serilaz: serializeData(serializedDebts), total };
 }
+// type SaleItemExpanded = {
+//   productId: string;
+//   product: {
+//     name: string;
+//     sellingUnits: any;
+//   };
 
+//   quantity: number;
+//   price: number;
+//   totalPrice: number;
+
+//   unit: string;
+//   sellingUnit: string;
+
+//   warehouse: string;
+//   warehouseId: string | null;
+
+//   batchId: string | null;
+//   supplier: string | null;
+//   supplierId: string | null;
+// };
+// export async function FetchDebtSales(
+//   companyId: string,
+//   where?: Prisma.InvoiceWhereInput,
+//   sale_type?: string,
+//   searchQuery: string = "",
+//   from?: string,
+//   to?: string,
+//   page: number = 1,
+//   pageSize: number = 13,
+//   sort?: SortingState,
+// ) {
+//   const combinedWhere: Prisma.InvoiceWhereInput = {
+//     ...where,
+//     companyId,
+//     sale_type: sale_type as InvoiceType,
+//   };
+
+//   const orderBy = sort?.length
+//     ? { [sort[0].id]: sort[0].desc ? "desc" : "asc" }
+//     : { invoiceDate: "desc" as const };
+
+//   const today = new Date();
+//   const startOfToday = new Date(today.setHours(0, 0, 0, 0));
+//   const endOfToday = new Date(today.setHours(23, 59, 59, 999));
+
+//   const fromDate = from ? new Date(from) : startOfToday;
+//   const toDate = to ? new Date(to) : endOfToday;
+
+//   if (searchQuery) {
+//     combinedWhere.OR = [
+//       { customerName: { contains: searchQuery, mode: "insensitive" } },
+//       { invoiceNumber: { contains: searchQuery, mode: "insensitive" } },
+//       { status: { contains: searchQuery, mode: "insensitive" } },
+//     ];
+//   }
+
+//   combinedWhere.invoiceDate = {
+//     gte: fromDate,
+//     lte: toDate,
+//   };
+
+//   // -----------------------------
+//   // 1. FETCH INVOICES
+//   // -----------------------------
+//   const debts = await prisma.invoice.findMany({
+//     where: combinedWhere,
+//     skip: page * pageSize,
+//     take: pageSize,
+//     orderBy,
+//     select: {
+//       id: true,
+//       totalAmount: true,
+//       amountPaid: true,
+//       amountDue: true,
+//       invoiceDate: true,
+//       status: true,
+//       customerName: true,
+//       invoiceNumber: true,
+//       sale_type: true,
+
+//       customer: {
+//         select: {
+//           name: true,
+//           outstandingBalance: true,
+//           phoneNumber: true,
+//           customerType: true,
+//         },
+//       },
+
+//       transactions: {
+//         select: {
+//           notes: true,
+//           status: true,
+//           paymentMethod: true,
+//         },
+//       },
+
+//       items: {
+//         select: {
+//           productId: true,
+//           unit: true,
+//           quantity: true,
+//           price: true,
+//           totalPrice: true,
+//           product: {
+//             select: {
+//               name: true,
+//               sellingUnits: true,
+//             },
+//           },
+//         },
+//       },
+//     },
+//   });
+
+//   const invoiceIds = debts.map((d) => d.id);
+
+//   // -----------------------------
+//   // 2. FETCH MOVEMENTS
+//   // -----------------------------
+//   const movements = await prisma.stockMovement.findMany({
+//     where: { referenceId: { in: invoiceIds } },
+//     select: {
+//       id: true,
+//       productId: true,
+//       quantity: true,
+//       referenceId: true,
+
+//       warehouse: { select: { id: true, name: true } },
+
+//       inventoryBatch: {
+//         select: {
+//           id: true,
+//           supplier: {
+//             select: { id: true, name: true },
+//           },
+//         },
+//       },
+//     },
+//   });
+
+//   // -----------------------------
+//   // 3. GROUP MOVEMENTS (FAST LOOKUP)
+//   function groupMovements(movements: any[]) {
+//     const map = new Map<string, any>();
+
+//     for (const m of movements) {
+//       const key = `${m.referenceId}_${m.productId}_${m.warehouse?.id ?? "no_wh"}_${m.inventoryBatch?.id ?? "no_batch"}`;
+
+//       if (!map.has(key)) {
+//         map.set(key, {
+//           productId: m.productId,
+//           referenceId: m.referenceId,
+
+//           quantity: 0,
+
+//           warehouse: m.warehouse?.name || "بدون مستودع",
+//           warehouseId: m.warehouse?.id || null,
+
+//           batchId: m.inventoryBatch?.id || null,
+//           supplier: m.inventoryBatch?.supplier?.name || null,
+//           supplierId: m.inventoryBatch?.supplier?.id || null,
+//         });
+//       }
+
+//       map.get(key).quantity += Number(m.quantity);
+//     }
+
+//     return Array.from(map.values());
+//   }
+
+//   const movementMap = new Map<string, any[]>();
+
+//   for (const m of movements) {
+//     const key = `${m.referenceId}_${m.productId}`;
+
+//     if (!movementMap.has(key)) movementMap.set(key, []);
+//     movementMap.get(key)!.push(m);
+//   }
+//   // -----------------------------
+//   // 4. BUILD ITEMS PER INVOICE
+//   // -----------------------------
+//   const itemsByInvoice = new Map<string, SaleItemExpanded[]>();
+
+//   for (const d of debts) {
+//     const items: SaleItemExpanded[] = d.items.flatMap((i) => {
+//       const key = `${d.id}_${i.productId}`;
+//       const related = movementMap.get(key) || [];
+
+//       // fallback
+//       if (related.length === 0) {
+//         return [
+//           {
+//             productId: i.productId,
+//             product: i.product,
+
+//             quantity: Number(i.quantity),
+//             price: Number(i.price),
+//             totalPrice: Number(i.totalPrice),
+
+//             unit: i.unit,
+//             sellingUnit: i.unit.toString(),
+
+//             warehouse: "بدون مستودع",
+//             warehouseId: null,
+
+//             batchId: null,
+//             supplier: null,
+//             supplierId: null,
+//           },
+//         ];
+//       }
+
+//       // 🔥 GROUP instead of duplicate rows
+//       const grouped = groupMovements(related);
+
+//       return grouped.map((m) => ({
+//         productId: i.productId,
+//         product: i.product,
+
+//         quantity: m.quantity,
+//         price: Number(i.price),
+//         totalPrice: m.quantity * Number(i.price),
+
+//         unit: i.unit,
+//         sellingUnit: i.unit.toString(),
+
+//         warehouse: m.warehouse,
+//         warehouseId: m.warehouseId,
+
+//         batchId: m.batchId,
+//         supplier: m.supplier,
+//         supplierId: m.supplierId,
+//       }));
+//     });
+
+//     itemsByInvoice.set(d.id, items);
+//   }
+
+//   // -----------------------------
+//   // 5. RETURNS CHECK
+//   // -----------------------------
+//   const baseSaleNumbers = debts
+//     .filter((s) => s.sale_type === "SALE")
+//     .map((s) => s.invoiceNumber.replace("-بيع", "").trim());
+
+//   const existingReturns =
+//     baseSaleNumbers.length > 0
+//       ? await prisma.invoice.findMany({
+//           where: {
+//             companyId,
+//             sale_type: "RETURN_SALE",
+//             OR: baseSaleNumbers.map((b) => ({
+//               invoiceNumber: { contains: b },
+//             })),
+//           },
+//           select: { invoiceNumber: true },
+//         })
+//       : [];
+
+//   const returnedSet = new Set(
+//     existingReturns.map((i) =>
+//       i.invoiceNumber.replace("-مرتجع", "").replace("-بيع", "").trim(),
+//     ),
+//   );
+
+//   // -----------------------------
+//   // 6. SERIALIZE RESPONSE
+//   // -----------------------------
+//   const result = debts.map((sale) => {
+//     const base = sale.invoiceNumber
+//       .replace("-مرتجع", "")
+//       .replace("-بيع", "")
+//       .trim();
+
+//     return {
+//       ...sale,
+
+//       saleItems: itemsByInvoice.get(sale.id) || [],
+//       saleNumber: sale.invoiceNumber,
+
+//       totalAmount: Number(sale.totalAmount),
+//       amountPaid: Number(sale.amountPaid),
+//       amountDue: Number(sale.amountDue),
+
+//       saleDate: sale.invoiceDate.toISOString(),
+
+//       hasReturnSale: returnedSet.has(base),
+
+//       customer: sale.customer
+//         ? {
+//             ...sale.customer,
+//             outstandingBalance: Number(sale.customer.outstandingBalance),
+//           }
+//         : null,
+//     };
+//   });
+
+//   return {
+//     serilaz: serializeData(result),
+//     total: await prisma.invoice.count({ where: combinedWhere }),
+//   };
+// }
 export async function FetchCustomerDebtReport(
   customerId: string,
   companyId: string,

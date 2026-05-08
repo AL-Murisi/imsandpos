@@ -58,6 +58,7 @@ import {
 import { Clock } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   enqueueOfflineOperation,
   getOfflineCache,
@@ -115,6 +116,7 @@ export default function CartDisplay({
   product,
   nextnumber,
 }: CustomDialogProps) {
+  const router = useRouter();
   const { user } = useAuth();
   const dispatch = useAppDispatch();
   const t = useTranslations("cashier");
@@ -273,9 +275,7 @@ export default function CartDisplay({
       action: string,
     ) => {
       // derive warehouseId from current items
-      const current = items.find(
-        (it) => it.id === id && it.selectedUnitId === selectedUnitId,
-      );
+
       dispatch(
         updateQty({ id, selectedUnitId, quantity, action, warehouseId } as any),
       );
@@ -463,6 +463,7 @@ export default function CartDisplay({
       await processSale(payment, effectiveCompanyId);
       toast.success("✅ تم الدفع بنجاح!");
       resetCartAfterSubmit();
+      router.refresh();
       void syncPendingOfflineOperations();
     } catch (err: any) {
       if (!navigator.onLine) {

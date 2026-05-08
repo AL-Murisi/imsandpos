@@ -12,7 +12,9 @@ export type Company =
       phone: string | null;
       address: string | null;
       city: string | null;
-
+      fiscal_periods: {
+        is_closed: boolean;
+      }[];
       country: string | null;
       logoUrl: string | null;
       base_currency: string | null;

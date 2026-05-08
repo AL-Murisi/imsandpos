@@ -28,11 +28,11 @@ Handlebars.registerHelper("divide", (a: number, b: number) =>
   b !== 0 ? a / b : 0,
 );
 function mapType(ref: string | null) {
-  if (!ref) return "عملية";
-  if (ref.includes("مدفوع")) return "دفعة";
-  if (ref.includes("غير مدفوع")) return "فاتورة غير مدفوعة";
-  if (ref.includes("تكلفة")) return "قيد مخزون";
-  if (ref.includes("مرتجع")) return "مرتجع";
+  if (!ref) return "?????";
+  if (ref.includes("?????")) return "????";
+  if (ref.includes("??? ?????")) return "?????? ??? ??????";
+  if (ref.includes("?????")) return "??? ?????";
+  if (ref.includes("?????")) return "?????";
   return ref;
 }
 
@@ -160,7 +160,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
             total: s.totalPrice.toNumber(), // Decimal to Number
             sellingUnit: s.unit,
             date: s.invoice.invoiceDate.toLocaleDateString("ar-EG"), // Usually better for reports
-            salestype: s.invoice.sale_type === "SALE" ? "بيع" : "مرتجع",
+            salestype: s.invoice.sale_type === "SALE" ? "???" : "?????",
             price: s.price,
           })),
           period: {
@@ -295,7 +295,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
             sellingUnit: s.unit,
             date: s.invoice.invoiceDate.toLocaleDateString("ar-EG"), // Usually better for reports
 
-            salestype: s.invoice.sale_type === "SALE" ? "بيع" : "مرتجع",
+            salestype: s.invoice.sale_type === "SALE" ? "???" : "?????",
             price: s.price,
           })),
           casherNmae: sales[0].invoice.cashier?.name,
@@ -315,7 +315,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
       case "daily-sales": {
         templateFile = "daily-sales-report.html";
 
-        // 🔹 Today range
+        // ?? Today range
         const fromDate = new Date();
         fromDate.setHours(0, 0, 0, 0);
 
@@ -349,7 +349,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
             total: s.totalPrice.toNumber(),
             sellingUnit: s.unit,
             date: s.invoice.invoiceDate.toLocaleDateString("ar-EG"),
-            salestype: s.invoice.sale_type === "SALE" ? "بيع" : "مرتجع",
+            salestype: s.invoice.sale_type === "SALE" ? "???" : "?????",
             price: s.price,
           })),
           casherNmae: sales[0]?.invoice.cashier?.name ?? "",
@@ -599,7 +599,6 @@ export async function POST(req: NextRequest, context: RouteContext) {
             },
             warehouse: true,
             stockQuantity: true,
-            availableQuantity: true,
             lastStockTake: true,
           },
         });
@@ -612,13 +611,12 @@ export async function POST(req: NextRequest, context: RouteContext) {
             )[0];
             const inventoryValue = i.batches.reduce(
               (sum, b) =>
-                sum +
-                Number(i.availableQuantity ?? 0) * Number(b.costPrice ?? 0),
+                sum + Number(i.stockQuantity ?? 0) * Number(b.costPrice ?? 0),
               0,
             );
             return {
               product: i.product.name,
-              stock: i.availableQuantity,
+              stock: i.stockQuantity,
               supplier: mainBatch.supplier?.name,
               warehouse: i.warehouse.name,
               lastStockTake: i.lastStockTake?.toLocaleDateString("ar-EG"),
@@ -628,7 +626,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
           totalInventoryValue: inventory.reduce((sum, i) => {
             const value = i.batches.reduce(
               (s, b) =>
-                s + Number(i.availableQuantity ?? 0) * Number(b.costPrice ?? 0),
+                s + Number(i.stockQuantity ?? 0) * Number(b.costPrice ?? 0),
               0,
             );
             return sum + value;
@@ -769,18 +767,18 @@ export async function POST(req: NextRequest, context: RouteContext) {
               (expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
             );
 
-            let status = "غير معروف";
+            let status = "??? ?????";
 
             if (daysDiff < 0) {
-              status = "منتهي الصلاحية";
+              status = "????? ????????";
             } else if (daysDiff === 0) {
-              status = "ينتهي اليوم";
+              status = "????? ?????";
             } else if (daysDiff <= 3) {
-              status = "ينتهي قريباً (خلال 3 أيام)";
+              status = "????? ?????? (???? 3 ????)";
             } else if (daysDiff <= 30) {
-              status = "ينتهي خلال 30 يوم";
+              status = "????? ???? 30 ???";
             } else {
-              status = "صالح";
+              status = "????";
             }
             return {
               name: inv.product?.name,
@@ -821,9 +819,9 @@ export async function POST(req: NextRequest, context: RouteContext) {
             product: s.product.name,
             warehouse: s.warehouse.name,
             expectedStock: s.stockQuantity,
-            actualStock: s.availableQuantity,
+            actualStock: s.stockQuantity - s.reservedQuantity,
             reserveStock: s.reservedQuantity,
-            difference: s.availableQuantity - s.stockQuantity,
+            difference: s.reservedQuantity - s.stockQuantity,
             lastTake: s.lastStockTake?.toLocaleDateString("ar-EG"),
           })),
         };
@@ -938,7 +936,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
             phone: s.phoneNumber,
             email: s.email,
             purchaseCount: s._count.invoice,
-            balance: Number(s.outstandingBalance || 0),
+            balance: Number(0 || 0),
           })),
           totalSuppliers: suppliers.length,
         };
@@ -1088,7 +1086,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
                 : (p.customer?.name ?? p.supplier?.name ?? "N/A"),
             voucherNumber: p.voucherNumber,
             amount: Number(p.amount).toFixed(2),
-            type: p.type === "PAYMENT" ? "دفعة" : "استلام",
+            type: p.type === "PAYMENT" ? "????" : "??????",
             method: p.paymentMethod,
             date: p.createdAt.toLocaleDateString("ar-EG"),
           });
@@ -1133,7 +1131,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
             expense_number: e.expense_number,
             description: e.description || "-",
             amount: Number(e.amount),
-            user: e.users?.name || "غير معروف",
+            user: e.users?.name || "??? ?????",
             paymentMethod: e.payment_method,
           })),
           totalExpenses: expenses.reduce((sum, e) => sum + Number(e.amount), 0),
@@ -1221,8 +1219,8 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
         // 1. Define interfaces to stop index signature errors
         interface CurrencyTotal {
-          onHim: number; // Debit (المدين - عليه)
-          forHim: number; // Credit (الدائن - له)
+          onHim: number; // Debit (?????? - ????)
+          forHim: number; // Credit (?????? - ??)
         }
 
         interface CurrencyGroups {
@@ -1299,9 +1297,9 @@ export async function POST(req: NextRequest, context: RouteContext) {
               name: c.name,
               phone: c.phoneNumber ?? "-",
               currency: currency,
-              onHim: totals.onHim.toFixed(2), // عليه
-              forHim: totals.forHim.toFixed(2), // له
-              outstanding: balance.toFixed(2), // المتبقي
+              onHim: totals.onHim.toFixed(2), // ????
+              forHim: totals.forHim.toFixed(2), // ??
+              outstanding: balance.toFixed(2), // ???????
             });
           }
         }
@@ -1356,7 +1354,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
               hour: "2-digit",
               minute: "2-digit",
               second: "2-digit",
-              hour12: true, // أو false لو تريد 24 ساعة
+              hour12: true, // ?? false ?? ???? 24 ????
             }),
           })),
           period: {
@@ -1430,7 +1428,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
         const toDate = new Date(fiscalYear.end_date);
         toDate.setHours(23, 59, 59, 999); // End of day
 
-        // 1️⃣ جلب العملاء (عميل واحد أو الجميع)
+        // 1?? ??? ??????? (???? ???? ?? ??????)
         const customers = await prisma.customer.findMany({
           where: customerId
             ? {
@@ -1658,7 +1656,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
         const toDate = new Date(fiscalYear.end_date);
         toDate.setHours(23, 59, 59, 999); // End of day
 
-        // 1️⃣ جلب العملاء (عميل واحد أو الجميع)
+        // 1?? ??? ??????? (???? ???? ?? ??????)
         const suppliers = suppliersId
           ? await prisma.supplier.findMany({
               where: {
@@ -1677,34 +1675,41 @@ export async function POST(req: NextRequest, context: RouteContext) {
           : await prisma.supplier.findMany({
               where: {
                 companyId: user.companyId,
-                outstandingBalance: { gt: 0 },
+                invoice: {
+                  some: {
+                    companyId: user.companyId,
+                    sale_type: "PURCHASE",
+                    amountDue: { gt: 0 },
+                  },
+                },
               },
               select: {
                 id: true,
                 name: true,
                 phoneNumber: true,
-
-                outstandingBalance: true,
               },
             });
-        const supplierInvoiceIds = await prisma.invoice.findMany({
-          where: {
-            companyId: user.companyId,
-            supplierId: suppliersId,
-            sale_type: "PURCHASE",
-          },
-          select: { id: true },
-        });
-
-        const supplierPaymentIds = await prisma.financialTransaction.findMany({
-          where: { companyId: user.companyId, supplierId: suppliersId },
-          select: { id: true },
-        });
-        // 2️⃣ تجهيز كشف حساب لكل عميل
+        // 2?? ????? ??? ???? ??? ????
         const supplierStatements = [];
 
         for (const c of suppliers) {
-          // رصيد افتتاحي
+          const supplierInvoiceIds = await prisma.invoice.findMany({
+            where: {
+              companyId: user.companyId,
+              supplierId: c.id,
+              sale_type: "PURCHASE",
+            },
+            select: { id: true },
+          });
+
+          const supplierPaymentIds = await prisma.financialTransaction.findMany(
+            {
+              where: { companyId: user.companyId, supplierId: c.id },
+              select: { id: true },
+            },
+          );
+
+          // ???? ???????
           const supplierReferenceIds = [
             c.id,
             ...supplierInvoiceIds.map((invoice) => invoice.id),
@@ -1727,7 +1732,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
             (sum, e) => sum + Number(e.credit) - Number(e.debit),
             0,
           );
-          // قيود الفترة
+          // ???? ??????
           const entries = await prisma.journalLine.findMany({
             where: {
               companyId: user.companyId,
@@ -1755,7 +1760,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
             },
           });
 
-          // بناء كشف الحساب
+          // ???? ??? ??????
           let runningBalance: number = 0;
           const transactions = entries.map((entry) => {
             runningBalance =
@@ -1776,8 +1781,8 @@ export async function POST(req: NextRequest, context: RouteContext) {
           const periodDebit = transactions.reduce((s, t) => s + t.debit, 0);
           const periodCredit = transactions.reduce((s, t) => s + t.credit, 0);
 
-          // المنطق المطلوب: إضافة الرصيد الافتتاحي للإجمالي المناسب بناءً على حالته
-          // إذا كان الرصيد الافتتاحي موجب (Credit) يضاف للدائن، وإذا كان سالب (Debit) يضاف للمدين
+          // ?????? ???????: ????? ?????? ????????? ???????? ??????? ????? ??? ?????
+          // ??? ??? ?????? ????????? ???? (Credit) ???? ??????? ???? ??? ???? (Debit) ???? ??????
           const finalTotalDebit =
             openingBalance < 0
               ? periodDebit + Math.abs(openingBalance)
@@ -1806,7 +1811,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
           });
         }
 
-        // 3️⃣ إخراج التقرير
+        // 3?? ????? ???????
         data = {
           suppliers: supplierStatements,
           period: { from: fromDisplay, to: toDisplay },
@@ -1909,11 +1914,11 @@ export async function POST(req: NextRequest, context: RouteContext) {
         data = {
           ...baseData,
           accounts: [
-            // نغلف البيانات بمصفوفة accounts كما يتوقع القالب
+            // ???? ???????? ??????? accounts ??? ????? ??????
             {
               account: {
                 name:
-                  rows[0]?.accountName || rows[0]?.account_name || "حساب عام",
+                  rows[0]?.accountName || rows[0]?.account_name || "???? ???",
                 code: rows[0]?.accountCode || rows[0]?.account_code || "",
                 currency:
                   rows[0]?.currency || rows[0]?.account_currency || "EGP",
@@ -1961,7 +1966,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
       case "bank-statment": {
         templateFile = "bank_statment.html";
 
-        // 1️⃣ جلب العملاء (عميل واحد أو الجميع)
+        // 1?? ??? ??????? (???? ???? ?? ??????)
         const accountid = accountId;
         const bank = await prisma.bank.findFirst({
           where: { accountId: accountId, companyId: user.companyId },
@@ -1976,16 +1981,16 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
         if (!bank) {
           return new Response(
-            JSON.stringify({ error: " اسم البنك غير موجود" }),
+            JSON.stringify({ error: " ??? ????? ??? ?????" }),
             { status: 400 },
           );
         }
-        // 2️⃣ تجهيز كشف حساب لكل عميل
+        // 2?? ????? ??? ???? ??? ????
         const customerStatements = [];
         for (const c of bank ? [bank] : []) {
-          // رصيد افتتاحي
+          // ???? ???????
 
-          // قيود الفترة
+          // ???? ??????
           const entries = await prisma.journalLine.findMany({
             where: {
               companyId: user.companyId,
@@ -2012,7 +2017,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
             },
           });
 
-          // بناء كشف الحساب
+          // ???? ??? ??????
           let runningBalance: number = 0;
           const transactions = entries.map((entry) => {
             runningBalance =
@@ -2043,7 +2048,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
             period: { from: fromDisplay, to: toDisplay },
           });
         }
-        // 3️⃣ إخراج التقرير
+        // 3?? ????? ???????
         data = {
           bank: customerStatements,
           period: { from: fromDisplay, to: toDisplay },
@@ -2149,7 +2154,7 @@ async function fetchReceiptsByCustomer(
     total_amount: inv.totalAmount,
     amount_paid: inv.amountPaid,
     discount_amount: 0, // if you add discount later, map it here
-    sale_type: inv.sale_type == "SALE" ? "بيع" : "مرتجع مبيعات",
+    sale_type: inv.sale_type == "SALE" ? "???" : "????? ??????",
 
     created_at: inv.invoiceDate,
 
@@ -2164,7 +2169,7 @@ async function fetchReceiptsByCustomer(
       selectedQty: item.quantity,
       sellingUnit: item.unit?.toLowerCase() ?? "unit",
 
-      // 🔑 FRONTEND EXPECTS THIS NAME
+      // ?? FRONTEND EXPECTS THIS NAME
       pricePerUnit: item.price,
     })),
   }));
@@ -2255,7 +2260,7 @@ async function fetchReceiptsBySupplier(
     },
   });
 
-  // ⬇️ Map to SAME shape your frontend expects
+  // ?? Map to SAME shape your frontend expects
   return invoices.map((inv) => ({
     purchase_id: inv.id,
     purchase_number: inv.invoiceNumber,
@@ -2263,7 +2268,7 @@ async function fetchReceiptsBySupplier(
     total_amount: inv.totalAmount,
     amount_paid: inv.amountPaid,
     amount_due: inv.amountDue,
-    purchase_type: inv.sale_type == "PURCHASE" ? "شراء " : "مرتجع مشتريات",
+    purchase_type: inv.sale_type == "PURCHASE" ? "???? " : "????? ???????",
 
     currency_code: null, // keep if frontend expects it
     exchange_rate: null, // keep if frontend expects it
@@ -2276,7 +2281,7 @@ async function fetchReceiptsBySupplier(
       warehouse_name: inv.warehouse?.name ?? "",
       quantity: item.quantity,
 
-      // 🔑 IMPORTANT: keep frontend variable names
+      // ?? IMPORTANT: keep frontend variable names
       unit_cost: item.price,
       total_cost: item.totalPrice,
     })),
@@ -2390,7 +2395,7 @@ function prepareAccountStatement(row: any, index: number) {
     description: row.description || "-",
     docNo: row.entry_number || "-",
     typeName: mapType(row.reference_type),
-    // الحقول المضافة
+    // ?????? ???????
     accountName: row.account_name,
     accountCode: row.account_code,
     currency: row.account_currency || row.currency_code,

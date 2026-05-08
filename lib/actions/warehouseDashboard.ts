@@ -45,8 +45,8 @@ export async function getWarehouseDashboardData() {
   }
 
   const [
-    warehouses,
-    inventories,
+    warehousesRaw,
+    inventoriesRaw,
     recentMovements,
     activeSuppliers,
     purchaseSummary,
@@ -62,7 +62,7 @@ export async function getWarehouseDashboardData() {
         inventory: {
           select: {
             stockQuantity: true,
-            availableQuantity: true,
+            reservedQuantity: true,
             reorderLevel: true,
             maxStockLevel: true,
             lastStockTake: true,
@@ -80,8 +80,9 @@ export async function getWarehouseDashboardData() {
       select: {
         id: true,
         stockQuantity: true,
-        availableQuantity: true,
         reorderLevel: true,
+        reservedQuantity: true,
+
         maxStockLevel: true,
         updatedAt: true,
         product: {
@@ -108,7 +109,7 @@ export async function getWarehouseDashboardData() {
           },
         },
       },
-      orderBy: [{ availableQuantity: "asc" }, { updatedAt: "desc" }],
+      orderBy: [{ stockQuantity: "asc" }, { updatedAt: "desc" }],
     }),
     prisma.stockMovement.findMany({
       where: {
@@ -152,7 +153,22 @@ export async function getWarehouseDashboardData() {
       },
     }),
   ]);
+  const inventories = inventoriesRaw
+    .map((item) => ({
+      ...item,
+      availableQuantity:
+        (item.stockQuantity || 0) - (item.reservedQuantity || 0),
+    }))
+    .sort((a, b) => a.availableQuantity - b.availableQuantity); // إعادة الترتيب حسب الكمية المتوفرة
 
+  // 2. معالجة المستودعات (Warehouses) لضمان أن بيانات الـ inventory داخلها دقيقة أيضاً
+  const warehouses = warehousesRaw.map((warehouse) => ({
+    ...warehouse,
+    inventory: warehouse.inventory.map((inv) => ({
+      ...inv,
+      availableQuantity: (inv.stockQuantity || 0) - (inv.reservedQuantity || 0),
+    })),
+  }));
   return {
     success: true as const,
     data: serializeData({

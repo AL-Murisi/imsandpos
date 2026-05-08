@@ -14,9 +14,11 @@ interface CustomerStatement {
     email: string | null;
     address: string | null;
     city: string | null;
-    balance: any | null;
-    phoneNumber: string | null;
-    outstandingBalance: any;
+    state?: string | null;
+    country?: string | null;
+    balance?: any | null;
+    phoneNumber?: string | null;
+    outstandingBalance?: any;
   } | null;
   openingBalance: number;
   totalDebit: number;

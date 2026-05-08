@@ -243,7 +243,6 @@ export async function getCustomerById(
         preferred_currency: true,
         creditLimit: true,
         outstandingBalance: true,
-        balance: true,
         isActive: true,
         createdAt: true,
         updatedAt: true,
@@ -346,17 +345,17 @@ export async function getCustomerById(
 }
 
 export async function Fetchcustomerbyname(searchQuery?: string) {
-  const combinedWhere: any = {
-    companyId: (await getSession())?.companyId,
+  const session = await getSession();
+  const companyId = session?.companyId;
 
-    OR: [
-      { name: { contains: searchQuery, mode: "insensitive" } },
-      { phoneNumber: { contains: searchQuery, mode: "insensitive" } },
-    ],
-  };
-
-  const customer = await prisma.customer.findMany({
-    where: combinedWhere,
+  const customers = await prisma.customer.findMany({
+    where: {
+      companyId,
+      OR: [
+        { name: { contains: searchQuery, mode: "insensitive" } },
+        { phoneNumber: { contains: searchQuery, mode: "insensitive" } },
+      ],
+    },
     select: {
       id: true,
       name: true,
@@ -365,28 +364,125 @@ export async function Fetchcustomerbyname(searchQuery?: string) {
       outstandingBalance: true,
       address: true,
       city: true,
-
       preferred_currency: true,
-      balance: true,
     },
-    take: 10, // Limit to 10 results
+    take: 10,
     orderBy: { name: "asc" },
   });
 
-  if (!customer) return null;
+  if (!customers.length) return [];
+  const mappings = await prisma.account_mappings.findMany({
+    where: { company_id: companyId, is_default: true },
+    select: { mapping_type: true, account_id: true },
+  });
+  const arAccount = mappings.find(
+    (m) => m.mapping_type === "accounts_receivable",
+  )?.account_id;
+  const customerIds = customers.map((c) => c.id);
+  const fiscalYear = await prisma.fiscal_periods.findFirst({
+    where: {
+      company_id: companyId,
+      is_closed: false,
+    },
+    select: { start_date: true, end_date: true },
+  });
 
-  // const debts = await prisma.sale.findMany({
-  //   where: {
-  //     customerId: customer.id,
-  //     amountDue: { gt: 0 },
-  //   },
-  //   select: {
-  //     amountDue: true,
-  //   },
-  // });
-  const cusomers = serializeData(customer);
+  const fromDate = fiscalYear ? new Date(fiscalYear.start_date) : undefined;
+  const toDate = fiscalYear ? new Date(fiscalYear.end_date) : undefined;
 
-  return cusomers;
+  fromDate?.setHours(0, 0, 0, 0);
+  toDate?.setHours(23, 59, 59, 999);
+  // ✅ 1. Get invoices for ALL customers
+  const invoices = await prisma.invoice.findMany({
+    where: { companyId, customerId: { in: customerIds } },
+    select: { id: true, customerId: true },
+  });
+
+  // group invoices by customer
+  const invoiceMap: Record<string, string[]> = {};
+  for (const inv of invoices) {
+    if (!inv.customerId) continue; // 👈 important
+
+    if (!invoiceMap[inv.customerId]) invoiceMap[inv.customerId] = [];
+    invoiceMap[inv.customerId].push(inv.id);
+  }
+
+  // ✅ 2. Get payments for ALL customers
+  const payments = await prisma.financialTransaction.findMany({
+    where: {
+      companyId,
+      customerId: { in: customerIds },
+      createdAt: {
+        ...(fromDate && { gte: fromDate }),
+        ...(toDate && { lte: toDate }),
+      },
+    },
+    select: { id: true, customerId: true },
+  });
+
+  const paymentMap: Record<string, string[]> = {};
+  for (const p of payments) {
+    if (!p.customerId) continue; // 👈 important
+
+    if (!paymentMap[p.customerId]) paymentMap[p.customerId] = [];
+    paymentMap[p.customerId].push(p.id);
+  }
+  // ✅ 3. Build referenceIds per customer
+  const referenceMap: Record<string, string[]> = {};
+
+  for (const c of customers) {
+    referenceMap[c.id] = [
+      c.id,
+      ...(invoiceMap[c.id] || []),
+      ...(paymentMap[c.id] || []),
+    ];
+  }
+
+  // ✅ 4. Get all journal lines in one query
+  const allReferenceIds = Object.values(referenceMap).flat();
+
+  const journalLines = await prisma.journalLine.findMany({
+    where: {
+      companyId,
+      accountId: arAccount,
+      header: {
+        referenceId: { in: allReferenceIds },
+      },
+    },
+    select: {
+      debit: true,
+      credit: true,
+      header: {
+        select: {
+          referenceId: true,
+        },
+      },
+    },
+  });
+
+  // ✅ 5. Calculate balance per customer
+  const balanceMap: Record<string, number> = {};
+
+  for (const c of customers) {
+    balanceMap[c.id] = 0;
+
+    const refs = referenceMap[c.id];
+
+    for (const line of journalLines) {
+      const refId = line.header.referenceId;
+      if (refId && refs.includes(refId)) {
+        balanceMap[c.id] += Number(line.debit || 0) - Number(line.credit || 0);
+      }
+    }
+  }
+
+  // ✅ 6. Attach balance
+  const result = customers.map((c) => ({
+    ...c,
+    calculatedBalance: balanceMap[c.id] || 0,
+  }));
+
+  return serializeData(result);
 }
 
 /**
@@ -553,7 +649,6 @@ export async function createCutomer(form: CreateCustomer, companyId: string) {
         creditLimit,
         outstandingBalance: outstanding,
         customerType,
-        balance,
         taxId,
       },
     });

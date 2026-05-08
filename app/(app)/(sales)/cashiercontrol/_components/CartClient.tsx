@@ -54,17 +54,14 @@ export const CartItemRow = memo(
 
     // جلب السعر مباشرة من الوحدة المختارة في الـ item
     const itemPrice = item.selectedUnitPrice || 0;
-
-    // حساب الحد الأقصى للكمية بناءً على المخزون المتاح لهذه الوحدة المحددة
     const getMaxQty = useCallback(() => {
       const product = products.find(
-        (p: any) => p.id === item.id && p.warehouseId === item.warehouseId,
+        (p: props) => p.id === item.id && p.warehouseId === item.warehouseId,
       );
       if (!product || !product.availableStock) return 0;
       // نستخدم ID الوحدة لجلب المخزون المتاح لها
       return product.availableStock[item.selectedUnitId] || 0;
     }, [products, item.id, item.selectedUnitId]);
-
     const maxQty = getMaxQty();
 
     return (
@@ -220,10 +217,10 @@ export const ProductCard = memo(
             </Label>
           </div>
           {product.warehousename && (
-            <div className="mt-1 flex items-center justify-center">
-              <span className="text-muted-foreground text-xs">
+            <div className="flex items-center justify-center">
+              <Label className="line-clamp-2 px-2 text-center text-xs font-bold">
                 {product.warehousename}
-              </span>
+              </Label>
             </div>
           )}
           <div className="bg-primary text-background flex flex-col rounded-md px-2 py-1 text-[11px] font-bold">

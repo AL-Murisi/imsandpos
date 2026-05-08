@@ -90,12 +90,21 @@ export default function List({ selecteditemId }: Props) {
           // Assuming your table has productId and current stock
           // âœ… Correct: Matching the exact keys from your log
           console.log(payload.new);
-          const { product_id, available_quantity } = payload.new;
+          const {
+            product_id,
+            stock_quantity = 0,
+            reserved_quantity = 0,
+          } = payload.new as {
+            product_id: string;
+            stock_quantity?: number;
+            reserved_quantity?: number;
+          };
+          const baseQty = Number(stock_quantity) - Number(reserved_quantity);
 
           dispatch(
             syncProductStock({
               productId: product_id, // Map the snake_case DB key to your camelCase Redux key
-              baseQty: available_quantity,
+              baseQty: Math.max(0, baseQty),
             }),
           );
           // We use the new stock frtom DB to sync everyone's UI

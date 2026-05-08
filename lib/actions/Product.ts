@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 
 import {
   CreateProductSchemas,
+  SellingUnit,
   UpdateProductFormValues,
   UpdateProducts,
 } from "@/lib/zod/product";
@@ -70,7 +71,6 @@ export async function CreateProduct(
 
         wholesalePrice,
         minWholesaleQty,
-        dimensions,
 
         inventory: {
           create: {
@@ -78,7 +78,7 @@ export async function CreateProduct(
             warehouseId,
             stockQuantity: 0,
             reservedQuantity: 0,
-            availableQuantity: 0,
+
             reorderLevel: 10,
             maxStockLevel: 0,
             status: "out_of_stock",
@@ -211,9 +211,6 @@ export async function fetchProduct(
         wholesalePrice: true,
         minWholesaleQty: true,
         category: true,
-        weight: true,
-        dimensions: true,
-        status: true,
         isActive: true,
         createdAt: true,
       },
@@ -240,7 +237,6 @@ export async function fetchProduct(
       wholesalePrice: product.wholesalePrice
         ? Number(product.wholesalePrice)
         : null,
-      weight: product.weight ? Number(product.weight) : null,
     }));
 
     return {
@@ -307,7 +303,10 @@ export async function fetchProductStats(role: string, companyId: string) {
     lowStockDetails,
   };
 }
-
+export async function updateSellingUnits(sellingUnits: SellingUnit[]) {
+  // This is a placeholder function. The actual implementation will depend on how you want to update the selling units in the database.
+  // You can pass the product ID and the new selling units data to this function and perform the necessary database updates.
+}
 export async function UpdateProduct(
   data: UpdateProductFormValues,
   companyId: string,
@@ -376,7 +375,6 @@ export async function UpdateProduct(
         sellingUnits,
         wholesalePrice,
         minWholesaleQty,
-        dimensions,
       },
     });
 

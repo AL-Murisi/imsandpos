@@ -114,10 +114,8 @@ export function ReturnForm({ sale }: { sale: any }) {
 
     const mappedItems =
       sale.saleItems?.map((item: any) => {
-        const sellingUnits: SellingUnit[] = Array.isArray(
-          item.product?.sellingUnits,
-        )
-          ? item.product.sellingUnits
+        const sellingUnits: SellingUnit[] = Array.isArray(item.sellingUnits)
+          ? item.sellingUnits
           : [];
         // ✅ find unit by name
         const saleUnit = sellingUnits.find((u) => u.name === item.unit);
@@ -127,8 +125,8 @@ export function ReturnForm({ sale }: { sale: any }) {
         }
         return {
           productId: item.productId,
-          warehouseId: item.product?.warehouse?.id ?? sale?.warehouseId ?? "",
-          name: item.product?.name ?? "Unknown",
+          warehouseId: item.warehouseId ?? "",
+          name: item.name ?? "Unknown",
           sellingUnits,
           saleUnitId: saleUnit?.id || "",
           selectedUnitId: saleUnit?.id || "",
@@ -177,6 +175,7 @@ export function ReturnForm({ sale }: { sale: any }) {
   ======================== */
   const onSubmit = async (values: ReturnFormValues) => {
     const selectedItems = values.items.filter((i) => i.quantity > 0);
+    console.log(values);
 
     if (!selectedItems.length) {
       toast.error("يرجى تحديد كمية للإرجاع");
@@ -218,7 +217,6 @@ export function ReturnForm({ sale }: { sale: any }) {
         },
         user.companyId,
       );
-
       if (result.success) {
         toast.success("تم الإرجاع بنجاح");
         setOpen(false);
@@ -316,14 +314,29 @@ export function ReturnForm({ sale }: { sale: any }) {
                         <TableCell>
                           <Input
                             type="number"
+                            min={0}
+                            max={field.quantitySold} // Prevents arrows from going higher
                             className="w-20"
-                            disabled={
-                              field.quantitySold >=
-                              watchedItems[index]?.quantity
-                            }
                             {...register(`items.${index}.quantity`, {
                               valueAsNumber: true,
+                              onChange: (e) => {
+                                const enteredValue = parseFloat(e.target.value);
+
+                                if (enteredValue > field.quantitySold) {
+                                  // If they type 999 but max is 10, this snaps it back to 10
+                                  setValue(
+                                    `items.${index}.quantity`,
+                                    field.quantitySold,
+                                  );
+                                }
+                              },
                             })}
+                            // Optional: Prevents the '+' and 'e' keys which are valid in 'number' inputs
+                            onKeyDown={(e) => {
+                              if (e.key === "+" || e.key === "e") {
+                                e.preventDefault();
+                              }
+                            }}
                           />
                         </TableCell>
 

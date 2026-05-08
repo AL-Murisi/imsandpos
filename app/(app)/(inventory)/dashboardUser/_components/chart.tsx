@@ -18,6 +18,41 @@ import InventoryTables from "./table";
 const headerColor = "#0b142a";
 const THREE_MONTHS_DAYS = 90;
 
+type DashboardBatch = {
+  expiredAt: string | Date | null;
+  supplier?: { name?: string | null } | null;
+};
+
+type DashboardInventory = {
+  id: string;
+  stockQuantity: number;
+  availableQuantity: number;
+  reservedQuantity: number;
+  reorderLevel: number;
+  maxStockLevel: number | null;
+  lastStockTake?: string | Date | null;
+  product: { name: string; sku: string };
+  warehouse: { name: string };
+  batches: DashboardBatch[];
+};
+
+type DashboardWarehouseInventory = {
+  stockQuantity: number;
+  reservedQuantity: number;
+  availableQuantity: number;
+  reorderLevel: number;
+  maxStockLevel: number | null;
+  lastStockTake?: string | Date | null;
+  batches: DashboardBatch[];
+};
+
+type DashboardWarehouse = {
+  id: string;
+  name: string;
+  location: string;
+  inventory: DashboardWarehouseInventory[];
+};
+
 function formatNumber(value: number) {
   return new Intl.NumberFormat("en-US").format(value);
 }
@@ -49,13 +84,32 @@ export default async function Chart() {
   }
 
   const {
-    warehouses,
-    inventories,
+    warehouses: warehousesRaw,
+    inventories: inventoriesRaw,
     recentMovements,
     activeSuppliers,
     purchaseSummary,
     recentPurchaseCount,
   } = result.data;
+
+  const warehouses: DashboardWarehouse[] = (
+    (warehousesRaw as unknown as any[]) ?? []
+  ).map((w) => ({
+    ...w,
+    inventory: ((w?.inventory as any[]) ?? []).map((inv) => ({
+      ...inv,
+      batches: (inv?.batches as DashboardBatch[]) ?? [],
+    })),
+  }));
+
+  const inventories: DashboardInventory[] = (
+    (inventoriesRaw as unknown as any[]) ?? []
+  ).map((item) => ({
+    ...item,
+    product: item?.product ?? { name: "", sku: "" },
+    warehouse: item?.warehouse ?? { name: "" },
+    batches: (item?.batches as DashboardBatch[]) ?? [],
+  }));
 
   const todayKey = toDateKey(new Date());
   const expiringSoonLimitKey = toDateKey(
@@ -106,12 +160,13 @@ export default async function Chart() {
   const chartData = warehouses.map((warehouseItem) => {
     const totals = warehouseItem.inventory.reduce(
       (acc, entry) => {
+        const availableQuantity = entry.stockQuantity - entry.reservedQuantity;
         acc.stock += entry.stockQuantity;
-        acc.available += entry.availableQuantity;
+        acc.available += availableQuantity;
 
-        if (entry.availableQuantity <= 0) {
+        if (availableQuantity <= 0) {
           acc.out += 1;
-        } else if (entry.availableQuantity <= entry.reorderLevel) {
+        } else if (availableQuantity <= entry.reorderLevel) {
           acc.low += 1;
         } else {
           acc.healthy += 1;

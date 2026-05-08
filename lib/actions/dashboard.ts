@@ -462,7 +462,7 @@ export async function getProductStats(companyId: string) {
     where: { companyId },
     select: {
       stockQuantity: true,
-      availableQuantity: true,
+      reservedQuantity: true,
       reorderLevel: true,
       batches: {
         select: {
@@ -482,7 +482,8 @@ export async function getProductStats(companyId: string) {
 
   // 2️⃣ Convert quantities and handle stats
   const convertedInventory = inventory.map((item) => {
-    const baseStock = item.availableQuantity || 0;
+    const availableQuantity = item.stockQuantity - item.reservedQuantity;
+    const baseStock = availableQuantity || 0;
     const availableStock: Record<string, number> = {};
     const sellingUnits = (item.product.sellingUnits as any[]) || [];
 

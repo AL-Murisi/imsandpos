@@ -23,10 +23,12 @@ interface SupplierStatement {
     email: string | null;
     address: string | null;
     city: string | null;
-    phoneNumber: string | null;
-    totalPurchased: any;
-    totalPaid: any;
-    outstandingBalance: any;
+    state?: string | null;
+    country?: string | null;
+    phoneNumber?: string | null;
+    totalPurchased?: any;
+    totalPaid?: any;
+    outstandingBalance?: any;
   } | null;
   openingBalance: number;
   totalDebit: number;

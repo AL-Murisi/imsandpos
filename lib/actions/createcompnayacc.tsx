@@ -265,21 +265,21 @@ export async function getCompany() {
         base_currency: true,
         country: true,
         logoUrl: true,
-
-        branches: {
+        fiscal_periods: {
           where: {
-            OR: [
-              // 👨‍💼 Branch manager
-              { managerId: user.userId },
-
-              // 🧾 Cashier assigned to branch
-              {
-                cashiers: {
-                  some: { id: user.userId },
-                },
-              },
-            ],
+            is_closed: false,
           },
+          select: {
+            is_closed: true,
+          },
+        },
+        branches: {
+          // where: {
+          //   cashiers: {
+          //     some: { id: user.userId },
+          //   },
+          // },
+
           select: {
             id: true,
             name: true,

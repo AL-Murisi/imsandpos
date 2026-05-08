@@ -24,6 +24,7 @@ import {
   PaymentState,
 } from "@/components/common/ReusablePayment";
 import { useCompany } from "@/hooks/useCompany";
+import { PriceMismatchAlert } from "./updatepirce";
 
 interface SellingUnit {
   id: string;
@@ -45,11 +46,11 @@ interface InventoryUpdateItem {
   quantity: string;
   reservedQuantity: string;
   currentStock?: number;
-  unitCost: string;
+  unitCost: number;
   baseUnitCost: number; // 🆕 لتخزين سعر التكلفة الأساسي للرجوع إليه عند الحساب
   currency_code: string;
   notes?: string;
-  expiredAt: Date;
+  expiredAt: Date | null;
   updateType: "manual" | "supplier";
   warehousesForProduct?: { id: string; name: string }[];
   payment?: PaymentState;
@@ -62,7 +63,7 @@ interface MultiInventoryUpdateFormProps {
       sku: string;
       name: string;
 
-      sellingUnits: any;
+      sellingUnits: SellingUnit[];
     }[];
     warehouses: {
       id: string;
@@ -123,9 +124,9 @@ export default function MultiInventoryUpdateForm({
     selectedUnitId: "",
     quantity: "",
     reservedQuantity: "0",
-    unitCost: "",
+    unitCost: 0,
     baseUnitCost: 0,
-    expiredAt: new Date(),
+    expiredAt: null,
     currency_code: company?.base_currency ?? "",
     notes: "",
     updateType: "supplier",
@@ -176,7 +177,7 @@ export default function MultiInventoryUpdateForm({
               sellingUnits: sellingUnits,
               selectedUnitId: baseUnit?.id || "",
               baseUnitCost: latestCost,
-              unitCost: latestCost.toString(),
+              unitCost: latestCost,
               // If it's a new warehouse, stock will be 0 later in updateInventory
               currentStock: existingInventories[0]?.stockQuantity || 0,
             }
@@ -204,7 +205,7 @@ export default function MultiInventoryUpdateForm({
               const newCost = unit.isBase
                 ? inv.baseUnitCost
                 : inv.baseUnitCost * unit.unitsPerParent;
-              updated.unitCost = newCost.toString();
+              updated.unitCost = newCost;
             }
           }
 
@@ -212,7 +213,7 @@ export default function MultiInventoryUpdateForm({
             // Reset dependent fields immediately to prevent UI flicker with old data
             updated.warehouseId = "";
             updated.supplierId = "";
-            updated.unitCost = "";
+            updated.unitCost = 0;
             updated.currentStock = undefined;
 
             // Trigger the data load
@@ -237,19 +238,27 @@ export default function MultiInventoryUpdateForm({
       }),
     );
   };
-
+  const fiscalyear = company?.fiscal_periods || false; // يمكنك تعديل هذا حسب السنة المالية لشركتك
   const totalItems = inventoryUpdates.reduce(
     (sum, inv) => sum + (parseFloat(inv.quantity) || 0),
     0,
   );
   const totalCost = inventoryUpdates.reduce(
-    (sum, inv) =>
-      sum + (parseFloat(inv.quantity) || 0) * (parseFloat(inv.unitCost) || 0),
+    (sum, inv) => sum + (parseFloat(inv.quantity) || 0) * (inv.unitCost || 0),
     0,
   );
 
   const handleSubmit = async () => {
-    // ... (Validation logic remains same)
+    // 1. Validation Check for Expiry Date
+    const missingExpiry = inventoryUpdates.some((inv) => !inv.expiredAt);
+    if (!fiscalyear) {
+      toast.error("");
+      return;
+    }
+    if (missingExpiry) {
+      toast.error("يرجى تحديد تاريخ الانتهاء لجميع المنتجات");
+      return; // Stop the execution
+    }
     setIsSubmitting(true);
     try {
       const updatesData = inventoryUpdates.map((inv) => ({
@@ -261,9 +270,9 @@ export default function MultiInventoryUpdateForm({
         quantity: parseFloat(inv.quantity),
         reservedQuantity: parseFloat(inv.reservedQuantity) || 0,
         supplierId: inv.updateType === "supplier" ? inv.supplierId : undefined,
-        unitCost: inv.updateType === "supplier" ? inv.baseUnitCost : undefined,
+        unitCost: inv.updateType === "supplier" ? inv.unitCost : undefined,
         currency_code: inv.currency_code,
-        expiredAt: new Date(inv.expiredAt),
+        expiredAt: new Date(inv.expiredAt!),
         baseCurrency: company?.base_currency ?? "",
         notes: inv.notes,
         lastStockTake: new Date(updateDate),
@@ -383,24 +392,27 @@ export default function MultiInventoryUpdateForm({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>تارخ الانتهاء</Label>
+                    <Label>تاريخ الانتهاء</Label>
                     <Input
-                      value={
-                        new Date(inventory.expiredAt)
-                          .toISOString()
-                          .split("T")[0]
-                      }
-                      onChange={(e) =>
-                        updateInventory(
-                          inventory.id,
-                          "expiredAt",
-                          e.target.value,
-                        )
-                      }
                       type="date"
+                      // If expiredAt is null, show empty string, otherwise format the date
+                      value={
+                        inventory.expiredAt
+                          ? new Date(inventory.expiredAt)
+                              .toISOString()
+                              .split("T")[0]
+                          : ""
+                      }
+                      onChange={(e) => {
+                        const dateVal = e.target.value
+                          ? new Date(e.target.value)
+                          : null;
+                        updateInventory(inventory.id, "expiredAt", dateVal);
+                      }}
+                      // Visual cue if date is missing
+                      className={!inventory.expiredAt ? "border-red-300" : ""}
                     />
                   </div>
-
                   <div className="space-y-2">
                     <Label>المستودع</Label>
                     <SelectField
@@ -475,17 +487,17 @@ export default function MultiInventoryUpdateForm({
                     />
                   </div>
 
+                  {/* Inside the loop in MultiInventoryUpdateForm */}
                   <div className="space-y-2">
                     <Label>سعر التكلفة (للوحدة)</Label>
                     <Input
-                      disabled={inventory.updateType === "manual"}
                       type="number"
                       value={inventory.unitCost}
                       onChange={(e) =>
                         updateInventory(
                           inventory.id,
                           "unitCost",
-                          e.target.value,
+                          Number(e.target.value || 0),
                         )
                       }
                       className={
@@ -494,6 +506,45 @@ export default function MultiInventoryUpdateForm({
                           : "border-blue-400"
                       }
                     />
+
+                    {/* Price Mismatch Warning */}
+                    {inventory.productId && Number(inventory.unitCost) > 0 && (
+                      <PriceMismatchAlert
+                        inventory={inventory}
+                        action={(newCost, updatedUnits) => {
+                          setInventoryUpdates((prev) =>
+                            prev.map((inv) => {
+                              if (inv.id !== inventory.id) return inv;
+
+                              const nextUnits =
+                                updatedUnits ?? inv.sellingUnits;
+                              const selectedUnit = nextUnits.find(
+                                (u) => u.id === inv.selectedUnitId,
+                              );
+                              const baseUnit =
+                                nextUnits.find((u) => u.isBase) ?? nextUnits[0];
+
+                              const nextBaseUnitCost = baseUnit
+                                ? selectedUnit?.isBase
+                                  ? newCost
+                                  : newCost /
+                                    Math.max(
+                                      selectedUnit?.unitsPerParent || 1,
+                                      1,
+                                    )
+                                : inv.baseUnitCost;
+
+                              return {
+                                ...inv,
+                                unitCost: newCost,
+                                baseUnitCost: Number(nextBaseUnitCost || 0),
+                                sellingUnits: nextUnits,
+                              };
+                            }),
+                          );
+                        }}
+                      />
+                    )}
                     <p className="text-muted-foreground flex items-center gap-1 text-[10px]">
                       <Info className="h-3 w-3" /> سعر الأساس:{" "}
                       {inventory.baseUnitCost}

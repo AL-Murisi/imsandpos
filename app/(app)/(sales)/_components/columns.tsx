@@ -232,7 +232,7 @@ export const debtSaleColumns: ColumnDef<any>[] = [
               saleNumber={debt.invoiceNumber ?? ""}
               items={debt.saleItems.map((item: any) => ({
                 id: item.id,
-                name: item.product.name,
+                name: item.name,
                 warehousename: item.warehouse,
                 selectedQty: item.quantity,
                 sellingUnit: item.unit,
@@ -261,7 +261,7 @@ export const debtSaleColumns: ColumnDef<any>[] = [
               saleNumber={debt.invoiceNumber ?? ""}
               items={debt.saleItems.map((item: any) => ({
                 id: item.id,
-                name: item.product.name,
+                name: item.name,
                 warehousename: item.warehouse,
                 selectedQty: item.quantity,
                 sellingUnit: item.unit,

@@ -182,14 +182,14 @@ const cartSlice = createSlice({
       const cart = state.carts.find((c) => c.id === state.activeCartId);
       if (!cart) return;
 
-      const item = cart.items.find((i) =>
-        i.id === action.payload.id &&
-        i.selectedUnitId === action.payload.selectedUnitId &&
-        (action.payload as any).warehouseId
+      const item = cart.items.find((i) => {
+        const matchesId = i.id === action.payload.id;
+        const matchesUnit = i.selectedUnitId === action.payload.selectedUnitId;
+        const matchesWarehouse = (action.payload as any).warehouseId
           ? (i as any).warehouseId === (action.payload as any).warehouseId
-          : true,
-      );
-
+          : true;
+        return matchesId && matchesUnit && matchesWarehouse;
+      });
       if (item) {
         if (action.payload.action === "plus") {
           item.selectedQty += action.payload.quantity;
@@ -222,15 +222,14 @@ const cartSlice = createSlice({
       if (!cart) return;
 
       // البحث عن السطر المحدد باستخدام ID المنتج + ID الوحدة القديمة
-      const item = cart.items.find(
-        (i) =>
-          i.id === action.payload.id &&
-          i.selectedUnitId === action.payload.fromUnitId &&
-          (action.payload.warehouseId
-            ? (i as any).warehouseId === action.payload.warehouseId
-            : true),
-      );
-
+      const item = cart.items.find((i) => {
+        const matchesId = i.id === action.payload.id;
+        const matchesUnit = i.selectedUnitId === action.payload.fromUnitId;
+        const matchesWarehouse = action.payload.warehouseId
+          ? (i as any).warehouseId === action.payload.warehouseId
+          : true;
+        return matchesId && matchesUnit && matchesWarehouse;
+      });
       if (item) {
         const newUnit = item.sellingUnits.find(
           (u) => u.id === action.payload.toUnitId,

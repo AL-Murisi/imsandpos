@@ -32,24 +32,64 @@ type PaymentAccounts = {
   cashAccounts: { id: string; name: string; accountId: string }[];
 };
 
-let paymentsCache: PaymentAccounts | null = null;
-let paymentsInFlight: Promise<PaymentAccounts> | null = null;
+const PAYMENTS_CACHE_TTL_MS = 5 * 60 * 1000;
+const paymentsCacheByCompany = new Map<
+  string,
+  { data: PaymentAccounts; ts: number }
+>();
+const paymentsInFlightByCompany = new Map<string, Promise<PaymentAccounts>>();
 
-async function getPaymentsCached(): Promise<PaymentAccounts> {
-  if (paymentsCache) return paymentsCache;
+function getPaymentsStorageKey(companyId: string) {
+  return `payments-cache:${companyId}`;
+}
 
-  if (!paymentsInFlight) {
-    paymentsInFlight = fetchPayments()
-      .then((data) => {
-        paymentsCache = data;
-        return data;
-      })
-      .finally(() => {
-        paymentsInFlight = null;
-      });
+async function getPaymentsCached(companyId: string): Promise<PaymentAccounts> {
+  const now = Date.now();
+  const memCached = paymentsCacheByCompany.get(companyId);
+  if (memCached && now - memCached.ts < PAYMENTS_CACHE_TTL_MS) {
+    return memCached.data;
   }
 
-  return paymentsInFlight;
+  if (typeof window !== "undefined") {
+    try {
+      const raw = window.sessionStorage.getItem(getPaymentsStorageKey(companyId));
+      if (raw) {
+        const parsed = JSON.parse(raw) as { ts: number; data: PaymentAccounts };
+        if (parsed?.data && now - parsed.ts < PAYMENTS_CACHE_TTL_MS) {
+          paymentsCacheByCompany.set(companyId, parsed);
+          return parsed.data;
+        }
+      }
+    } catch {
+      // Ignore storage parse/access issues and continue fetching.
+    }
+  }
+
+  const inFlight = paymentsInFlightByCompany.get(companyId);
+  if (inFlight) return inFlight;
+
+  const request = fetchPayments()
+    .then((data) => {
+      const next = { data, ts: Date.now() };
+      paymentsCacheByCompany.set(companyId, next);
+      if (typeof window !== "undefined") {
+        try {
+          window.sessionStorage.setItem(
+            getPaymentsStorageKey(companyId),
+            JSON.stringify(next),
+          );
+        } catch {
+          // Ignore storage quota/access issues.
+        }
+      }
+      return data;
+    })
+    .finally(() => {
+      paymentsInFlightByCompany.delete(companyId);
+    });
+
+  paymentsInFlightByCompany.set(companyId, request);
+  return request;
 }
 
 export function ReusablePayment({
@@ -75,7 +115,8 @@ export function ReusablePayment({
 
   /* ───────── 1. Fetch Accounts based on Method ───────── */
   useEffect(() => {
-    if (!value.paymentMethod) {
+    const companyId = company?.id;
+    if (!companyId || !value.paymentMethod) {
       setFetchedAccounts([]);
       return;
     }
@@ -83,7 +124,7 @@ export function ReusablePayment({
     async function loadAccounts() {
       setLoadingAccounts(true);
       try {
-        const { banks, cashAccounts } = await getPaymentsCached();
+        const { banks, cashAccounts } = await getPaymentsCached(companyId);
         // Map the result to a unified list
         const list = value.paymentMethod === "bank" ? banks : cashAccounts;
         setFetchedAccounts(list);
@@ -95,7 +136,7 @@ export function ReusablePayment({
     }
 
     loadAccounts();
-  }, [value.paymentMethod]);
+  }, [value.paymentMethod, company?.id]);
 
   /* ───────── 2. Fetch Exchange Rate ───────── */
   useEffect(() => {

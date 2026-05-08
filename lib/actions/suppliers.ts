@@ -79,7 +79,6 @@ export async function updateSupplier(
         state: string;
         country: string;
         postalCode: string;
-        preferred_currency: any;
         taxId?: string;
         paymentTerms?: string;
         isActive?: boolean;
@@ -119,8 +118,6 @@ export async function updateSupplier(
         address: data.address,
         city: data.city,
         state: data.state,
-        preferred_currency: data.preferred_currency,
-        country: data.country,
 
         paymentTerms: data.paymentTerms,
       },
@@ -161,10 +158,6 @@ export const fetchSuppliers = cache(async (companyId: string) => {
       isActive: true,
       createdAt: true,
       updatedAt: true,
-      preferred_currency: true,
-      totalPaid: true,
-      totalPurchased: true,
-      outstandingBalance: true,
     },
   });
   const serialized = serializeData(supplier);
@@ -633,20 +626,6 @@ export async function updateSupplierPayment(
         }
 
         // --- 3. UPDATE SUPPLIER TOTALS ---
-        await tx.supplier.update({
-          where: { id: currentPayment?.supplierId ?? "", companyId },
-          data: {
-            totalPaid: {
-              set: Math.max(
-                0,
-                Number(currentPayment.supplier?.totalPaid) + amountDifference,
-              ),
-            },
-            outstandingBalance: {
-              increment: -amountDifference, // paying reduces balance
-            },
-          },
-        });
       }
 
       // 4. Update payment
@@ -908,9 +887,6 @@ export async function createSupplierPaymentFromPurchases(
         };
 
         // Reduce supplier outstanding ONLY if purchase had outstanding
-        if (currentAmountDue > 0) {
-          supplierUpdateData.outstandingBalance = { decrement: amount };
-        }
 
         await tx.supplier.update({
           where: { id: supplierId, companyId },
@@ -1146,7 +1122,6 @@ export async function FetchSupplierbyname(searchQuery?: string) {
       id: true,
       name: true,
       phoneNumber: true,
-      outstandingBalance: true,
       address: true,
       city: true,
     },

@@ -207,39 +207,41 @@ const productsSlice = createSlice({
     setProductsLocal: (state, action: PayloadAction<forsale[]>) => {
       state.products = action.payload;
     }, // productsSlice.ts
-    updateProductStockOptimistic(
-      state,
-      action: PayloadAction<{
-        productId: string;
-        warehouseId?: string;
-        sellingUnit: string; // تأكد أنك تمرر الـ ID الخاص بالوحدة هنا
-        quantity: number;
-        mode: "consume" | "restore";
-      }>,
-    ) {
-      const { productId, warehouseId } = action.payload;
+    // In productsSlice — replace updateProductStockOptimistic with this:
+    updateProductStockOptimistic(state, action) {
+      const { productId, warehouseId, sellingUnit, quantity, mode } =
+        action.payload;
       const p = state.products.find(
         (x) =>
           x.id === productId &&
           (warehouseId ? x.warehouseId === warehouseId : true),
       );
-      if (!p || !p.availableStock) return;
+      if (!p?.availableStock) return;
 
-      const { sellingUnit, quantity, mode } = action.payload;
-
-      // 🟢 تحديد العملية: خصم (-1) أو استعادة (+1)
       const sign = mode === "consume" ? -1 : 1;
 
-      // التحقق من وجود الوحدة في سجل المخزون
-      if (p.availableStock.hasOwnProperty(sellingUnit)) {
-        // تحديث القيمة مباشرة
-        p.availableStock[sellingUnit] += sign * quantity;
-      } else {
-        // إذا لم تكن الوحدة موجودة (حالة نادرة)، قم بإنشائها بالكمية المستعادة
-        if (mode === "restore") {
-          p.availableStock[sellingUnit] = quantity;
+      // Find the unit to get its unitsPerParent (conversion factor to base)
+      const unit = p.sellingUnits.find((u) => u.id === sellingUnit);
+      if (!unit) return;
+
+      // Convert qty to base units
+      const baseQtyChange = quantity * (unit.unitsPerParent || 1);
+
+      // Recalculate ALL units from the new base qty
+      const baseUnit = p.sellingUnits.find((u) => u.isBase);
+      if (!baseUnit) return;
+
+      const currentBase = p.availableStock[baseUnit.id] ?? 0;
+      const newBase = Math.max(0, currentBase + sign * baseQtyChange);
+
+      // Update every unit's stock from the new base
+      p.sellingUnits.forEach((u) => {
+        if (u.isBase) {
+          p.availableStock[u.id] = newBase;
+        } else if (u.unitsPerParent > 0) {
+          p.availableStock[u.id] = Math.floor(newBase / u.unitsPerParent);
         }
-      }
+      });
     },
   },
 });
