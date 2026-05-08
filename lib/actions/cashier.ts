@@ -488,7 +488,7 @@ export async function processReturn(data: any, companyId: string) {
           .join(",");
 
         await tx.$executeRawUnsafe(`
-          UPDATE inventory_batch
+          UPDATE inventory_batches
           SET remaining_quantity = CASE 
             ${batchCases}
             ELSE remaining_quantity

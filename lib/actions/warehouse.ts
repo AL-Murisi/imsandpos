@@ -2633,15 +2633,9 @@ export async function getInventoryById(
 
     const lowStockItems: string[] = [];
     const lowStockItemIds: string[] = [];
-    const outOfStockItems: string[] = [];
-    const outOfStockItemIds: string[] = [];
 
     filteredInventory.forEach((item) => {
       const availableQuantity = item.stockQuantity - item.reservedQuantity;
-      if (availableQuantity <= 0) {
-        outOfStockItems.push(item.product.name);
-        outOfStockItemIds.push(item.product.id);
-      }
       if (availableQuantity <= (item.reorderLevel || 0)) {
         lowStockItems.push(item.product.name);
         lowStockItemIds.push(item.product.id);
@@ -2672,44 +2666,13 @@ export async function getInventoryById(
           },
         )
           .then(async (result) => {
-            await markNotificationDigestSent(
-              companyId,
-              "low-stock-summary",
-              idKey,
-            );
-          })
-          .catch((err) => console.error("Notification Error:", err));
-      }
-    }
-
-    if (outOfStockItems.length > 0) {
-      const dayKey = new Date().toISOString().split("T")[0];
-      const idKey = Array.from(new Set(outOfStockItemIds)).sort().join("-");
-      const shouldSend = await shouldSendNotificationDigest(
-        companyId,
-        "out-of-stock-summary",
-        idKey,
-      );
-
-      if (shouldSend) {
-        void sendRoleBasedNotification(
-          {
-            companyId,
-            targetRoles: ["admin", "cashier", "manager_wh"],
-          },
-          {
-            title: "🚫 نفاد المخزون",
-            body: `يوجد ${outOfStockItems.length} منتجات نفدت من المخزون: ${outOfStockItems.slice(0, 3).join("، ")}${outOfStockItems.length > 3 ? "..." : ""}`,
-            url: "/inventory?stockStatus=out_of_stock",
-            tag: `out-of-stock-summary-${companyId}-${dayKey}-${idKey}`,
-          },
-        )
-          .then(async () => {
-            await markNotificationDigestSent(
-              companyId,
-              "out-of-stock-summary",
-              idKey,
-            );
+            if (result.successful > 0) {
+              await markNotificationDigestSent(
+                companyId,
+                "low-stock-summary",
+                idKey,
+              );
+            }
           })
           .catch((err) => console.error("Notification Error:", err));
       }
