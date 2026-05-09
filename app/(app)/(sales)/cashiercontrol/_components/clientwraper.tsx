@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/context/AuthContext";
 import {
+  deleteOfflineCache,
   getOfflineCache,
   offlineCacheKeys,
   setOfflineCache,
@@ -149,10 +150,26 @@ export default function Clientwraper({
     formData: CustomDialogProps["formData"];
     nextnumber: string;
   } | null>(null);
+  const [isOnline, setIsOnline] = useState(true);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const syncOnlineState = () => setIsOnline(navigator.onLine);
+    syncOnlineState();
+
+    window.addEventListener("online", syncOnlineState);
+    window.addEventListener("offline", syncOnlineState);
+
+    return () => {
+      window.removeEventListener("online", syncOnlineState);
+      window.removeEventListener("offline", syncOnlineState);
+    };
+  }, []);
 
   useEffect(() => {
     const loadOffline = async () => {
-      if (!user?.companyId) return;
+      if (!user?.companyId || isOnline) return;
       const cached = await getOfflineCache<typeof offlineBootstrap>(
         offlineCacheKeys.cashierBootstrap(user.companyId),
       );
@@ -162,7 +179,7 @@ export default function Clientwraper({
     };
 
     void loadOffline();
-  }, [user?.companyId]);
+  }, [user?.companyId, isOnline]);
 
   useEffect(() => {
     const saveOffline = async () => {
@@ -180,21 +197,41 @@ export default function Clientwraper({
     void saveOffline();
   }, [user?.companyId, users, product, formData, nextnumber]);
 
+  useEffect(() => {
+    const clearStaleBootstrap = async () => {
+      if (!user?.companyId || !isOnline) return;
+      if (product.length > 0) return;
+
+      await deleteOfflineCache(offlineCacheKeys.cashierBootstrap(user.companyId));
+    };
+
+    void clearStaleBootstrap();
+  }, [user?.companyId, isOnline, product.length]);
+
   const hydratedData = useMemo(() => {
     return {
       users:
-        users && users.length > 0 ? users : (offlineBootstrap?.users ?? []),
+        users && users.length > 0
+          ? users
+          : !isOnline
+            ? offlineBootstrap?.users ?? []
+            : [],
       product:
         product && product.length > 0
           ? product
-          : (offlineBootstrap?.product ?? []),
+          : !isOnline
+            ? offlineBootstrap?.product ?? []
+            : [],
       formData:
         formData.categories.length || formData.warehouses.length
           ? formData
-          : (offlineBootstrap?.formData ?? { categories: [], warehouses: [] }),
-      nextnumber: nextnumber || offlineBootstrap?.nextnumber || "",
+          : !isOnline
+            ? offlineBootstrap?.formData ?? { categories: [], warehouses: [] }
+            : { categories: [], warehouses: [] },
+      nextnumber:
+        nextnumber || (!isOnline ? offlineBootstrap?.nextnumber : "") || "",
     };
-  }, [users, product, formData, nextnumber, offlineBootstrap]);
+  }, [users, product, formData, nextnumber, offlineBootstrap, isOnline]);
 
   return (
     <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">

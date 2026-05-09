@@ -146,6 +146,103 @@ interface ExtendedInventoryUpdateData {
   amountFC?: number;
 }
 
+// export async function fetchAllFormDatas(companyId: string) {
+//   try {
+//     const [warehouses, suppliers, inventories] = await Promise.all([
+//       prisma.warehouse.findMany({
+//         where: { companyId, isActive: true },
+//         select: { id: true, name: true, location: true },
+//         orderBy: { name: "asc" },
+//       }),
+
+//       // Suppliers
+//       prisma.supplier.findMany({
+//         where: { companyId, isActive: true },
+//         select: { id: true, name: true },
+//         orderBy: { name: "asc" },
+//       }),
+
+//       // Inventories
+//       prisma.inventory.findMany({
+//         where: { companyId },
+//         select: {
+//           id: true,
+//           productId: true,
+//           warehouseId: true,
+//           stockQuantity: true,
+
+//           reservedQuantity: true,
+//           reorderLevel: true,
+//           status: true,
+//           batches: {
+//             select: { supplierId: true, costPrice: true },
+//           },
+//           product: {
+//             select: {
+//               id: true,
+//               name: true,
+//               sku: true,
+//               sellingUnits: true,
+//             },
+//           },
+//           warehouse: {
+//             select: { name: true, location: true },
+//           },
+//         },
+//       }),
+//     ]);
+
+//     // 1. Extract one option per product for the selection list.
+//     // Multiple inventory rows can exist for the same product across warehouses,
+//     // but the selector should stay stable and unique by productId.
+//     const productMap = new Map<
+//       string,
+//       {
+//         id: string;
+//         sku: string;
+//         name: string;
+//         sellingUnits: Prisma.JsonValue;
+//         warehouseId?: string;
+//       }
+//     >();
+
+//     for (const item of inventories) {
+//       if (productMap.has(item.productId)) continue;
+
+//       const sellingUnits = Array.isArray(item.product.sellingUnits)
+//         ? item.product.sellingUnits
+//         : [];
+
+//       productMap.set(item.productId, {
+//         id: item.productId,
+//         sku: item.product.sku,
+//         name: `${item.product.name} (${item.warehouse.name})`,
+//         sellingUnits,
+//         warehouseId: item.warehouseId,
+//       });
+//     }
+
+//     const productList = Array.from(productMap.values());
+//     const inventory = inventories.map((inv) => ({
+//       ...inv,
+//       availableQuantity: inv.stockQuantity - inv.reservedQuantity,
+//     }));
+//     return {
+//       products: serializeData(productList), // Flat list for dropdowns
+//       warehouses,
+//       suppliers,
+//       inventories: serializeData(inventory), // Full inventory details
+//     };
+//   } catch (error) {
+//     console.error("Error fetching form data:", error);
+//     return {
+//       products: [],
+//       warehouses: [],
+//       suppliers: [],
+//       inventories: [],
+//     };
+//   }
+// }
 export async function fetchAllFormDatas(companyId: string) {
   try {
     const [warehouses, suppliers, inventories] = await Promise.all([
@@ -155,14 +252,12 @@ export async function fetchAllFormDatas(companyId: string) {
         orderBy: { name: "asc" },
       }),
 
-      // Suppliers
       prisma.supplier.findMany({
         where: { companyId, isActive: true },
         select: { id: true, name: true },
         orderBy: { name: "asc" },
       }),
 
-      // Inventories
       prisma.inventory.findMany({
         where: { companyId },
         select: {
@@ -170,7 +265,6 @@ export async function fetchAllFormDatas(companyId: string) {
           productId: true,
           warehouseId: true,
           stockQuantity: true,
-
           reservedQuantity: true,
           reorderLevel: true,
           status: true,
@@ -189,38 +283,70 @@ export async function fetchAllFormDatas(companyId: string) {
             select: { name: true, location: true },
           },
         },
-        orderBy: { updatedAt: "desc" },
+        orderBy: { updatedAt: "desc" }, // Optional: order inventories by product name for consistency
       }),
     ]);
+    const productMap = new Map<
+      string,
+      {
+        id: string;
+        sku: string;
+        name: string;
+        sellingUnits: any[]; // Changed from Prisma.JsonValue
+        warehouseId?: string;
+      }
+    >();
 
-    // 1. Extract unique products from the inventory records for your selection list
-    // We use a Map to ensure that if a product is in multiple warehouses, it only appears once
-    const productList = inventories.map((item) => ({
-      id: item.productId,
-      sku: item.product.sku,
-      // We combine the name so the user sees which warehouse they are picking
-      name: `${item.product.name} (${item.warehouse.name})`,
-      sellingUnits: item.product.sellingUnits,
-      // Pass these along so the frontend can auto-select the warehouse
-    }));
+    for (const item of inventories) {
+      const key = `${item.productId}-${item.warehouseId}`; // Per warehouse as requested earlier
+
+      if (productMap.has(key)) continue;
+
+      // 🔥 FIX: Force parse sellingUnits properly
+      let sellingUnits: any[] = [];
+      const raw = item.product.sellingUnits;
+
+      if (Array.isArray(raw)) {
+        sellingUnits = raw;
+      } else if (typeof raw === "string") {
+        // If Prisma returns it as a JSON string
+        try {
+          const parsed = JSON.parse(raw);
+          sellingUnits = Array.isArray(parsed) ? parsed : [];
+        } catch {
+          sellingUnits = [];
+        }
+      } else if (raw && typeof raw === "object") {
+        // Handle edge cases where it might be an object wrapper
+        sellingUnits = Array.isArray((raw as any).sellingUnits)
+          ? (raw as any).sellingUnits
+          : [];
+      }
+
+      productMap.set(key, {
+        id: item.productId,
+        sku: item.product.sku,
+        name: `${item.product.name} (${item.warehouse.name})`,
+        sellingUnits,
+        warehouseId: item.warehouseId,
+      });
+    }
+
+    const productList = Array.from(productMap.values());
     const inventory = inventories.map((inv) => ({
       ...inv,
       availableQuantity: inv.stockQuantity - inv.reservedQuantity,
     }));
+
     return {
-      products: serializeData(productList), // Flat list for dropdowns
+      products: serializeData(productList),
       warehouses,
       suppliers,
-      inventories: serializeData(inventory), // Full inventory details
+      inventories: serializeData(inventory),
     };
   } catch (error) {
     console.error("Error fetching form data:", error);
-    return {
-      products: [],
-      warehouses: [],
-      suppliers: [],
-      inventories: [],
-    };
+    return { products: [], warehouses: [], suppliers: [], inventories: [] };
   }
 }
 function availableQty(inv: {

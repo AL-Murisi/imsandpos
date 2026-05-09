@@ -49,6 +49,10 @@ export async function getOfflineCache<T>(key: string): Promise<T | null> {
   return (row?.payload as T | undefined) ?? null;
 }
 
+export async function deleteOfflineCache(key: string) {
+  await offlineDb.cache.delete(key);
+}
+
 export async function enqueueOfflineOperation(
   op: Omit<OfflineQueueOperation, "id" | "status" | "createdAt">,
 ) {

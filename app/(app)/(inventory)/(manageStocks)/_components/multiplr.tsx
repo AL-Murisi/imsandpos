@@ -25,15 +25,7 @@ import {
 } from "@/components/common/ReusablePayment";
 import { useCompany } from "@/hooks/useCompany";
 import { PriceMismatchAlert } from "./updatepirce";
-
-interface SellingUnit {
-  id: string;
-  name: string;
-  nameEn?: string;
-  unitsPerParent: number;
-  price: number;
-  isBase: boolean;
-}
+import { SellingUnit } from "@/lib/zod/product";
 
 interface InventoryUpdateItem {
   id: string;
@@ -63,7 +55,7 @@ interface MultiInventoryUpdateFormProps {
       sku: string;
       name: string;
 
-      sellingUnits: SellingUnit[];
+      sellingUnits: any[];
     }[];
     warehouses: {
       id: string;
@@ -136,55 +128,58 @@ export default function MultiInventoryUpdateForm({
   const [inventoryUpdates, setInventoryUpdates] = useState<
     InventoryUpdateItem[]
   >([initialRow()]);
-  const loadProductData = (updateId: string, productId: string) => {
-    // 1. Find the product details from the main products list OR inventories
-    const productInfo = multipleInventory.products.find(
-      (p) => p.id === productId,
-    );
+  // const loadProductData = (updateId: string, productId: string) => {
+  //   // 1. Find the product details from the main products list OR inventories
+  //   const productInfo = multipleInventory.products.find(
+  //     (p) => p.id === productId,
+  //   );
+  //   toast.info(JSON.stringify(productInfo));
+  //   // 2. Find all current stock records for this product to get the latest price/supplier
+  //   const existingInventories = multipleInventory.inventories.filter(
+  //     (inv) => inv.productId === productId,
+  //   );
 
-    // 2. Find all current stock records for this product to get the latest price/supplier
-    const existingInventories = multipleInventory.inventories.filter(
-      (inv) => inv.productId === productId,
-    );
+  //   if (!productInfo) return;
+  //   const sellingUnits: SellingUnit[] = Array.isArray(productInfo.sellingUnits)
+  //     ? productInfo.sellingUnits
+  //     : [];
+  //   // const sellingUnits = (productInfo.sellingUnits as SellingUnit[]) || [];
+  //   const baseUnit = sellingUnits.find((u) => u.isBase) || sellingUnits[0];
 
-    if (!productInfo) return;
+  //   // 3. Get Price and Supplier from the most recent inventory batch available
+  //   let latestCost = 0;
+  //   let latestSupplierId = "";
 
-    const sellingUnits = (productInfo.sellingUnits as SellingUnit[]) || [];
-    const baseUnit = sellingUnits.find((u) => u.isBase) || sellingUnits[0];
+  //   if (existingInventories.length > 0) {
+  //     // Sort by most recent if possible, or just take the first one found
+  //     const latestInv = existingInventories[0];
+  //     if (latestInv.batches && latestInv.batches.length > 0) {
+  //       latestCost = Number(latestInv.batches[0].costPrice) || 0;
+  //       latestSupplierId = latestInv.batches[0].supplierId || "";
+  //     }
+  //   }
 
-    // 3. Get Price and Supplier from the most recent inventory batch available
-    let latestCost = 0;
-    let latestSupplierId = "";
-
-    if (existingInventories.length > 0) {
-      // Sort by most recent if possible, or just take the first one found
-      const latestInv = existingInventories[0];
-      if (latestInv.batches && latestInv.batches.length > 0) {
-        latestCost = Number(latestInv.batches[0].costPrice) || 0;
-        latestSupplierId = latestInv.batches[0].supplierId || "";
-      }
-    }
-
-    setInventoryUpdates((prev) =>
-      prev.map((inv) =>
-        inv.id === updateId
-          ? {
-              ...inv,
-              productId: productId,
-              // We don't force a warehouse yet, or we pick the first existing one
-              warehouseId: existingInventories[0]?.warehouseId || "",
-              supplierId: latestSupplierId,
-              sellingUnits: sellingUnits,
-              selectedUnitId: baseUnit?.id || "",
-              baseUnitCost: latestCost,
-              unitCost: latestCost,
-              // If it's a new warehouse, stock will be 0 later in updateInventory
-              currentStock: existingInventories[0]?.stockQuantity || 0,
-            }
-          : inv,
-      ),
-    );
-  };
+  //   setInventoryUpdates((prev) =>
+  //     prev.map((inv) =>
+  //       inv.id === updateId
+  //         ? {
+  //             ...inv,
+  //             productId: productId,
+  //             // We don't force a warehouse yet, or we pick the first existing one
+  //             warehouseId: existingInventories[0]?.warehouseId || "",
+  //             supplierId: latestSupplierId,
+  //             sellingUnits: sellingUnits,
+  //             selectedUnitId: baseUnit?.id || "",
+  //             baseUnitCost: latestCost,
+  //             unitCost: latestCost,
+  //             // If it's a new warehouse, stock will be 0 later in updateInventory
+  //             currentStock: existingInventories[0]?.stockQuantity || 0,
+  //           }
+  //         : inv,
+  //     ),
+  //   );
+  //   toast.info(JSON.stringify(inventoryUpdates));
+  // };
 
   const updateInventory = (
     id: string,
@@ -193,51 +188,93 @@ export default function MultiInventoryUpdateForm({
   ) => {
     setInventoryUpdates((prevUpdates) =>
       prevUpdates.map((inv) => {
-        if (inv.id === id) {
-          let updated = { ...inv, [field]: value };
+        if (inv.id !== id) return inv;
 
-          // 🆕 منطق تغيير الوحدة وحساب السعر تلقائياً
-          if (field === "selectedUnitId") {
-            const unit = inv.sellingUnits.find((u) => u.id === value);
-            if (unit) {
-              // إذا كانت الوحدة المختارة هي الأساسية نأخذ الـ baseUnitCost
-              // وإذا كانت أكبر نضرب السعر الأساسي في معامل التحويل
-              const newCost = unit.isBase
-                ? inv.baseUnitCost
-                : inv.baseUnitCost * unit.unitsPerParent;
-              updated.unitCost = newCost;
-            }
+        let updated = { ...inv, [field]: value };
+
+        // 🆕 منطق تغيير الوحدة وحساب السعر تلقائياً
+        if (field === "selectedUnitId") {
+          const unit = inv.sellingUnits.find((u) => u.id === value);
+          if (unit) {
+            const newCost = unit.isBase
+              ? inv.baseUnitCost
+              : inv.baseUnitCost * unit.unitsPerParent;
+            updated.unitCost = newCost;
           }
-
-          if (field === "productId") {
-            // Reset dependent fields immediately to prevent UI flicker with old data
-            updated.warehouseId = "";
-            updated.supplierId = "";
-            updated.unitCost = 0;
-            updated.currentStock = undefined;
-
-            // Trigger the data load
-            loadProductData(id, value);
-          }
-
-          if (field === "warehouseId" && inv.productId) {
-            const existing = multipleInventory.inventories.find(
-              (i) => i.productId === inv.productId && i.warehouseId === value,
-            );
-            if (existing) {
-              updated.inventoryId = existing.id;
-              updated.currentStock = existing.stockQuantity;
-              updated.reservedQuantity =
-                existing.reservedQuantity?.toString() || "0";
-            }
-          }
-
-          return updated;
         }
-        return inv;
+
+        // 🔥 FIXED: All product loading logic is now SYNCHRONOUS inside the updater
+        if (field === "productId") {
+          // 1. Find product details
+          const productInfo = multipleInventory.products.find(
+            (p) => p.id === value,
+          );
+
+          // 2. Find existing inventories for this product
+          const existingInventories = multipleInventory.inventories.filter(
+            (inv) => inv.productId === value,
+          );
+
+          // 3. Parse sellingUnits safely
+          let sellingUnits: SellingUnit[] = [];
+          if (productInfo?.sellingUnits) {
+            if (Array.isArray(productInfo.sellingUnits)) {
+              sellingUnits = productInfo.sellingUnits;
+            } else if (typeof productInfo.sellingUnits === "string") {
+              try {
+                const parsed = JSON.parse(productInfo.sellingUnits);
+                sellingUnits = Array.isArray(parsed) ? parsed : [];
+              } catch {
+                sellingUnits = [];
+              }
+            }
+          }
+
+          const baseUnit =
+            sellingUnits.find((u) => u.isBase) || sellingUnits[0];
+
+          // 4. Get price/supplier from latest inventory batch
+          let latestCost = 0;
+          let latestSupplierId = "";
+          if (existingInventories.length > 0) {
+            const latestInv = existingInventories[0];
+            if (latestInv.batches && latestInv.batches.length > 0) {
+              latestCost = Number(latestInv.batches[0].costPrice) || 0;
+              latestSupplierId = latestInv.batches[0].supplierId || "";
+            }
+          }
+
+          // 5. Apply ALL changes in single update
+          updated = {
+            ...updated,
+            productId: value,
+            warehouseId: existingInventories[0]?.warehouseId || "",
+            supplierId: latestSupplierId,
+            sellingUnits,
+            selectedUnitId: baseUnit?.id || "",
+            baseUnitCost: latestCost,
+            unitCost: latestCost,
+            currentStock: existingInventories[0]?.stockQuantity || 0,
+          };
+        }
+
+        if (field === "warehouseId" && updated.productId) {
+          const existing = multipleInventory.inventories.find(
+            (i) => i.productId === updated.productId && i.warehouseId === value,
+          );
+          if (existing) {
+            updated.inventoryId = existing.id;
+            updated.currentStock = existing.stockQuantity;
+            updated.reservedQuantity =
+              existing.reservedQuantity?.toString() || "0";
+          }
+        }
+
+        return updated;
       }),
     );
   };
+
   const fiscalyear = company?.fiscal_periods || false; // يمكنك تعديل هذا حسب السنة المالية لشركتك
   const totalItems = inventoryUpdates.reduce(
     (sum, inv) => sum + (parseFloat(inv.quantity) || 0),

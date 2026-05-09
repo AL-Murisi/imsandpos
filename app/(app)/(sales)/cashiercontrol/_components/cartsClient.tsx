@@ -160,6 +160,22 @@ export default function CartDisplay({
     currency: string;
     baseCurrency: string;
   } | null>(null);
+  const [isOnline, setIsOnline] = useState(true);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const syncOnlineState = () => setIsOnline(navigator.onLine);
+    syncOnlineState();
+
+    window.addEventListener("online", syncOnlineState);
+    window.addEventListener("offline", syncOnlineState);
+
+    return () => {
+      window.removeEventListener("online", syncOnlineState);
+      window.removeEventListener("offline", syncOnlineState);
+    };
+  }, []);
 
   const effectiveCompanyId = user?.companyId ?? offlineSession?.companyId ?? "";
   const effectiveCashierId = user?.userId ?? offlineSession?.cashierId ?? "";
@@ -193,7 +209,8 @@ export default function CartDisplay({
 
   useEffect(() => {
     const hydrateOfflineState = async () => {
-      if (!effectiveCompanyId || hasHydratedOfflineState.current) return;
+      if (!effectiveCompanyId || hasHydratedOfflineState.current || isOnline)
+        return;
       const cached = await getOfflineCache<{
         cartState?: {
           carts: any[];
@@ -214,7 +231,7 @@ export default function CartDisplay({
     };
 
     void hydrateOfflineState();
-  }, [dispatch, effectiveCompanyId]);
+  }, [dispatch, effectiveCompanyId, isOnline]);
 
   useEffect(() => {
     const persistOfflineState = async () => {

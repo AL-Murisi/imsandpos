@@ -9,108 +9,100 @@ datasource db {
 }
 
 model Company {
-  id                                                 String               @id @default(cuid())
-  name                                               String
-  email                                              String?              @unique(map: "unique_company_email")
-  phone                                              String?
-  address                                            String?
-  city                                               String?
-  state                                              String?
-  base_currency  String @default("YER") @db.VarChar(3) // Main currency
-  maxBranches   Int @default(1)
-  maxCashiers   Int @default(1)
-  plan          String @default("STARTER") // STARTER, PRO, ENTERPRISE
-
-  country                                            String?
-  taxNumber                                          String?              @map("tax_number")
-  logoUrl                                            String?              @map("logo_url")
-  footerMsg                                          String?              @map("footer_msg")
-  isActive                                           Boolean              @default(true) @map("is_active")
-  createdAt                                          DateTime             @default(now()) @map("created_at")
-  updatedAt                                          DateTime             @updatedAt @map("updated_at")
-  activityLogs                                       ActivityLogs[]
-  accounts                                           accounts[]
-  brands                                             Brand[]
-  categories                                         Category[]
-  customers                                          Customer[]
-  pushSubscription                                   pushSubscription[]
-  pushDeviceTokens                                   pushDeviceToken[]
-
-  expenses                                           expenses[]
-  inventory                                          Inventory[]
-
-  branches                                            points_of_sale[]    
-  products                                           Product[]
-
-  stockMovements                                     StockMovement[]
-  suppliers                                          Supplier[]
-  users                                              User[]
-  warehouses                                         Warehouse[]
-  account_mappings                                  account_mappings[]
-  fiscal_periods                                   fiscal_periods[]
-  Employee                                        Employee[]
-  Bank                                            Bank[]
-  FinancialTransaction                       FinancialTransaction[]   
-  Invoice                                         Invoice[]
-  InvoiceItem                                     InvoiceItem[]
-  exchange_rates exchange_rates[]
-  companyCurrencies CompanyCurrency[]
-  subscriptions Subscription[]
-  journalHeaders JournalHeader[]
-  journalLines JournalLine[]
-  userInvites UserInvite[]
- inventoryAllocations InventoryAllocation[] 
+  id                   String                 @id @default(cuid())
+  name                 String
+  email                String?                @unique(map: "unique_company_email")
+  phone                String?
+  address              String?
+  city                 String?
+  state                String?
+  country              String?
+  taxNumber            String?                @map("tax_number")
+  logoUrl              String?                @map("logo_url")
+  footerMsg            String?                @map("footer_msg")
+  isActive             Boolean                @default(true) @map("is_active")
+  createdAt            DateTime               @default(now()) @map("created_at")
+  updatedAt            DateTime               @updatedAt @map("updated_at")
+  base_currency        String                 @default("YER") @db.VarChar(3)
+  maxBranches          Int                    @default(1)
+  maxCashiers          Int                    @default(1)
+  plan                 String                 @default("STARTER")
+  activityLogs         ActivityLogs[]
+  account_mappings     account_mappings[]
+  accounts             accounts[]
+  Bank                 Bank[]
+  brands               Brand[]
+  categories           Category[]
+  companyCurrencies    CompanyCurrency[]
+  customers            Customer[]
+  Employee             Employee[]
+  exchange_rates       exchange_rates[]
+  expenses             expenses[]
+  FinancialTransaction FinancialTransaction[]
+  fiscal_periods       fiscal_periods[]
+  inventory            Inventory[]
+  inventoryAllocations InventoryAllocation[]
+  InvoiceItem          InvoiceItem[]
+  Invoice              Invoice[]
+  journalHeaders       JournalHeader[]
+  journalLines         JournalLine[]
+  branches             points_of_sale[]
+  products             Product[]
+  pushDeviceTokens     pushDeviceToken[]
+  pushSubscription     pushSubscription[]
+  stockMovements       StockMovement[]
+  subscriptions        Subscription[]
+  suppliers            Supplier[]
+  userInvites          UserInvite[]
+  users                User[]
+  warehouses           Warehouse[]
 
   @@map("companies")
 }
 
 model User {
-  id                                                 String            @id @default(cuid())
-  companyId                                          String            @map("company_id")
-  email                                              String            @unique
-  name                                               String
-  phoneNumber                                        String?           @map("phone_number")
-  password                                           String?
-  supabaseId                                         String?           @unique @map("supabase_id")
-  isActive                                           Boolean           @default(true) @map("is_active")
-  createdAt                                          DateTime          @default(now()) @map("created_at")
-  updatedAt                                          DateTime          @updatedAt @map("updated_at")
-  role                                                Roles @default(cashier)
-  branchId  String? @map("branch_id")
+  id                    String                 @id @default(cuid())
+  companyId             String                 @map("company_id")
+  email                 String                 @unique
+  name                  String
+  phoneNumber           String?                @map("phone_number")
+  password              String?
+  supabaseId            String?                @unique @map("supabase_id")
+  isActive              Boolean                @default(true) @map("is_active")
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+  branchId              String?                @map("branch_id")
+  role                  Roles                  @default(cashier)
+  activityLogs          ActivityLogs[]
+  customers             Customer[]
+  employees             Employee[]
+  expenses              expenses[]
+  transaction           FinancialTransaction[]
+  invoices              Invoice[]              @relation("UserSales")
+  journalHeadersCreated JournalHeader[]        @relation("JournalHeaderCreatedBy")
+  managedBranches       points_of_sale[]       @relation("BranchManager")
+  stockMovements        StockMovement[]
+  userInvites           UserInvite[]
+  branch                points_of_sale?        @relation(fields: [branchId], references: [id])
+  company               Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  branch    points_of_sale? @relation(fields: [branchId], references: [id])
-  activityLogs                                       ActivityLogs[]
-  expenses                                           expenses[]
-  managedBranches                                     points_of_sale[]  @relation("BranchManager")
-  transaction                                           FinancialTransaction[]
-  stockMovements                                     StockMovement[]
-  company                                            Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  userInvites                                        UserInvite[]
-  journalHeadersCreated                              JournalHeader[] @relation("JournalHeaderCreatedBy")
-  
-  invoices Invoice[] @relation("UserSales")
-  customers Customer[]
-  employees Employee[] // 👈 ADD THIS
   @@index([companyId])
   @@index([name])
   @@index([phoneNumber])
   @@index([isActive])
   @@index([createdAt])
-  
-
   @@map("users")
 }
 
 model exchange_rates {
   id            String   @id @default(cuid())
   company_id    String
-  from_currency String   @db.VarChar(3) // "USD"
-  to_currency   String   @db.VarChar(3) // "YER"
+  from_currency String   @db.VarChar(3)
+  to_currency   String   @db.VarChar(3)
   rate          Decimal  @db.Decimal(18, 6)
   date          DateTime @default(now())
-  
-  company Company @relation(fields: [company_id], references: [id], onDelete: Cascade)
-  
+  company       Company  @relation(fields: [company_id], references: [id], onDelete: Cascade)
+
   @@unique([company_id, from_currency, to_currency, date])
   @@index([company_id])
   @@index([date])
@@ -134,50 +126,45 @@ model ActivityLogs {
   @@index([createdAt])
 }
 
-
-
 model Subscription {
-  id          String   @id @default(cuid())
-  companyId   String   @map("company_id")
-  plan        String   @default("CUSTOM")
-  status      String   @default("ACTIVE") // ACTIVE, PAST_DUE, CANCELED
-  startsAt    DateTime @default(now()) @map("starts_at")
-  endsAt      DateTime? @map("ends_at")
-  isActive    Boolean  @default(true) @map("is_active")
-  maxBranches Int?
-  maxCashiers Int?
+  id            String    @id @default(cuid())
+  companyId     String    @map("company_id")
+  plan          String    @default("CUSTOM")
+  status        String    @default("ACTIVE")
+  startsAt      DateTime  @default(now()) @map("starts_at")
+  endsAt        DateTime? @map("ends_at")
+  isActive      Boolean   @default(true) @map("is_active")
+  maxBranches   Int?
+  maxCashiers   Int?
   maxWarehouses Int?
-  maxUsers    Int?
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  maxUsers      Int?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@index([companyId])
   @@map("subscriptions")
 }
 
 model Currency {
-  code      String   @id @db.VarChar(3)
-  name      String
-  decimals  Int      @default(2)
-  symbol    String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  code              String            @id @db.VarChar(3)
+  name              String
+  decimals          Int               @default(2)
+  symbol            String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
   companyCurrencies CompanyCurrency[]
 
   @@map("currencies")
 }
 
 model CompanyCurrency {
-  companyId    String @map("company_id")
-  currencyCode String @db.VarChar(3) @map("currency_code")
-  isBase       Boolean @default(false) @map("is_base")
+  companyId    String   @map("company_id")
+  currencyCode String   @map("currency_code") @db.VarChar(3)
+  isBase       Boolean  @default(false) @map("is_base")
   createdAt    DateTime @default(now()) @map("created_at")
-
-  company  Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  currency Currency @relation(fields: [currencyCode], references: [code], onDelete: Cascade)
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  currency     Currency @relation(fields: [currencyCode], references: [code], onDelete: Cascade)
 
   @@id([companyId, currencyCode])
   @@unique([companyId, isBase])
@@ -185,48 +172,46 @@ model CompanyCurrency {
 }
 
 model UserInvite {
-  id         String   @id @default(cuid())
-  companyId  String   @map("company_id")
-  userId     String   @map("user_id")
-  email      String
-  token      String   @unique
-  expiresAt  DateTime @map("expires_at")
-  usedAt     DateTime? @map("used_at")
-  createdAt  DateTime @default(now()) @map("created_at")
-
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String    @id @default(cuid())
+  companyId String    @map("company_id")
+  userId    String    @map("user_id")
+  email     String
+  token     String    @unique
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([companyId])
   @@index([userId])
   @@map("user_invites")
 }
 
-
 model Warehouse {
-  id             String          @id @default(cuid())
-  companyId      String          @map("company_id")
+  id             String                @id @default(cuid())
+  companyId      String                @map("company_id")
   name           String
   location       String
-  branchId       String?
   address        String?
   city           String?
   state          String?
   country        String?
-  postalCode     String?         @map("postal_code")
-  phoneNumber    String?         @map("phone_number")
+  postalCode     String?               @map("postal_code")
+  phoneNumber    String?               @map("phone_number")
   email          String?
-  isActive       Boolean         @default(true) @map("is_active")
-  createdAt      DateTime        @default(now()) @map("created_at")
-  updatedAt      DateTime        @updatedAt @map("updated_at")
+  isActive       Boolean               @default(true) @map("is_active")
+  createdAt      DateTime              @default(now()) @map("created_at")
+  updatedAt      DateTime              @updatedAt @map("updated_at")
+  branchId       String?
   inventory      Inventory[]
-  InvoiceItem                                     InvoiceItem[]
-
+  allocations    InventoryAllocation[]
+  InvoiceItem    InvoiceItem[]
+  invoices       Invoice[]
   stockMovements StockMovement[]
-  company        Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
- invoices Invoice[]
-allocations InventoryAllocation[]
-  branch    points_of_sale? @relation(fields: [branchId], references: [id])
+  branch         points_of_sale?       @relation(fields: [branchId], references: [id])
+  company        Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
   @@index([companyId])
   @@index([isActive])
   @@index([createdAt])
@@ -270,94 +255,83 @@ model Brand {
   @@map("brands")
 }
 
-
 model Supplier {
-  id            String   @id @default(cuid())
-  companyId     String   @map("company_id")
+  id            String                 @id @default(cuid())
+  companyId     String                 @map("company_id")
   name          String
-  contactPerson String?  @map("contact_person")
+  contactPerson String?                @map("contact_person")
   email         String?
-  phoneNumber   String?  @map("phone_number")
+  phoneNumber   String?                @map("phone_number")
   address       String?
   city          String?
   state         String?
   country       String?
-  postalCode    String?  @map("postal_code")
-  taxId         String?  @map("tax_id")
-  paymentTerms  String?  @map("payment_terms")
-  isActive      Boolean  @default(true) @map("is_active")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
-  // totalPurchased, totalPaid, outstandingBalance REMOVED — derive from invoices/transactions
-allocations InventoryAllocation[]
-  batches     InventoryBatch[]
-  company     Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  transaction FinancialTransaction[]
-  invoice     Invoice[]
+  postalCode    String?                @map("postal_code")
+  taxId         String?                @map("tax_id")
+  paymentTerms  String?                @map("payment_terms")
+  isActive      Boolean                @default(true) @map("is_active")
+  createdAt     DateTime               @default(now()) @map("created_at")
+  updatedAt     DateTime               @updatedAt @map("updated_at")
+  transaction   FinancialTransaction[]
+  allocations   InventoryAllocation[]
+  batches       InventoryBatch[]
+  invoice       Invoice[]
+  company       Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@index([companyId])
   @@map("suppliers")
 }
 
-
 model Product {
-  id               String          @id @default(cuid())
-  companyId        String          @map("company_id")
-  name             String
-  sku              String
-  barcode          String?
-  description      String?
-  
-  categoryId       String          @map("category_id")
-  brandId          String?         @map("brand_id")
-  type             String?
-  sellingUnits     Json? 
- 
+  id              String          @id @default(cuid())
+  companyId       String          @map("company_id")
+  name            String
+  sku             String
+  barcode         String?
+  description     String?
+  categoryId      String          @map("category_id")
+  brandId         String?         @map("brand_id")
+  type            String?
+  wholesalePrice  Decimal         @map("wholesale_price") @db.Decimal(10, 2)
+  minWholesaleQty Int             @map("min_wholesale_qty")
+  image           String?
+  isActive        Boolean         @default(true) @map("is_active")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  sellingUnits    Json?
+  inventory       Inventory[]
+  invoiceItems    InvoiceItem[]
+  brand           Brand?          @relation(fields: [brandId], references: [id])
+  category        Category        @relation(fields: [categoryId], references: [id])
+  company         Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  stockMovements  StockMovement[]
 
-  wholesalePrice   Decimal         @map("wholesale_price") @db.Decimal(10, 2)
-  minWholesaleQty  Int             @map("min_wholesale_qty")
- 
-  image            String?
-  isActive         Boolean         @default(true) @map("is_active")
-  createdAt        DateTime        @default(now()) @map("created_at")
-  updatedAt        DateTime        @updatedAt @map("updated_at")
-  inventory        Inventory[]
-  brand            Brand?          @relation(fields: [brandId], references: [id])
-  category         Category        @relation(fields: [categoryId], references: [id])
-  company          Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
-
-
-  stockMovements   StockMovement[]
-  invoiceItems InvoiceItem[]
   @@unique([companyId, sku])
   @@unique([companyId, barcode])
   @@index([companyId])
   @@index([categoryId])
   @@index([brandId])
-
-
   @@index([createdAt], map: "idx_product_created_at")
   @@map("products")
 }
-model Inventory {
-  id               String    @id @default(cuid())
-  companyId        String    @map("company_id")
-  productId        String    @map("product_id")
-  warehouseId      String    @map("warehouse_id")
-  stockQuantity    Int       @map("stock_quantity")        // total physical stock
-  reservedQuantity Int       @default(0) @map("reserved_quantity")
-  // ❌ REMOVED: availableQuantity — always compute as stockQuantity - reservedQuantity
-  reorderLevel     Int       @default(0) @map("reorder_level")
-  maxStockLevel    Int?      @map("max_stock_level")
-  status           String    @default("available")
-  lastStockTake    DateTime? @map("last_stock_take")
-  createdAt        DateTime  @default(now()) @map("created_at")
-  updatedAt        DateTime  @updatedAt @map("updated_at")
 
-  batches   InventoryBatch[]
-  company   Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  product   Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
-  warehouse Warehouse        @relation(fields: [warehouseId], references: [id])
+model Inventory {
+  id               String           @id @default(cuid())
+  companyId        String           @map("company_id")
+  productId        String           @map("product_id")
+  warehouseId      String           @map("warehouse_id")
+  stockQuantity    Int              @map("stock_quantity")
+  reservedQuantity Int              @default(0) @map("reserved_quantity")
+  reorderLevel     Int              @default(0) @map("reorder_level")
+  maxStockLevel    Int?             @map("max_stock_level")
+  status           String           @default("available")
+  lastStockTake    DateTime?        @map("last_stock_take")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+  company          Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  product          Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  warehouse        Warehouse        @relation(fields: [warehouseId], references: [id])
+  batches          InventoryBatch[]
 
   @@unique([companyId, productId, warehouseId])
   @@index([companyId])
@@ -367,55 +341,46 @@ model Inventory {
 }
 
 model InventoryBatch {
-  id                String     @id @default(cuid())
-  inventoryId       String     @map("inventory_id")       // → product+warehouse combo
-  supplierId        String?    @map("supplier_id")        // which supplier this batch came from
-  purchaseItemId    String?    @map("purchase_item_id")   // the InvoiceItem (PURCHASE) that created this
-  quantity          Int                                   // original quantity received
-  remainingQuantity Int        @map("remaining_quantity") // decrements on each sale
-  costPrice         Decimal    @map("cost_price") @db.Decimal(10, 2)
-  expiredAt         DateTime?  @map("expired_at")
-  receivedAt        DateTime   @default(now()) @map("received_at")
+  id                String                @id @default(cuid())
+  inventoryId       String                @map("inventory_id")
+  supplierId        String?               @map("supplier_id")
+  purchaseItemId    String?               @map("purchase_item_id")
+  quantity          Int
+  remainingQuantity Int                   @map("remaining_quantity")
+  costPrice         Decimal               @map("cost_price") @db.Decimal(10, 2)
+  expiredAt         DateTime?             @map("expired_at")
+  receivedAt        DateTime              @default(now()) @map("received_at")
   notes             String?
-
-  // ❌ REMOVED: invoiceItemId — was ambiguous (purchase? sale? return?)
-  // Sales now consume batches via InventoryAllocation only
-
-  inventory     Inventory            @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
-  supplier      Supplier?            @relation(fields: [supplierId], references: [id])
-  purchaseItem  InvoiceItem?         @relation("BatchPurchaseSource", fields: [purchaseItemId], references: [id])
-  stockMovements StockMovement[]
-  allocations   InventoryAllocation[] // sales that consumed from this batch
+  allocations       InventoryAllocation[]
+  inventory         Inventory             @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+  purchaseItem      InvoiceItem?          @relation("BatchPurchaseSource", fields: [purchaseItemId], references: [id])
+  supplier          Supplier?             @relation(fields: [supplierId], references: [id])
+  stockMovements    StockMovement[]
 
   @@index([inventoryId])
   @@index([supplierId])
   @@index([expiredAt])
-  @@index([remainingQuantity]) // useful for FIFO/FEFO queries
+  @@index([remainingQuantity])
   @@map("inventory_batches")
 }
 
 model InvoiceItem {
-  id             String   @id @default(cuid())
-  invoiceId      String   @map("invoice_id")
-  productId      String   @map("product_id")
-  companyId      String?   @map("company_id")
-  warehouseId    String?  @map("warehouse_id")  // ✅ NEW: which warehouse this line came from/goes to
-  quantity       Decimal  @db.Decimal(12, 3)
-  price          Decimal  @db.Decimal(12, 2)    // cost on purchase, selling price on sale
-  totalPrice     Decimal  @db.Decimal(12, 2)
+  id             String                @id @default(cuid())
+  invoiceId      String                @map("invoice_id")
+  productId      String                @map("product_id")
+  quantity       Decimal               @db.Decimal(12, 3)
+  price          Decimal               @db.Decimal(12, 2)
+  totalPrice     Decimal               @db.Decimal(12, 2)
+  discountAmount Decimal?              @default(0) @db.Decimal(12, 2)
   unit           String
-  discountAmount Decimal? @default(0) @db.Decimal(12, 2)
-
-  invoice    Invoice          @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  product    Product          @relation(fields: [productId], references: [id])
-  company    Company?          @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  warehouse  Warehouse?       @relation(fields: [warehouseId], references: [id])
-
-  // Purchase: this item created a batch
-  createdBatches InventoryBatch[] @relation("BatchPurchaseSource")
-
-  // Sale: this item consumed from batches (one line item can span multiple batches)
-  allocations InventoryAllocation[]
+  companyId      String?               @map("company_id")
+  warehouseId    String?               @map("warehouse_id")
+  allocations    InventoryAllocation[]
+  createdBatches InventoryBatch[]      @relation("BatchPurchaseSource")
+  company        Company?              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  invoice        Invoice               @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  product        Product               @relation(fields: [productId], references: [id])
+  warehouse      Warehouse?            @relation(fields: [warehouseId], references: [id])
 
   @@index([invoiceId])
   @@index([productId])
@@ -423,33 +388,25 @@ model InvoiceItem {
   @@map("invoice_items")
 }
 
-// InventoryAllocation: THE source of truth for "which batch was sold/returned"
-// One InvoiceItem (sale) can consume from multiple batches (FIFO/FEFO)
-// On return: reverse the allocation (add back to remainingQuantity)
 model InventoryAllocation {
-  id            String  @id @default(cuid())
-  companyId     String  @map("company_id")
-  invoiceItemId String  @map("invoice_item_id")  // the sale line item
-  batchId       String  @map("batch_id")          // which specific batch was consumed
-  warehouseId   String  @map("warehouse_id")
-  supplierId    String? @map("supplier_id")        // denormalized for fast reporting
-
-  quantity      Decimal @db.Decimal(12, 3)   // how much was taken from this batch
-  unitCost      Decimal @db.Decimal(12, 2)   // batch cost price at time of sale (for COGS)
-  unitPrice     Decimal @db.Decimal(12, 2)   // selling price (for margin reporting)
-
-  // For returns: link back to the original sale allocation being reversed
-  originalAllocationId String? @map("original_allocation_id")
-
-  createdAt DateTime @default(now()) @map("created_at")
-
-  invoiceItem         InvoiceItem          @relation(fields: [invoiceItemId], references: [id], onDelete: Cascade)
-  batch               InventoryBatch       @relation(fields: [batchId], references: [id])
-  warehouse           Warehouse            @relation(fields: [warehouseId], references: [id])
-  supplier            Supplier?            @relation(fields: [supplierId], references: [id])
-  company             Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  originalAllocation  InventoryAllocation? @relation("ReturnAllocation", fields: [originalAllocationId], references: [id])
-  returnAllocations   InventoryAllocation[] @relation("ReturnAllocation")
+  id                   String                @id @default(cuid())
+  companyId            String                @map("company_id")
+  invoiceItemId        String                @map("invoice_item_id")
+  batchId              String                @map("batch_id")
+  warehouseId          String                @map("warehouse_id")
+  supplierId           String?               @map("supplier_id")
+  quantity             Decimal               @db.Decimal(12, 3)
+  unitCost             Decimal               @db.Decimal(12, 2)
+  unitPrice            Decimal               @db.Decimal(12, 2)
+  originalAllocationId String?               @map("original_allocation_id")
+  createdAt            DateTime              @default(now()) @map("created_at")
+  batch                InventoryBatch        @relation(fields: [batchId], references: [id])
+  company              Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  invoiceItem          InvoiceItem           @relation(fields: [invoiceItemId], references: [id], onDelete: Cascade)
+  originalAllocation   InventoryAllocation?  @relation("ReturnAllocation", fields: [originalAllocationId], references: [id])
+  returnAllocations    InventoryAllocation[] @relation("ReturnAllocation")
+  supplier             Supplier?             @relation(fields: [supplierId], references: [id])
+  warehouse            Warehouse             @relation(fields: [warehouseId], references: [id])
 
   @@index([invoiceItemId])
   @@index([batchId])
@@ -460,28 +417,26 @@ model InventoryAllocation {
 }
 
 model StockMovement {
-  id            String   @id @default(cuid())
-  companyId     String   @map("company_id")
-  productId     String   @map("product_id")
-  warehouseId   String   @map("warehouse_id")
-  userId        String   @map("user_id")
-    batchId       String?  @map("inventory_batch_id")        // ✅ fixed: was broken "batches String?" field
-
-  movementType  String   // PURCHASE_IN, SALE_OUT, RETURN_IN, RETURN_OUT, ADJUSTMENT, TRANSFER
-  quantity      Int      // always positive; direction implied by movementType
-  quantityBefore Int     @map("quantity_before")
-  quantityAfter  Int     @map("quantity_after")
-  reason        String?
-  referenceType String?  @map("reference_type") // "invoice", "adjustment", "transfer"
-  referenceId   String?  @map("reference_id")
-  notes         String?
-  createdAt     DateTime @default(now()) @map("created_at")
-
-  company       Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  product       Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
-  user          User           @relation(fields: [userId], references: [id])
-  warehouse     Warehouse      @relation(fields: [warehouseId], references: [id])
-  batch         InventoryBatch? @relation(fields: [batchId], references: [id])
+  id             String          @id @default(cuid())
+  companyId      String          @map("company_id")
+  productId      String          @map("product_id")
+  warehouseId    String          @map("warehouse_id")
+  userId         String          @map("user_id")
+  movementType   String
+  quantity       Int
+  reason         String?
+  quantityBefore Int             @map("quantity_before")
+  quantityAfter  Int             @map("quantity_after")
+  referenceType  String?         @map("reference_type")
+  referenceId    String?         @map("reference_id")
+  notes          String?
+  createdAt      DateTime        @default(now()) @map("created_at")
+  batchId        String?         @map("inventory_batch_id")
+  company        Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  batch          InventoryBatch? @relation(fields: [batchId], references: [id])
+  product        Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user           User            @relation(fields: [userId], references: [id])
+  warehouse      Warehouse       @relation(fields: [warehouseId], references: [id])
 
   @@index([companyId])
   @@index([productId])
@@ -492,79 +447,65 @@ model StockMovement {
   @@index([createdAt])
   @@map("stock_movements")
 }
+
 model Invoice {
-  id              String   @id @default(cuid())
-  companyId       String   @map("company_id")
-  invoiceNumber   String   @map("invoice_number")
-  cashierId        String          @map("cashier_id")
-  branchId        String?
-  warehouseId     String?
-  // التمييز بين البيع والشراء
-  sale_type            InvoiceType @default(SALE) // SALE, PURCHASE, RETURN_SALE, RETURN_PURCHASE
-  // الأطراف (اختياري حسب نوع الفاتورة)
-  customerId      String?  @map("customer_id")
-  customerName    String?  @map("customer_name")
-  supplierId      String?  @map("supplier_id")
-  //refundAmount Decimal  @default(0) @db.Decimal(12, 2)
-  totalAmount     Decimal  @db.Decimal(12, 2)
-  currencyCode    String?  @map("currency_code") @db.VarChar(3)
-  exchangeRate    Decimal? @map("exchange_rate") @db.Decimal(18, 6)
-  foreignAmount   Decimal? @map("foreign_amount") @db.Decimal(15, 2)
-  baseAmount      Decimal? @map("base_amount") @db.Decimal(15, 2)
-  amountPaid      Decimal  @default(0) @db.Decimal(12, 2)
-  amountDue       Decimal  @default(0) @db.Decimal(12, 2)
+  id            String                 @id @default(cuid())
+  companyId     String                 @map("company_id")
+  invoiceNumber String                 @map("invoice_number")
+  customerId    String?                @map("customer_id")
+  supplierId    String?                @map("supplier_id")
+  totalAmount   Decimal                @db.Decimal(12, 2)
+  amountPaid    Decimal                @default(0) @db.Decimal(12, 2)
+  amountDue     Decimal                @default(0) @db.Decimal(12, 2)
+  status        String
+  invoiceDate   DateTime               @default(now()) @map("invoice_date")
+  branchId      String?
+  cashierId     String                 @map("cashier_id")
+  sale_type     InvoiceType            @default(SALE)
+  warehouseId   String?
+  baseAmount    Decimal?               @map("base_amount") @db.Decimal(15, 2)
+  currencyCode  String?                @map("currency_code") @db.VarChar(3)
+  exchangeRate  Decimal?               @map("exchange_rate") @db.Decimal(18, 6)
+  foreignAmount Decimal?               @map("foreign_amount") @db.Decimal(15, 2)
+  customerName  String?                @map("customer_name")
+  transactions  FinancialTransaction[]
+  items         InvoiceItem[]
+  branch        points_of_sale?        @relation(fields: [branchId], references: [id])
+  cashier       User                   @relation("UserSales", fields: [cashierId], references: [id])
+  company       Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer      Customer?              @relation(fields: [customerId], references: [id])
+  supplier      Supplier?              @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  warehouse     Warehouse?             @relation(fields: [warehouseId], references: [id])
 
-  status          String    
-   invoiceDate     DateTime @default(now()) @map("invoice_date")
-  cashier      User?     @relation("UserSales", fields: [cashierId], references: [id])
-
-  branch    points_of_sale? @relation(fields: [branchId], references: [id])
-  warehouse Warehouse?     @relation(fields: [warehouseId], references: [id])
-  customer         Customer?       @relation(fields: [customerId], references: [id])
-  supplier      Supplier?       @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  // العلاقات
-  items           InvoiceItem[]
-  transactions    FinancialTransaction[]
- 
-  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   @@unique([companyId, invoiceNumber, sale_type])
   @@map("invoices")
 }
 
-enum InvoiceType {
-  SALE
-  PURCHASE
-  RETURN_SALE
-  RETURN_PURCHASE
-}
-
 model Customer {
-  id                 String   @id @default(cuid())
-  companyId          String   @map("company_id")
-  userId             String?  @map("user_id")
+  id                 String                 @id @default(cuid())
+  companyId          String                 @map("company_id")
   name               String
   email              String?
-  phoneNumber        String?  @map("phone_number")
+  phoneNumber        String?                @map("phone_number")
   address            String?
   city               String?
   state              String?
   country            String?
-  preferred_currency Json?    @map("allowed_currencies")
+  customerType       String                 @default("individual") @map("customer_type")
+  taxId              String?                @map("tax_id")
+  creditLimit        Decimal?               @map("credit_limit") @db.Decimal(10, 2)
+  outstandingBalance Decimal                @default(0) @map("outstanding_balance") @db.Decimal(10, 2)
+  isActive           Boolean                @default(true) @map("is_active")
+  createdAt          DateTime               @default(now()) @map("created_at")
+  updatedAt          DateTime               @updatedAt @map("updated_at")
   branch_id          String?
-  customerType       String   @default("individual") @map("customer_type")
-  taxId              String?  @map("tax_id")
-  creditLimit        Decimal? @map("credit_limit") @db.Decimal(10, 2)
-  outstandingBalance Decimal  @default(0) @map("outstanding_balance") @db.Decimal(10, 2)
-  // balance REMOVED — duplicate of outstandingBalance
-  isActive           Boolean  @default(true) @map("is_active")
-  createdAt          DateTime @default(now()) @map("created_at")
-  updatedAt          DateTime @updatedAt @map("updated_at")
-
-  company        Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  user           User?                 @relation(fields: [userId], references: [id], onDelete: SetNull)
-  transaction    FinancialTransaction[]
-  invoice        Invoice[]
-  points_of_sale points_of_sale?       @relation(fields: [branch_id], references: [id])
+  preferred_currency Json?                  @map("allowed_currencies")
+  userId             String?                @map("user_id")
+  points_of_sale     points_of_sale?        @relation(fields: [branch_id], references: [id])
+  company            Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user               User?                  @relation(fields: [userId], references: [id])
+  transaction        FinancialTransaction[]
+  invoice            Invoice[]
 
   @@unique([companyId, email])
   @@index([companyId])
@@ -576,182 +517,160 @@ model Customer {
 }
 
 model FinancialTransaction {
-  id              String   @id @default(cuid())
-  companyId       String   @map("company_id")
-  
-  // نوع السند: قبض (RECEIPT) أو صرف (PAYMENT)
-  type         TransactionType @default(PAYMENT)
-  
-  // الأطراف المرتبطة (كلها اختيارية ليكون الجدول مرناً)
-  customerId      String?  @map("customer_id")
-  supplierId      String?  @map("supplier_id")
-  userId          String?  @map("user_id") // للموظفين أو المصاريف الإدارية
-    expenseId       String?  @map("expense_id") @db.Uuid
-    employeeId String?   @map("employee_id")
-  branchId        String?
-  // الربط بالعمليات (اختياري)
-  saleId          String?  @map("sale_id")
-  purchaseId      String?  @map("purchase_id")
-  voucherNumber Int            @map("voucher_number")
-  // التفاصيل المالية
-  amount          Decimal  @db.Decimal(12, 2)
-  currencyCode    String   @map("currency_code") @db.VarChar(3)
-  exchangeRate    Decimal? @map("exchange_rate") @db.Decimal(18, 6)
-  foreignAmount   Decimal? @map("foreign_amount") @db.Decimal(15, 2)
-  baseAmount      Decimal? @map("base_amount") @db.Decimal(15, 2)
-  
-  paymentMethod   String   @map("payment_method") // كاش، بنك، شيك
-  referenceNumber String?  @map("reference_number") // رقم الشيك أو رقم التحويل
-  invoiceId       String?  // Ensure the foreign key exists
-  financialAccountId String?          @map("financial_account_id")
+  id                 String          @id @default(cuid())
+  companyId          String          @map("company_id")
+  type               TransactionType @default(PAYMENT)
+  customerId         String?         @map("customer_id")
+  supplierId         String?         @map("supplier_id")
+  userId             String?         @map("user_id")
+  saleId             String?         @map("sale_id")
+  purchaseId         String?         @map("purchase_id")
+  amount             Decimal         @db.Decimal(12, 2)
+  currencyCode       String          @map("currency_code") @db.VarChar(3)
+  exchangeRate       Decimal?        @map("exchange_rate") @db.Decimal(18, 6)
+  paymentMethod      String          @map("payment_method")
+  referenceNumber    String?         @map("reference_number")
+  status             String
+  notes              String?
+  date               DateTime        @default(now()) @map("transaction_date")
+  createdAt          DateTime        @default(now()) @map("created_at")
+  invoiceId          String?
+  branchId           String?
+  voucherNumber      Int             @map("voucher_number")
+  expenseId          String?         @map("expense_id") @db.Uuid
+  baseAmount         Decimal?        @map("base_amount") @db.Decimal(15, 2)
+  foreignAmount      Decimal?        @map("foreign_amount") @db.Decimal(15, 2)
+  employeeId         String?         @map("employee_id")
+  financialAccountId String?         @map("financial_account_id")
+  points_of_sale     points_of_sale? @relation(fields: [branchId], references: [id])
+  company            Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer           Customer?       @relation(fields: [customerId], references: [id])
+  employee           Employee?       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  expense            expenses?       @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  financialAccount   Bank?           @relation(fields: [financialAccountId], references: [id])
+  invoice            Invoice?        @relation(fields: [invoiceId], references: [id])
+  supplier           Supplier?       @relation(fields: [supplierId], references: [id])
+  user               User?           @relation(fields: [userId], references: [id])
 
-  status          String   
-  notes           String?
-  date            DateTime @default(now()) @map("transaction_date")
-  createdAt       DateTime @default(now()) @map("created_at")
-  
-  // العلاقات
-  expense         expenses? @relation(fields: [expenseId], references: [id], onDelete: Cascade)
-  employee         Employee? @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  customer        Customer? @relation(fields: [customerId], references: [id])
-  supplier        Supplier? @relation(fields: [supplierId], references: [id])
-  user        User? @relation(fields: [userId], references: [id])
-  points_of_sale points_of_sale? @relation(fields: [branchId], references: [id])
-  invoice   Invoice? @relation(fields: [invoiceId], references: [id]) // <--- Add this line
-  financialAccount   Bank? @relation(fields: [financialAccountId], references: [id])
   @@unique([companyId, type, voucherNumber])
   @@index([companyId, type])
   @@map("financial_transactions")
 }
 
-
-
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model expenses {
-  id                 String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  company_id         String
-  user_id            String
-  account_id         String?             @db.Uuid
-  expense_number     String              @unique @db.VarChar(255)
-  description        String?
-  branchId           String?
-  amount             Decimal             @db.Decimal(12, 2)
-  currency_code   String? @map("currency_code") @db.VarChar(3)
-  exchange_rate   Decimal? @map("exchange_rate") @db.Decimal(18, 6)
-  foreign_amount  Decimal? @map("foreign_amount") @db.Decimal(15, 2)
-  base_amount     Decimal? @map("base_amount") @db.Decimal(15, 2)
-  expense_date       DateTime            @db.Date
-  payment_method     String?             @db.VarChar(50)
-  reference_number   String?             @db.VarChar(255)
-  receipt_url        String?
-  notes              String?
-  status             String?             @default("pending") @db.VarChar(50)
-  created_at         DateTime?           @default(now()) @db.Timestamp(6)
-  updated_at         DateTime?           @default(now()) @db.Timestamp(6)
-  branch                          points_of_sale? @relation(fields: [branchId], references: [id])                 
+  id               String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  company_id       String
+  user_id          String
+  expense_number   String                 @unique @db.VarChar(255)
+  description      String?
+  amount           Decimal                @db.Decimal(12, 2)
+  expense_date     DateTime               @db.Date
+  payment_method   String?                @db.VarChar(50)
+  reference_number String?                @db.VarChar(255)
+  receipt_url      String?
+  notes            String?
+  status           String?                @default("pending") @db.VarChar(50)
+  created_at       DateTime?              @default(now()) @db.Timestamp(6)
+  updated_at       DateTime?              @default(now()) @db.Timestamp(6)
+  account_id       String?                @db.Uuid
+  branchId         String?
+  base_amount      Decimal?               @map("base_amount") @db.Decimal(15, 2)
+  currency_code    String?                @map("currency_code") @db.VarChar(3)
+  exchange_rate    Decimal?               @map("exchange_rate") @db.Decimal(18, 6)
+  foreign_amount   Decimal?               @map("foreign_amount") @db.Decimal(15, 2)
+  branch           points_of_sale?        @relation(fields: [branchId], references: [id])
+  companies        Company                @relation(fields: [company_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_expense_company")
+  users            User                   @relation(fields: [user_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "fk_expense_user")
+  transactions     FinancialTransaction[]
 
-  companies          Company             @relation(fields: [company_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_expense_company")
-  users              User                @relation(fields: [user_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "fk_expense_user")
- transactions         FinancialTransaction[]
-  
   @@index([company_id], map: "idx_expense_company")
   @@index([company_id, expense_date], map: "idx_expense_company_date")
   @@index([created_at], map: "idx_expense_created_at")
   @@index([expense_date], map: "idx_expense_date")
   @@index([status], map: "idx_expense_status")
-    @@index([status, expense_date], map: "idx_expense_status_date")
-   @@index([user_id], map: "idx_expense_user")
+  @@index([status, expense_date], map: "idx_expense_status_date")
+  @@index([user_id], map: "idx_expense_user")
 }
 
 model accounts {
-  id               String            @id @default(dbgenerated("gen_random_uuid()"))
-  company_id       String
-  account_code     String        
-  account_name_en  String
-  account_name_ar  String?
-  account_type     account_type
-  account_category account_category
-  parent_id        String?
-  level            Int?              @default(1)
-  is_active        Boolean?          @default(true)
-  is_system        Boolean?          @default(false)  // NEW: System accounts can't be deleted
-  allow_manual_entry Boolean?        @default(true)   // NEW: Some accounts only accept automatic entries
-  balance          Decimal?          @default(0) @db.Decimal(15, 2)
-  opening_balance  Decimal?          @default(0) @db.Decimal(15, 2)  // NEW
-  currency_code   String?    
-  description      String?                                             // NEW
-  created_at       DateTime?         @default(now()) @db.Timestamptz(6)
-  updated_at       DateTime?         @default(now()) @db.Timestamptz(6)
-  
-  companies        Company           @relation(fields: [company_id], references: [id], onDelete: Cascade)
-  accounts       accounts?  @relation("AccountHierarchy", fields: [company_id, parent_id], references: [company_id, account_code])
-  other_accounts   accounts[]        @relation("AccountHierarchy")
+  id                 String             @id @default(dbgenerated("gen_random_uuid()"))
+  company_id         String
+  account_code       String
+  account_name_en    String
+  account_name_ar    String?
+  account_type       account_type
+  account_category   account_category
+  parent_id          String?
+  level              Int?               @default(1)
+  is_active          Boolean?           @default(true)
+  is_system          Boolean?           @default(false)
+  allow_manual_entry Boolean?           @default(true)
+  balance            Decimal?           @default(0) @db.Decimal(15, 2)
+  opening_balance    Decimal?           @default(0) @db.Decimal(15, 2)
+  currency_code      String?
+  description        String?
+  created_at         DateTime?          @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime?          @default(now()) @db.Timestamptz(6)
+  account_mappings   account_mappings[]
+  companies          Company            @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  accounts           accounts?          @relation("AccountHierarchy", fields: [company_id, parent_id], references: [company_id, account_code])
+  other_accounts     accounts[]         @relation("AccountHierarchy")
+  banks              Bank[]
+  employeePayables   Employee[]         @relation("EmployeePayableAccount")
+  journalLines       JournalLine[]
 
-  journalLines     JournalLine[]
-  account_mappings account_mappings[]  // NEW: Link to business transactions
-    banks     Bank[]  // 👈 ADD THIS 
- 
-
-  employeePayables  Employee[] @relation("EmployeePayableAccount")
   @@unique([company_id, account_code])
   @@index([company_id])
   @@index([parent_id])
   @@index([account_type])
   @@index([is_active])
 }
-model Bank {
-  id            String   @id @default(cuid())
-  companyId     String   @map("company_id")
-  name          String
-  branchId        String?       @map("branch_id")
-  iban          String?
-  type            AccountType   @default(CASH) // CASH or BANK
-  swiftCode     String?  @map("swift_code")
-  accountNumber String? @map("account_number")
-  isActive      Boolean @default(true)
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
-   preferred_currency Json?     @map("allowed_currencies")
 
-  // 🔑 Accounting link
-  accountId     String  @map("account_id")
-  account       accounts @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  branch          points_of_sale? @relation(fields: [branchId], references: [id], onDelete: Cascade)
- transactions    FinancialTransaction[]
-  company       Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+model Bank {
+  id                 String                 @id @default(cuid())
+  companyId          String                 @map("company_id")
+  name               String
+  iban               String?
+  swiftCode          String?                @map("swift_code")
+  accountNumber      String?                @map("account_number")
+  isActive           Boolean                @default(true)
+  createdAt          DateTime               @default(now()) @map("created_at")
+  updatedAt          DateTime               @updatedAt @map("updated_at")
+  accountId          String                 @map("account_id")
+  preferred_currency Json?                  @map("allowed_currencies")
+  branchId           String?                @map("branch_id")
+  type               AccountType            @default(CASH)
+  account            accounts               @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  branch             points_of_sale?        @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  company            Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  transactions       FinancialTransaction[]
 
   @@unique([companyId, name])
   @@index([companyId])
   @@map("banks")
 }
-enum AccountType {
-  CASH
-  BANK
-}
+
 model Employee {
-  id             String   @id @default(cuid())
-  companyId      String   @map("company_id")
-  userId         String?  @map("user_id") // optional login
-  employeeCode   String   @unique
-  name           String
-  phone          String?
-  email          String?
-  position       String?
-  department     String?
-  salary         Decimal? @db.Decimal(12,2)
-  hireDate       DateTime @map("hire_date")
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
-
-  // 🔑 Payroll account (optional)
- transaction           FinancialTransaction[]
-
-   payableAccountId String?   @map("payable_account_id")
-  payableAccount   accounts? @relation("EmployeePayableAccount", fields: [payableAccountId], references: [id])
-  company        Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  user           User?   @relation(fields: [userId], references: [id])
+  id               String                 @id @default(cuid())
+  companyId        String                 @map("company_id")
+  userId           String?                @map("user_id")
+  employeeCode     String                 @unique
+  name             String
+  phone            String?
+  email            String?
+  position         String?
+  department       String?
+  salary           Decimal?               @db.Decimal(12, 2)
+  hireDate         DateTime               @map("hire_date")
+  isActive         Boolean                @default(true)
+  createdAt        DateTime               @default(now()) @map("created_at")
+  updatedAt        DateTime               @updatedAt @map("updated_at")
+  payableAccountId String?                @map("payable_account_id")
+  company          Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  payableAccount   accounts?              @relation("EmployeePayableAccount", fields: [payableAccountId], references: [id])
+  user             User?                  @relation(fields: [userId], references: [id])
+  transaction      FinancialTransaction[]
 
   @@index([companyId])
   @@index([department])
@@ -760,34 +679,31 @@ model Employee {
 }
 
 model account_mappings {
-  id          String   @id @default(dbgenerated("gen_random_uuid()"))
-  company_id  String
-  mapping_type String  // 'sales_revenue', 'sales_tax', 'inventory', 'cogs', 'cash', 'accounts_receivable', etc.
-  account_id  String
-  is_default  Boolean  @default(true)
-  created_at  DateTime @default(now()) @db.Timestamptz(6)
-  updated_at  DateTime @default(now()) @db.Timestamptz(6)
-  
-  companies   Company  @relation(fields: [company_id], references: [id], onDelete: Cascade)
-  accounts    accounts @relation(fields: [account_id], references: [id], onDelete: Cascade)
+  id           String   @id @default(dbgenerated("gen_random_uuid()"))
+  company_id   String
+  mapping_type String
+  account_id   String
+  is_default   Boolean  @default(true)
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime @default(now()) @db.Timestamptz(6)
+  accounts     accounts @relation(fields: [account_id], references: [id], onDelete: Cascade)
+  companies    Company  @relation(fields: [company_id], references: [id], onDelete: Cascade)
 
   @@unique([company_id, mapping_type])
   @@index([company_id])
   @@index([mapping_type])
 }
 
-
 model pushSubscription {
-  id        String   @id @default(uuid())
-  endpoint  String   @unique
-  p256dh    String
-  auth      String
-  company_id  String
-  userId    String?
-  role      String?  // "ADMIN", "CASHIER"
-  companies                               Company   @relation(fields: [company_id], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
+  id         String   @id @default(uuid())
+  endpoint   String   @unique
+  p256dh     String
+  auth       String
+  company_id String
+  userId     String?
+  role       String?
+  createdAt  DateTime @default(now())
+  companies  Company  @relation(fields: [company_id], references: [id], onDelete: Cascade)
 }
 
 model pushDeviceToken {
@@ -799,27 +715,23 @@ model pushDeviceToken {
   provider   String   @default("fcm")
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-
-  companies Company @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  companies  Company  @relation(fields: [company_id], references: [id], onDelete: Cascade)
 
   @@index([company_id])
   @@index([userId])
   @@index([role])
 }
 
-
-// NEW: Fiscal periods for closing books
 model fiscal_periods {
   id          String    @id @default(dbgenerated("gen_random_uuid()"))
   company_id  String
-  period_name String    // '2024-01', '2024-Q1', '2024'
+  period_name String
   start_date  DateTime  @db.Date
   end_date    DateTime  @db.Date
   is_closed   Boolean   @default(false)
   closed_by   String?
   closed_at   DateTime? @db.Timestamptz(6)
   created_at  DateTime  @default(now()) @db.Timestamptz(6)
-  
   companies   Company   @relation(fields: [company_id], references: [id], onDelete: Cascade)
 
   @@unique([company_id, period_name])
@@ -827,46 +739,104 @@ model fiscal_periods {
   @@index([start_date, end_date])
 }
 
-
 model points_of_sale {
-  id         String   @id @default(dbgenerated("gen_random_uuid()"))
-  company_id String
-  name       String
-  location   String?
-  managerId  String?
-  is_active  Boolean? @default(true)
-  created_at DateTime? @default(now())
-  updated_at DateTime? @default(now())
-  cashiers  User[]
-  company Company @relation(fields: [company_id], references: [id], onDelete: Cascade)
-  manager User? @relation("BranchManager", fields: [managerId], references: [id])
-   // 👈 all users with branchId = this.id
-  bank               Bank[]
-  expense           expenses[]
-  
+  id             String                 @id @default(dbgenerated("gen_random_uuid()"))
+  company_id     String
+  name           String
+  location       String?
+  is_active      Boolean?               @default(true)
+  created_at     DateTime?              @default(now())
+  updated_at     DateTime?              @default(now())
+  managerId      String?
+  bank           Bank[]
   customers      Customer[]
+  expense        expenses[]
   transactions   FinancialTransaction[]
-
-  journalHeaders JournalHeader[]
   invoices       Invoice[]
-  warehouses  Warehouse[]
- 
+  journalHeaders JournalHeader[]
+  company        Company                @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  manager        User?                  @relation("BranchManager", fields: [managerId], references: [id])
+  cashiers       User[]
+  warehouses     Warehouse[]
+
   @@map("points_of_sale")
 }
 
-enum account_category {
-  // Assets
-    CASH_AND_BANK
+model JournalHeader {
+  id            String          @id @default(cuid())
+  companyId     String          @map("company_id")
+  entryNumber   String          @map("entry_number")
+  description   String?
+  branchId      String?
+  referenceType String?         @map("reference_type")
+  referenceId   String?         @map("reference_id")
+  entryDate     DateTime        @default(now()) @map("entry_date")
+  status        String          @default("POSTED")
+  createdBy     String          @map("created_by")
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+  branch        points_of_sale? @relation(fields: [branchId], references: [id])
+  company       Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdUser   User            @relation("JournalHeaderCreatedBy", fields: [createdBy], references: [id])
+  lines         JournalLine[]
+
+  @@unique([companyId, entryNumber])
+  @@index([companyId])
+  @@index([referenceType, referenceId])
+  @@map("journal_headers")
+}
+
+model JournalLine {
+  id            String        @id @default(cuid())
+  headerId      String        @map("header_id")
+  companyId     String        @map("company_id")
+  accountId     String        @map("account_id")
+  debit         Decimal       @default(0) @db.Decimal(15, 2)
+  credit        Decimal       @default(0) @db.Decimal(15, 2)
+  currencyCode  String?       @map("currency_code") @db.VarChar(3)
+  foreignAmount Decimal?      @map("foreign_amount") @db.Decimal(15, 2)
+  exchangeRate  Decimal?      @map("exchange_rate") @db.Decimal(18, 6)
+  baseAmount    Decimal?      @map("base_amount") @db.Decimal(15, 2)
+  memo          String?
+  account       accounts      @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  company       Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  header        JournalHeader @relation(fields: [headerId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([accountId])
+  @@map("journal_lines")
+}
+
+model notification_digests {
+  company_id   String
+  digest_type  String
+  sent_date    DateTime @db.Date
+  digest_key   String
+  last_sent_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@id([company_id, digest_type, sent_date, digest_key])
+}
+
+enum InvoiceType {
+  SALE
+  PURCHASE
+  RETURN_SALE
+  RETURN_PURCHASE
+}
+
+enum AccountType {
   CASH
   BANK
+}
+
+enum account_category {
+  CASH_AND_BANK
   ACCOUNTS_RECEIVABLE
   INVENTORY
   OTHER_CURRENT_ASSETS
   FIXED_ASSETS
   ACCUMULATED_DEPRECIATION
   OTHER_ASSETS
-  
-  // Liabilities
   ACCOUNTS_PAYABLE
   CREDIT_CARD
   SHORT_TERM_LOANS
@@ -874,24 +844,20 @@ enum account_category {
   ACCRUED_EXPENSES
   OTHER_CURRENT_LIABILITIES
   LONG_TERM_LIABILITIES
-  
-  // Equity
   OWNER_EQUITY
   RETAINED_EARNINGS
   DRAWINGS
-  
-  // Revenue
   SALES_REVENUE
   SERVICE_REVENUE
   OTHER_INCOME
-  
-  // Expenses
   COST_OF_GOODS_SOLD
   OPERATING_EXPENSES
   PAYROLL_EXPENSES
   ADMINISTRATIVE_EXPENSES
   OTHER_EXPENSES
   HOUSE_EXPENSES
+  CASH
+  BANK
 }
 
 enum account_type {
@@ -902,67 +868,17 @@ enum account_type {
   EXPENSE
   COST_OF_GOODS
 }
+
 enum TransactionType {
-  RECEIPT // قبض (من عميل)
-  PAYMENT // صرف (لمورد أو مصروف)
-
+  RECEIPT
+  PAYMENT
 }
 
-
-model JournalHeader {
-  id            String   @id @default(cuid())
-  companyId     String   @map("company_id")
-  entryNumber   String   @map("entry_number")
-  description   String?
-  branchId      String?
-  referenceType String?  @map("reference_type")
-  referenceId   String?  @map("reference_id")
-  entryDate     DateTime @default(now()) @map("entry_date")
-  status        String   @default("POSTED")
-  createdBy     String   @map("created_by")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
-
-  company     Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  branch      points_of_sale? @relation(fields: [branchId], references: [id])
-  createdUser User           @relation("JournalHeaderCreatedBy", fields: [createdBy], references: [id])
-  lines       JournalLine[]
-
-  @@unique([companyId, entryNumber])
-  @@index([companyId])
-  @@index([referenceType, referenceId])
-  @@map("journal_headers")
-}
-
-model JournalLine {
-  id            String   @id @default(cuid())
-  headerId      String   @map("header_id")
-  companyId     String   @map("company_id")
-  accountId     String   @map("account_id")
-  debit         Decimal  @default(0) @db.Decimal(15, 2)
-  credit        Decimal  @default(0) @db.Decimal(15, 2)
-  currencyCode  String?  @map("currency_code") @db.VarChar(3)
-  foreignAmount Decimal? @map("foreign_amount") @db.Decimal(15, 2)
-  exchangeRate  Decimal? @map("exchange_rate") @db.Decimal(18, 6)
-  baseAmount    Decimal? @map("base_amount") @db.Decimal(15, 2)
-  memo          String?
-
-  header  JournalHeader @relation(fields: [headerId], references: [id], onDelete: Cascade)
-  account accounts      @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  company Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
-
-  @@index([companyId])
-  @@index([accountId])
-  @@map("journal_lines")
-}
-
-
-enum Roles { 
-   
+enum Roles {
   admin
-  cashier 
+  cashier
   manager_wh
   supplier
   accountant
   customer
-} 
+}

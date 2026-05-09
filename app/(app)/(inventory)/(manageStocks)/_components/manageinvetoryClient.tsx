@@ -26,7 +26,7 @@ type ProductClientProps = {
       sku: string;
       name: string;
 
-      sellingUnits: any;
+      sellingUnits: any[];
     }[];
     warehouses: {
       id: string;
