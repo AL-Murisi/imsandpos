@@ -517,10 +517,10 @@ export const inventoryColumns: ColumnDef<any>[] = [
     },
   },
   {
-    accessorKey: "createdAt",
-    header: "تاريخ الإنشاء",
+    accessorKey: "updatedAt",
+    header: "تاريخ التحديث",
     cell: ({ row }) => {
-      const date = row.getValue("createdAt") as Date;
+      const date = row.getValue("updatedAt") as Date;
       return <div>{new Date(date).toLocaleDateString("ar-EG")}</div>;
     },
   },
@@ -571,46 +571,17 @@ export const purchaseColumns: ColumnDef<any>[] = [
     enableSorting: false,
     enableHiding: false,
   },
-
   {
     accessorKey: "#",
     header: "#",
     cell: ({ row }) => row.index + 1,
   },
-
   {
-    header: "المنتج",
-    cell: ({ row }) => {
-      const items = row.original.purchaseItems || [];
-      if (items.length === 0) return "—";
-      return items[0].product?.name || "—";
-    },
+    accessorKey: "purchaseNumer",
+    header: "رقم الفاتورة",
+    cell: ({ row }) => <div>{row.getValue("purchaseNumer")}</div>,
   },
-  {
-    header: "النوع",
-    cell: ({ row }) => {
-      const items = row.original.purchaseItems || [];
-      const rawType = items.find((p: any) => p.unit);
 
-      // const allowedTypes = ["full", "cartonUnit", "cartonOnly"] as const;
-
-      // const isValid = allowedTypes.includes(rawType);
-
-      // const typeMap = {
-      //   full: "وحدة + عبوة + كرتونة",
-      //   cartonUnit: "وحدة + كرتونة",
-      //   cartonOnly: "كرتونة فقط",
-      // } as const;
-
-      return (
-        <>
-          {items.map((item: any) => (
-            <div>{item.unit}</div>
-          ))}
-        </>
-      );
-    },
-  },
   {
     accessorFn: (row) => row.supplier?.name, // Safe access using accessorFn
     id: "supplierName",
@@ -693,11 +664,6 @@ export const purchaseColumns: ColumnDef<any>[] = [
         </Dailogreuse>
       );
     },
-  },
-  {
-    accessorKey: "purchaseNumer",
-    header: "رقم الفاتورة",
-    cell: ({ row }) => <div>{row.getValue("purchaseNumer")}</div>,
   },
 
   {
@@ -793,7 +759,7 @@ export const purchaseColumns: ColumnDef<any>[] = [
               const basePrice = Number(item.unitCost || 0);
 
               // 1. استخراج مصفوفة الوحدات (التي أرسلتها أنت في الرد السابق)
-              const unitsArray = item.product.units || [];
+              const unitsArray = item.product.sellingUnits || [];
 
               // 2. البحث عن الوحدة التي ليست "Base" (الوحدة الكبرى مثل الكرتون)
               // نفترض هنا أن الوحدة الكبرى هي التي isBase فيها false

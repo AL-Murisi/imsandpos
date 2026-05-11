@@ -20,48 +20,48 @@ import { useRouter } from "next/navigation";
 type ProductClientProps = {
   products: any[];
   total: number;
-  multipleInventory: {
-    products: {
-      id: string;
-      sku: string;
-      name: string;
+  // multipleInventory: {
+  //   products: {
+  //     id: string;
+  //     sku: string;
+  //     name: string;
 
-      sellingUnits: any[];
-    }[];
-    warehouses: {
-      id: string;
-      name: string;
-      location: string;
-    }[];
-    suppliers: {
-      id: string;
-      name: string;
-    }[];
-    inventories: {
-      id: string;
-      warehouseId: string;
-      status: string;
-      batches: {
-        supplierId: string | null;
-        costPrice: Prisma.Decimal;
-      }[];
-      product: {
-        sku: string;
-        name: string;
+  //     sellingUnits: any[];
+  //   }[];
+  //   warehouses: {
+  //     id: string;
+  //     name: string;
+  //     location: string;
+  //   }[];
+  //   suppliers: {
+  //     id: string;
+  //     name: string;
+  //   }[];
+  //   inventories: {
+  //     id: string;
+  //     warehouseId: string;
+  //     status: string;
+  //     batches: {
+  //       supplierId: string | null;
+  //       costPrice: Prisma.Decimal;
+  //     }[];
+  //     product: {
+  //       sku: string;
+  //       name: string;
 
-        sellingUnits: any;
-      };
-      productId: string;
-      stockQuantity: number;
-      reservedQuantity: number;
-      availableQuantity: number;
-      reorderLevel: number;
-      warehouse: {
-        name: string;
-        location: string;
-      };
-    }[];
-  };
+  //       sellingUnits: any;
+  //     };
+  //     productId: string;
+  //     stockQuantity: number;
+  //     reservedQuantity: number;
+  //     availableQuantity: number;
+  //     reorderLevel: number;
+  //     warehouse: {
+  //       name: string;
+  //       location: string;
+  //     };
+  //   }[];
+  // };
 
   formData: {
     warehouses: { id: string; name: string }[];
@@ -73,7 +73,6 @@ type ProductClientProps = {
 
 export default function ManageStocksClient({
   products,
-  multipleInventory,
   total,
   formData,
 }: ProductClientProps) {
@@ -144,7 +143,7 @@ export default function ManageStocksClient({
               paramKey="warehouseId"
               placeholder={t("warehouseId")}
             />
-            <MultiInventoryUpdateForm multipleInventory={multipleInventory} />
+            <MultiInventoryUpdateForm />
             <SelectField
               options={formData.categories}
               paramKey="categoryId"

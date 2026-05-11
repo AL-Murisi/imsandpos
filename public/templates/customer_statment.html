@@ -185,8 +185,8 @@
   </head>
 
   <body>
-  {{#each statements}}
-  <div class="page-container">
+  
+  <div class="page-container">{{#each statements}}
     <div class="header">
         <div class="header-right">
             <div style="font-size: 18px; font-weight: bold;">{{../company.name}}</div>
@@ -254,9 +254,9 @@
 
     <div class="footer">
       كشف حساب العميل {{currency}} | نظام {{../company.name}}
-    </div>
+    </div>{{/each}}
   </div>
-  {{/each}}
+  
 </html>
 
 

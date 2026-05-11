@@ -1,6 +1,6 @@
 "use client";
 
-import { updateMultipleInventories } from "@/lib/actions/warehouse";
+import { fetchAllFormDatas, updateMultipleInventories } from "@/lib/actions/warehouse";
 import Dailogreuse from "@/components/common/dailogreuse";
 import { SelectField } from "@/components/common/selectproduct";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/context/AuthContext";
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Plus, Trash2, Save, Package, Info } from "lucide-react";
 import {
@@ -49,53 +49,47 @@ interface InventoryUpdateItem {
 }
 
 interface MultiInventoryUpdateFormProps {
-  multipleInventory: {
-    products: {
-      id: string;
+  products: {
+    id: string;
+    sku: string;
+    name: string;
+    sellingUnits: any[];
+  }[];
+  warehouses: {
+    id: string;
+    name: string;
+    location: string;
+  }[];
+  suppliers: {
+    id: string;
+    name: string;
+  }[];
+  inventories: {
+    id: string;
+    warehouseId: string;
+    status: string;
+    product: {
       sku: string;
       name: string;
-
-      sellingUnits: any[];
+      sellingUnits: any;
+    };
+    batches: {
+      supplierId: string | null;
+      costPrice: any;
     }[];
-    warehouses: {
-      id: string;
+    productId: string;
+    stockQuantity: number;
+    availableQuantity: number;
+    reservedQuantity: number;
+    reorderLevel: number;
+    warehouse: {
       name: string;
       location: string;
-    }[];
-    suppliers: {
-      id: string;
-      name: string;
-    }[];
-    inventories: {
-      id: string;
-      warehouseId: string;
-      status: string;
-      product: {
-        sku: string;
-        name: string;
-
-        sellingUnits: any;
-      };
-      batches: {
-        supplierId: string | null;
-        costPrice: any;
-      }[];
-      productId: string;
-      stockQuantity: number;
-      availableQuantity: number;
-      reservedQuantity: number;
-      reorderLevel: number;
-      warehouse: {
-        name: string;
-        location: string;
-      };
-    }[];
-  };
+    };
+  }[];
 }
 
-export default function MultiInventoryUpdateForm({
-  multipleInventory,
-}: MultiInventoryUpdateFormProps) {
+export default function MultiInventoryUpdateForm() {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [updateDate, setUpdateDate] = useState(
@@ -103,10 +97,27 @@ export default function MultiInventoryUpdateForm({
   );
   const { user } = useAuth();
   const { company } = useCompany();
-  const [accountsByInventory, setAccountsByInventory] = useState<
-    Record<string, any[]>
-  >({});
-  if (!user) return;
+    if (!user) return;
+
+  const [multipleInventory, setMultipleInventory] = useState<
+    MultiInventoryUpdateFormProps
+  >({
+    products: [],
+    warehouses: [],
+    suppliers: [],
+    inventories: [],
+  });
+  useEffect(() => { 
+    if (!open) return;
+        if (!company) return;
+
+    const fetchData = async () => {
+      const data = await fetchAllFormDatas(company.id);
+      setMultipleInventory(data);
+    }
+
+    fetchData();
+  },[open, company])
   const initialRow = (): InventoryUpdateItem => ({
     id: crypto.randomUUID(),
     productId: "",
@@ -128,58 +139,6 @@ export default function MultiInventoryUpdateForm({
   const [inventoryUpdates, setInventoryUpdates] = useState<
     InventoryUpdateItem[]
   >([initialRow()]);
-  // const loadProductData = (updateId: string, productId: string) => {
-  //   // 1. Find the product details from the main products list OR inventories
-  //   const productInfo = multipleInventory.products.find(
-  //     (p) => p.id === productId,
-  //   );
-  //   toast.info(JSON.stringify(productInfo));
-  //   // 2. Find all current stock records for this product to get the latest price/supplier
-  //   const existingInventories = multipleInventory.inventories.filter(
-  //     (inv) => inv.productId === productId,
-  //   );
-
-  //   if (!productInfo) return;
-  //   const sellingUnits: SellingUnit[] = Array.isArray(productInfo.sellingUnits)
-  //     ? productInfo.sellingUnits
-  //     : [];
-  //   // const sellingUnits = (productInfo.sellingUnits as SellingUnit[]) || [];
-  //   const baseUnit = sellingUnits.find((u) => u.isBase) || sellingUnits[0];
-
-  //   // 3. Get Price and Supplier from the most recent inventory batch available
-  //   let latestCost = 0;
-  //   let latestSupplierId = "";
-
-  //   if (existingInventories.length > 0) {
-  //     // Sort by most recent if possible, or just take the first one found
-  //     const latestInv = existingInventories[0];
-  //     if (latestInv.batches && latestInv.batches.length > 0) {
-  //       latestCost = Number(latestInv.batches[0].costPrice) || 0;
-  //       latestSupplierId = latestInv.batches[0].supplierId || "";
-  //     }
-  //   }
-
-  //   setInventoryUpdates((prev) =>
-  //     prev.map((inv) =>
-  //       inv.id === updateId
-  //         ? {
-  //             ...inv,
-  //             productId: productId,
-  //             // We don't force a warehouse yet, or we pick the first existing one
-  //             warehouseId: existingInventories[0]?.warehouseId || "",
-  //             supplierId: latestSupplierId,
-  //             sellingUnits: sellingUnits,
-  //             selectedUnitId: baseUnit?.id || "",
-  //             baseUnitCost: latestCost,
-  //             unitCost: latestCost,
-  //             // If it's a new warehouse, stock will be 0 later in updateInventory
-  //             currentStock: existingInventories[0]?.stockQuantity || 0,
-  //           }
-  //         : inv,
-  //     ),
-  //   );
-  //   toast.info(JSON.stringify(inventoryUpdates));
-  // };
 
   const updateInventory = (
     id: string,
@@ -340,13 +299,13 @@ export default function MultiInventoryUpdateForm({
       open={open}
       setOpen={setOpen}
       btnLabl="تحديث مخزون متعدد"
-      style="sm:max-w-6xl"
+      style="sm:max-w-4xl"
       titel="تحديث مخزون متعدد"
     >
-      <ScrollArea className="h-[75vh] w-full pr-4">
-        <div className="space-y-4" dir="rtl">
+      <ScrollArea className="max-h-[85vh] p-4" dir="rtl">
+        <div className="space-y-6" dir="rtl">
           {/* Header Summary */}
-          <div className="bg-card sticky top-0 z-20 rounded-lg border p-4 shadow-md dark:bg-slate-900">
+          <div className="bg-card top-0 z-20 rounded-lg border p-4 shadow-md dark:bg-slate-900">
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-1">
                 <Label className="text-xs">تاريخ التحديث</Label>

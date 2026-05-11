@@ -1,3 +1,412 @@
+// "use client";
+
+// import { useForm, useFieldArray } from "react-hook-form";
+// import { z } from "zod";
+// import { zodResolver } from "@hookform/resolvers/zod";
+// import { Button } from "@/components/ui/button";
+// import { Input } from "@/components/ui/input";
+// import { Label } from "@/components/ui/label";
+// import {
+//   Table,
+//   TableBody,
+//   TableCell,
+//   TableHead,
+//   TableHeader,
+//   TableRow,
+// } from "@/components/ui/table";
+// import { toast } from "sonner";
+// import { useEffect, useState } from "react";
+// import Dailogreuse from "@/components/common/dailogreuse";
+// import { processReturn } from "@/lib/actions/cashier";
+// import { useAuth } from "@/lib/context/AuthContext";
+// import { AlertCircle } from "lucide-react";
+// import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+// import { useRouter } from "next/navigation";
+// import {
+//   Select,
+//   SelectContent,
+//   SelectItem,
+//   SelectTrigger,
+//   SelectValue,
+// } from "@/components/ui/select";
+// import { useCompany } from "@/hooks/useCompany";
+// import {
+//   ReusablePayment,
+//   PaymentState,
+// } from "@/components/common/ReusablePayment";
+// import { SelectField } from "@/components/common/selectproduct";
+
+// const returnSchema = z.object({
+//   saleId: z.string(),
+//   cashierId: z.string().optional().nullable(),
+//   customerId: z.string().optional().nullable(),
+//   returnNumber: z.string(),
+//   reason: z.string().optional(),
+//   items: z.array(
+//     z.object({
+//       productId: z.string(),
+//       warehouseId: z.string(),
+//       name: z.string(),
+//       sellingUnits: z.array(z.any()),
+
+//       selectedUnitId: z.string(),
+
+//       // ✅ ADD THIS
+//       saleUnitId: z.string(),
+
+//       unitPrice: z.number(),
+//       quantitySold: z.number(),
+//       quantity: z.number().min(0),
+//     }),
+//   ),
+// });
+
+// type ReturnFormValues = z.infer<typeof returnSchema>;
+
+// interface SellingUnit {
+//   id: string;
+//   name: string;
+//   price: number;
+// }
+
+// export function ReturnForm({ sale }: { sale: any }) {
+//   const { user } = useAuth();
+//   const { company } = useCompany();
+//   const router = useRouter();
+
+//   if (!user) return null;
+
+//   const [open, setOpen] = useState(false);
+//   const [isSubmitting, setIsSubmitting] = useState(false);
+//   const [accounts, setAccounts] = useState<any[]>([]);
+
+//   const [payment, setPayment] = useState<PaymentState>({
+//     paymentMethod: "cash",
+//     accountId: "",
+//     financialAccountId: "",
+//     selectedCurrency: company?.base_currency || "YER",
+//     amountBase: 0,
+//     amountFC: 0,
+//     exchangeRate: 1,
+//     transferNumber: "",
+//   });
+
+//   const { handleSubmit, control, register, watch, setValue, reset } =
+//     useForm<ReturnFormValues>({
+//       resolver: zodResolver(returnSchema),
+//       defaultValues: {
+//         saleId: "",
+//         cashierId: user.userId,
+//         customerId: null,
+//         returnNumber: "",
+//         reason: "",
+//         items: [],
+//       },
+//     });
+
+//   const { fields } = useFieldArray({ control, name: "items" });
+//   const watchedItems = watch("items");
+
+//   /* =======================
+//      RESET FORM WHEN SALE LOADS
+//   ======================== */
+//   useEffect(() => {
+//     if (!sale) return;
+
+//     const mappedItems =
+//       sale.saleItems?.map((item: any) => {
+//         const sellingUnits: SellingUnit[] = Array.isArray(item.sellingUnits)
+//           ? item.sellingUnits
+//           : [];
+//         // ✅ find unit by name
+//         const saleUnit = sellingUnits.find((u) => u.name === item.unit);
+
+//         if (!saleUnit) {
+//           console.warn("Unit not found for:", item.unit);
+//         }
+//         return {
+//           productId: item.productId,
+//           warehouseId: item.warehouseId ?? "",
+//           name: item.name ?? "Unknown",
+//           sellingUnits,
+//           saleUnitId: saleUnit?.id || "",
+//           selectedUnitId: saleUnit?.id || "",
+//           unitPrice: item.unitPrice,
+//           quantitySold: item.quantity,
+//           quantity: 0,
+//         };
+//       }) || [];
+
+//     reset({
+//       saleId: sale.id,
+//       cashierId: user.userId,
+//       customerId: sale.customerId,
+//       returnNumber: sale.invoiceNumber,
+//       reason: "",
+//       items: mappedItems,
+//     });
+//   }, [sale]);
+
+//   /* =======================
+//      CALC TOTAL RETURN
+//   ======================== */
+//   const totalReturnBase = watchedItems.reduce(
+//     (acc, item) => acc + (item.quantity ?? 0) * (item.unitPrice ?? 0),
+//     0,
+//   );
+//   const returnToCustomer =
+//     sale?.status === "paid"
+//       ? totalReturnBase
+//       : sale?.status === "partial"
+//         ? Math.min(sale.amountPaid, totalReturnBase)
+//         : 0;
+
+//   /* =======================
+//      AUTO PAYMENT UPDATE
+//   ======================== */
+//   useEffect(() => {
+//     setPayment((prev) => ({
+//       ...prev,
+//       amountBase: returnToCustomer,
+//     }));
+//   }, [returnToCustomer]);
+
+//   /* =======================
+//      SUBMIT
+//   ======================== */
+//   const onSubmit = async (values: ReturnFormValues) => {
+//     const selectedItems = values.items.filter((i) => i.quantity > 0);
+//     console.log(values);
+
+//     if (!selectedItems.length) {
+//       toast.error("يرجى تحديد كمية للإرجاع");
+//       return;
+//     }
+
+//     const invalid = selectedItems.find((i) => i.quantity > i.quantitySold);
+
+//     if (invalid) {
+//       toast.error(`كمية ${invalid.name} أكبر من المباعة`);
+//       return;
+//     }
+
+//     if (
+//       payment.amountBase > 0 &&
+//       (!payment.paymentMethod || !payment.accountId)
+//     ) {
+//       toast.error("يرجى اختيار طريقة الدفع والحساب");
+//       return;
+//     }
+
+//     setIsSubmitting(true);
+
+//     try {
+//       const result = await processReturn(
+//         {
+//           ...values,
+//           branchId: company?.branches?.[0]?.id,
+//           items: selectedItems,
+//           financialAccountId: payment.financialAccountId,
+//           paymentMethod: payment.paymentMethod,
+//           accountId: payment.accountId,
+//           totalReturn: totalReturnBase,
+//           returnToCustomer: payment.amountBase,
+//           currency: payment.selectedCurrency,
+//           exchangeRate: payment.exchangeRate,
+//           foreignAmount: payment.amountFC,
+//           transferNumber: payment.transferNumber,
+//         },
+//         user.companyId,
+//       );
+//       if (result.success) {
+//         toast.success("تم الإرجاع بنجاح");
+//         setOpen(false);
+//         router.refresh();
+//       } else {
+//         toast.error(result.message);
+//       }
+//     } catch {
+//       toast.error("حدث خطأ غير متوقع");
+//     } finally {
+//       setIsSubmitting(false);
+//     }
+//   };
+//   const returnType = [{ id: "returnAll", name: "إرجاع" },
+//     { id: "returnPartial", name: "إرجاع جزئي" },
+// ];
+//   /* =======================
+//      UI
+//   ======================== */
+//   return (
+//     <Dailogreuse
+//       open={open}
+//       setOpen={setOpen}
+//       btnLabl="إرجاع أصناف"
+//       description="تحديد الأصناف وطريقة الإرجاع"
+//       style="max-w-90 overflow-hidden md:max-w-4xl lg:max-w-6xl"
+//     >
+//       <ScrollArea dir="rtl" className="h-[70vh] space-y-4">
+//         {/* Header */}
+//         {/* Table */}
+//         <form onSubmit={handleSubmit(onSubmit)} className="grid gap-6">
+//           {/* Reason */}
+//           <div className="grid gap-2">
+//             <Label>سبب الإرجاع</Label>
+//             <Input {...register("reason")} />
+//           </div>
+// <SelectField options={returnType} action={ } />
+//           <div className="w-80 p-3 sm:w-[480px] md:w-3xl lg:w-full">
+//             <ScrollArea className="h-[30vh] w-full rounded-2xl border border-amber-300 p-2">
+//               <Table className="w-full">
+//                 <TableHeader>
+//                   {" "}
+//                   <TableRow>
+//                     <TableHead>المنتج</TableHead>
+//                     <TableHead>الوحدة</TableHead>
+//                     <TableHead>المباع</TableHead>
+//                     <TableHead>السعر</TableHead>
+//                     <TableHead>الإرجاع</TableHead>
+//                     <TableHead>المجموع</TableHead>
+//                   </TableRow>
+//                 </TableHeader>
+
+//                 <TableBody>
+//                   {fields.map((field, index) => {
+//                     const saleUnit = field.sellingUnits?.find(
+//                       (u: any) => u.id === field.saleUnitId,
+//                     );
+
+//                     const isBaseUnit = saleUnit?.isBase;
+
+//                     return (
+//                       <TableRow key={field.id}>
+//                         <TableCell>{field.name}</TableCell>
+
+//                         <TableCell>
+//                           <Select
+//                             value={watchedItems[index]?.selectedUnitId}
+//                             onValueChange={(val) =>
+//                               setValue(`items.${index}.selectedUnitId`, val, {
+//                                 shouldDirty: true,
+//                               })
+//                             }
+//                           >
+//                             <SelectTrigger className="w-24">
+//                               <SelectValue />
+//                             </SelectTrigger>
+
+//                             <SelectContent>
+//                               {(field.sellingUnits ?? []).map((u: any) => (
+//                                 <SelectItem
+//                                   key={u.id}
+//                                   value={u.id}
+//                                   disabled={
+//                                     isBaseUnit && u.id !== field.saleUnitId
+//                                   }
+//                                 >
+//                                   {u.name}
+//                                 </SelectItem>
+//                               ))}
+//                             </SelectContent>
+//                           </Select>
+//                         </TableCell>
+
+//                         <TableCell>{field.quantitySold}</TableCell>
+//                         <TableCell>{field.unitPrice}</TableCell>
+
+//                         <TableCell>
+//                           <Input
+//                             type="number"
+//                             min={0}
+//                             max={field.quantitySold} // Prevents arrows from going higher
+//                             className="w-20"
+//                             {...register(`items.${index}.quantity`, {
+//                               valueAsNumber: true,
+//                               onChange: (e) => {
+//                                 const enteredValue = parseFloat(e.target.value);
+
+//                                 if (enteredValue > field.quantitySold) {
+//                                   // If they type 999 but max is 10, this snaps it back to 10
+//                                   setValue(
+//                                     `items.${index}.quantity`,
+//                                     field.quantitySold,
+//                                   );
+//                                 }
+//                               },
+//                             })}
+//                             // Optional: Prevents the '+' and 'e' keys which are valid in 'number' inputs
+//                             onKeyDown={(e) => {
+//                               if (e.key === "+" || e.key === "e") {
+//                                 e.preventDefault();
+//                               }
+//                             }}
+//                           />
+//                         </TableCell>
+
+//                         <TableCell>
+//                           {(
+//                             (watchedItems[index]?.quantity ?? 0) *
+//                             (field.unitPrice ?? 0)
+//                           ).toFixed(2)}
+//                         </TableCell>
+//                       </TableRow>
+//                     );
+//                   })}
+//                 </TableBody>
+//               </Table>
+
+//               <ScrollBar orientation="horizontal" />
+//             </ScrollArea>
+//           </div>
+
+//           {/* PAYMENT (ONLY IF NEEDED) */}
+//           {returnToCustomer > 0 && (
+//             <div className="p-3">
+//               <ReusablePayment value={payment} action={setPayment} />
+//             </div>
+//           )}
+
+//           {/* SUMMARY */}
+//           <div className="flex justify-between rounded-lg bg-green-50 p-4">
+//             <div>
+//               <p>إجمالي المرتجع</p>
+//               <p className="font-bold text-green-600">
+//                 {totalReturnBase.toLocaleString()} {company?.base_currency}
+//               </p>
+//             </div>
+
+//             {sale?.customer && (
+//               <div className="text-muted-foreground text-xs">
+//                 <AlertCircle className="inline h-3 w-3" />
+//                 {sale.status === "paid"
+//                   ? "سيتم استرجاع المبلغ"
+//                   : "سيتم خصم من المديونية"}
+//               </div>
+//             )}
+//           </div>
+
+//           {/* ACTIONS */}
+//           <div className="flex justify-end gap-2">
+//             <Button
+//               type="button"
+//               variant="outline"
+//               onClick={() => setOpen(false)}
+//             >
+//               إلغاء
+//             </Button>
+
+//             <Button
+//               type="submit"
+//               disabled={isSubmitting || totalReturnBase <= 0}
+//             >
+//               {isSubmitting ? "جاري..." : "تأكيد الإرجاع"}
+//             </Button>
+//           </div>
+//         </form>{" "}
+//       </ScrollArea>
+//     </Dailogreuse>
+//   );
+// }
 "use client";
 
 import { useForm, useFieldArray } from "react-hook-form";
@@ -34,6 +443,7 @@ import {
   ReusablePayment,
   PaymentState,
 } from "@/components/common/ReusablePayment";
+import { SelectField } from "@/components/common/selectproduct";
 
 const returnSchema = z.object({
   saleId: z.string(),
@@ -47,12 +457,8 @@ const returnSchema = z.object({
       warehouseId: z.string(),
       name: z.string(),
       sellingUnits: z.array(z.any()),
-
       selectedUnitId: z.string(),
-
-      // ✅ ADD THIS
       saleUnitId: z.string(),
-
       unitPrice: z.number(),
       quantitySold: z.number(),
       quantity: z.number().min(0),
@@ -78,6 +484,9 @@ export function ReturnForm({ sale }: { sale: any }) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [accounts, setAccounts] = useState<any[]>([]);
+
+  // 🔥 NEW: Track return type — "partial" or "full"
+  const [returnType, setReturnType] = useState<"partial" | "full">("partial");
 
   const [payment, setPayment] = useState<PaymentState>({
     paymentMethod: "cash",
@@ -117,7 +526,6 @@ export function ReturnForm({ sale }: { sale: any }) {
         const sellingUnits: SellingUnit[] = Array.isArray(item.sellingUnits)
           ? item.sellingUnits
           : [];
-        // ✅ find unit by name
         const saleUnit = sellingUnits.find((u) => u.name === item.unit);
 
         if (!saleUnit) {
@@ -132,7 +540,7 @@ export function ReturnForm({ sale }: { sale: any }) {
           selectedUnitId: saleUnit?.id || "",
           unitPrice: item.unitPrice,
           quantitySold: item.quantity,
-          quantity: 0,
+          quantity: 0, // default empty
         };
       }) || [];
 
@@ -144,7 +552,35 @@ export function ReturnForm({ sale }: { sale: any }) {
       reason: "",
       items: mappedItems,
     });
-  }, [sale]);
+
+    // Reset to partial by default
+    setReturnType("partial");
+  }, [sale, reset]);
+
+  /* =======================
+     HANDLE RETURN TYPE CHANGE
+  ======================== */
+  useEffect(() => {
+    if (!fields.length) return;
+
+    if (returnType === "full") {
+      // Fill all quantities with sold amount
+      fields.forEach((field, index) => {
+        setValue(`items.${index}.quantity`, field.quantitySold, {
+          shouldValidate: true,
+          shouldDirty: true,
+        });
+      });
+    } else {
+      // Clear all quantities (partial return)
+      fields.forEach((field, index) => {
+        setValue(`items.${index}.quantity`, 0, {
+          shouldValidate: true,
+          shouldDirty: true,
+        });
+      });
+    }
+  }, [returnType, fields, setValue]);
 
   /* =======================
      CALC TOTAL RETURN
@@ -175,7 +611,6 @@ export function ReturnForm({ sale }: { sale: any }) {
   ======================== */
   const onSubmit = async (values: ReturnFormValues) => {
     const selectedItems = values.items.filter((i) => i.quantity > 0);
-    console.log(values);
 
     if (!selectedItems.length) {
       toast.error("يرجى تحديد كمية للإرجاع");
@@ -231,6 +666,11 @@ export function ReturnForm({ sale }: { sale: any }) {
     }
   };
 
+  const returnOptions = [
+    { id: "partial", name: "إرجاع جزئي" },
+    { id: "full", name: "إرجاع كامل" },
+  ];
+
   /* =======================
      UI
   ======================== */
@@ -243,8 +683,6 @@ export function ReturnForm({ sale }: { sale: any }) {
       style="max-w-90 overflow-hidden md:max-w-4xl lg:max-w-6xl"
     >
       <ScrollArea dir="rtl" className="h-[70vh] space-y-4">
-        {/* Header */}
-        {/* Table */}
         <form onSubmit={handleSubmit(onSubmit)} className="grid gap-6">
           {/* Reason */}
           <div className="grid gap-2">
@@ -252,11 +690,20 @@ export function ReturnForm({ sale }: { sale: any }) {
             <Input {...register("reason")} />
           </div>
 
+          {/* 🔥 RETURN TYPE SELECTOR */}
+          <div className="grid gap-2">
+            <Label>نوع الإرجاع</Label>
+            <SelectField
+              value={returnType}
+              action={(val) => setReturnType(val as "partial" | "full")}
+              options={returnOptions}
+            />
+          </div>
+
           <div className="w-80 p-3 sm:w-[480px] md:w-3xl lg:w-full">
             <ScrollArea className="h-[30vh] w-full rounded-2xl border border-amber-300 p-2">
               <Table className="w-full">
                 <TableHeader>
-                  {" "}
                   <TableRow>
                     <TableHead>المنتج</TableHead>
                     <TableHead>الوحدة</TableHead>
@@ -272,7 +719,6 @@ export function ReturnForm({ sale }: { sale: any }) {
                     const saleUnit = field.sellingUnits?.find(
                       (u: any) => u.id === field.saleUnitId,
                     );
-
                     const isBaseUnit = saleUnit?.isBase;
 
                     return (
@@ -315,15 +761,13 @@ export function ReturnForm({ sale }: { sale: any }) {
                           <Input
                             type="number"
                             min={0}
-                            max={field.quantitySold} // Prevents arrows from going higher
+                            max={field.quantitySold}
                             className="w-20"
                             {...register(`items.${index}.quantity`, {
                               valueAsNumber: true,
                               onChange: (e) => {
                                 const enteredValue = parseFloat(e.target.value);
-
                                 if (enteredValue > field.quantitySold) {
-                                  // If they type 999 but max is 10, this snaps it back to 10
                                   setValue(
                                     `items.${index}.quantity`,
                                     field.quantitySold,
@@ -331,7 +775,6 @@ export function ReturnForm({ sale }: { sale: any }) {
                                 }
                               },
                             })}
-                            // Optional: Prevents the '+' and 'e' keys which are valid in 'number' inputs
                             onKeyDown={(e) => {
                               if (e.key === "+" || e.key === "e") {
                                 e.preventDefault();
@@ -399,7 +842,7 @@ export function ReturnForm({ sale }: { sale: any }) {
               {isSubmitting ? "جاري..." : "تأكيد الإرجاع"}
             </Button>
           </div>
-        </form>{" "}
+        </form>
       </ScrollArea>
     </Dailogreuse>
   );

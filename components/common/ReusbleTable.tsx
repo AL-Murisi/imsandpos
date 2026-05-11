@@ -8,7 +8,7 @@ import {
 } from "@tanstack/react-table";
 
 import { ChevronDown } from "lucide-react";
-
+import { useRouter } from "next/navigation";
 import {
   setColumnFilters,
   setColumnVisibility,
@@ -37,6 +37,7 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table";
+import { IconReload } from "@tabler/icons-react";
 
 interface DataTableProps<T> {
   data: T[];
@@ -97,7 +98,7 @@ export function DataTable<T>({
       ? (updater as (old: T) => T)(old)
       : updater;
   }
-
+  const router = useRouter();
   const table = useReactTable({
     data,
     columns,
@@ -138,24 +139,13 @@ export function DataTable<T>({
       }
     },
   });
-  const [isPageLoading, setIsPageLoading] = useState(false);
-
-  const handlePageChange = async (
-    action: () => void,
-    direction: "next" | "prev",
-  ) => {
-    setIsPageLoading(true);
-    try {
-      await action();
-      // toast.success(direction === "next" ? t("nextPageLoaded") : t("prevPageLoaded"));
-    } finally {
-      setIsPageLoading(false);
-    }
-  };
 
   return (
     <Card className="@container/card border-transparent bg-transparent px-2">
       <div className="flex flex-wrap items-center justify-between gap-2 space-x-2 px-2 py-4">
+        <Button variant="outline" onClick={() => router.refresh()}>
+          <IconReload />
+        </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="mr-auto">

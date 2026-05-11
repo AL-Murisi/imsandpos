@@ -15,6 +15,7 @@ import {
   UpdateWarehouseInput,
   WarehouseInput,
   SellingUnit,
+  FormValue,
 } from "@/lib/zod";
 import { PaymentState } from "@/components/common/ReusablePayment";
 import { getNextVoucherNumber } from "./cashier";
@@ -24,6 +25,7 @@ import {
   markNotificationDigestSent,
   shouldSendNotificationDigest,
 } from "./notificationDigest";
+import { getAccountMappings } from "./chartOfaccounts";
 function serializeData<T>(data: T): T {
   if (data === null || data === undefined) return data;
   if (typeof data !== "object") return data;
@@ -48,20 +50,6 @@ function serializeData<T>(data: T): T {
   }
 
   return plainObj;
-}
-
-async function getDefaultAccountMap(
-  tx: any,
-  companyId: string,
-): Promise<Map<string, string>> {
-  const mappings = await tx.account_mappings.findMany({
-    where: { company_id: companyId, is_default: true },
-    select: { mapping_type: true, account_id: true },
-  });
-
-  return new Map<string, string>(
-    mappings.map((m: any) => [String(m.mapping_type), String(m.account_id)]),
-  );
 }
 
 function resolveSettlementAccount(
@@ -146,103 +134,6 @@ interface ExtendedInventoryUpdateData {
   amountFC?: number;
 }
 
-// export async function fetchAllFormDatas(companyId: string) {
-//   try {
-//     const [warehouses, suppliers, inventories] = await Promise.all([
-//       prisma.warehouse.findMany({
-//         where: { companyId, isActive: true },
-//         select: { id: true, name: true, location: true },
-//         orderBy: { name: "asc" },
-//       }),
-
-//       // Suppliers
-//       prisma.supplier.findMany({
-//         where: { companyId, isActive: true },
-//         select: { id: true, name: true },
-//         orderBy: { name: "asc" },
-//       }),
-
-//       // Inventories
-//       prisma.inventory.findMany({
-//         where: { companyId },
-//         select: {
-//           id: true,
-//           productId: true,
-//           warehouseId: true,
-//           stockQuantity: true,
-
-//           reservedQuantity: true,
-//           reorderLevel: true,
-//           status: true,
-//           batches: {
-//             select: { supplierId: true, costPrice: true },
-//           },
-//           product: {
-//             select: {
-//               id: true,
-//               name: true,
-//               sku: true,
-//               sellingUnits: true,
-//             },
-//           },
-//           warehouse: {
-//             select: { name: true, location: true },
-//           },
-//         },
-//       }),
-//     ]);
-
-//     // 1. Extract one option per product for the selection list.
-//     // Multiple inventory rows can exist for the same product across warehouses,
-//     // but the selector should stay stable and unique by productId.
-//     const productMap = new Map<
-//       string,
-//       {
-//         id: string;
-//         sku: string;
-//         name: string;
-//         sellingUnits: Prisma.JsonValue;
-//         warehouseId?: string;
-//       }
-//     >();
-
-//     for (const item of inventories) {
-//       if (productMap.has(item.productId)) continue;
-
-//       const sellingUnits = Array.isArray(item.product.sellingUnits)
-//         ? item.product.sellingUnits
-//         : [];
-
-//       productMap.set(item.productId, {
-//         id: item.productId,
-//         sku: item.product.sku,
-//         name: `${item.product.name} (${item.warehouse.name})`,
-//         sellingUnits,
-//         warehouseId: item.warehouseId,
-//       });
-//     }
-
-//     const productList = Array.from(productMap.values());
-//     const inventory = inventories.map((inv) => ({
-//       ...inv,
-//       availableQuantity: inv.stockQuantity - inv.reservedQuantity,
-//     }));
-//     return {
-//       products: serializeData(productList), // Flat list for dropdowns
-//       warehouses,
-//       suppliers,
-//       inventories: serializeData(inventory), // Full inventory details
-//     };
-//   } catch (error) {
-//     console.error("Error fetching form data:", error);
-//     return {
-//       products: [],
-//       warehouses: [],
-//       suppliers: [],
-//       inventories: [],
-//     };
-//   }
-// }
 export async function fetchAllFormDatas(companyId: string) {
   try {
     const [warehouses, suppliers, inventories] = await Promise.all([
@@ -365,436 +256,40 @@ function deriveStatus(
   if (available <= reorderLevel) return "low";
   return "available";
 }
-// export async function processPurchaseReturn(
-//   data: PurchaseReturnData,
-//   userId: string,
-//   companyId: string,
-// ) {
-//   const {
-//     purchaseId,
-//     purchaseItemId,
-//     warehouseId,
-//     returnQuantity,
-//     returnUnit,
-//     unitCost,
-//     branchId,
-//     transferNumber,
-//     paymentMethod,
-//     baseCurrency,
-//     baseAmount,
-//     currency,
-//     exchangeRate,
-//     refundAmount = 0,
-//     reason,
-//   } = data;
 
-//   try {
-//     let purchaseReturn;
-//     const result = await prisma.$transaction(
-//       async (tx) => {
-//         const accountMap = await getDefaultAccountMap(tx, companyId);
-//         const inventoryAccount = accountMap.get("inventory");
-//         const payableAccount = accountMap.get("accounts_payable");
-//         const settlementAccount = resolveSettlementAccount(
-//           accountMap,
-//           paymentMethod,
-//         );
+interface PurchaseReturnPayload {
+  purchaseId: string;
+  supplierId: string;
+  items: {
+    purchaseItemId: string;
+    productId: string;
+    warehouseId: string;
+    returnQuantity: number;
+    selectedUnitId: string;
+    unitCost: number;
+    returnUnit: string;
+    reason?: string;
+  }[];
+  branchId?: string;
+  paymentMethod?: string;
+  refundAmount?: number;
+  transferNumber?: string;
+  globalReason?: string;
+  baseCurrency?: string;
+  baseAmount: number;
+  currency: string;
+  exchangeRate: number;
+}
 
-//         const originalPurchase = await tx.invoice.findUnique({
-//           where: { id: purchaseId, companyId, sale_type: "PURCHASE" },
-//           select: {
-//             id: true,
-//             invoiceNumber: true,
-//             sale_type: true,
-//             amountDue: true,
-//             items: {
-//               where: { id: purchaseItemId },
-//               include: {
-//                 product: {
-//                   select: {
-//                     id: true,
-//                     sellingUnits: true,
-//                   },
-//                 },
-//               },
-//             },
-//             supplier: {
-//               select: {
-//                 id: true,
-//                 totalPurchased: true,
-//                 totalPaid: true,
-//                 outstandingBalance: true,
-//               },
-//             },
-//           },
-//         });
-
-//         if (!originalPurchase) {
-//           throw new Error("عملية الشراء الأصلية غير موجودة");
-//         }
-
-//         if (originalPurchase.sale_type !== "PURCHASE") {
-//           throw new Error("يمكن تنفيذ الإرجاع على فاتورة شراء فقط");
-//         }
-
-//         if (!inventoryAccount || !payableAccount) {
-//           throw new Error(
-//             "Missing required account mappings for purchase return journal entry",
-//           );
-//         }
-
-//         if (refundAmount > 0 && !settlementAccount) {
-//           throw new Error(
-//             "Missing settlement account mapping for purchase return refund",
-//           );
-//         }
-
-//         if (originalPurchase.items.length === 0) {
-//           throw new Error("عنصر الشراء غير موجود");
-//         }
-
-//         const purchaseItem = originalPurchase.items[0];
-//         const product = purchaseItem.product;
-//         const supplier = originalPurchase.supplier;
-//         const productId = product.id;
-//         const supplierId = supplier?.id;
-//         const returnInvoiceNumber = originalPurchase.invoiceNumber.replace(
-//           "مشتريات",
-//           "مرتجع",
-//         );
-
-//         const existingReturnPurchase = await tx.invoice.findFirst({
-//           where: {
-//             companyId,
-//             sale_type: "RETURN_PURCHASE",
-//             invoiceNumber: returnInvoiceNumber,
-//           },
-//           select: { id: true },
-//         });
-
-//         if (existingReturnPurchase) {
-//           throw new Error(
-//             "تم إرجاع هذه الفاتورة للمورد مسبقاً، لا يمكن إرجاعها مرة أخرى",
-//           );
-//         }
-
-//         const inventory = await tx.inventory.findUnique({
-//           where: {
-//             companyId_productId_warehouseId: {
-//               companyId,
-//               productId,
-//               warehouseId,
-//             },
-//           },
-//           select: {
-//             stockQuantity: true,
-//             availableQuantity: true,
-//             reorderLevel: true,
-//           },
-//         });
-
-//         if (!inventory) {
-//           throw new Error("سجل المخزون غير موجود");
-//         }
-
-//         const sellingUnits = (product.sellingUnits as any[]) || [];
-//         const selectedUnit = sellingUnits.find(
-//           (u: any) => u.name === returnUnit,
-//         );
-//         const returnQuantityInUnits = convertToBaseUnits(
-//           returnQuantity,
-//           selectedUnit,
-//           sellingUnits,
-//         );
-
-//         if (returnQuantityInUnits > inventory.stockQuantity) {
-//           throw new Error(
-//             `لا يمكن إرجاع كمية أكبر من المخزون الحالي (${inventory.stockQuantity})`,
-//           );
-//         }
-
-//         const inventoryRecord = await tx.inventory.findUnique({
-//           where: {
-//             companyId_productId_warehouseId: {
-//               companyId,
-//               productId,
-//               warehouseId,
-//             },
-//           },
-//           select: { id: true },
-//         });
-//         if (!inventoryRecord) {
-//           throw new Error("سجل المخزون غير موجود");
-//         }
-
-//         // Consume returned quantity from batches (FIFO by oldest received first)
-
-//         const returnTotalCost = returnQuantity * unitCost;
-//         const payableReduction = Math.max(0, returnTotalCost - refundAmount);
-//         if (Number(originalPurchase.amountDue) > 0) {
-//           await tx.invoice.update({
-//             where: { id: purchaseId, companyId },
-//             data: {
-//               amountDue: Number(0),
-//             },
-//           });
-//         }
-//         purchaseReturn = await tx.invoice.create({
-//           data: {
-//             companyId,
-//             invoiceNumber: returnInvoiceNumber,
-//             cashierId: userId,
-//             branchId,
-//             warehouseId,
-//             supplierId,
-//             sale_type: "RETURN_PURCHASE",
-//             totalAmount: returnTotalCost,
-//             amountPaid: refundAmount,
-//             amountDue: 0,
-//             status: "completed",
-//             currencyCode: currency || baseCurrency || "",
-//             exchangeRate,
-//             baseAmount,
-//             foreignAmount:
-//               currency && baseCurrency && currency !== baseCurrency
-//                 ? refundAmount
-//                 : undefined,
-//             items: {
-//               create: {
-//                 companyId,
-//                 productId,
-//                 quantity: returnQuantity,
-//                 price: unitCost,
-//                 unit: returnUnit,
-//                 totalPrice: returnTotalCost,
-//               },
-//             },
-//           },
-//         });
-//         await tx.inventoryBatch.updateMany({
-//           where: { invoiceItemId: originalPurchase.items[0].id },
-//           data: { remainingQuantity: { decrement: returnQuantity } },
-//         });
-
-//         const newStockQty = inventory.stockQuantity - returnQuantityInUnits;
-//         const newAvailableQty =
-//           inventory.availableQuantity - returnQuantityInUnits;
-
-//         await tx.inventory.update({
-//           where: {
-//             companyId_productId_warehouseId: {
-//               companyId,
-//               productId,
-//               warehouseId,
-//             },
-//           },
-//           data: {
-//             stockQuantity: newStockQty,
-//             availableQuantity: newAvailableQty,
-//             status:
-//               newAvailableQty <= 0
-//                 ? "out_of_stock"
-//                 : newAvailableQty <= inventory.reorderLevel
-//                   ? "low"
-//                   : "available",
-//           },
-//         });
-
-//         await tx.stockMovement.create({
-//           data: {
-//             companyId,
-//             productId,
-//             warehouseId,
-//             userId,
-//             movementType: "صادر",
-//             quantity: returnQuantityInUnits,
-//             reason: "إرجاع للمورد",
-//             quantityBefore: inventory.stockQuantity,
-//             quantityAfter: newStockQty,
-//             referenceType: "مرتجع مشتريات",
-//             referenceId: purchaseReturn.id,
-//             notes:
-//               reason ||
-//               `إرجاع ${returnQuantity} ${returnUnit} من فاتورة ${purchaseId}`,
-//           },
-//         });
-//         const voucherNumber = await getNextVoucherNumber(
-//           companyId,
-//           "RECEIPT",
-//           tx,
-//         );
-//         let payment;
-//         if (refundAmount > 0 && paymentMethod) {
-//           const payments = await tx.financialTransaction.create({
-//             data: {
-//               companyId,
-//               supplierId,
-//               currencyCode: currency || baseCurrency || "",
-//               invoiceId: purchaseReturn.id,
-//               branchId,
-//               type: "RECEIPT",
-//               purchaseId: purchaseReturn.id,
-//               voucherNumber: voucherNumber,
-//               userId: userId,
-//               status: "paid",
-//               amount: refundAmount,
-//               exchangeRate,
-//               baseAmount,
-//               foreignAmount:
-//                 currency && baseCurrency && currency !== baseCurrency
-//                   ? refundAmount
-//                   : undefined,
-//               paymentMethod,
-//               referenceNumber: transferNumber,
-//               notes:
-//                 reason ||
-//                 `استرداد مبلغ من المورد - فاتورة ${returnInvoiceNumber}`,
-//             },
-//           });
-//           payment = payments.voucherNumber;
-//         }
-//         const entryNumber = `PURET-${new Date().getFullYear()}-${payment}`;
-
-//         await tx.supplier.update({
-//           where: { id: supplierId },
-//           data: {
-//             totalPurchased: {
-//               set: Math.max(
-//                 0,
-//                 Number(supplier?.totalPurchased) - returnTotalCost,
-//               ),
-//             },
-//             ...(refundAmount > 0 && {
-//               totalPaid: {
-//                 set: Math.max(0, Number(supplier?.totalPaid) - refundAmount),
-//               },
-//             }),
-//             outstandingBalance: {
-//               set: Math.max(
-//                 0,
-//                 Number(supplier?.outstandingBalance) - payableReduction,
-//               ),
-//             },
-//           },
-//         });
-
-//         const desc = `Purchase return: ${purchaseReturn.invoiceNumber}`;
-//         const journalLines: any[] = [];
-
-//         if (refundAmount > 0 && settlementAccount) {
-//           journalLines.push(
-//             buildWarehouseJournalLine(
-//               companyId,
-//               settlementAccount,
-//               `${desc} - refund`,
-//               refundAmount,
-//               0,
-//               {
-//                 currency,
-//                 baseCurrency,
-//                 exchangeRate,
-//                 foreignAmount:
-//                   currency && baseCurrency && currency !== baseCurrency
-//                     ? refundAmount
-//                     : undefined,
-//               },
-//             ),
-//           );
-//         }
-
-//         if (payableReduction > 0) {
-//           journalLines.push(
-//             buildWarehouseJournalLine(
-//               companyId,
-//               payableAccount,
-//               `${desc} - payable reversal`,
-//               payableReduction,
-//               0,
-//               {
-//                 currency,
-//                 baseCurrency,
-//                 exchangeRate,
-//               },
-//             ),
-//           );
-//         }
-
-//         journalLines.push(
-//           buildWarehouseJournalLine(
-//             companyId,
-//             inventoryAccount,
-//             `${desc} - inventory`,
-//             0,
-//             returnTotalCost,
-//             {
-//               currency,
-//               baseCurrency,
-//               exchangeRate,
-//             },
-//           ),
-//         );
-
-//         await tx.journalHeader.create({
-//           data: {
-//             companyId,
-//             entryNumber,
-//             description: desc,
-//             branchId,
-//             referenceType: "مرتجع مشتريات",
-//             referenceId: purchaseReturn.id,
-//             entryDate: new Date(),
-//             status: "POSTED",
-//             createdBy: userId,
-//             lines: {
-//               create: journalLines.map((line) => ({
-//                 ...line,
-//                 companyId,
-//               })),
-//             },
-//           },
-//         });
-
-//         return {
-//           success: true,
-//           message: "تم إرجاع المشتريات بنجاح",
-//           purchaseReturn,
-//           returnAmount: returnTotalCost,
-//           refundAmount,
-//           originalPurchaseId: purchaseId,
-//         };
-//       },
-//       {
-//         timeout: 20000,
-//         maxWait: 5000,
-//       },
-//     );
-
-//     revalidatePath("/manageStocks");
-
-//     return result;
-//   } catch (error: any) {
-//     console.error("خطأ في إرجاع المشتريات:", error);
-//     return {
-//       success: false,
-//       message: error.message || "فشل في معالجة الإرجاع",
-//     };
-//   }
-// }
-// ============================================
-// 🔄 Purchase Journal Entries with Retry
-// ============================================
 export async function processPurchaseReturn(
-  data: PurchaseReturnData,
+  data: PurchaseReturnPayload,
   userId: string,
   companyId: string,
 ) {
   const {
     purchaseId,
-    purchaseItemId,
-    warehouseId,
-    returnQuantity,
-    returnUnit,
-    unitCost,
+    supplierId,
+    items,
     branchId,
     transferNumber,
     paymentMethod,
@@ -803,320 +298,381 @@ export async function processPurchaseReturn(
     currency,
     exchangeRate,
     refundAmount = 0,
-    reason,
+    globalReason,
   } = data;
 
   try {
-    const result = await prisma.$transaction(
-      async (tx) => {
-        const accountMap = await getDefaultAccountMap(tx, companyId);
-        const inventoryAccount = accountMap.get("inventory");
-        const payableAccount = accountMap.get("accounts_payable");
-        const settlementAccount = resolveSettlementAccount(
-          accountMap,
-          paymentMethod,
-        );
+    const { apAccount, inventoryAccount, accountMap } =
+      await getAccountMappings();
+    const settlementAccount = resolveSettlementAccount(
+      accountMap,
+      paymentMethod,
+    );
 
-        if (!inventoryAccount || !payableAccount)
-          throw new Error(
-            "Missing required account mappings for purchase return journal entry",
-          );
-        if (refundAmount > 0 && !settlementAccount)
-          throw new Error(
-            "Missing settlement account mapping for purchase return refund",
-          );
+    if (!inventoryAccount || !apAccount) {
+      return { success: false, message: "Missing required account mappings" };
+    }
+    if (refundAmount > 0 && !settlementAccount) {
+      return {
+        success: false,
+        message: "Missing settlement account for refund",
+      };
+    }
 
-        // ── 1. Fetch original purchase ───────────────────────────
-        const originalPurchase = await tx.invoice.findUnique({
-          where: { id: purchaseId, companyId, sale_type: "PURCHASE" },
-          select: {
-            id: true,
-            invoiceNumber: true,
-            amountDue: true,
-            items: {
-              where: { id: purchaseItemId },
-              include: {
-                product: { select: { id: true, sellingUnits: true } },
-              },
-            },
-            supplier: { select: { id: true } }, // ✅ removed totalPurchased etc
-          },
-        });
+    // Pre-fetch original purchase
+    const originalPurchase = await prisma.invoice.findUnique({
+      where: { id: purchaseId, companyId, sale_type: "PURCHASE" },
+      select: {
+        id: true,
+        invoiceNumber: true,
+        amountDue: true,
+        amountPaid: true,
+        supplierId: true,
+      },
+    });
 
-        if (!originalPurchase)
-          throw new Error("عملية الشراء الأصلية غير موجودة");
-        if (originalPurchase.items.length === 0)
-          throw new Error("عنصر الشراء غير موجود");
+    if (!originalPurchase) {
+      return { success: false, message: "عملية الشراء الأصلية غير موجودة" };
+    }
 
-        const purchaseItem = originalPurchase.items[0];
-        const supplierId = originalPurchase.supplier?.id;
-        const productId = purchaseItem.product.id;
-        const returnInvoiceNumber = originalPurchase.invoiceNumber.replace(
-          "مشتريات",
-          "مرتجع",
-        );
+    // Pre-fetch inventory records for all items
+    const inventoryRecords = await prisma.inventory.findMany({
+      where: {
+        companyId,
+        OR: items.map((item) => ({
+          productId: item.productId,
+          warehouseId: item.warehouseId,
+        })),
+      },
+      select: {
+        id: true,
+        productId: true,
+        warehouseId: true,
+        stockQuantity: true,
+        reservedQuantity: true,
+        reorderLevel: true,
+      },
+    });
 
-        const existing = await tx.invoice.findFirst({
-          where: {
-            companyId,
-            sale_type: "RETURN_PURCHASE",
-            invoiceNumber: returnInvoiceNumber,
-          },
-          select: { id: true },
-        });
-        if (existing) throw new Error("تم إرجاع هذه الفاتورة للمورد مسبقاً");
+    // Pre-validate all items
+    for (const item of items) {
+      const inv = inventoryRecords.find(
+        (i) =>
+          i.productId === item.productId && i.warehouseId === item.warehouseId,
+      );
+      if (!inv) {
+        return {
+          success: false,
+          message: `سجل المخزون غير موجود للمنتج ${item.productId}`,
+        };
+      }
 
-        // ── 2. Inventory check ───────────────────────────────────
-        const inventory = await tx.inventory.findUnique({
-          where: {
-            companyId_productId_warehouseId: {
-              companyId,
-              productId,
-              warehouseId,
-            },
-          },
-          select: {
-            id: true,
-            stockQuantity: true,
-            reservedQuantity: true,
-            reorderLevel: true,
-          },
-        });
-        if (!inventory) throw new Error("سجل المخزون غير موجود");
+      // Get purchase item for unit conversion
+      const purchaseItem = await prisma.invoiceItem.findUnique({
+        where: { id: item.purchaseItemId },
+        include: { product: { select: { sellingUnits: true } } },
+      });
 
-        const sellingUnits = (purchaseItem.product.sellingUnits as any[]) || [];
-        const selectedUnit = sellingUnits.find(
-          (u: any) => u.name === returnUnit,
-        );
-        const returnQtyInUnits = convertToBaseUnits(
-          returnQuantity,
-          selectedUnit,
-          sellingUnits,
-        );
+      if (!purchaseItem) {
+        return {
+          success: false,
+          message: `عنصر الشراء ${item.purchaseItemId} غير موجود`,
+        };
+      }
 
-        if (returnQtyInUnits > inventory.stockQuantity)
-          throw new Error(
-            `لا يمكن إرجاع كمية أكبر من المخزون الحالي (${inventory.stockQuantity})`,
-          );
+      const sellingUnits = (purchaseItem.product.sellingUnits as any[]) || [];
+      const selectedUnit = sellingUnits.find(
+        (u: any) => u.name === item.returnUnit,
+      );
+      const returnQtyInUnits = convertToBaseUnits(
+        item.returnQuantity,
+        selectedUnit,
+        sellingUnits,
+      );
 
-        const returnTotalCost = returnQuantity * unitCost;
-        const payableReduction = Math.max(0, returnTotalCost - refundAmount);
+      if (returnQtyInUnits > inv.stockQuantity) {
+        return {
+          success: false,
+          message: `لا يمكن إرجاع كمية أكبر من المخزون الحالي (${inv.stockQuantity})`,
+        };
+      }
 
-        // ── 3. Zero out original purchase amountDue if needed ────
-        if (Number(originalPurchase.amountDue) > 0) {
-          await tx.invoice.update({
-            where: { id: purchaseId, companyId },
-            data: { amountDue: 0 },
-          });
-        }
+      // Attach computed values
+      (item as any)._returnQtyInUnits = returnQtyInUnits;
+      (item as any)._inventoryId = inv.id;
+      (item as any)._stockBefore = inv.stockQuantity;
+      (item as any)._purchaseItem = purchaseItem;
+    }
 
-        // ── 4. Create return invoice ─────────────────────────────
-        const purchaseReturn = await tx.invoice.create({
-          data: {
-            companyId,
-            invoiceNumber: returnInvoiceNumber,
-            cashierId: userId,
-            branchId,
-            warehouseId,
-            supplierId,
-            sale_type: "RETURN_PURCHASE",
-            totalAmount: returnTotalCost,
-            amountPaid: refundAmount,
-            amountDue: 0,
-            status: "completed",
-            currencyCode: currency || baseCurrency || "",
-            exchangeRate,
-            baseAmount,
-            foreignAmount:
-              currency && baseCurrency && currency !== baseCurrency
-                ? refundAmount
-                : undefined,
-            items: {
-              create: {
+    const totalReturnCost = items.reduce(
+      (sum, item) => sum + item.returnQuantity * item.unitCost,
+      0,
+    );
+
+    if (refundAmount > totalReturnCost) {
+      return {
+        success: false,
+        message: `مبلغ الاسترداد (${refundAmount}) أكبر من قيمة المرتجع (${totalReturnCost})`,
+      };
+    }
+
+    if (refundAmount > Number(originalPurchase.amountPaid)) {
+      return {
+        success: false,
+        message: `مبلغ الاسترداد أكبر من المدفوع (${originalPurchase.amountPaid})`,
+      };
+    }
+
+    const returnInvoiceNumber = originalPurchase.invoiceNumber.replace(
+      "مشتريات",
+      "مرتجع",
+    );
+
+    // ── TRANSACTION ──
+    let attempts = 0;
+    const maxAttempts = 3;
+
+    while (attempts < maxAttempts) {
+      try {
+        const result = await prisma.$transaction(
+          async (tx) => {
+            // 1. Update original purchase amountDue if needed
+            if (Number(originalPurchase.amountDue) > 0) {
+              await tx.invoice.update({
+                where: { id: purchaseId, companyId },
+                data: { amountDue: 0 },
+              });
+            }
+
+            // 2. Create return invoice with all items
+            const purchaseReturn = await tx.invoice.create({
+              data: {
                 companyId,
-                productId,
-                quantity: returnQuantity,
-                price: unitCost,
-                unit: returnUnit,
-                totalPrice: returnTotalCost,
-                warehouseId, // ✅ carry warehouse
-              },
-            },
-          },
-        });
-
-        // ── 5. Restore batch via purchaseItemId ──────────────────
-        // ✅ was invoiceItemId — now purchaseItemId
-        const restoredBatch = await tx.inventoryBatch.findFirst({
-          where: { purchaseItemId: purchaseItem.id },
-          select: { id: true },
-        });
-
-        await tx.inventoryBatch.updateMany({
-          where: { purchaseItemId: purchaseItem.id },
-          data: { remainingQuantity: { decrement: returnQtyInUnits } }, // ✅ was decrement
-        });
-
-        // ── 6. Update inventory ──────────────────────────────────
-        const newStockQty = inventory.stockQuantity - returnQtyInUnits;
-        const newAvailable = availableQty(inventory) - returnQtyInUnits;
-
-        await tx.inventory.update({
-          where: {
-            companyId_productId_warehouseId: {
-              companyId,
-              productId,
-              warehouseId,
-            },
-          },
-          data: {
-            stockQuantity: newStockQty,
-            // ✅ no availableQuantity column
-            status: deriveStatus(newAvailable, inventory.reorderLevel),
-          },
-        });
-
-        // ── 7. Stock movement ────────────────────────────────────
-        await tx.stockMovement.create({
-          data: {
-            companyId,
-            productId,
-            warehouseId,
-            userId,
-            movementType: "صادر",
-            batchId: restoredBatch?.id ?? null, // ✅ was missing entirely
-
-            quantity: returnQtyInUnits,
-            reason: "إرجاع للمورد",
-            quantityBefore: inventory.stockQuantity,
-            quantityAfter: newStockQty,
-            referenceType: "مرتجع مشتريات",
-            referenceId: purchaseReturn.id,
-            notes:
-              reason ||
-              `إرجاع ${returnQuantity} ${returnUnit} من فاتورة ${purchaseId}`,
-          },
-        });
-
-        // ── 8. Financial transaction ─────────────────────────────
-        const voucherNumber = await getNextVoucherNumber(
-          companyId,
-          "RECEIPT",
-          tx,
-        );
-        let paymentVoucher: number | null = null;
-
-        if (refundAmount > 0 && paymentMethod) {
-          const payment = await tx.financialTransaction.create({
-            data: {
-              companyId,
-              supplierId,
-              currencyCode: currency || baseCurrency || "",
-              invoiceId: purchaseReturn.id, // ✅ no purchaseId field anymore
-              branchId,
-              type: "RECEIPT",
-              voucherNumber,
-              userId,
-              status: "paid",
-              amount: refundAmount,
-              exchangeRate,
-              baseAmount,
-              foreignAmount:
-                currency && baseCurrency && currency !== baseCurrency
-                  ? refundAmount
-                  : undefined,
-              paymentMethod,
-              referenceNumber: transferNumber,
-              notes:
-                reason ||
-                `استرداد مبلغ من المورد - فاتورة ${returnInvoiceNumber}`,
-            },
-          });
-          paymentVoucher = payment.voucherNumber;
-        }
-
-        // ✅ supplier totals REMOVED — no update needed
-        // Balance is now derived from invoice/transaction queries
-
-        // ── 9. Journal entry ─────────────────────────────────────
-        const entryNumber = `PURET-${new Date().getFullYear()}-${paymentVoucher ?? voucherNumber}`;
-        const desc = `Purchase return: ${purchaseReturn.invoiceNumber}`;
-        const journalLines: any[] = [];
-
-        if (refundAmount > 0 && settlementAccount) {
-          journalLines.push(
-            buildWarehouseJournalLine(
-              companyId,
-              settlementAccount,
-              `${desc} - refund`,
-              refundAmount,
-              0,
-              {
-                currency,
-                baseCurrency,
+                invoiceNumber: returnInvoiceNumber,
+                cashierId: userId,
+                branchId,
+                warehouseId: items[0]?.warehouseId,
+                supplierId: originalPurchase.supplierId,
+                sale_type: "RETURN_PURCHASE",
+                totalAmount: totalReturnCost,
+                amountPaid: refundAmount,
+                amountDue: 0,
+                status: "completed",
+                currencyCode: currency || baseCurrency || "",
                 exchangeRate,
+                baseAmount,
                 foreignAmount:
                   currency && baseCurrency && currency !== baseCurrency
                     ? refundAmount
                     : undefined,
+                items: {
+                  create: items.map((item) => ({
+                    companyId,
+                    productId: item.productId,
+                    warehouseId: item.warehouseId,
+                    quantity: item.returnQuantity,
+                    price: item.unitCost,
+                    unit: item.returnUnit,
+                    totalPrice: item.returnQuantity * item.unitCost,
+                  })),
+                },
               },
-            ),
-          );
-        }
+            });
 
-        if (payableReduction > 0) {
-          journalLines.push(
-            buildWarehouseJournalLine(
+            // 3. Update inventory batches
+            const batchUpdates = items.map((item) =>
+              tx.inventoryBatch.updateMany({
+                where: { purchaseItemId: item.purchaseItemId },
+                data: {
+                  remainingQuantity: {
+                    decrement: (item as any)._returnQtyInUnits,
+                  },
+                },
+              }),
+            );
+            await Promise.all(batchUpdates);
+
+            // 4. Update inventory records
+            const inventoryUpdates = items.map((item) =>
+              tx.inventory.update({
+                where: { id: (item as any)._inventoryId },
+                data: {
+                  stockQuantity: {
+                    decrement: (item as any)._returnQtyInUnits,
+                  },
+                  status: deriveStatus(
+                    (item as any)._stockBefore -
+                      (item as any)._returnQtyInUnits,
+                    inventoryRecords.find(
+                      (i) => i.id === (item as any)._inventoryId,
+                    )?.reorderLevel || 0,
+                  ),
+                },
+              }),
+            );
+            await Promise.all(inventoryUpdates);
+
+            // 5. Create stock movements
+            const stockMovements = items.map((item) => ({
               companyId,
-              payableAccount,
-              `${desc} - payable reversal`,
-              payableReduction,
-              0,
-              { currency, baseCurrency, exchangeRate },
-            ),
-          );
-        }
+              productId: item.productId,
+              warehouseId: item.warehouseId,
+              userId,
+              movementType: "صادر",
+              quantity: (item as any)._returnQtyInUnits,
+              reason: item.reason || globalReason || "إرجاع للمورد",
+              quantityBefore: (item as any)._stockBefore,
+              quantityAfter:
+                (item as any)._stockBefore - (item as any)._returnQtyInUnits,
+              referenceType: "مرتجع مشتريات",
+              referenceId: purchaseReturn.id,
+              notes: `إرجاع ${item.returnQuantity} ${item.returnUnit}`,
+            }));
+            await tx.stockMovement.createMany({ data: stockMovements });
 
-        journalLines.push(
-          buildWarehouseJournalLine(
-            companyId,
-            inventoryAccount,
-            `${desc} - inventory`,
-            0,
-            returnTotalCost,
-            { currency, baseCurrency, exchangeRate },
-          ),
+            // 6. Financial transaction (if refund)
+            let paymentVoucher: number | null = null;
+            if (refundAmount > 0 && paymentMethod) {
+              const voucherNumber = await getNextVoucherNumber(
+                companyId,
+                "RECEIPT",
+                tx,
+              );
+              const payment = await tx.financialTransaction.create({
+                data: {
+                  companyId,
+                  supplierId: originalPurchase.supplierId,
+                  currencyCode: currency || baseCurrency || "",
+                  invoiceId: purchaseReturn.id,
+                  branchId,
+                  type: "RECEIPT",
+                  voucherNumber,
+                  userId,
+                  status: "paid",
+                  amount: refundAmount,
+                  exchangeRate,
+                  baseAmount,
+                  foreignAmount:
+                    currency && baseCurrency && currency !== baseCurrency
+                      ? refundAmount
+                      : undefined,
+                  paymentMethod,
+                  referenceNumber: transferNumber,
+                  notes:
+                    globalReason ||
+                    `استرداد من المورد - ${returnInvoiceNumber}`,
+                },
+              });
+              paymentVoucher = payment.voucherNumber;
+            }
+
+            // 7. Journal entry
+            const entryNumber = `PURET-${new Date().getFullYear()}-${
+              paymentVoucher ??
+              (await getNextVoucherNumber(companyId, "RECEIPT", tx))
+            }`;
+            const desc = `Purchase return: ${purchaseReturn.invoiceNumber}`;
+            const payableReduction = Math.max(
+              0,
+              totalReturnCost - refundAmount,
+            );
+
+            const journalLines = [];
+
+            if (refundAmount > 0 && settlementAccount) {
+              journalLines.push(
+                buildWarehouseJournalLine(
+                  companyId,
+                  settlementAccount,
+                  `${desc} - refund`,
+                  refundAmount,
+                  0,
+                  { currency, baseCurrency, exchangeRate },
+                ),
+              );
+            }
+
+            if (payableReduction > 0) {
+              journalLines.push(
+                buildWarehouseJournalLine(
+                  companyId,
+                  apAccount,
+                  `${desc} - payable reversal`,
+                  payableReduction,
+                  0,
+                  { currency, baseCurrency, exchangeRate },
+                ),
+              );
+            }
+
+            journalLines.push(
+              buildWarehouseJournalLine(
+                companyId,
+                inventoryAccount,
+                `${desc} - inventory`,
+                0,
+                totalReturnCost,
+                { currency, baseCurrency, exchangeRate },
+              ),
+            );
+
+            await tx.journalHeader.create({
+              data: {
+                companyId,
+                entryNumber,
+                description: desc,
+                branchId,
+                referenceType: "مرتجع مشتريات",
+                referenceId: purchaseReturn.id,
+                entryDate: new Date(),
+                status: "POSTED",
+                createdBy: userId,
+                lines: {
+                  create: journalLines.map((l) => ({ ...l, companyId })),
+                },
+              },
+            });
+
+            return {
+              success: true,
+              message: "تم إرجاع المشتريات بنجاح",
+              purchaseReturn,
+              returnAmount: totalReturnCost,
+              refundAmount,
+            };
+          },
+          {
+            timeout: 15000,
+            maxWait: 3000,
+            isolationLevel: "ReadCommitted",
+          },
         );
 
-        await tx.journalHeader.create({
-          data: {
-            companyId,
-            entryNumber,
-            description: desc,
-            branchId,
-            referenceType: "مرتجع مشتريات",
-            referenceId: purchaseReturn.id,
-            entryDate: new Date(),
-            status: "POSTED",
-            createdBy: userId,
-            lines: { create: journalLines.map((l) => ({ ...l, companyId })) },
-          },
-        });
+        revalidatePath("/inventory");
+        return result;
+      } catch (error: any) {
+        attempts++;
+        if (
+          attempts < maxAttempts &&
+          (error.code === "P2034" ||
+            error.message?.includes("transaction") ||
+            error.message?.includes("timeout") ||
+            error.message?.includes("deadlock"))
+        ) {
+          console.warn(
+            `Transaction failed, retrying... (${attempts}/${maxAttempts})`,
+          );
+          await new Promise((r) => setTimeout(r, 100 * attempts));
+          continue;
+        }
+        throw error;
+      }
+    }
 
-        return {
-          success: true,
-          message: "تم إرجاع المشتريات بنجاح",
-          purchaseReturn,
-          returnAmount: returnTotalCost,
-          refundAmount,
-          originalPurchaseId: purchaseId,
-        };
-      },
-      { timeout: 30000, maxWait: 5000 },
-    );
-
-    revalidatePath("/inventory");
-    return result;
+    return {
+      success: false,
+      message: "فشل بعد عدة محاولات — يرجى المحاولة لاحقاً",
+    };
   } catch (error: any) {
     console.error("خطأ في إرجاع المشتريات:", error);
     return {
@@ -1142,417 +698,13 @@ interface PurchaseReturnData {
   currency: string;
   exchangeRate: number;
 }
-// export async function updateMultipleInventories(
-//   updatesData: InventoryUpdateDatas[],
-//   userId: string,
-//   companyId: string,
-// ) {
-//   try {
-//     if (!companyId || !userId)
-//       return { success: false, error: "معرف الشركة ومعرف المستخدم مطلوبان" };
-//     if (!updatesData?.length)
-//       return { success: false, error: "يجب إضافة تحديث واحد على الأقل" };
-
-//     for (let i = 0; i < updatesData.length; i++) {
-//       const u = updatesData[i];
-//       if (!u.productId || !u.warehouseId)
-//         return {
-//           success: false,
-//           error: `التحديث ${i + 1}: المنتج والمستودع مطلوبان`,
-//         };
-//       if (!u.selectedUnitId)
-//         return {
-//           success: false,
-//           error: `التحديث ${i + 1}: يجب اختيار وحدة البيع`,
-//         };
-//       if (!u.quantity || u.quantity <= 0)
-//         return {
-//           success: false,
-//           error: `التحديث ${i + 1}: الكمية يجب أن تكون أكبر من صفر`,
-//         };
-//       if (
-//         u.updateType === "supplier" &&
-//         (!u.supplierId || !u.unitCost || u.unitCost <= 0)
-//       )
-//         return {
-//           success: false,
-//           error: `التحديث ${i + 1}: المورد وسعر الوحدة مطلوبان`,
-//         };
-//     }
-//        const receiptNumbers = await Promise.all(
-//   updatesData.map((_, i) => generateSaleNumber(companyId, i))
-// );
-
-// const uniqueProductIds = [...new Set(updatesData.map(u => u.productId))];
-// const inventoryPairs = updatesData.map(u => ({
-//   productId: u.productId,
-//   warehouseId: u.warehouseId,
-// }));
-
-// // Pre-fetch all products
-// const products = await prisma.product.findMany({
-//   where: { id: { in: uniqueProductIds } },
-//   select: { id: true, name: true, sku: true, sellingUnits: true },
-// });
-// const productMap = new Map(products.map(p => [p.id, p]));
-
-// // Pre-validate units (no DB call needed)
-// for (const update of updatesData) {
-//   const product = productMap.get(update.productId);
-//   const unit = (product?.sellingUnits as SellingUnit[])?.find((u: SellingUnit) => u.id === update.selectedUnitId) ?? [];
-//   if (!unit) throw new Error(`Unit not found: ${update.selectedUnitId}`);
-// }
-
-//     const result = await prisma.$transaction(
-//       async (tx) => {
-//         const accountMap = await getDefaultAccountMap(tx, companyId);
-//         const inventoryAccount = accountMap.get("inventory");
-//         const payableAccount = accountMap.get("accounts_payable");
-
-//         const updatedInventories = [];
-//         const createdPurchases = [];
-//         const stockMovements = [];
-
-//         const receiptNumbers = await Promise.all(
-//           updatesData.map((_, i) => generateSaleNumber(companyId, i)),
-//         );
-
-//         const inventoryPairs = updatesData.map((u) => ({
-//           productId: u.productId,
-//           warehouseId: u.warehouseId,
-//         }));
-
-//         const stockMovementRows: Prisma.StockMovementCreateManyInput[] = [];
-
-//         for (let idx = 0; idx < updatesData.length; idx++) {
-//           const updateData = updatesData[idx];
-//           const currentInventory = inventoryMap.get(
-//             `${updateData.productId}-${updateData.warehouseId}`,
-//           );
-
-//           if (!uniqueProductIds)
-//             throw new Error(`المنتج غير موجود: ${updateData.productId}`);
-
-//           const stockUnits = convertToBaseUnits(
-//             updateData.quantity,
-//             selectedUnit,
-//             sellingUnits,
-//           );
-//           const totalCost = stockUnits * updateData.unitCost!;
-//           const receiptNo = receiptNumbers[idx];
-
-//           // Inventory rows are preloaded/created above
-
-//           let createdPurchaseItemId: string | null = null;
-
-//           if (
-//             updateData.updateType === "supplier" &&
-//             updateData.unitCost &&
-//             updateData.supplierId
-//           ) {
-//             const paid = updateData.payment?.amountBase || 0;
-//             const due = totalCost - paid;
-
-//             const voucherNumber = await getNextVoucherNumber(
-//               companyId,
-//               "PAYMENT",
-//               tx,
-//             );
-
-//             const paymentData =
-//               paid > 0
-//                 ? {
-//                     companyId,
-//                     currencyCode: updateData.payment?.selectedCurrency || "",
-//                     voucherNumber,
-//                     supplierId: updateData.supplierId,
-//                     userId,
-//                     branchId: updateData.branchId,
-//                     amount: paid,
-//                     type: TransactionType.PAYMENT,
-//                     status: "paid",
-//                     financialAccountId:
-//                       updateData.payment?.financialAccountId || null,
-//                     paymentMethod: updateData.payment?.paymentMethod ?? "cash",
-//                     notes: updateData.notes || "دفعة مشتريات",
-//                   }
-//                 : undefined;
-
-//             const purchase = await tx.invoice.create({
-//               data: {
-//                 companyId,
-//                 invoiceNumber: receiptNo,
-//                 cashierId: userId,
-//                 supplierId: updateData.supplierId,
-//                 totalAmount: totalCost,
-//                 amountPaid: paid,
-//                 branchId: updateData.branchId,
-//                 sale_type: "PURCHASE",
-//                 amountDue: due,
-//                 status:
-//                   paid >= totalCost ? "paid" : paid > 0 ? "partial" : "pending",
-//                 items: {
-//                   create: {
-//                     companyId,
-//                     productId: product.id,
-//                     quantity: stockUnits,
-//                     price: updateData.unitCost!,
-//                     unit: selectedUnit.name,
-//                     totalPrice: totalCost,
-//                     warehouseId: updateData.warehouseId, // ✅ now on InvoiceItem
-//                   },
-//                 },
-//                 transactions: { create: paymentData },
-//               },
-//               include: { transactions: true, items: true },
-//             });
-//             createdPurchaseItemId = purchase.items[0]?.id ?? null;
-
-//             createdPurchases.push(purchase);
-
-//             // ✅ supplier totals REMOVED from schema — skip these updates
-//             // Supplier balance is now derived from invoice queries
-
-//             const updatedInventory = await tx.inventory.update({
-//               where: {
-//                 companyId_productId_warehouseId: {
-//                   companyId,
-//                   productId: product.id,
-//                   warehouseId: updateData.warehouseId,
-//                 },
-//               },
-//               data: {
-//                 stockQuantity: finalStockQty,
-//                 reservedQuantity:
-//                   updateData.reservedQuantity ?? inventory.reservedQuantity,
-//                 // ✅ no availableQuantity
-//                 status: calculatedStatus,
-//                 lastStockTake: updateData.lastStockTake || new Date(),
-//               },
-//               include: {
-//                 product: { select: { name: true, sku: true } },
-//                 warehouse: { select: { name: true } },
-//               },
-//             });
-
-//             // ✅ purchaseItemId instead of invoiceItemId
-
-//             updatedInventories.push(updatedInventory);
-
-//             if (!inventoryAccount || !payableAccount)
-//               throw new Error(
-//                 "Missing required account mappings for purchase journal entry",
-//               );
-
-//             const settlementAccount = resolveSettlementAccount(
-//               accountMap,
-//               updateData.payment?.paymentMethod,
-//             );
-//             if (paid > 0 && !settlementAccount)
-//               throw new Error(
-//                 "Missing settlement account mapping for purchase payment",
-//               );
-
-//             const entryNumber = `PUR-${new Date().getFullYear()}-${purchase.id}`;
-//             const desc = `مشتريات: ${purchase.invoiceNumber}`;
-//             const purchaseLines: any[] = [
-//               buildWarehouseJournalLine(
-//                 companyId,
-//                 inventoryAccount,
-//                 desc,
-//                 totalCost,
-//                 0,
-//                 {
-//                   currency: updateData.payment?.selectedCurrency || "",
-//                   baseCurrency: updateData.baseCurrency,
-//                   exchangeRate: updateData.payment?.exchangeRate,
-//                   foreignAmount: updateData.payment?.amountFC,
-//                 },
-//               ),
-//             ];
-
-//             if (paid > 0 && settlementAccount) {
-//               purchaseLines.push(
-//                 buildWarehouseJournalLine(
-//                   companyId,
-//                   settlementAccount,
-//                   `${desc} - payment`,
-//                   0,
-//                   paid,
-//                   {
-//                     currency: updateData.payment?.selectedCurrency || "",
-//                     baseCurrency: updateData.baseCurrency,
-//                     exchangeRate: updateData.payment?.exchangeRate,
-//                     foreignAmount: updateData.payment?.amountFC,
-//                   },
-//                 ),
-//               );
-//             }
-
-//             if (due > 0) {
-//               purchaseLines.push(
-//                 buildWarehouseJournalLine(
-//                   companyId,
-//                   payableAccount,
-//                   `${desc} - payable`,
-//                   0,
-//                   due,
-//                   {
-//                     currency: updateData.payment?.selectedCurrency || "",
-//                     baseCurrency: updateData.baseCurrency,
-//                     exchangeRate: updateData.payment?.exchangeRate,
-//                   },
-//                 ),
-//               );
-//             }
-
-//             await tx.journalHeader.create({
-//               data: {
-//                 companyId,
-//                 entryNumber,
-//                 description: desc,
-//                 branchId: updateData.branchId,
-//                 referenceType: "سند صرف مخزني",
-//                 referenceId: purchase.transactions[0]?.id ?? purchase.id,
-//                 entryDate: new Date(),
-//                 status: "POSTED",
-//                 createdBy: userId,
-//                 lines: {
-//                   create: purchaseLines.map((l) => ({ ...l, companyId })),
-//                 },
-//               },
-//             });
-//           }
-
-//           // Manual update (no supplier)
-//           if (updateData.updateType !== "supplier") {
-//             const updatedInventory = await tx.inventory.update({
-//               where: {
-//                 companyId_productId_warehouseId: {
-//                   companyId,
-//                   productId: updateData.productId,
-//                   warehouseId: updateData.warehouseId,
-//                 },
-//               },
-//               data: {
-//                 stockQuantity: finalStockQty,
-//                 reservedQuantity:
-//                   updateData.reservedQuantity ?? inventory.reservedQuantity,
-//                 status: calculatedStatus,
-//                 lastStockTake: updateData.lastStockTake || new Date(),
-//               },
-//               include: {
-//                 product: { select: { name: true, sku: true } },
-//                 warehouse: { select: { name: true } },
-//               },
-//             });
-
-//             // ✅ purchaseItemId is null for manual batches — correct
-
-//             updatedInventories.push(updatedInventory);
-//           }
-
-//           // Stock movement
-
-//           const stockDifference = finalStockQty - inventory.stockQuantity;
-
-//           const createdBatch = await tx.inventoryBatch.create({
-//             data: {
-//               inventoryId: inventory.id,
-//               purchaseItemId:
-//                 updateData.updateType === "supplier"
-//                   ? createdPurchaseItemId
-//                   : null,
-//               quantity: stockUnits,
-//               remainingQuantity: stockUnits,
-//               costPrice: updateData.unitCost ?? 0,
-//               expiredAt: updateData.expiredAt,
-//               receivedAt: updateData.lastStockTake || new Date(),
-//               supplierId:
-//                 updateData.updateType === "supplier"
-//                   ? updateData.supplierId || null
-//                   : null,
-//             },
-//           });
-//           stockMovementRows.push({
-//             companyId,
-//             productId: product.id,
-//             warehouseId: updateData.warehouseId,
-//             userId,
-//             batchId: createdBatch.id,
-//             movementType: "وارد للمخزن",
-//             quantity: Math.abs(stockDifference),
-//             reason:
-//               updateData.updateType === "supplier"
-//                 ? "تم استلام المورد"
-//                 : updateData.reason || "تحديث يدوي",
-//             quantityBefore: inventory.stockQuantity,
-//             quantityAfter: finalStockQty,
-//             notes: updateData.notes || undefined,
-//           });
-
-//           // Keep local map in sync for repeated updates to same inventory in one request
-//           inventoryMap.set(
-//             `${updateData.productId}-${updateData.warehouseId}`,
-//             {
-//               ...inventory,
-//               stockQuantity: finalStockQty,
-//               reservedQuantity:
-//                 updateData.reservedQuantity ?? inventory.reservedQuantity,
-//               status: calculatedStatus,
-//               lastStockTake: updateData.lastStockTake || new Date(),
-//             },
-//           );
-//         }
-
-//         if (stockMovementRows.length) {
-//           await tx.stockMovement.createMany({ data: stockMovementRows });
-//           stockMovements.push(...stockMovementRows);
-//         }
-
-//         await tx.activityLogs.create({
-//           data: {
-//             userId,
-//             companyId,
-//             userAgent: typeof window !== "undefined" ? navigator.userAgent : "",
-//             action: "تحديث مخزون",
-//             details: `تم تحديث ${updatesData.length} سجل مخزون`,
-//           },
-//         });
-
-//         return {
-//           updatedInventories: updatedInventories.map(serializeDecimal),
-//           createdPurchases: createdPurchases.map(serializeDecimal),
-//           stockMovements: stockMovements.map(serializeDecimal),
-//         };
-//       },
-//       { timeout: 60000, maxWait: 10000 },
-//     );
-
-//     revalidatePath("/inventory");
-//     return {
-//       success: true,
-//       count: result.updatedInventories.length,
-//       inventories: result.updatedInventories,
-//       purchases: result.createdPurchases,
-//       message: `تم تحديث ${result.updatedInventories.length} سجل مخزون بنجاح`,
-//     };
-//   } catch (error) {
-//     console.error("Error updating multiple inventory:", error);
-//     return {
-//       success: false,
-//       error: error instanceof Error ? error.message : "فشل تحديث المخزون",
-//     };
-//   }
-// }
-
 export async function updateMultipleInventories(
   updatesData: InventoryUpdateDatas[],
   userId: string,
   companyId: string,
 ) {
   // ─────────────────────────────────────────────────────────────
-  // PHASE 1: Validation (outside transaction — no DB locks)
+  // PHASE 1: Validation (unchanged)
   // ─────────────────────────────────────────────────────────────
   if (!companyId || !userId) {
     return { success: false, error: "معرف الشركة ومعرف المستخدم مطلوبان" };
@@ -1593,18 +745,19 @@ export async function updateMultipleInventories(
   }
 
   // ─────────────────────────────────────────────────────────────
-  // PHASE 2: Pre-computation (outside transaction)
+  // PHASE 2: Pre-computation (group by supplier added)
   // ─────────────────────────────────────────────────────────────
   const uniqueProductIds = [...new Set(updatesData.map((u) => u.productId))];
 
-  // Fetch all products once
+  const { apAccount, inventoryAccount, accountMap } =
+    await getAccountMappings();
+
   const products = await prisma.product.findMany({
     where: { id: { in: uniqueProductIds } },
     select: { id: true, name: true, sku: true, sellingUnits: true },
   });
   const productMap = new Map(products.map((p) => [p.id, p]));
 
-  // Pre-generate ALL receipt numbers in one shot (single DB scan)
   const currentYear = new Date().getFullYear();
   const prefix = `-${currentYear}-مشتريات`;
   const existingPurchaseInvoices = await prisma.invoice.findMany({
@@ -1615,7 +768,7 @@ export async function updateMultipleInventories(
     },
     select: { invoiceNumber: true },
     take: 1,
-    orderBy: { invoiceNumber: "desc" }, // Get max directly
+    orderBy: { invoiceNumber: "desc" },
   });
 
   let nextSequence = 1;
@@ -1627,7 +780,6 @@ export async function updateMultipleInventories(
     if (!Number.isNaN(lastNum)) nextSequence = lastNum + 1;
   }
 
-  // Pre-enrich all updates with computed values
   type EnrichedUpdate = InventoryUpdateDatas & {
     stockUnits: number;
     totalCost: number;
@@ -1650,6 +802,41 @@ export async function updateMultipleInventories(
     string,
     { stockQty: number; reservedQty: number; reorderLevel: number }
   >();
+
+  // ── GROUP SUPPLIER UPDATES BY SUPPLIER ──────────────────────
+  const supplierGroups = new Map<
+    string,
+    {
+      updates: InventoryUpdateDatas[];
+      enriched: EnrichedUpdate[];
+      totalCost: number;
+      totalPaid: number;
+      receiptNo: string;
+      supplierId: string;
+      branchId?: string;
+    }
+  >();
+
+  for (const update of updatesData) {
+    if (update.updateType === "supplier") {
+      const sid = update.supplierId!;
+      if (!supplierGroups.has(sid)) {
+        const receiptNo = `${nextSequence.toString().padStart(6, "0")}${prefix}`;
+        nextSequence++;
+        supplierGroups.set(sid, {
+          updates: [],
+          enriched: [],
+          totalCost: 0,
+          totalPaid: 0,
+          receiptNo,
+          supplierId: sid,
+          branchId: update.branchId,
+        });
+      }
+      supplierGroups.get(sid)!.updates.push(update);
+    }
+  }
+  // ─────────────────────────────────────────────────────────────
 
   for (let idx = 0; idx < updatesData.length; idx++) {
     const update = updatesData[idx];
@@ -1675,11 +862,21 @@ export async function updateMultipleInventories(
       throw new Error(`الكمية المحولة غير صالحة للمنتج ${product.name}`);
     }
 
-    const receiptNo = `${(nextSequence + idx).toString().padStart(6, "0")}${prefix}`;
+    // ── USE GROUP RECEIPT NO FOR SUPPLIER UPDATES ─────────────
+    let receiptNo: string;
+    if (update.updateType === "supplier") {
+      const group = supplierGroups.get(update.supplierId!)!;
+      receiptNo = group.receiptNo;
+      group.enriched.push(null as any); // placeholder, replaced below
+    } else {
+      receiptNo = `${nextSequence.toString().padStart(6, "0")}${prefix}`;
+      nextSequence++;
+    }
+    // ──────────────────────────────────────────────────────────
+
     const totalCost = stockUnits * (update.unitCost ?? 0);
     const inventoryKey = `${update.productId}-${update.warehouseId}`;
 
-    // Track running totals for same inventory in this batch
     const existing = inventoryKeyMap.get(inventoryKey);
     const currentStock = existing?.stockQty ?? 0;
     const currentReserved = existing?.reservedQty ?? 0;
@@ -1695,7 +892,7 @@ export async function updateMultipleInventories(
       reorderLevel,
     });
 
-    enrichedUpdates.push({
+    const enriched: EnrichedUpdate = {
       ...update,
       stockUnits,
       totalCost,
@@ -1711,10 +908,25 @@ export async function updateMultipleInventories(
       finalAvailableQty,
       calculatedStatus,
       inventoryKey,
-    });
+    };
+
+    enrichedUpdates.push(enriched);
+
+    // ── REPLACE PLACEHOLDER IN GROUP ──────────────────────────
+    if (update.updateType === "supplier") {
+      const group = supplierGroups.get(update.supplierId!)!;
+      const placeholderIdx = group.enriched.indexOf(null as any);
+      if (placeholderIdx >= 0) {
+        group.enriched[placeholderIdx] = enriched;
+      } else {
+        group.enriched.push(enriched);
+      }
+      group.totalCost += totalCost;
+      group.totalPaid += update.payment?.amountBase || 0;
+    }
+    // ──────────────────────────────────────────────────────────
   }
 
-  // Pre-generate voucher numbers for ALL supplier updates (single query)
   const supplierUpdates = enrichedUpdates.filter(
     (u) => u.updateType === "supplier",
   );
@@ -1728,22 +940,16 @@ export async function updateMultipleInventories(
     let nextVoucher = 1;
     if (lastVoucher?.voucherNumber) {
       const num = lastVoucher.voucherNumber || 0;
-
       if (!Number.isNaN(num)) nextVoucher = num + 1;
     }
     voucherNumbers = supplierUpdates.map((_, i) => nextVoucher + i);
   }
 
   // ─────────────────────────────────────────────────────────────
-  // PHASE 3: Transaction (minimal round trips, atomic operations)
+  // PHASE 3: Transaction (grouped invoice creation)
   // ─────────────────────────────────────────────────────────────
   const result = await prisma.$transaction(
     async (tx) => {
-      const accountMap = await getDefaultAccountMap(tx, companyId);
-      const inventoryAccount = accountMap.get("inventory");
-      const payableAccount = accountMap.get("accounts_payable");
-
-      // 1. Fetch existing inventories
       const inventoryPairs = enrichedUpdates.map((u) => ({
         productId: u.productId,
         warehouseId: u.warehouseId,
@@ -1760,7 +966,6 @@ export async function updateMultipleInventories(
         ]),
       );
 
-      // 2. Create missing inventories (bulk)
       const missingInventories = inventoryPairs
         .filter(
           (pair) => !inventoryMap.has(`${pair.productId}-${pair.warehouseId}`),
@@ -1782,7 +987,6 @@ export async function updateMultipleInventories(
           skipDuplicates: true,
         });
 
-        // Re-fetch to get IDs for new records
         const allInventories = await tx.inventory.findMany({
           where: { companyId, OR: inventoryPairs },
         });
@@ -1791,7 +995,6 @@ export async function updateMultipleInventories(
         }
       }
 
-      // 3. BULK UPDATE all inventories — SINGLE QUERY with atomic increments
       const inventoryUpdateCases = enrichedUpdates
         .map(
           (u) => `
@@ -1842,63 +1045,72 @@ export async function updateMultipleInventories(
         )
       `);
 
-      // 4. BULK CREATE invoices (supplier only) — createManyAndReturn for IDs [^14^][^19^]
+      // ── CREATE INVOICES: ONE PER SUPPLIER ───────────────────
       const createdPurchases: any[] = [];
-      let purchaseItemMap = new Map<string, string>(); // receiptNo -> invoiceItemId
+      let purchaseItemMap = new Map<string, string>();
 
-      if (supplierUpdates.length > 0) {
-        // Create invoice headers in bulk
-        const invoiceData = supplierUpdates.map((u, idx) => ({
-          companyId,
-          invoiceNumber: u.receiptNo,
-          cashierId: userId,
-          supplierId: u.supplierId!,
-          totalAmount: u.totalCost,
-          amountPaid: u.payment?.amountBase || 0,
-          amountDue: u.totalCost - (u.payment?.amountBase || 0),
-          status:
-            (u.payment?.amountBase || 0) >= u.totalCost
-              ? "paid"
-              : (u.payment?.amountBase || 0) > 0
-                ? "partial"
-                : "pending",
-          sale_type: "PURCHASE" as const,
-          branchId: u.branchId,
-        }));
+      if (supplierGroups.size > 0) {
+        const invoiceData = Array.from(supplierGroups.values()).map(
+          (group) => ({
+            companyId,
+            invoiceNumber: group.receiptNo,
+            cashierId: userId,
+            supplierId: group.supplierId,
+            totalAmount: group.totalCost,
+            amountPaid: group.totalPaid,
+            amountDue: group.totalCost - group.totalPaid,
+            status:
+              group.totalPaid >= group.totalCost
+                ? "paid"
+                : group.totalPaid > 0
+                  ? "partial"
+                  : "pending",
+            sale_type: "PURCHASE" as const,
+            branchId: group.branchId,
+          }),
+        );
 
-        // Use createManyAndReturn to get IDs (PostgreSQL only) [^14^][^19^]
         const createdInvoices = await (tx.invoice as any).createManyAndReturn({
           data: invoiceData,
           skipDuplicates: true,
         });
 
-        // Map receipt numbers to invoice IDs
         const invoiceIdMap = new Map(
           createdInvoices.map((inv: any) => [inv.invoiceNumber, inv.id]),
         );
 
-        // Bulk create invoice items
-        const invoiceItemsData = supplierUpdates.map((u) => ({
-          companyId,
-          invoiceId: invoiceIdMap.get(u.receiptNo)!,
-          productId: u.productId,
-          quantity: u.stockUnits,
-          price: u.unitCost!,
-          unit: u.selectedUnit.name,
-          totalPrice: u.totalCost,
-          warehouseId: u.warehouseId,
-        }));
+        const invoiceItemsData: any[] = [];
+        for (const group of supplierGroups.values()) {
+          const invoiceId = invoiceIdMap.get(group.receiptNo)!;
+          for (const u of group.enriched) {
+            invoiceItemsData.push({
+              companyId,
+              invoiceId,
+              productId: u.productId,
+              quantity: u.stockUnits,
+              price: u.unitCost!,
+              unit: u.selectedUnit.name,
+              totalPrice: u.totalCost,
+              warehouseId: u.warehouseId,
+            });
+          }
+        }
 
         const createdItems = await (tx.invoiceItem as any).createManyAndReturn({
           data: invoiceItemsData,
         });
 
-        // Map invoiceItem IDs back to receipt numbers for batch linking
-        createdItems.forEach((item: any, idx: number) => {
-          purchaseItemMap.set(supplierUpdates[idx].receiptNo, item.id);
-        });
+        let itemIdx = 0;
+        for (const group of supplierGroups.values()) {
+          for (const u of group.enriched) {
+            purchaseItemMap.set(
+              u.receiptNo + "-" + u.productId + "-" + u.warehouseId,
+              createdItems[itemIdx].id,
+            );
+            itemIdx++;
+          }
+        }
 
-        // Build purchase objects for return value
         createdPurchases.push(
           ...createdInvoices.map((inv: any) => ({
             ...inv,
@@ -1908,15 +1120,17 @@ export async function updateMultipleInventories(
           })),
         );
       }
+      // ──────────────────────────────────────────────────────────
 
-      // 5. CREATE inventory batches with Prisma (safer than raw SQL on drifted schemas)
       const batchIdByUpdateKey = new Map<string, string>();
       for (let i = 0; i < enrichedUpdates.length; i++) {
         const u = enrichedUpdates[i];
         const inventory = inventoryMap.get(u.inventoryKey)!;
         const purchaseItemId =
           u.updateType === "supplier"
-            ? purchaseItemMap.get(u.receiptNo) || null
+            ? purchaseItemMap.get(
+                u.receiptNo + "-" + u.productId + "-" + u.warehouseId,
+              ) || null
             : null;
 
         const createdBatch = await tx.inventoryBatch.create({
@@ -1936,7 +1150,6 @@ export async function updateMultipleInventories(
         batchIdByUpdateKey.set(`${u.inventoryKey}-${i}`, createdBatch.id);
       }
 
-      // 6. BULK CREATE stock movements — SINGLE createMany
       const stockMovementsData = enrichedUpdates.map((u, idx) => {
         const inventory = inventoryMap.get(u.inventoryKey)!;
         return {
@@ -1959,21 +1172,20 @@ export async function updateMultipleInventories(
 
       await tx.stockMovement.createMany({ data: stockMovementsData });
 
-      // 7. CREATE journal entries per purchase (correct referenceId per supplier invoice)
-      if (supplierUpdates.length > 0 && inventoryAccount && payableAccount) {
-        for (let i = 0; i < supplierUpdates.length; i++) {
-          const u = supplierUpdates[i];
+      if (supplierGroups.size > 0 && inventoryAccount && apAccount) {
+        let voucherIdx = 0;
+        for (const group of supplierGroups.values()) {
           const purchase = createdPurchases.find(
-            (p) => p.invoiceNumber === u.receiptNo,
+            (p) => p.invoiceNumber === group.receiptNo,
           );
           if (!purchase) continue;
-          const journalLines: any[] = [];
 
-          const paid = u.payment?.amountBase || 0;
-          const due = u.totalCost - paid;
+          const journalLines: any[] = [];
+          const paid = group.totalPaid;
+          const due = group.totalCost - paid;
           const settlementAccount = resolveSettlementAccount(
             accountMap,
-            u.payment?.paymentMethod,
+            group.enriched[0]?.payment?.paymentMethod,
           );
 
           if (paid > 0 && !settlementAccount) {
@@ -1990,13 +1202,13 @@ export async function updateMultipleInventories(
               companyId,
               inventoryAccount,
               desc,
-              u.totalCost,
+              group.totalCost,
               0,
               {
-                currency: u.payment?.selectedCurrency || "",
-                baseCurrency: u.baseCurrency,
-                exchangeRate: u.payment?.exchangeRate,
-                foreignAmount: u.payment?.amountFC,
+                currency: group.enriched[0]?.payment?.selectedCurrency || "",
+                baseCurrency: group.enriched[0]?.baseCurrency,
+                exchangeRate: group.enriched[0]?.payment?.exchangeRate,
+                foreignAmount: group.enriched[0]?.payment?.amountFC,
               },
             ),
           );
@@ -2010,10 +1222,10 @@ export async function updateMultipleInventories(
                 0,
                 paid,
                 {
-                  currency: u.payment?.selectedCurrency || "",
-                  baseCurrency: u.baseCurrency,
-                  exchangeRate: u.payment?.exchangeRate,
-                  foreignAmount: u.payment?.amountFC,
+                  currency: group.enriched[0]?.payment?.selectedCurrency || "",
+                  baseCurrency: group.enriched[0]?.baseCurrency,
+                  exchangeRate: group.enriched[0]?.payment?.exchangeRate,
+                  foreignAmount: group.enriched[0]?.payment?.amountFC,
                 },
               ),
             );
@@ -2023,37 +1235,40 @@ export async function updateMultipleInventories(
             journalLines.push(
               buildWarehouseJournalLine(
                 companyId,
-                payableAccount,
+                apAccount,
                 `${desc} - payable`,
                 0,
                 due,
                 {
-                  currency: u.payment?.selectedCurrency || "",
-                  baseCurrency: u.baseCurrency,
-                  exchangeRate: u.payment?.exchangeRate,
+                  currency: group.enriched[0]?.payment?.selectedCurrency || "",
+                  baseCurrency: group.enriched[0]?.baseCurrency,
+                  exchangeRate: group.enriched[0]?.payment?.exchangeRate,
                 },
               ),
             );
           }
 
-          // Create payment transaction for this purchase
           if (paid > 0) {
             await tx.financialTransaction.create({
               data: {
                 companyId,
-                currencyCode: u.payment?.selectedCurrency || "",
-                voucherNumber: voucherNumbers[i],
-                supplierId: u.supplierId!,
+                currencyCode:
+                  group.enriched[0]?.payment?.selectedCurrency || "",
+                voucherNumber: voucherNumbers[voucherIdx],
+                supplierId: group.supplierId,
                 userId,
-                branchId: u.branchId,
+                branchId: group.branchId,
                 amount: paid,
                 type: TransactionType.PAYMENT,
                 status: "paid",
-                financialAccountId: u.payment?.financialAccountId || null,
-                paymentMethod: u.payment?.paymentMethod ?? "cash",
-                notes: u.notes || "دفعة مشتريات",
+                financialAccountId:
+                  group.enriched[0]?.payment?.financialAccountId || null,
+                paymentMethod:
+                  group.enriched[0]?.payment?.paymentMethod ?? "cash",
+                notes: group.enriched[0]?.notes || "دفعة مشتريات",
               },
             });
+            voucherIdx++;
           }
 
           if (journalLines.length > 0) {
@@ -2062,7 +1277,7 @@ export async function updateMultipleInventories(
                 companyId,
                 entryNumber,
                 description: desc,
-                branchId: u.branchId,
+                branchId: group.branchId,
                 referenceType: "سند صرف مخزني",
                 referenceId: purchase.id,
                 entryDate: new Date(),
@@ -2077,7 +1292,6 @@ export async function updateMultipleInventories(
         }
       }
 
-      // 8. Activity log
       await tx.activityLogs.create({
         data: {
           userId,
@@ -2088,7 +1302,6 @@ export async function updateMultipleInventories(
         },
       });
 
-      // 9. Return updated inventories (from memory, no re-query)
       const updatedInventories = enrichedUpdates.map((u) => {
         const inv = inventoryMap.get(u.inventoryKey)!;
         return {
@@ -2110,9 +1323,6 @@ export async function updateMultipleInventories(
     { timeout: 30000, maxWait: 5000 },
   );
 
-  // ─────────────────────────────────────────────────────────────
-  // PHASE 4: Side effects (outside transaction)
-  // ─────────────────────────────────────────────────────────────
   revalidatePath("/inventory");
 
   return {
@@ -2123,31 +1333,19 @@ export async function updateMultipleInventories(
     message: `تم تحديث ${result.updatedInventories.length} سجل مخزون بنجاح`,
   };
 }
+
 export async function getPurchaseReturnData(
   purchaseId: string,
   companyId: string,
 ) {
   try {
-    // 1) Fetch the purchase invoice with properly nested warehouse data
     const purchase = await prisma.invoice.findFirst({
       where: { id: purchaseId, companyId, sale_type: "PURCHASE" },
       include: {
-        supplier: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
+        supplier: { select: { id: true, name: true } },
         items: {
           include: {
-            // ✅ Warehouse at item level — where this item was purchased
-            warehouse: {
-              select: {
-                id: true,
-                name: true,
-                location: true,
-              },
-            },
+            warehouse: { select: { id: true, name: true, location: true } },
             product: {
               select: {
                 id: true,
@@ -2163,17 +1361,11 @@ export async function getPurchaseReturnData(
                 remainingQuantity: true,
                 costPrice: true,
                 receivedAt: true,
-                // ✅ Include warehouse via stockMovements (where batch was received)
                 stockMovements: {
                   select: {
                     id: true,
                     quantity: true,
-                    warehouse: {
-                      select: {
-                        id: true,
-                        name: true,
-                      },
-                    },
+                    warehouse: { select: { id: true, name: true } },
                   },
                 },
               },
@@ -2184,18 +1376,14 @@ export async function getPurchaseReturnData(
     });
 
     if (!purchase) {
-      return {
-        success: false,
-        message: "لم يتم العثور على المشتريات",
-      };
+      return { success: false, message: "لم يتم العثور على المشتريات" };
     }
 
-    // Generate return invoice number
+    // Check if already returned
     const returnInvoiceNumber = purchase.invoiceNumber
       .replace("مشتريات", "مرتجع")
       .replace("شراء", "مرتجع");
 
-    // Check if already returned
     const existingReturnPurchase = await prisma.invoice.findFirst({
       where: {
         companyId,
@@ -2206,90 +1394,63 @@ export async function getPurchaseReturnData(
     });
 
     if (existingReturnPurchase) {
-      return {
-        success: false,
-        message: "تم إرجاع هذه الفاتورة للمورد مسبقاً",
-      };
+      return { success: false, message: "تم إرجاع هذه الفاتورة للمورد مسبقاً" };
     }
 
-    // 2) Find item with available batch quantity for return
-    const items = purchase.items ?? [];
+    // Map all items to the new format
+    const items = purchase.items.map((item) => {
+      // Resolve warehouse from item or batch
+      const itemWarehouse = item.warehouse;
+      const batchWarehouses =
+        item.createdBatches?.flatMap(
+          (batch) => batch.stockMovements?.map((sm) => sm.warehouse) ?? [],
+        ) ?? [];
+      const resolvedWarehouse = itemWarehouse ?? batchWarehouses[0];
 
-    const item =
-      items.find((it) =>
-        it.createdBatches?.some((b) => Number(b.remainingQuantity) > 0),
-      ) || items[0];
-
-    if (!item) {
-      return {
-        success: false,
-        message: "لا توجد منتجات في هذه المشتريات",
-      };
-    }
-
-    // 3) Calculate stock by unit
-    function calculateStockByUnit(baseQuantity: number, units: any[]) {
+      // Calculate stock by unit
+      const sellingUnits = (item.product.sellingUnits as any[]) || [];
       const stockByUnit: Record<string, number> = {};
-
-      units.forEach((unit) => {
-        if (unit.isBase) {
-          stockByUnit[unit.id] = baseQuantity;
-        } else {
-          stockByUnit[unit.id] = Number(
-            (baseQuantity / unit.unitsPerParent).toFixed(2),
-          );
-        }
+      sellingUnits.forEach((unit) => {
+        stockByUnit[unit.id] = unit.isBase
+          ? Number(item.quantity)
+          : Number((Number(item.quantity) / unit.unitsPerParent).toFixed(2));
       });
 
-      return stockByUnit;
-    }
+      const originalPurchaseQty = Number(item.quantity);
+      const batchRemainingQty =
+        item.createdBatches?.reduce(
+          (sum, b) => sum + Number(b.remainingQuantity || 0),
+          0,
+        ) ?? 0;
 
-    // 4) Resolve warehouse from item or batch
-    // ✅ item.warehouse is a single Warehouse object (not array!)
-    const itemWarehouse = item.warehouse;
+      return {
+        purchaseItemId: item.id,
+        productId: item.productId,
+        productName: item.product.name,
+        sku: item.product.sku,
+        sellingUnits: item.product.sellingUnits,
+        warehouseId: resolvedWarehouse?.id ?? "",
+        warehouseName: resolvedWarehouse?.name,
+        quantityPurchased: originalPurchaseQty,
+        unitCost: Number(item.price),
+        totalCost: Number(item.totalPrice),
+        unit: item.unit,
+        batches: item.createdBatches?.map((batch) => ({
+          id: batch.id,
+          quantity: batch.quantity,
+          remainingQuantity: batch.remainingQuantity,
+          costPrice: batch.costPrice,
+          receivedAt: batch.receivedAt,
+          warehouse: batch.stockMovements?.[0]?.warehouse ?? null,
+        })),
+        stockByUnit,
+        maxReturnableQty: Math.min(
+          originalPurchaseQty,
+          batchRemainingQty || originalPurchaseQty,
+        ),
+      };
+    });
 
-    // ✅ Get warehouse from batch stock movements (where batch was received)
-    const batchWarehouses =
-      item.createdBatches?.flatMap(
-        (batch) => batch.stockMovements?.map((sm) => sm.warehouse) ?? [],
-      ) ?? [];
-
-    // Prefer item's warehouse, fallback to first batch movement warehouse
-    const resolvedWarehouse = itemWarehouse ?? batchWarehouses[0];
-    const resolvedWarehouseId = resolvedWarehouse?.id;
-
-    // 5) Fetch current inventory for this product in the resolved warehouse
-    const inventory = resolvedWarehouseId
-      ? await prisma.inventory.findFirst({
-          where: {
-            companyId,
-            productId: item.productId,
-            warehouseId: resolvedWarehouseId,
-          },
-        })
-      : null;
-
-    const currentStock = inventory ? Number(inventory.stockQuantity) : 0;
-    const sellingUnits = (item.product.sellingUnits as any[]) || [];
-    const stockByUnit = calculateStockByUnit(currentStock, sellingUnits);
-
-    // 6) Calculate return limits
-    const originalPurchaseQty = Number(item.quantity);
-    const hasBeenSold = currentStock < originalPurchaseQty;
-
-    const batchRemainingQty =
-      item.createdBatches?.reduce(
-        (sum, b) => sum + Number(b.remainingQuantity || 0),
-        0,
-      ) ?? 0;
-
-    const maxReturnableQty = Math.min(
-      currentStock,
-      originalPurchaseQty,
-      batchRemainingQty || originalPurchaseQty,
-    );
-
-    // 7) Serialize and return with NESTED warehouse data
     return {
       success: true,
       data: {
@@ -2303,55 +1464,13 @@ export async function getPurchaseReturnData(
           supplierId: purchase.supplierId,
           createdAt: purchase.invoiceDate,
         },
-
         supplier: purchase.supplier,
-
-        // ✅ Product with nested warehouse info
-        product: {
-          ...item.product,
-          warehouseId: resolvedWarehouseId,
-          warehouse: resolvedWarehouse, // ← NESTED warehouse object
-        },
-
-        purchaseItem: {
-          id: item.id,
-          quantity: item.quantity,
-          unitCost: Number(item.price),
-          totalCost: Number(item.totalPrice),
-          // ✅ Item-level warehouse (where it was originally purchased)
-          warehouse: item.warehouse,
-        },
-
-        // ✅ Batches with their respective warehouses
-        batches: item.createdBatches?.map((batch) => ({
-          id: batch.id,
-          quantity: batch.quantity,
-          remainingQuantity: batch.remainingQuantity,
-          costPrice: batch.costPrice,
-          receivedAt: batch.receivedAt,
-          // ✅ Batch warehouse from stock movements
-          warehouse: batch.stockMovements?.[0]?.warehouse ?? null,
-          stockMovements: batch.stockMovements?.map((sm) => ({
-            id: sm.id,
-            quantity: sm.quantity,
-            warehouse: sm.warehouse,
-          })),
-        })),
-
-        inventory: {
-          stockByUnit,
-          currentStockInBaseUnit: currentStock,
-          isPartiallySold: hasBeenSold,
-          maxReturnableQty,
-        },
+        items, // ✅ Now returns items[] array
       },
     };
   } catch (error) {
     console.error("Error loading purchase return data", error);
-    return {
-      success: false,
-      message: "حدث خطأ في الخادم",
-    };
+    return { success: false, message: "حدث خطأ في الخادم" };
   }
 }
 
@@ -2705,7 +1824,6 @@ export async function getInventoryById(
             sellingUnits: true, // 🆕
           },
         },
-        productId: true,
 
         stockQuantity: true,
         reservedQuantity: true,

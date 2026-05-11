@@ -59,9 +59,8 @@ export default async function manageStocks({ searchParams }: DashboardProps) {
   if (!user) return;
   const parsedSort: SortingState = ParsedSort(sort);
 
-  const [formData, MultipleInventory, inventoryData] = await Promise.all([
+  const [formData, inventoryData] = await Promise.all([
     fetchAllFormData(user.companyId),
-    fetchAllFormDatas(user.companyId),
     getInventoryById(
       user.companyId,
       query,
@@ -81,7 +80,6 @@ export default async function manageStocks({ searchParams }: DashboardProps) {
         products={inventoryData.inventory}
         total={inventoryData.totalCount}
         formData={formData}
-        multipleInventory={MultipleInventory}
       />
     </div>
   );

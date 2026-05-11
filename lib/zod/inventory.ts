@@ -29,16 +29,26 @@ export const InventoryUpdateWithTrackingSchema = UpdateInventorySchema.extend({
   reason: z.string().optional(),
   notes: z.string().optional(),
 });
-export const PurchaseReturnSchema = z.object({
-  supplierId: z.string().min(1, "المورد مطلوب"),
+// Single return item
+export const ReturnItemSchema = z.object({
+  purchaseItemId: z.string().min(1, "معرف عنصر الشراء مطلوب"),
+  productId: z.string().min(1, "المنتج مطلوب"),
   warehouseId: z.string().min(1, "المستودع مطلوب"),
-  returnQuantity: z.number().positive("أدخل كمية صحيحة"),
+  returnQuantity: z.number().min(0, "أدخل كمية صحيحة"), // ✅ min(0) allows 0 for unreturned items
   selectedUnitId: z.string().min(1, "الوحدة مطلوبة"),
   unitCost: z.number().positive("أدخل سعر الوحدة"),
-  paymentMethod: z.string().default("cash").optional(),
-  refundAmount: z.number().min(0),
-  transferNumber: z.string().optional(),
+  returnUnit: z.string().min(1, "وحدة الإرجاع مطلوبة"),
   reason: z.string().optional(),
 });
 
+export const PurchaseReturnSchema = z.object({
+  supplierId: z.string().min(1, "المورد مطلوب"),
+  items: z.array(ReturnItemSchema).min(1, "يجب إضافة صنف واحد على الأقل"),
+  paymentMethod: z.string().default("cash").optional(),
+  refundAmount: z.number().min(0),
+  transferNumber: z.string().optional(),
+  globalReason: z.string().optional(),
+});
+
+export type ReturnItem = z.infer<typeof ReturnItemSchema>;
 export type FormValue = z.infer<typeof PurchaseReturnSchema>;

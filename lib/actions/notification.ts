@@ -158,113 +158,74 @@ async function sendToSubscription(sub: any, payload: string) {
     console.error("❌ Failed to send to subscription:", err);
 
     // Remove expired subscriptions
-    if (err.statusCode === 410 || err.statusCode === 404) {
-      console.log("🗑️ Removing expired subscription");
-      await prisma.pushSubscription
-        .delete({
-          where: { endpoint: sub.endpoint },
-        })
-        .catch((e) => console.error("Failed to delete subscription:", e));
-    }
 
     throw err;
   }
 }
 
-export async function notifyAdmins(message: string, url = "/sells") {
-  try {
-    const subs = await prisma.pushSubscription.findMany({
-      where: { role: "ADMIN" },
-    });
+// // Generic notification sender
+// export async function sendNotificationToUser(
+//   userId: string,
+//   title: string,
+//   body: string,
+//   url = "/",
+// ) {
+//   try {
+//     const subs = await prisma.pushSubscription.findMany({
+//       where: { userId },
+//     });
 
-    if (subs.length === 0) {
-      console.warn("⚠️ No admin subscriptions found");
-      return { success: false, error: "No admin subscriptions" };
-    }
+//     if (subs.length === 0) {
+//       return { success: false, error: "No subscriptions for user" };
+//     }
 
-    const payload = JSON.stringify({
-      title: "New Sale",
-      body: message,
-      url,
-      icon: "/icon.png",
-      badge: "/badge.png",
-    });
+//     const payload = JSON.stringify({
+//       title,
+//       body,
+//       url,
+//       icon: "/icon.png",
+//       badge: "/badge.png",
+//     });
 
-    await Promise.allSettled(subs.map((s) => sendToSubscription(s, payload)));
+//     await Promise.allSettled(subs.map((s) => sendToSubscription(s, payload)));
 
-    return { success: true };
-  } catch (error) {
-    console.error("❌ Error notifying admins:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
-  }
-}
+//     return { success: true };
+//   } catch (error) {
+//     console.error("❌ Error sending notification:", error);
+//     return {
+//       success: false,
+//       error: error instanceof Error ? error.message : "Unknown error",
+//     };
+//   }
+// }
 
-// Generic notification sender
-export async function sendNotificationToUser(
-  userId: string,
-  title: string,
-  body: string,
-  url = "/",
-) {
-  try {
-    const subs = await prisma.pushSubscription.findMany({
-      where: { userId },
-    });
+// export async function subscribeUser(sub: PushSubscriptionJSON) {
+//   const company = await getSession();
+//   if (!company) {
+//     console.error("❌ No session found");
+//     return { success: false, error: "Not authenticated" };
+//   }
+//   if (!sub.endpoint || !sub.keys?.p256dh || !sub.keys?.auth) {
+//     console.error("❌ Invalid subscription payload:", sub);
+//     return { success: false, error: "Invalid subscription data" };
+//   }
 
-    if (subs.length === 0) {
-      return { success: false, error: "No subscriptions for user" };
-    }
+//   await prisma.pushSubscription.upsert({
+//     where: { endpoint: sub.endpoint },
+//     update: {},
+//     create: {
+//       endpoint: sub.endpoint,
+//       p256dh: sub.keys!.p256dh,
+//       auth: sub.keys!.auth,
+//       company_id: company.companyId,
+//       userId: company.userId,
+//       role: company.userRole,
+//     },
+//   });
+// }
 
-    const payload = JSON.stringify({
-      title,
-      body,
-      url,
-      icon: "/icon.png",
-      badge: "/badge.png",
-    });
-
-    await Promise.allSettled(subs.map((s) => sendToSubscription(s, payload)));
-
-    return { success: true };
-  } catch (error) {
-    console.error("❌ Error sending notification:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
-  }
-}
-
-export async function subscribeUser(sub: PushSubscriptionJSON) {
-  const company = await getSession();
-  if (!company) {
-    console.error("❌ No session found");
-    return { success: false, error: "Not authenticated" };
-  }
-  if (!sub.endpoint || !sub.keys?.p256dh || !sub.keys?.auth) {
-    console.error("❌ Invalid subscription payload:", sub);
-    return { success: false, error: "Invalid subscription data" };
-  }
-
-  await prisma.pushSubscription.upsert({
-    where: { endpoint: sub.endpoint },
-    update: {},
-    create: {
-      endpoint: sub.endpoint,
-      p256dh: sub.keys!.p256dh,
-      auth: sub.keys!.auth,
-      company_id: company.companyId,
-      userId: company.userId,
-      role: company.userRole,
-    },
-  });
-}
-
-export async function unsubscribeUser(endpoint: string) {
-  await prisma.pushSubscription.deleteMany({
-    where: { endpoint },
-  });
-}
+// export async function unsubscribeUser(endpoint: string) {
+//   await prisma.pushSubscription.deleteMany({
+//     where: { endpoint },
+//   });
+// }

@@ -674,22 +674,6 @@ export default function CartDisplay({
             placeholder="اسم عميل غير مسجل"
             className="w-40"
           />
-          {/* <Button
-            disabled={isLoading2}
-            onClick={() => {
-              setIsLoading2(true);
-            }}
-            asChild
-          >
-            <Link
-              href={"/sells"}
-              className={`${isLoading2 ? "pointer-events-none" : ""}`}
-            >
-              {" "}
-              {isLoading2 && <Clock className="h-4 w-4 animate-spin" />}
-              {isLoading2 ? "جاري الفتح..." : " إرجاع المبيعات"}
-            </Link>
-          </Button> */}
         </div>
       </div>
       <ScrollArea className="w-full py-2" dir="rtl">

@@ -414,13 +414,30 @@ export const getPurchasesByCompany = cache(
 
       const purchases = await prisma.invoice.findMany({
         where: filters,
-        include: {
+        select: {
+          id: true,
+          invoiceNumber: true,
+          sale_type: true,
+          invoiceDate: true,
+          amountDue: true,
+          amountPaid: true,
+          totalAmount: true,
+          status: true,
           items: {
-            include: {
+            select: {
+              quantity: true,
+              price: true,
+              unit: true,
+              totalPrice: true,
               product: {
-                include: {
+                select: {
+                  sku: true,
+
+                  id: true,
+                  name: true,
+                  sellingUnits: true,
                   inventory: {
-                    include: { warehouse: { select: { name: true } } },
+                    select: { warehouse: { select: { name: true } } },
                   },
                 },
               },
@@ -882,16 +899,6 @@ export async function createSupplierPaymentFromPurchases(
         });
 
         // 3. Update supplier totals
-        const supplierUpdateData: any = {
-          totalPaid: { increment: amount },
-        };
-
-        // Reduce supplier outstanding ONLY if purchase had outstanding
-
-        await tx.supplier.update({
-          where: { id: supplierId, companyId },
-          data: supplierUpdateData,
-        });
 
         const entryYear = new Date().getFullYear();
         const entryNumber = `PUR-${entryYear}-${supplierPayment.voucherNumber}`;

@@ -146,7 +146,7 @@
       <tbody>
         {{#each expiringProducts}}
         <tr
-          class="{{#if (eq status 'Expired')}}expired{{else if (eq status 'Expiring Soon (3 Days)')}}soon{{else}}mid{{/if}}"
+          class="{{#if (eq status 'منتهي الصلاحية')}}expired{{else if (eq status 'ينتهي قريباً (أقل من 3 أيام)')}}soon{{else}}mid{{/if}}"
         >
           <td>{{name}}</td>
           <td>{{stock}}</td>

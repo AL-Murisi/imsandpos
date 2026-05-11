@@ -28,7 +28,7 @@ export async function createCategory(
 
   const { name, description, parentId } = parsed.data;
   const category = await prisma.category.create({
-    data: { companyId, name, description, parentId },
+    data: { companyId, name, description },
   });
 
   revalidatePath("/products");

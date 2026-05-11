@@ -3,7 +3,7 @@
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/session";
-import { Prisma } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 import { validateFiscalYear } from "./fiscalYear";
 
 // Types
@@ -232,6 +232,84 @@ export async function getUserCompany() {
  * Retrieves the Chart of Accounts and calculates summary financial totals.
  * * @returns {Promise<{success: boolean, data?: object, totals?: object, error?: string}>}
  */
+
+// Cache storage (module-level, persists across calls)
+const accountMappingCache = new Map<string, Map<string, string>>();
+
+// Cache TTL: 5 minutes (adjust as needed)
+const CACHE_TTL_MS = 5 * 60 * 1000;
+const cacheTimestamps = new Map<string, number>();
+
+/**
+ * Get cached account mappings for a company.
+ * Fetches from DB only if cache miss or expired.
+ * Call this once before your transaction, then pass the map into the transaction.
+ */
+export async function getMappingAccount(): Promise<Map<string, string>> {
+  const { companyId } = await getUserCompany();
+  const now = Date.now();
+  const cacheKey = companyId;
+  const cached = accountMappingCache.get(cacheKey);
+  const timestamp = cacheTimestamps.get(cacheKey);
+
+  // Return cached if fresh
+  if (cached && timestamp && now - timestamp < CACHE_TTL_MS) {
+    return cached;
+  }
+
+  // Fetch from DB
+  const mappings = await prisma.account_mappings.findMany({
+    where: {
+      company_id: companyId,
+      is_default: true,
+    },
+    select: {
+      mapping_type: true,
+      account_id: true,
+    },
+  });
+
+  const map = new Map<string, string>();
+  for (const m of mappings) {
+    if (m.account_id) {
+      map.set(m.mapping_type, m.account_id);
+    }
+  }
+
+  // Store in cache
+  accountMappingCache.set(cacheKey, map);
+  cacheTimestamps.set(cacheKey, now);
+
+  return map;
+}
+
+/**
+ * Clear cache for a specific company (call when mappings change)
+ */
+
+export async function getAccountMappings(): Promise<{
+  arAccount?: string;
+  apAccount?: string;
+  inventoryAccount?: string;
+  payableAccount?: string;
+  cashAccount?: string;
+  accountMap: Map<string, string>;
+  bank?: string;
+  // ... add others as needed
+}> {
+  const map = await getMappingAccount();
+
+  return {
+    accountMap: map, // full map for resolveSettlementAccount
+
+    arAccount: map.get("accounts_receivable"),
+    apAccount: map.get("accounts_payable"),
+    inventoryAccount: map.get("inventory"),
+    payableAccount: map.get("accounts_payable"),
+    cashAccount: map.get("cash"),
+    bank: map.get("bank"),
+  };
+}
 // export async function getChartOfAccounts() {
 //   try {
 //     const { companyId } = await getUserCompany();

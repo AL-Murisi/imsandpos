@@ -88,11 +88,13 @@ export default function DraggableDailogreuse({
   return (
     <Dialog open={open} onOpenChange={setOpen} modal={false}>
       <DialogTrigger asChild>
-        <Button variant="outline">{btnLabl}</Button>
+        <Button className="w-10 text-center" variant="ghost">
+          {btnLabl}
+        </Button>
       </DialogTrigger>
       <DialogContent className={`${style}`} dir="rtl" style={dragTransform}>
         <DialogHeader
-          className="cursor-move select-none touch-none"
+          className="cursor-move touch-none select-none"
           onPointerDown={onHeaderPointerDown}
           onPointerMove={onHeaderPointerMove}
           onPointerUp={endDrag}

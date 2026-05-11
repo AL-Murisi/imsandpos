@@ -95,35 +95,6 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
-
-    const savedSubscription = await prisma.pushSubscription.upsert({
-      where: {
-        endpoint: subscription.endpoint,
-      },
-      update: {
-        p256dh: keys.p256dh,
-        auth: keys.auth,
-        userId: userinf.userId,
-        company_id: user.companyId,
-        role: primaryRole,
-      },
-      create: {
-        endpoint: subscription.endpoint,
-        p256dh: keys.p256dh,
-        auth: keys.auth,
-        company_id: user.companyId,
-        userId: userinf.userId,
-        role: primaryRole,
-      },
-    });
-
-    return NextResponse.json({
-      message: "Subscription saved successfully",
-      subscription: {
-        id: savedSubscription.id,
-        endpoint: savedSubscription.endpoint,
-      },
-    });
   } catch (error) {
     console.error("[API] Error saving subscription:", error);
     return NextResponse.json(

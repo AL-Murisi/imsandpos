@@ -375,9 +375,6 @@ export async function deleteEmployee(employeeId: string, companyId: string) {
           data: { userId: null },
         });
         await tx.userInvite.deleteMany({ where: { userId: employee.userId } });
-        await tx.pushSubscription.deleteMany({
-          where: { userId: employee.userId },
-        });
 
         await tx.user.delete({ where: { id: employee.userId, companyId } });
       }

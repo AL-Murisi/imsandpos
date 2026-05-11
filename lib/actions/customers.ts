@@ -530,9 +530,7 @@ export async function deleteCustomer(customerId: string, companyId: string) {
 
       if (customer?.userId) {
         await tx.userInvite.deleteMany({ where: { userId: customer.userId } });
-        await tx.pushSubscription.deleteMany({
-          where: { userId: customer.userId },
-        });
+
         await tx.pushDeviceToken.deleteMany({
           where: { userId: customer.userId },
         });

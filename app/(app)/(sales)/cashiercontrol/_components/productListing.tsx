@@ -263,57 +263,7 @@ export default function List({ selecteditemId }: Props) {
 
   return (
     <ScrollArea className="h-[80vh]">
-      <DraggableDailogreuse
-        open={opens}
-        setOpen={setOpens}
-        btnLabl="o"
-        style="w-lg
-"
-      >
-        <div className="w-80 md:w-2xl">
-          <Button type="button" onClick={() => setOpenScanner(true)}>
-            Open Scanner
-          </Button>
-          <LiveBarcodeScanner
-            onDetected={(code) => {
-              // 1. Update the visual "Last Scanned" state
-              setLast(code);
-
-              const scannedVariants = barcodeVariants(code);
-
-              // 2. Find the product that matches the scanned text (SKU or Barcode)
-              const scannedProduct = products.find((p) => {
-                const skuVariants = barcodeVariants(String(p.sku || ""));
-                const barcodeValue = String(p.barcode || "");
-                const productVariants = new Set<string>([
-                  ...skuVariants,
-                  ...barcodeVariants(barcodeValue),
-                ]);
-
-                for (const v of scannedVariants) {
-                  if (productVariants.has(v)) return true;
-                }
-                return false;
-              });
-
-              if (scannedProduct) {
-                // 3. Trigger your existing add logic
-                handleAdd(scannedProduct);
-
-                // Optional: Close the dialog after a successful scan
-                // setOpens(false);
-
-                console.log(`Successfully added: ${scannedProduct.name}`);
-              } else {
-                console.warn("Product not found for code:", code);
-                // Optional: Add a toast notification here for "Product not found"
-              }
-            }}
-            opened={openScanner}
-            action={() => setOpenScanner(false)}
-          />
-        </div>
-      </DraggableDailogreuse>{" "}
+      {/* Scanner/dialog moved to ProductList to avoid duplication */}
       {products.length > 0 && <div className="mt-4 px-2">{productGrid}</div>}
     </ScrollArea>
   );
