@@ -150,8 +150,18 @@ export async function getCustomerStatement(
         },
       },
       orderBy: { header: { entryDate: "asc" } },
-      include: {
-        header: true,
+      select: {
+        header: {
+          select: {
+            description: true,
+            entryDate: true,
+            entryNumber: true,
+            referenceType: true,
+          },
+        },
+        memo: true,
+        debit: true,
+        credit: true,
       },
     });
 
@@ -339,8 +349,18 @@ export async function getEmployeerStatement(
           },
         },
         orderBy: { header: { entryDate: "asc" } },
-        include: {
-          header: true,
+        select: {
+          header: {
+            select: {
+              description: true,
+              entryDate: true,
+              entryNumber: true,
+              referenceType: true,
+            },
+          },
+          memo: true,
+          debit: true,
+          credit: true,
         },
       }),
     ]);
@@ -561,8 +581,20 @@ export async function getSupplierStatement(
         },
       },
       orderBy: { header: { entryDate: "asc" } },
-      include: {
-        header: true,
+      select: {
+        header: {
+          select: {
+            description: true,
+            entryDate: true,
+            entryNumber: true,
+            referenceType: true,
+          },
+        },
+        memo: true,
+        debit: true,
+        currencyCode: true,
+
+        credit: true,
       },
     });
 
@@ -714,8 +746,18 @@ export async function getBankStatement(
           entryDate: "asc",
         },
       },
-      include: {
-        header: true,
+      select: {
+        header: {
+          select: {
+            description: true,
+            entryDate: true,
+            entryNumber: true,
+            referenceType: true,
+          },
+        },
+        memo: true,
+        debit: true,
+        credit: true,
       },
     });
     // 4️⃣ بناء كشف الحساب

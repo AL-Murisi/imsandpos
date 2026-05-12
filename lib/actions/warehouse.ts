@@ -21,10 +21,7 @@ import { PaymentState } from "@/components/common/ReusablePayment";
 import { getNextVoucherNumber } from "./cashier";
 import { sendRoleBasedNotification } from "@/lib/push-notifications";
 import { canCreateSubscriptionResource } from "./subscription";
-import {
-  markNotificationDigestSent,
-  shouldSendNotificationDigest,
-} from "./notificationDigest";
+import { acquireNotificationDigestLock } from "./notificationDigest";
 import { getAccountMappings } from "./chartOfaccounts";
 function serializeData<T>(data: T): T {
   if (data === null || data === undefined) return data;
@@ -1341,10 +1338,24 @@ export async function getPurchaseReturnData(
   try {
     const purchase = await prisma.invoice.findFirst({
       where: { id: purchaseId, companyId, sale_type: "PURCHASE" },
-      include: {
+      select: {
+        supplierId: true,
+        invoiceNumber: true,
         supplier: { select: { id: true, name: true } },
+        invoiceDate: true,
+        id: true,
+        amountDue: true,
+        amountPaid: true,
+        totalAmount: true,
+        status: true,
         items: {
-          include: {
+          select: {
+            id: true,
+            unit: true,
+            totalPrice: true,
+            price: true,
+            productId: true,
+            quantity: true,
             warehouse: { select: { id: true, name: true, location: true } },
             product: {
               select: {
@@ -1849,7 +1860,7 @@ export async function getInventoryById(
       const reserved = i.reservedQuantity;
       return stock - reserved;
     });
-    const availableQuantity = inventories;
+
     const filteredInventory = inventory.filter((item) => {
       const availableQuantity = item.stockQuantity - item.reservedQuantity;
       if (requestedStatus === "attention") {
@@ -1888,15 +1899,15 @@ export async function getInventoryById(
 
     // 🆕 Convert base units to all selling units
     if (lowStockItems.length > 0) {
+      const digestType = "low-stock-summary";
       const dayKey = new Date().toISOString().split("T")[0];
       const idKey = Array.from(new Set(lowStockItemIds)).sort().join("-");
-      const shouldSend = await shouldSendNotificationDigest(
+      const acquired = await acquireNotificationDigestLock(
         companyId,
-        "low-stock-summary",
+        digestType,
         idKey,
       );
-
-      if (shouldSend) {
+      if (acquired) {
         void sendRoleBasedNotification(
           {
             companyId,
@@ -1908,17 +1919,7 @@ export async function getInventoryById(
             url: "/inventory?stockStatus=low",
             tag: `low-stock-summary-${companyId}-${dayKey}-${idKey}`,
           },
-        )
-          .then(async (result) => {
-            if (result.successful > 0) {
-              await markNotificationDigestSent(
-                companyId,
-                "low-stock-summary",
-                idKey,
-              );
-            }
-          })
-          .catch((err) => console.error("Notification Error:", err));
+        ).catch((err) => console.error("Notification Error:", err));
       }
     }
     const convertedInventory = paginatedInventory.map((item) => {
@@ -2048,7 +2049,7 @@ export async function getInventoryBatchesByCompany(
           },
         },
       },
-      orderBy: [{ expiredAt: "asc" }, { receivedAt: "desc" }],
+      orderBy: [{ receivedAt: "desc" }, { expiredAt: "asc" }],
     });
 
     const loweredSearch = searchQuery.trim().toLowerCase();

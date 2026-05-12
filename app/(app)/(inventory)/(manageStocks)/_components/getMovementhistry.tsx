@@ -71,7 +71,7 @@ export default function ManagemovementClient({
         <SelectField
           options={formData.warehouses}
           paramKey="category"
-          placeholder="warehouseId"
+          placeholder="مخزن"
         />
       </div>
       <div>
@@ -87,7 +87,7 @@ export default function ManagemovementClient({
           sorting={sorting}
           pagination={pagination}
           totalCount={total}
-          highet="h-[65vh]"
+          highet="h-[60vh]"
         />
       </div>
     </div>

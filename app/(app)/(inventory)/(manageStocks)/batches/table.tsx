@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useTablePrams } from "@/hooks/useTableParams";
 import { batchColumns } from "../_components/columnsMovment";
 import { useSearchParams } from "next/navigation";
+import { SelectField } from "@/components/common/selection";
 
 type BatchRow = {
   id: string;
@@ -113,6 +114,11 @@ export default function BatchesTable({
         <div className="flex flex-wrap gap-2">
           <Calendar22 />
           <SearchInput placeholder="بحث في الدُفعات..." paramKey="batch" />
+          {/* <SelectField
+              options={formData.suppliers}
+              paramKey={"supplierId"}
+              placeholder={t("supplierId")}
+            /> */}
         </div>
 
         <div className="flex flex-wrap gap-2">

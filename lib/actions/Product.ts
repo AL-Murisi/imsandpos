@@ -7,7 +7,6 @@ import { revalidatePath } from "next/cache";
 
 import {
   CreateProductSchemas,
-  SellingUnit,
   UpdateProductFormValues,
   UpdateProducts,
 } from "@/lib/zod/product";
@@ -303,7 +302,23 @@ export async function fetchProductStats(role: string, companyId: string) {
     lowStockDetails,
   };
 }
-export async function updateSellingUnits(sellingUnits: SellingUnit[]) {
+interface SellingUnit {
+  id: string;
+  name: string;
+  nameEn?: string;
+  unitsPerParent: number;
+  price: number;
+  isBase: boolean;
+}
+export async function updateSellingUnits(sellingUnits: any, productId: string) {
+  const updateSellingunit = await prisma.product.update({
+    where: { id: productId },
+    data: {
+      sellingUnits,
+    },
+  });
+  revalidatePath("/inventory");
+  return updateSellingunit;
   // This is a placeholder function. The actual implementation will depend on how you want to update the selling units in the database.
   // You can pass the product ID and the new selling units data to this function and perform the necessary database updates.
 }

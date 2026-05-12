@@ -684,7 +684,16 @@ export async function fetchReceipt(invoiceId: string, companyId: string) {
       id: invoiceId,
       companyId,
     },
-    include: {
+    select: {
+      id: true,
+      invoiceDate: true,
+      invoiceNumber: true,
+      customerName: true,
+      sale_type: true,
+      totalAmount: true,
+      amountPaid: true,
+      amountDue: true,
+
       customer: {
         select: {
           id: true,
@@ -710,7 +719,14 @@ export async function fetchReceipt(invoiceId: string, companyId: string) {
         },
       },
       items: {
-        include: {
+        select: {
+          id: true,
+          productId: true,
+          quantity: true,
+          price: true,
+          discountAmount: true,
+          totalPrice: true,
+          unit: true,
           product: {
             select: {
               id: true,

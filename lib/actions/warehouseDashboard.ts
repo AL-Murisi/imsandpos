@@ -58,7 +58,10 @@ export async function getWarehouseDashboardData() {
         isActive: true,
       },
       orderBy: { createdAt: "asc" },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        location: true,
         inventory: {
           select: {
             stockQuantity: true,

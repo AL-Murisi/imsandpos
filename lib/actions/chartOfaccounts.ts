@@ -401,7 +401,15 @@ export async function getChartOfAccounts() {
 
     const accounts = await prisma.accounts.findMany({
       where: { company_id: companyId },
-      include: {
+      select: {
+        account_type: true,
+        account_code: true,
+        account_category: true,
+        level: true,
+        is_active: true,
+        id: true,
+
+        account_name_en: true,
         journalLines: {
           where: { header: { status: "POSTED" } },
           select: {

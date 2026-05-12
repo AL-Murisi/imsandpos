@@ -17,10 +17,7 @@ import { SellingUnit } from "../zod";
 import { console } from "inspector";
 import { stat } from "fs";
 import { sendRoleBasedNotification } from "../push-notifications";
-import {
-  markNotificationDigestSent,
-  shouldSendNotificationDigest,
-} from "./notificationDigest";
+import { acquireNotificationDigestLock } from "./notificationDigest";
 
 type CartItem = {
   id: string;
@@ -1188,6 +1185,8 @@ function getExpiryStatus(expiryDateInput: string | Date) {
     daysLeft,
   };
 }
+const sentDigestsThisProcess = new Set<string>();
+
 export async function getAllActiveProductsForSale(
   where: Prisma.ProductWhereInput,
   companyId: string,
@@ -1265,6 +1264,9 @@ export async function getAllActiveProductsForSale(
     product.inventory.forEach((inv) => {
       // 2. Iterate through each batch in that inventory
       inv.batches.forEach((batch) => {
+        if (!batch.remainingQuantity || Number(batch.remainingQuantity) <= 0) {
+          return;
+        }
         // Ensure the batch has an expiry date
         if (batch.expiredAt) {
           const status = getExpiryStatus(new Date(batch.expiredAt));
@@ -1295,14 +1297,19 @@ export async function getAllActiveProductsForSale(
       `expired:${[...new Set(expiredAlready)].sort().join("|")}`,
       `soon:${[...new Set(expiringSoon)].sort().join("|")}`,
     ].join(";");
+    const digestType = "expiry-summary";
+    const digestCacheKey = `${companyId}:${digestType}:${digestKey}`;
+    if (sentDigestsThisProcess.has(digestCacheKey)) {
+      return; // Already sent in this process instance
+    }
 
-    const shouldSend = await shouldSendNotificationDigest(
+    const acquired = await acquireNotificationDigestLock(
       companyId,
-      "expiry-summary",
+      digestType,
       digestKey,
     );
-
-    if (shouldSend) {
+    if (acquired) {
+      sentDigestsThisProcess.add(digestCacheKey);
       // لا نستخدم await هنا لكي لا ينتظر الكاشير
       void sendRoleBasedNotification(
         { companyId, targetRoles: ["admin", "cashier", "manager_wh"] },
@@ -1312,15 +1319,7 @@ export async function getAllActiveProductsForSale(
           url: "/batches?expiryStatus=expired",
           tag: `expiry-summary-${companyId}-${new Date().toISOString().split("T")[0]}`,
         },
-      )
-        .then(async (result) => {
-          await markNotificationDigestSent(
-            companyId,
-            "expiry-summary",
-            digestKey,
-          );
-        })
-        .catch((err) => console.error("Notification Error:", err));
+      ).catch((err) => console.error("Notification Error:", err));
     }
   }
 

@@ -73,7 +73,7 @@ export default async function Cart({ searchParams }: Props) {
     <ScrollArea className="grid" dir="rtl">
       <Clientwraper
         users={users}
-        product={products}
+        product={products || []}
         formData={formData}
         nextnumber={nextNumber}
         searchParams={searchParam}

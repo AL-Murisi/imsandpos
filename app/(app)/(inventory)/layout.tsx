@@ -1,5 +1,5 @@
 import { getSession } from "@/lib/session";
-import InventoryTabs from "./_components/InventoryTabs";
+import InventoryTabs from "@/components/common/InventoryTabs";
 
 type NavItem = {
   label: string;

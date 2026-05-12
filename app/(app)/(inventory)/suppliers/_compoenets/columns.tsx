@@ -130,40 +130,6 @@ export const supplierColumns: ColumnDef<any>[] = [
     ),
     cell: ({ row }) => <div>{row.getValue("email") || "-"}</div>,
   },
-  {
-    accessorKey: "totalPaid",
-    header: "المدفوع",
-    cell: ({ row }) => (
-      <div className="font-semibold">
-        {Number(row.original.totalPaid).toFixed(2)}
-      </div>
-    ),
-  },
-  {
-    accessorKey: "preferred_currency",
-    header: ({ column }) => <SortableHeader column={column} label="العمله" />,
-    cell: ({ row }) => (
-      <div>{row.getValue("preferred_currency") || "غير محدد"}</div>
-    ),
-  },
-  {
-    accessorKey: "totalPurchased",
-    header: "إجمالي المشتريات",
-    cell: ({ row }) => (
-      <div className="font-semibold">
-        {Number(row.original.totalPurchased).toFixed(2)}
-      </div>
-    ),
-  },
-  {
-    accessorKey: "outstandingBalance",
-    header: "الرصيد المتبقي",
-    cell: ({ row }) => (
-      <div className="font-semibold">
-        {Number(row.original.outstandingBalance).toFixed(2)}
-      </div>
-    ),
-  },
 
   {
     accessorKey: "phoneNumber",
@@ -184,23 +150,15 @@ export const supplierColumns: ColumnDef<any>[] = [
       const [isPending, startTransition] = useTransition();
       return (
         <div className="flex gap-3">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">فتح القائمة</span>
-                <MoreHorizontal />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>الإجراءات</DropdownMenuLabel>
-              <DropdownMenuItem
-                onClick={() => navigator.clipboard.writeText(supplier.id)}
-              >
-                نسخ معرف المورد
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-            </DropdownMenuContent>
-          </DropdownMenu>{" "}
+          <Button
+            onClick={() =>
+              startTransition(async () => {
+                router.push(`/batches?supplierId=${supplier.id}`);
+              })
+            }
+          >
+            التوريد
+          </Button>
           <ConfirmModal
             title="تأكيد الحذف"
             description={`هل أنت متأكد من حذف هذا ${supplier.name}؟ هذه العملية لا يمكن التراجع عنها.`}

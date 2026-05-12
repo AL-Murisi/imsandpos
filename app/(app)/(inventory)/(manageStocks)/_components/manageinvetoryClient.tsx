@@ -149,12 +149,6 @@ export default function ManageStocksClient({
               paramKey="categoryId"
               placeholder={t("categoryId")}
             />
-
-            <SelectField
-              options={formData.suppliers}
-              paramKey={"supplierId"}
-              placeholder={t("supplierId")}
-            />
           </div>
         }
         data={products}

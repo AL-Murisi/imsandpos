@@ -99,7 +99,7 @@ export function WarehouseUpdateDialog({
     <Dailogreuse
       open={open}
       setOpen={setOpen}
-      btnLabl="تعديل المستودع"
+      btnLabl="تعديل "
       style="sm:max-w-6xl"
       titel="تعديل بيانات المستودع"
       description="قم بتحديث تفاصيل المستودع واحفظ التغييرات"

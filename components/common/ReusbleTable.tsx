@@ -7,7 +7,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   setColumnFilters,
@@ -16,7 +16,7 @@ import {
 } from "@/lib/slices/table";
 import { useAppDispatch, useAppSelector } from "@/lib/store";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import {
@@ -98,6 +98,8 @@ export function DataTable<T>({
       ? (updater as (old: T) => T)(old)
       : updater;
   }
+  const [isRefreshing, startRefresh] = useTransition(); // ✅ Add this
+
   const router = useRouter();
   const table = useReactTable({
     data,
@@ -143,8 +145,20 @@ export function DataTable<T>({
   return (
     <Card className="@container/card border-transparent bg-transparent px-2">
       <div className="flex flex-wrap items-center justify-between gap-2 space-x-2 px-2 py-4">
-        <Button variant="outline" onClick={() => router.refresh()}>
-          <IconReload />
+        <Button
+          variant="outline"
+          onClick={() => {
+            startRefresh(() => {
+              router.refresh();
+            });
+          }}
+          disabled={isRefreshing}
+        >
+          {isRefreshing ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <IconReload />
+          )}
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

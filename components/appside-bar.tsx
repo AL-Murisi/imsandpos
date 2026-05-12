@@ -64,18 +64,14 @@ import { ModeToggle } from "./toggoletheme";
 import { cn } from "@/lib/utils";
 import CurrencySwitcher from "./common/CurrencySwitcher";
 import Logout from "./logout";
+import { Skeleton } from "./ui/skeleton";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user, logout, hasAnyRole, logoutAndRedirect, loggingOut } = useAuth();
   const pathname = usePathname();
   const t = useTranslations("menu");
-
-  // Format the price according to the selected currency
-
-  // If no user, don't render sidebar
-  if (!user) {
-    return null;
-  }
+  const { open } = useSidebar();
+  const { company, loading } = useCompany();
 
   const menuItems = [
     {
@@ -274,15 +270,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       isDropdown: true,
       subItems: [
         {
-          title: t("banks"), // Used t("banks") for consistency, or "البنوك"
-          url: "/banks",
-          icon: <Banknote className="h-4 w-4 text-sky-500" />,
-          roles: ["admin"],
-        },
-        {
-          title: t("expenses"),
-          url: "/expenses",
-          icon: <Receipt className="h-4 w-4 text-red-600" />,
+          title: t("vouchers"),
+          url: "/voucher",
+          icon: <Receipt className="h-4 w-4 text-amber-600" />,
           roles: ["admin"],
         },
         {
@@ -292,9 +282,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           roles: ["admin"],
         },
         {
-          title: t("vouchers"),
-          url: "/voucher",
-          icon: <Receipt className="h-4 w-4 text-amber-600" />,
+          title: t("banks"), // Used t("banks") for consistency, or "البنوك"
+          url: "/banks",
+          icon: <Banknote className="h-4 w-4 text-sky-500" />,
+          roles: ["admin"],
+        },
+        {
+          title: t("expenses"),
+          url: "/expenses",
+          icon: <Receipt className="h-4 w-4 text-red-600" />,
           roles: ["admin"],
         },
       ],
@@ -428,8 +424,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   // const visibleMenuItems = menuItems.filter((item) => {
   //   return item.roles.includes("admin"); // Hardcoded
   // });
-  const { open } = useSidebar();
-
   const isCollapsed = !open;
 
   // const handelLogout = async () => {
@@ -457,11 +451,49 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const filterSubItems = (subItems: any[]) => {
     return subItems.filter((subItem) => hasAnyRole(subItem.roles));
   };
-  const { company } = useCompany();
-  if (!company) {
-    return null;
-  }
+  if (!user) {
+    return (
+      <Sidebar
+        collapsible="icon"
+        {...props}
+        className="bg-background text-foreground py-4"
+      >
+        {/* Logo skeleton */}
+        <SidebarHeader className="flex items-center justify-center py-4">
+          <Skeleton className="h-12 w-12 rounded-full" />
+        </SidebarHeader>
 
+        {/* Text skeletons */}
+        <SidebarHeader className="space-y-2 px-4 py-2">
+          <Skeleton className="h-3 w-full" />
+          <Skeleton className="h-3 w-3/4" />
+        </SidebarHeader>
+
+        <SidebarContent className="h-full rounded-sm p-2">
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu className="space-y-1">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <SidebarMenuItem key={i}>
+                    <div className="flex items-center gap-3 rounded-md px-3 py-2">
+                      <Skeleton className="h-5 w-5 rounded-md" />
+                      <Skeleton className="h-4 w-32 rounded-md" />
+                    </div>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+
+        {/* Footer skeleton */}
+        <SidebarFooter className="space-y-2 p-2">
+          <Skeleton className="h-9 w-full rounded-md" />
+          <Skeleton className="h-9 w-full rounded-md" />
+        </SidebarFooter>
+      </Sidebar>
+    );
+  }
   return (
     <Sidebar
       collapsible="icon"
@@ -478,7 +510,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             isCollapsed ? "h-8 w-8" : "h-16 w-16",
           )}
         >
-          {company.logoUrl ? (
+          {loading ? (
+            // 🔥 Skeleton while loading
+            <Skeleton
+              className={cn(
+                "rounded-full",
+                isCollapsed ? "h-8 w-8" : "h-16 w-16",
+              )}
+            />
+          ) : company?.logoUrl ? (
             <Image
               src={company.logoUrl}
               alt="Company Logo"
@@ -495,14 +535,25 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           )}
         </div>
       </SidebarHeader>
+
       <SidebarHeader className="">
-        <SidebarGroupLabel className="text-foreground text-xs">
-          {company.name}
-        </SidebarGroupLabel>
-        <SidebarGroupLabel className="text-foreground text-xs">
-          {t("welcome")} {user?.name}
-        </SidebarGroupLabel>
-      </SidebarHeader>{" "}
+        {loading ? (
+          // 🔥 Skeleton text while loading
+          <div className="space-y-2 px-4">
+            <Skeleton className="mx-auto h-3 w-24" />
+            <Skeleton className="mx-auto h-3 w-20" />
+          </div>
+        ) : (
+          <>
+            <SidebarGroupLabel className="text-foreground text-xs">
+              {company?.name}
+            </SidebarGroupLabel>
+            <SidebarGroupLabel className="text-foreground text-xs">
+              {t("welcome")} {user?.name}
+            </SidebarGroupLabel>
+          </>
+        )}
+      </SidebarHeader>
       {/* Scrollable menu area */}
       {/* <ScrollArea className="h-full pr-2" dir="rtl"> */}
       <SidebarContent className="text-foreground h-full rounded-sm p-1">
@@ -546,7 +597,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                       : "text-foreground hover:bg-orange-300/20"
                                   } !justify-start !pr-4 !pl-8`}
                                 >
-                                  <Link href={subItem.url || "/"}>
+                                  <Link href={subItem.url || "/"} prefetch>
                                     {subItem.icon}
                                     <span>{subItem.title}</span>
                                   </Link>
@@ -593,37 +644,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                           : "text-foreground hover:bg-orange-300/20"
                       }`}
                     >
-                      <Link href={item.url ?? "/"}>
+                      <Link href={item.url ?? "/"} prefetch>
                         <item.icon />
                         <span>{item.title}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-
-                  // <SidebarMenuItem key={item.title}>
-                  //   <SidebarMenuButton asChild isActive>
-                  //     <Link href={item.url || "#"}>
-                  //       <item.icon />
-                  //       <span>{item.title}</span>
-                  //     </Link>
-                  //   </SidebarMenuButton>
-                  // </SidebarMenuItem>
                 );
               })}{" "}
-            </SidebarMenu>
-          </SidebarGroupContent>
-          <SidebarGroupContent>
-            <SidebarMenu className="flex gap-3">
-              {/* Logout */}
-              {/* Language */}
-              <SidebarMenuItem></SidebarMenuItem>
-              {/* Currency */}
-              {/* <SidebarMenuItem>
-                  <SidebarMenuButton asChild className="hover:bg-orange-300/20">
-                    <CurrencySwitcher />
-                  </SidebarMenuButton>
-                </SidebarMenuItem> */}
-              {/* Theme */}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

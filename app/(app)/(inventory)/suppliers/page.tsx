@@ -1,8 +1,4 @@
-import {
-  getPurchasesByCompany,
-  getSupplierPaymentsByCompany,
-  fetchSuppliers,
-} from "@/lib/actions/suppliers";
+import { fetchSuppliers } from "@/lib/actions/suppliers";
 import { getSession } from "@/lib/session";
 import { ParsedSort } from "@/hooks/sort";
 import { SortingState } from "@tanstack/react-table";

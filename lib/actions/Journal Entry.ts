@@ -94,7 +94,14 @@ export async function getVouchers(
     }
 
     const vouchers = await prisma.financialTransaction.findMany({
-      include: {
+      select: {
+        voucherNumber: true,
+        type: true,
+        amount: true,
+        paymentMethod: true,
+        date: true,
+        currencyCode: true,
+
         customer: { select: { name: true } },
         supplier: { select: { name: true } },
         employee: { select: { name: true } },

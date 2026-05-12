@@ -135,7 +135,8 @@ export async function POST(req: NextRequest, context: RouteContext) {
           where: {
             companyId: user.companyId,
             invoice: {
-              ...cashierFilter,
+              cashierId: scopedUserId,
+
               // 1. Fixed logic: Get items BETWEEN from and to
               invoiceDate: {
                 gte: fromDate,
@@ -146,9 +147,20 @@ export async function POST(req: NextRequest, context: RouteContext) {
               // 2. Critical: Only include Sales (exclude purchases)
             },
           },
-          include: {
-            product: true,
-            invoice: true,
+          select: {
+            quantity: true,
+            totalPrice: true,
+            unit: true,
+            price: true,
+            product: { select: { id: true, name: true } },
+            invoice: {
+              select: {
+                invoiceDate: true,
+                sale_type: true,
+                cashier: { select: { name: true } },
+                branch: { select: { name: true } },
+              },
+            },
           },
         });
 
@@ -280,9 +292,20 @@ export async function POST(req: NextRequest, context: RouteContext) {
               // 2. Critical: Only include Sales (exclude purchases)
             },
           },
-          include: {
-            product: true,
-            invoice: { include: { cashier: true, branch: true } },
+          select: {
+            quantity: true,
+            totalPrice: true,
+            unit: true,
+            price: true,
+            product: { select: { id: true, name: true } },
+            invoice: {
+              select: {
+                invoiceDate: true,
+                sale_type: true,
+                cashier: { select: { name: true } },
+                branch: { select: { name: true } },
+              },
+            },
           },
         });
 
@@ -295,7 +318,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
             sellingUnit: s.unit,
             date: s.invoice.invoiceDate.toLocaleDateString("ar-EG"), // Usually better for reports
 
-            salestype: s.invoice.sale_type === "SALE" ? "???" : "?????",
+            salestype: s.invoice.sale_type === "SALE" ? "بيع" : "مرتجع",
             price: s.price,
           })),
           casherNmae: sales[0].invoice.cashier?.name,
@@ -321,25 +344,56 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
         const toDate = new Date();
         toDate.setHours(23, 59, 59, 999);
-
         const sales = await prisma.invoiceItem.findMany({
           where: {
             companyId: user.companyId,
             invoice: {
-              ...cashierFilter,
+              cashierId: scopedUserId,
+
+              // 1. Fixed logic: Get items BETWEEN from and to
               invoiceDate: {
                 gte: fromDate,
                 lte: toDate,
               },
               sale_type: salesTypes,
               ...(branchId && { branchId }),
+              // 2. Critical: Only include Sales (exclude purchases)
             },
           },
-          include: {
-            product: true,
-            invoice: { include: { cashier: true, branch: true } },
+          select: {
+            quantity: true,
+            totalPrice: true,
+            unit: true,
+            price: true,
+            product: { select: { id: true, name: true } },
+            invoice: {
+              select: {
+                invoiceDate: true,
+                sale_type: true,
+                cashier: { select: { name: true } },
+                branch: { select: { name: true } },
+              },
+            },
           },
         });
+        // const sales = await prisma.invoiceItem.findMany({
+        //   where: {
+        //     companyId: user.companyId,
+        //     invoice: {
+        //       ...cashierFilter,
+        //       invoiceDate: {
+        //         gte: fromDate,
+        //         lte: toDate,
+        //       },
+        //       sale_type: salesTypes,
+        //       ...(branchId && { branchId }),
+        //     },
+        //   },
+        //   include: {
+        //     product: true,
+        //     invoice: { include: { cashier: true, branch: true } },
+        //   },
+        // });
 
         data = {
           ...baseData,
@@ -349,7 +403,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
             total: s.totalPrice.toNumber(),
             sellingUnit: s.unit,
             date: s.invoice.invoiceDate.toLocaleDateString("ar-EG"),
-            salestype: s.invoice.sale_type === "SALE" ? "???" : "?????",
+            salestype: s.invoice.sale_type === "SALE" ? "بيع" : "مرتجع",
             price: s.price,
           })),
           casherNmae: sales[0]?.invoice.cashier?.name ?? "",
@@ -377,7 +431,12 @@ export async function POST(req: NextRequest, context: RouteContext) {
               ...(branchId && { branchId }),
             },
           },
-          include: {
+          select: {
+            quantity: true,
+            price: true,
+            unit: true,
+            totalPrice: true,
+            productId: true,
             product: {
               select: {
                 name: true,
@@ -460,7 +519,9 @@ export async function POST(req: NextRequest, context: RouteContext) {
         const [revenueAccs, cogsAccs, expenseAccs] = await Promise.all([
           prisma.accounts.findMany({
             where: { company_id: user.companyId, account_type: "REVENUE" },
-            include: {
+            select: {
+              account_name_en: true,
+              account_name_ar: true,
               journalLines: {
                 where: {
                   header: {
@@ -483,7 +544,9 @@ export async function POST(req: NextRequest, context: RouteContext) {
                 },
               ],
             },
-            include: {
+            select: {
+              account_name_en: true,
+              account_name_ar: true,
               journalLines: {
                 where: {
                   header: {
@@ -501,7 +564,9 @@ export async function POST(req: NextRequest, context: RouteContext) {
               account_type: "EXPENSE",
               account_category: { not: "COST_OF_GOODS_SOLD" },
             },
-            include: {
+            select: {
+              account_name_en: true,
+              account_name_ar: true,
               journalLines: {
                 where: {
                   header: {
@@ -699,9 +764,13 @@ export async function POST(req: NextRequest, context: RouteContext) {
             ...(warehouseId && { warehouseId }),
             createdAt: createDateFilter(fromDate, toDate),
           },
-          include: {
-            product: true,
-            warehouse: true,
+          select: {
+            product: { select: { name: true } },
+            warehouse: { select: { name: true } },
+            createdAt: true,
+            movementType: true,
+            quantity: true,
+            referenceId: true,
           },
           orderBy: { createdAt: "desc" },
         });
@@ -810,9 +879,12 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
             lastStockTake: createDateFilter(fromDate, toDate),
           },
-          include: {
-            product: true,
-            warehouse: true,
+          select: {
+            product: { select: { name: true } },
+            warehouse: { select: { name: true } },
+            stockQuantity: true,
+            reservedQuantity: true,
+            lastStockTake: true,
           },
         });
         data = {
@@ -843,9 +915,20 @@ export async function POST(req: NextRequest, context: RouteContext) {
             },
             invoiceDate: createDateFilter(fromDate, toDate),
           },
-          include: {
-            supplier: true,
-            items: { include: { product: true } },
+          select: {
+            invoiceNumber: true,
+            invoiceDate: true,
+            totalAmount: true,
+            status: true,
+            supplier: { select: { name: true } },
+            items: {
+              select: {
+                product: { select: { name: true } },
+                quantity: true,
+                price: true,
+                totalPrice: true,
+              },
+            },
           },
         });
 
@@ -884,9 +967,15 @@ export async function POST(req: NextRequest, context: RouteContext) {
             invoiceDate: createDateFilter(fromDate, toDate),
             sale_type: "RETURN_PURCHASE",
           },
-          include: {
+          select: {
+            id: true,
+            invoiceDate: true,
+            totalAmount: true,
+            supplier: { select: { name: true } },
             items: {
-              include: {
+              select: {
+                quantity: true,
+                totalPrice: true,
                 product: {
                   select: {
                     name: true,
@@ -895,7 +984,6 @@ export async function POST(req: NextRequest, context: RouteContext) {
                 },
               },
             },
-            supplier: true,
           },
         });
 
@@ -1088,7 +1176,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
                 : (p.customer?.name ?? p.supplier?.name ?? "N/A"),
             voucherNumber: p.voucherNumber,
             amount: Number(p.amount).toFixed(2),
-            type: p.type === "PAYMENT" ? "????" : "??????",
+            type: p.type === "PAYMENT" ? "دفع" : "استلام",
             method: p.paymentMethod,
             date: p.createdAt.toLocaleDateString("ar-EG"),
           });
@@ -1119,7 +1207,13 @@ export async function POST(req: NextRequest, context: RouteContext) {
             ...(branchId && { branchId }),
             created_at: createDateFilter(fromDate, toDate),
           },
-          include: {
+          select: {
+            expense_date: true,
+            expense_number: true,
+            amount: true,
+            payment_method: true,
+            description: true,
+            notes: true,
             users: { select: { name: true } },
           },
         });
@@ -1127,13 +1221,13 @@ export async function POST(req: NextRequest, context: RouteContext) {
         data = {
           ...baseData,
           expenses: expenses.map((e) => ({
-            date: e.created_at?.toLocaleDateString("ar-EG") ?? "",
+            date: e.expense_date?.toLocaleDateString("ar-EG") ?? "",
             category: e.notes,
 
             expense_number: e.expense_number,
             description: e.description || "-",
             amount: Number(e.amount),
-            user: e.users?.name || "??? ?????",
+            user: e.users?.name || "",
             paymentMethod: e.payment_method,
           })),
           totalExpenses: expenses.reduce((sum, e) => sum + Number(e.amount), 0),
@@ -1522,8 +1616,20 @@ export async function POST(req: NextRequest, context: RouteContext) {
                 },
               },
               orderBy: { header: { entryDate: "asc" } },
-              include: {
-                header: true,
+              select: {
+                header: {
+                  select: {
+                    entryDate: true,
+                    entryNumber: true,
+                    description: true,
+                    referenceType: true,
+                  },
+                },
+                debit: true,
+                credit: true,
+                currencyCode: true,
+                foreignAmount: true,
+                memo: true,
               },
             });
 
@@ -2007,7 +2113,20 @@ export async function POST(req: NextRequest, context: RouteContext) {
                 },
               },
               orderBy: { header: { entryDate: "asc" } },
-              include: { header: true },
+              select: {
+                header: {
+                  select: {
+                    entryDate: true,
+                    entryNumber: true,
+                    description: true,
+                    referenceType: true,
+                  },
+                },
+                debit: true,
+                credit: true,
+                foreignAmount: true,
+                memo: true,
+              },
             });
 
             // FIX 7: Skip if no transactions AND no opening balance (truly empty)
@@ -2093,7 +2212,12 @@ export async function POST(req: NextRequest, context: RouteContext) {
             createdAt: createDateFilter(fromDate, toDate),
             ...(customerId && { customerId }),
           },
-          include: { customer: true },
+          select: {
+            customer: { select: { name: true } },
+            createdAt: true,
+            amount: true,
+            paymentMethod: true,
+          },
         });
 
         data = {
@@ -2111,7 +2235,6 @@ export async function POST(req: NextRequest, context: RouteContext) {
       case "bank-statment": {
         templateFile = "bank_statment.html";
 
-        // 1?? ??? ??????? (???? ???? ?? ??????)
         const accountid = accountId;
         const bank = await prisma.bank.findFirst({
           where: { accountId: accountId, companyId: user.companyId },
@@ -2261,7 +2384,7 @@ async function fetchReceiptsByCustomer(
     orderBy: {
       invoiceDate: "asc",
     },
-    include: {
+    select: {
       customer: {
         select: {
           id: true,
@@ -2274,13 +2397,24 @@ async function fetchReceiptsByCustomer(
           name: true,
         },
       },
+      invoiceDate: true,
+      invoiceNumber: true,
+      totalAmount: true,
+      amountDue: true,
+      amountPaid: true,
+      sale_type: true,
+      id: true,
       warehouse: {
         select: {
           name: true,
         },
       },
       items: {
-        include: {
+        select: {
+          unit: true,
+          price: true,
+          quantity: true,
+          totalPrice: true,
           product: {
             select: {
               name: true,
@@ -2299,7 +2433,7 @@ async function fetchReceiptsByCustomer(
     total_amount: inv.totalAmount,
     amount_paid: inv.amountPaid,
     discount_amount: 0, // if you add discount later, map it here
-    sale_type: inv.sale_type == "SALE" ? "???" : "????? ??????",
+    sale_type: inv.sale_type == "SALE" ? "بيع" : "مرتجع",
 
     created_at: inv.invoiceDate,
 
@@ -2382,19 +2516,30 @@ async function fetchReceiptsBySupplier(
     orderBy: {
       invoiceDate: "asc",
     },
-    include: {
+    select: {
       supplier: {
         select: {
           name: true,
         },
       },
+      invoiceDate: true,
+      invoiceNumber: true,
+      totalAmount: true,
+      amountDue: true,
+      amountPaid: true,
+      sale_type: true,
+      id: true,
       warehouse: {
         select: {
           name: true,
         },
       },
       items: {
-        include: {
+        select: {
+          unit: true,
+          price: true,
+          quantity: true,
+          totalPrice: true,
           product: {
             select: {
               name: true,
@@ -2413,7 +2558,7 @@ async function fetchReceiptsBySupplier(
     total_amount: inv.totalAmount,
     amount_paid: inv.amountPaid,
     amount_due: inv.amountDue,
-    purchase_type: inv.sale_type == "PURCHASE" ? "???? " : "????? ???????",
+    purchase_type: inv.sale_type == "PURCHASE" ? "شراء" : "مرتجع",
 
     currency_code: null, // keep if frontend expects it
     exchange_rate: null, // keep if frontend expects it

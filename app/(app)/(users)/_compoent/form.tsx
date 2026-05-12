@@ -85,10 +85,9 @@ export default function UserForm({
     void loadFormData();
   }, [open, setValue]);
 
-  const isCashier = selectedRoleObj?.name === "cashier";
+  const isCashier = selectedRoleObj?.id === "cashier";
   const createsLinkedProfile =
-    selectedRoleObj?.name === "customer" ||
-    selectedRoleObj?.name === "supplier";
+    selectedRoleObj?.id === "customer" || selectedRoleObj?.id === "supplier";
   const isCashierLimitReached = isCashier && (cashierLimit?.atLimit ?? false);
 
   const onSubmit = async (data: UserInput) => {
@@ -188,7 +187,7 @@ export default function UserForm({
             {createsLinkedProfile ? (
               <p className="text-xs text-blue-600">
                 سيتم إنشاء سجل مرتبط تلقائيا في{" "}
-                {selectedRoleObj?.name === "customer" ? "العملاء" : "الموردين"}.
+                {selectedRoleObj?.id === "customer" ? "العملاء" : "الموردين"}.
               </p>
             ) : null}
             {isCashierLimitReached && (

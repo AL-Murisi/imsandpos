@@ -132,7 +132,19 @@ export async function getExpensesByCompany(
     // Fetch expenses
     const expenses = await prisma.expenses.findMany({
       where: filters,
-      include: {
+      select: {
+        account_id: true,
+        id: true,
+        expense_number: true,
+        expense_date: true,
+        notes: true,
+        reference_number: true,
+        status: true,
+        description: true,
+        payment_method: true,
+        amount: true,
+        updated_at: true,
+
         users: { select: { id: true, name: true, email: true } },
       },
       skip: pageIndex * pageSize,
@@ -229,7 +241,7 @@ export async function getExpensesByCompany(
               })),
             }
           : null,
-        createdAt: expense.created_at,
+        createdAt: expense.expense_date,
         updatedAt: expense.updated_at,
       };
     });
@@ -553,8 +565,8 @@ export async function createMultipleExpenses(
               },
             },
           },
-          include: {
-            transactions: true,
+          select: {
+            transactions: { select: { voucherNumber: true, id: true } },
           },
         });
         const createdTransaction = expense.transactions[0];

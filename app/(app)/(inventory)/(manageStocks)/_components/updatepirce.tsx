@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { checkPriceMismatch } from "@/lib/inventory-validation";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { Trash2, Plus, RefreshCw, Info, LayoutDashboard } from "lucide-react";
 import Dailogreuse from "@/components/common/dailogreuse";
 import { updateSellingUnits } from "@/lib/actions/Product";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 type SellingUnit = {
   id: string;
@@ -112,14 +113,18 @@ export function PriceMismatchAlert({
   };
 
   // 🔹 دالة التسليم النهائية
-  const onFormSubmit = (data: { sellingUnits: SellingUnit[] }) => {
+  const [isPending, startTransition] = useTransition();
+  const router = useRouter();
+  const onFormSubmit = async (data: { sellingUnits: SellingUnit[] }) => {
     toast("تم تحديث وحدات البيع", {
       description: `السعر المتوقع: ${expectedCost}`,
     });
-    action(expectedCost, data.sellingUnits);
-    // await updateSellingUnits(data.sellingUnits);
 
-    // 2. تحديث السعر المتوقع (الاستمرار في استخدام الأكشن الأصلية)
+    startTransition(async () => {
+      await updateSellingUnits(data.sellingUnits, inventory.productId);
+      router.refresh(); // Re-fetch server data
+      action(expectedCost, data.sellingUnits);
+    });
 
     setOpen(false);
   };
@@ -299,5 +304,3 @@ export function PriceMismatchAlert({
     </div>
   );
 }
-
-

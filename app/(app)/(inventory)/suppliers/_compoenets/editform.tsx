@@ -1,33 +1,4 @@
 "use client";
-// import { z } from "zod";
-
-// 🧾 Create Supplier Schema
-// const CreateSupplierSchema = z.object({
-//   name: z.string().min(1, "اسم المورد مطلوب"),
-//   contactPerson: z.string().optional(),
-//   email: z
-//     .string()
-//     .trim()
-//     .email("البريد الإلكتروني غير صالح")
-//     .optional()
-//     .or(z.literal("")),
-//   preferred_currency: z
-//     .array(z.string())
-//     .min(1, "يجب إضافة وحدة بيع واحدة على الأقل"),
-//   phoneNumber: z.string().optional(),
-//   address: z.string().optional(),
-//   city: z.string().optional(),
-//   state: z.string().optional(),
-//   country: z.string().optional(),
-//   postalCode: z.string().optional(),
-//   taxId: z.string().optional(),
-//   paymentTerms: z.string().optional(),
-// });
-
-// type CreateSupplierInput = z.infer<typeof CreateSupplierSchema>;
-
-// 🛠 Update Supplier Schema (allows same fields, plus optional isActive)
-
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";

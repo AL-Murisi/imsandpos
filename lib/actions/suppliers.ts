@@ -526,60 +526,6 @@ export const getPurchasesByCompany = cache(
   },
 );
 
-export const getSupplierPaymentsByCompany = cache(
-  async (
-    companyId: string,
-    {
-      from,
-      to,
-      pageIndex = 0,
-      pageSize = 13,
-      parsedSort,
-    }: {
-      from?: string;
-      to?: string;
-      pageIndex?: number;
-      pageSize?: number;
-      parsedSort?: { id: string; desc: boolean }[];
-    } = {},
-  ) => {
-    try {
-      const filters: any = { companyId, sale_type: "RETURN_PURCHASE" };
-
-      // Date range
-      if (from || to) {
-        filters.paymentDate = {};
-        if (from) filters.paymentDate.gte = new Date(from);
-        if (to) filters.paymentDate.lte = new Date(to);
-      }
-
-      // Count total
-      const total = await prisma.invoice.count({ where: filters });
-
-      // Sort
-
-      // Fetch
-
-      const payments = await prisma.invoice.findMany({
-        where: filters,
-        include: {
-          supplier: { select: { id: true, name: true } },
-          company: true,
-        },
-
-        skip: pageIndex * pageSize,
-        take: pageSize,
-        orderBy: { invoiceDate: "desc" },
-      });
-      const serialized = serializeData(payments);
-      return { data: serialized, total };
-    } catch (error) {
-      console.error("Error fetching company payments:", error);
-      throw error;
-    }
-  },
-);
-
 export async function updateSupplierPayment(
   paymentId: string,
   data: {

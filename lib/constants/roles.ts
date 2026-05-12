@@ -15,7 +15,7 @@ export const ROLE_DEFINITIONS = [
   },
   {
     id: "customer",
-    name: "customer",
+    name: "عميل",
     description:
       "عميل يمكنه استعراض بياناته الشخصية، التقارير الخاصة به، الفواتير وسندات القبض",
     permissions: [
@@ -51,7 +51,7 @@ export const ROLE_DEFINITIONS = [
 
   {
     id: "supplier",
-    name: "supplier",
+    name: "مورد",
     description: "مورد يمكنه متابعة الطلبيات والتقارير المرتبطة به.",
     permissions: ["قراءة_البيانات_الذاتية", "عرض_التقارير", "عرض_السندات"],
   },

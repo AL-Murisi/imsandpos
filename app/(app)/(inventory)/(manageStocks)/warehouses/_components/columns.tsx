@@ -24,8 +24,9 @@ import {
 import { WarehouseUpdateDialog } from "./editform";
 import { deleteWarehouse } from "@/lib/actions/warehouse";
 import { ConfirmModal } from "@/components/common/confirm-modal";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 // 🔽 Sortable Header Component
 type SortableHeaderProps = {
@@ -196,6 +197,9 @@ export const columns: ColumnDef<any>[] = [
     enableHiding: false,
     cell: ({ row }) => {
       const warehouse = row.original;
+      const router = useRouter();
+      const [isPending, startTransition] = useTransition();
+
       const [isDeleting, setIsDeleting] = useState(false);
       return (
         <>
@@ -248,6 +252,15 @@ export const columns: ColumnDef<any>[] = [
                 <Trash2 className="h-4 w-4" />
               </Button>
             </ConfirmModal>
+            <Button
+              onClick={() =>
+                startTransition(async () => {
+                  router.push(`warehouses?warehouseId=${warehouse.id}`);
+                })
+              }
+            >
+              حركات المخزن
+            </Button>
             <WarehouseUpdateDialog warehouse={warehouse} />
           </>
         </>

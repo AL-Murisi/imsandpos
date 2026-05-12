@@ -7,6 +7,7 @@ import { currencyConfig } from "@/currency/config";
 import { cookies } from "next/headers";
 import ClientProviders from "./client-providers";
 import { getLocale } from "next-intl/server";
+import ServerLoader from "@/components/ServerLoader";
 
 export const metadata: Metadata = {
   title: "IMS - نظام إدارة المخزون | Inventory Management System",
@@ -360,6 +361,12 @@ export default async function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
       </head>
       <body className="font-sans" suppressHydrationWarning={true}>
+        <div
+          id="initial-loader"
+          className="fixed inset-0 z-[9999] flex items-center justify-center"
+        >
+          <ServerLoader />
+        </div>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

@@ -109,20 +109,6 @@ export const posColumns: ColumnDef<any>[] = [
   },
 
   {
-    accessorKey: "manager.name",
-    header: ({ column }) => <SortableHeader column={column} label="المدير" />,
-    cell: ({ row }) => <div>{row.original.manager?.name || "—"}</div>,
-  },
-
-  // {
-  //   accessorKey: "manager.email",
-  //   header: ({ column }) => (
-  //     <SortableHeader column={column} label="البريد الإلكتروني" />
-  //   ),
-  //   cell: ({ row }) => <div>{row.original.manager?.email || "—"}</div>,
-  // },
-
-  {
     accessorKey: "is_active",
     header: ({ column }) => <SortableHeader column={column} label="الحالة" />,
     cell: ({ row }) => {

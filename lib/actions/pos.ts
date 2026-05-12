@@ -118,7 +118,12 @@ export async function getPOSList(company_id: string) {
   try {
     const posList = await prisma.points_of_sale.findMany({
       where: { company_id },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        location: true,
+        is_active: true,
+        created_at: true,
         manager: {
           select: { id: true, name: true, email: true },
         },

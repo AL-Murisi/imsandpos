@@ -1,56 +1,36 @@
-"use client";
-
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { useAuth } from "@/lib/context/AuthContext";
-
-export default function StocksLayout({
+// app/(app)/(company)/layout.tsx
+import InventoryTabs from "@/components/common/InventoryTabs";
+import { getSession } from "@/lib/session";
+type NavItem = {
+  label: string;
+  href: string;
+  roles: string[];
+};
+export default async function CompanyLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
-  const { hasAnyRole } = useAuth();
+  const session = await getSession();
+  const roles = session?.role ?? "";
 
-  const navItems = [
+  const navItems: NavItem[] = [
     { label: "معلومات الشركة", href: "/company", roles: ["admin"] },
     { label: "الأدوار", href: "/userroles", roles: ["admin"] },
-
     { label: "الفروع", href: "/branches", roles: ["admin"] },
   ];
 
-  const visibleItems = navItems.filter((item) => hasAnyRole(item.roles));
+  // Filter by role on server
+  const visibleTabs = navItems.filter((item) =>
+    item.roles.some((role) => roles.includes(role)),
+  );
 
   return (
     <div className="space-y-2">
       <div className="px-5">
-        <div className="border-primary flex flex-wrap gap-2 rounded-2xl border-1 p-1">
-          {visibleItems.map((item) => {
-            const isActive =
-              pathname === item.href || pathname.startsWith(`${item.href}/`);
-
-            return (
-              <Button
-                key={item.href}
-                asChild
-                variant={isActive ? "default" : "outline"}
-                className={cn(
-                  "relative transition-all duration-200",
-                  isActive && "shadow-inner",
-                )}
-              >
-                <Link href={item.href} prefetch>
-                  {item.label}
-                </Link>
-              </Button>
-            );
-          })}
-        </div>{" "}
+        <InventoryTabs items={visibleTabs} />
       </div>
-
-      <div className="transition-opacity duration-300">{children}</div>
+      <div>{children}</div>
     </div>
   );
 }
