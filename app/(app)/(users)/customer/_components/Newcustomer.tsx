@@ -65,8 +65,6 @@ export default function CustomerForm({ cus }: { cus?: LimitInfo }) {
     }
   }, [baseCurrency, setValue]);
 
-  if (!user?.companyId) return null;
-
   const customerType = [
     { id: "individual", name: "فردي" },
     { id: "business", name: "تجاري" },
@@ -74,6 +72,7 @@ export default function CustomerForm({ cus }: { cus?: LimitInfo }) {
 
   const selectedCustomerType = watch("customerType");
   const hasEmail = Boolean(watch("email")?.trim());
+  if (!user?.companyId) return null;
 
   const onSubmit = async (data: CreateCustomer) => {
     setIsSubmitting(true);

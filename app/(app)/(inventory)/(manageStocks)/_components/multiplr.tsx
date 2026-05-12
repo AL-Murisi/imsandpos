@@ -1,6 +1,9 @@
 "use client";
 
-import { fetchAllFormDatas, updateMultipleInventories } from "@/lib/actions/warehouse";
+import {
+  fetchAllFormDatas,
+  updateMultipleInventories,
+} from "@/lib/actions/warehouse";
 import Dailogreuse from "@/components/common/dailogreuse";
 import { SelectField } from "@/components/common/selectproduct";
 import { Button } from "@/components/ui/button";
@@ -97,27 +100,25 @@ export default function MultiInventoryUpdateForm() {
   );
   const { user } = useAuth();
   const { company } = useCompany();
-    if (!user) return;
 
-  const [multipleInventory, setMultipleInventory] = useState<
-    MultiInventoryUpdateFormProps
-  >({
-    products: [],
-    warehouses: [],
-    suppliers: [],
-    inventories: [],
-  });
-  useEffect(() => { 
+  const [multipleInventory, setMultipleInventory] =
+    useState<MultiInventoryUpdateFormProps>({
+      products: [],
+      warehouses: [],
+      suppliers: [],
+      inventories: [],
+    });
+  useEffect(() => {
     if (!open) return;
-        if (!company) return;
+    if (!company) return;
 
     const fetchData = async () => {
       const data = await fetchAllFormDatas(company.id);
       setMultipleInventory(data);
-    }
+    };
 
     fetchData();
-  },[open, company])
+  }, [open, company]);
   const initialRow = (): InventoryUpdateItem => ({
     id: crypto.randomUUID(),
     productId: "",
@@ -243,7 +244,7 @@ export default function MultiInventoryUpdateForm() {
     (sum, inv) => sum + (parseFloat(inv.quantity) || 0) * (inv.unitCost || 0),
     0,
   );
-
+  if (!user) return;
   const handleSubmit = async () => {
     // 1. Validation Check for Expiry Date
     const missingExpiry = inventoryUpdates.some((inv) => !inv.expiredAt);

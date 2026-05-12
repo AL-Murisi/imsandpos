@@ -32,7 +32,11 @@ export default function ClientProviders({
 
   return (
     <SessionProvider>
-      <NextIntlClientProvider locale={locale} messages={messages}>
+      <NextIntlClientProvider
+        locale={locale}
+        messages={messages}
+        timeZone="Asia/Riyadh" // ✅ Add your timezone
+      >
         <CurrencyProvider currency={currencyConfig[currencyKey]}>
           {children}
           <Toaster />

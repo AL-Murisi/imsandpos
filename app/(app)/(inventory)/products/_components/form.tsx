@@ -116,7 +116,6 @@ export default function ProductForm({ formData }: ExpenseFormProps) {
   const { user } = useAuth();
   const isUpdatingRef = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false); // حالة التحميل
-  if (!user) return;
 
   const watchedCategoryId = watch("categoryId");
   const watchedWarehouseId = watch("warehouseId");
@@ -184,6 +183,7 @@ export default function ProductForm({ formData }: ExpenseFormProps) {
       },
     );
   };
+  if (!user) return;
   const onSubmit = async (data: CreateProductInputs) => {
     try {
       setIsSubmitting(true);

@@ -48,7 +48,7 @@ export function ExpenseEditForm({ expense }: { expense: any }) {
   const status = watch("status");
   const account_id = watch("account_id");
   const { user } = useAuth();
-  if (!user) return;
+
   const [categories, setCategories] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   useEffect(() => {
@@ -62,7 +62,7 @@ export function ExpenseEditForm({ expense }: { expense: any }) {
       setValue("account_id", expense.account_id); // تعيين القيمة الافتراضية بعد تحميل الفئات
     }
   }, [categories, expense.account_id, setValue]);
-
+  if (!user) return;
   const onSubmit = async (data: any) => {
     try {
       if (!user) return;

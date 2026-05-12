@@ -78,7 +78,7 @@ const nextConfig: NextConfig = {
   },
 
   serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core"],
-  productionBrowserSourceMaps: false,
+  productionBrowserSourceMaps: true,
   experimental: {
     inlineCss: true,
     staleTimes: {

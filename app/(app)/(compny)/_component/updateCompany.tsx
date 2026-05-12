@@ -49,7 +49,6 @@ export default function UpdateCompanyForm({
 
   const { user } = useAuth();
 
-  if (!user) return null;
   const {
     register,
     handleSubmit,
@@ -66,6 +65,7 @@ export default function UpdateCompanyForm({
       base_currency: company?.base_currency || "",
     },
   });
+  if (!user) return null;
 
   // ✅ Handle logo selection
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {

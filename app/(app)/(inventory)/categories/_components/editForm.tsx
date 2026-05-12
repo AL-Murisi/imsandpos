@@ -39,10 +39,10 @@ export default function EditCategoryForm({ category }: any) {
     },
   });
   const { user } = useAuth();
-  if (!user) return;
+
   // Fetch parent categories on mount
   const [isSubmitting, setIsSubmitting] = useState(false);
-
+  if (!user) return;
   const onSubmit = async (data: FormValues) => {
     setIsSubmitting(true);
     const finalData = {

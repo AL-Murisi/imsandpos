@@ -63,8 +63,6 @@ export default function CustomerEditForm({ customer }: { customer: any }) {
     });
   }, [customer, reset, baseCurrency]);
 
-  if (!user) return null;
-
   const customerType = [
     { id: "individual", name: "فردي" },
     { id: "business", name: "تجاري" },
@@ -72,6 +70,7 @@ export default function CustomerEditForm({ customer }: { customer: any }) {
 
   const selectedCustomerType = watch("customerType");
   const hasEmail = Boolean(watch("email")?.trim());
+  if (!user) return null;
 
   const onSubmit = async (data: CreateCustomer) => {
     setIsSubmitting(true);

@@ -74,14 +74,11 @@ export default function DebtReport({
   });
 
   const { user } = useAuth();
-  if (!user) return null;
-
-  const companyid = user.companyId;
 
   /* ───────── Fetch debts ───────── */
   useEffect(() => {
     if (!open || !user) return;
-
+    const companyid = user.companyId;
     async function load() {
       setLoading(true);
       try {
@@ -108,7 +105,7 @@ export default function DebtReport({
     }
 
     load();
-  }, [open, customerID, companyid, user]);
+  }, [open, customerID, user?.companyId, user]);
   const allSelected = debts.length > 0 && selectedIds.length === debts.length;
 
   const toggleSelectAll = () =>
@@ -144,7 +141,7 @@ export default function DebtReport({
   //     // Don't show error to user - notification is optional
   //   }
   // }
-
+  if (!user) return null;
   const onSubmit = async () => {
     if (!payment.paymentMethod || !payment.accountId) {
       toast.error("يرجى اختيار طريقة الدفع والحساب");

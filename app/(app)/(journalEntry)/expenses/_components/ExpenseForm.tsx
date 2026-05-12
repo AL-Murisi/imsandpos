@@ -90,8 +90,6 @@ export default function ExpenseForm({
     createEmptyExpense(),
   ]);
 
-  if (!user) return null;
-
   const addExpense = () => {
     setExpenses((current) => [...current, createEmptyExpense()]);
   };
@@ -126,7 +124,7 @@ export default function ExpenseForm({
     (sum, exp) => sum + (exp.payment?.amountBase || 0),
     0,
   );
-
+  if (!user) return null;
   const handleSubmit = async () => {
     const invalidExpenses = expenses.filter(
       (exp) =>

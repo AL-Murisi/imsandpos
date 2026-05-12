@@ -57,7 +57,7 @@ export default function EmployeeForm({ userLimit }: { userLimit?: LimitInfo }) {
   const selectedRole = watch("position");
 
   const selectedRoleObj = roles.find((r) => r.id === selectedRole);
-  if (!user?.companyId) return null;
+
   useEffect(() => {
     if (!open) return;
     const loadRoles = async () => {
@@ -68,7 +68,7 @@ export default function EmployeeForm({ userLimit }: { userLimit?: LimitInfo }) {
   }, [open]);
   const hasEmail = Boolean(watch("email")?.trim());
   const isUserLimitReached = userLimit?.atLimit ?? false;
-
+  if (!user?.companyId) return null;
   const onSubmit = async (data: CreateEmployeeInput) => {
     if (hasEmail && isUserLimitReached) {
       toast.error("تم الوصول إلى الحد الأقصى للمستخدمين في الخطة الحالية");
