@@ -20,13 +20,11 @@ type Users = {
 };
 export default async function User({ searchParams }: Users) {
   await searchParams;
-  const user = await getSession();
-  if (!user) return;
+
   const company = await getCompany();
 
   return (
     <div className="p-3">
-      {" "}
       <UpdateCompanyForm company={company?.data} />
     </div>
   );

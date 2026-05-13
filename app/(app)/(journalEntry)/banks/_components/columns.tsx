@@ -27,7 +27,64 @@ export type BankRow = {
     account_name_en: string;
   };
 };
+function BankAction({ bank }: { bank: any }) {
+  const [pending, startTransition] = useTransition();
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
+  return (
+    <div className="flex gap-2">
+      <BankFormDialog bank={bank} mode="edit" />
 
+      <Button
+        disabled={isLoading}
+        onClick={() => {
+          setIsLoading(true);
+          router.push(`/banks/${bank.id}`);
+        }}
+      >
+        {isLoading && <Clock className="h-4 w-4 animate-spin" />}
+        {isLoading ? "جاري الفتح..." : "كشف حساب"}
+      </Button>
+      {/* <VoucherReceipt
+            voucherType="صرف" // أو "قبض"
+            voucherNumber="PV-1002"
+            amount={5000}
+            personName="شركة التوريدات الحديثة"
+            description="تسوية رصيد فاتورة رقم 554"
+            paymentMethod="نقداً"
+            company={{ name: "Default Company", address: "Default Address" }}
+            userName="أحمد علي"
+          /> */}
+      {/* <Button
+            variant="ghost"
+            size="icon"
+            onClick={() =>
+              startTransition(async () => {
+                const res = await toggleBankStatus(row.original.id);
+                if (!res?.success) toast.error(res?.error);
+              })
+            }
+          >
+            <Power className="h-4 w-4" />
+          </Button> */}
+
+      {/* <Button
+            variant="ghost"
+            size="icon"
+            className="text-red-600"
+            onClick={() =>
+              startTransition(async () => {
+                const res = await deleteBank(row.original.id);
+                if (res?.success) toast.success("تم حذف البنك");
+                else toast.error(res?.error);
+              })
+            }
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button> */}
+    </div>
+  );
+}
 export const bankColumns: ColumnDef<BankRow>[] = [
   {
     header: "#",
@@ -88,63 +145,7 @@ export const bankColumns: ColumnDef<BankRow>[] = [
     id: "actions",
     header: "إجراءات",
     cell: ({ row }) => {
-      const bank = row.original;
-      const [pending, startTransition] = useTransition();
-      const [isLoading, setIsLoading] = useState(false);
-      const router = useRouter();
-      return (
-        <div className="flex gap-2">
-          <BankFormDialog bank={row.original} mode="edit" />
-
-          <Button
-            disabled={isLoading}
-            onClick={() => {
-              setIsLoading(true);
-              router.push(`/banks/${bank.id}`);
-            }}
-          >
-            {isLoading && <Clock className="h-4 w-4 animate-spin" />}
-            {isLoading ? "جاري الفتح..." : "كشف حساب"}
-          </Button>
-          {/* <VoucherReceipt
-            voucherType="صرف" // أو "قبض"
-            voucherNumber="PV-1002"
-            amount={5000}
-            personName="شركة التوريدات الحديثة"
-            description="تسوية رصيد فاتورة رقم 554"
-            paymentMethod="نقداً"
-            company={{ name: "Default Company", address: "Default Address" }}
-            userName="أحمد علي"
-          /> */}
-          {/* <Button
-            variant="ghost"
-            size="icon"
-            onClick={() =>
-              startTransition(async () => {
-                const res = await toggleBankStatus(row.original.id);
-                if (!res?.success) toast.error(res?.error);
-              })
-            }
-          >
-            <Power className="h-4 w-4" />
-          </Button> */}
-
-          {/* <Button
-            variant="ghost"
-            size="icon"
-            className="text-red-600"
-            onClick={() =>
-              startTransition(async () => {
-                const res = await deleteBank(row.original.id);
-                if (res?.success) toast.success("تم حذف البنك");
-                else toast.error(res?.error);
-              })
-            }
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button> */}
-        </div>
-      );
+      <BankAction bank={row.original} />;
     },
   },
 ];

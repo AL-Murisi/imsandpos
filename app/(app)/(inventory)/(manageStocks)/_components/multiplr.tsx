@@ -303,49 +303,48 @@ export default function MultiInventoryUpdateForm() {
       style="sm:max-w-4xl"
       titel="تحديث مخزون متعدد"
     >
-      <ScrollArea className="max-h-[85vh] p-4" dir="rtl">
-        <div className="space-y-6" dir="rtl">
-          {/* Header Summary */}
-          <div className="bg-card top-0 z-20 rounded-lg border p-4 shadow-md dark:bg-slate-900">
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="space-y-1">
-                <Label className="text-xs">تاريخ التحديث</Label>
-                <Input
-                  type="date"
-                  value={updateDate}
-                  onChange={(e) => setUpdateDate(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">إجمالي الكميات</Label>
-                <div className="flex h-10 items-center rounded-md border border-blue-200 bg-blue-50 px-3 font-bold text-blue-700 dark:bg-blue-900/20 dark:text-blue-300">
-                  <Package className="ml-2 h-4 w-4" /> {totalItems.toFixed(2)}
-                </div>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">إجمالي التكلفة التقديرية</Label>
-                <div className="flex h-10 items-center rounded-md border border-green-200 bg-green-50 px-3 font-bold text-green-700 dark:bg-green-900/20 dark:text-green-300">
-                  {totalCost.toLocaleString()} YER
-                </div>
-              </div>
-            </div>
-            <div className="mt-3 flex items-center justify-between">
-              <Button
-                onClick={() =>
-                  setInventoryUpdates([...inventoryUpdates, initialRow()])
-                }
-                size="sm"
-                variant="outline"
-                className="text-blue-600"
-              >
-                <Plus className="ml-2 h-4 w-4" /> إضافة منتج آخر
-              </Button>
-              <p className="text-muted-foreground text-xs">
-                تأكد من اختيار الوحدة المناسبة لتعديل السعر تلقائياً
-              </p>
+      {/* Header Summary */}
+      <div className="bg-card top-0 z-20 rounded-lg border p-4 shadow-md dark:bg-slate-900">
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="space-y-1">
+            <Label className="text-xs">تاريخ التحديث</Label>
+            <Input
+              type="date"
+              value={updateDate}
+              onChange={(e) => setUpdateDate(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">إجمالي الكميات</Label>
+            <div className="flex h-10 items-center rounded-md border border-blue-200 bg-blue-50 px-3 font-bold text-blue-700 dark:bg-blue-900/20 dark:text-blue-300">
+              <Package className="ml-2 h-4 w-4" /> {totalItems.toFixed(2)}
             </div>
           </div>
-
+          <div className="space-y-1">
+            <Label className="text-xs">إجمالي التكلفة التقديرية</Label>
+            <div className="flex h-10 items-center rounded-md border border-green-200 bg-green-50 px-3 font-bold text-green-700 dark:bg-green-900/20 dark:text-green-300">
+              {totalCost.toLocaleString()} YER
+            </div>
+          </div>
+        </div>
+        <div className="mt-3 flex items-center justify-between">
+          <Button
+            onClick={() =>
+              setInventoryUpdates([...inventoryUpdates, initialRow()])
+            }
+            size="sm"
+            variant="outline"
+            className="text-blue-600"
+          >
+            <Plus className="ml-2 h-4 w-4" /> إضافة منتج آخر
+          </Button>
+          <p className="text-muted-foreground text-xs">
+            تأكد من اختيار الوحدة المناسبة لتعديل السعر تلقائياً
+          </p>
+        </div>
+      </div>
+      <ScrollArea className="max-h-[85vh] p-4" dir="rtl">
+        <div className="space-y-6" dir="rtl">
           {/* Rows */}
           <div className="space-y-4">
             {inventoryUpdates.map((inventory, index) => (

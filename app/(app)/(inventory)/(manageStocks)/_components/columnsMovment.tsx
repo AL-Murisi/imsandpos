@@ -381,6 +381,24 @@ export const StockMovementColumns: ColumnDef<any>[] = [
     },
   },
 ];
+function Inventory({ inventoryId }: { inventoryId: string }) {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+  return (
+    <div className="flex gap-2 p-2">
+      <Button
+        disabled={isLoading}
+        onClick={() => {
+          setIsLoading(true);
+          router.push(`/batches?inventoryId=${inventoryId}`);
+        }}
+      >
+        {isLoading && <Clock className="h-4 w-4 animate-spin" />}
+        {isLoading ? "جاري الفتح..." : "الدفعات"}
+      </Button>
+    </div>
+  );
+}
 export const inventoryColumns: ColumnDef<any>[] = [
   {
     id: "select",
@@ -528,26 +546,96 @@ export const inventoryColumns: ColumnDef<any>[] = [
     id: "actions",
     header: "الإجراءات",
     cell: ({ row }) => {
-      const router = useRouter();
-      const inventory = row.original;
-      const [isLoading, setIsLoading] = useState(false);
-      return (
-        <div className="flex gap-2 p-2">
-          <Button
-            disabled={isLoading}
-            onClick={() => {
-              setIsLoading(true);
-              router.push(`/batches?inventoryId=${inventory.id}`);
-            }}
-          >
-            {isLoading && <Clock className="h-4 w-4 animate-spin" />}
-            {isLoading ? "جاري الفتح..." : "الدفعات"}
-          </Button>
-        </div>
-      );
+      const inventory = row.original.id;
+
+      return <Inventory inventoryId={inventory} />;
     },
   },
 ];
+function PurchaseActions({ original }: { original: any }) {
+  const company = useCompany();
+  const supplierId = original;
+  const items = original.purchaseItems || [];
+  const supplier_name = original.supplier.name;
+  const purchaseId = original.id;
+  const amountDue = Number(supplierId.amountDue);
+  const status = original.purchaseType;
+  return (
+    <div className="flex gap-2 p-2">
+      {" "}
+      {amountDue > 0 &&
+        status != "RETURN_PURCHASE" &&
+        !supplierId.hasReturnSale && (
+          <PaymentCreateForm
+            purchaseId={purchaseId}
+            supplier={supplierId}
+            supplier_name={supplier_name}
+          />
+        )}{" "}
+      {supplierId.purchaseType != "RETURN_PURCHASE" &&
+        !supplierId.hasReturnSale && (
+          <PurchaseReturnForm purchaseId={purchaseId} />
+        )}
+      <PurchaseReceipt
+        purchaseNumber={supplierId.invoiceNumber}
+        purchasType={status === "RETURN_PURCHASE" ? "مرتجع شراء" : "شراء"}
+        items={items.map((item: any) => {
+          const baseQty = Number(item.quantity || 0);
+          const basePrice = Number(item.unitCost || 0);
+
+          // 1. استخراج مصفوفة الوحدات (التي أرسلتها أنت في الرد السابق)
+          const unitsArray = item.product.sellingUnits || [];
+
+          // 2. البحث عن الوحدة التي ليست "Base" (الوحدة الكبرى مثل الكرتون)
+          // نفترض هنا أن الوحدة الكبرى هي التي isBase فيها false
+          const parentUnit = unitsArray.find((u: any) => !u.isBase);
+
+          // 3. معامل التحويل من الحقل unitsPerParent
+          const conversionFactor = parentUnit?.unitsPerParent || 1;
+
+          // 4. التحقق: هل الكمية تملأ وحدات كبرى بالكامل؟
+          const canConvert =
+            conversionFactor > 1 &&
+            baseQty >= conversionFactor &&
+            baseQty % conversionFactor === 0;
+
+          return {
+            id: item.product.id,
+            name: item.product.name,
+            warehousename: item.product.warehouse.name,
+
+            // الكمية: محولة إذا تحقق الشرط، وإلا تبقى بالوحدة الأساسية
+            quantity: canConvert ? baseQty / conversionFactor : baseQty,
+
+            // اسم الوحدة: نأخذه ديناميكياً من الحقل name الخاص بالوحدة
+            sellingUnit: canConvert
+              ? parentUnit.name
+              : unitsArray.find((u: any) => u.isBase)?.name || "حبة",
+
+            // السعر: نضرب السعر الأساسي في معامل التحويل ليطابق الوحدة الجديدة
+            unitCost: item.price,
+
+            totalCost: item.totalPrice,
+          };
+        })}
+        totals={{
+          total: supplierId.totalAmount,
+          paid: supplierId.amountPaid,
+          due: supplierId.amountDue,
+        }}
+        supplierName={supplier_name}
+        isCash={supplierId.paymentMethod}
+        company={{
+          name: company.company?.name || "",
+          address: company.company?.address || "",
+          city: company.company?.city || "",
+          phone: company.company?.phone || "",
+          logoUrl: company.company?.logoUrl || "",
+        }}
+      />
+    </div>
+  );
+}
 export const purchaseColumns: ColumnDef<any>[] = [
   {
     id: "select",
@@ -728,88 +816,7 @@ export const purchaseColumns: ColumnDef<any>[] = [
     id: "actions",
     header: "إجراءات",
     cell: ({ row }) => {
-      const company = useCompany();
-      const supplierId = row.original;
-      const items = row.original.purchaseItems || [];
-      const supplier_name = row.original.supplier.name;
-      const purchaseId = row.original.id;
-      const amountDue = Number(supplierId.amountDue);
-      const status = row.original.purchaseType;
-      return (
-        <div className="flex gap-2 p-2">
-          {" "}
-          {amountDue > 0 &&
-            status != "RETURN_PURCHASE" &&
-            !supplierId.hasReturnSale && (
-              <PaymentCreateForm
-                purchaseId={purchaseId}
-                supplier={supplierId}
-                supplier_name={supplier_name}
-              />
-            )}{" "}
-          {supplierId.purchaseType != "RETURN_PURCHASE" &&
-            !supplierId.hasReturnSale && (
-              <PurchaseReturnForm purchaseId={purchaseId} />
-            )}
-          <PurchaseReceipt
-            purchaseNumber={supplierId.invoiceNumber}
-            purchasType={status === "RETURN_PURCHASE" ? "مرتجع شراء" : "شراء"}
-            items={items.map((item: any) => {
-              const baseQty = Number(item.quantity || 0);
-              const basePrice = Number(item.unitCost || 0);
-
-              // 1. استخراج مصفوفة الوحدات (التي أرسلتها أنت في الرد السابق)
-              const unitsArray = item.product.sellingUnits || [];
-
-              // 2. البحث عن الوحدة التي ليست "Base" (الوحدة الكبرى مثل الكرتون)
-              // نفترض هنا أن الوحدة الكبرى هي التي isBase فيها false
-              const parentUnit = unitsArray.find((u: any) => !u.isBase);
-
-              // 3. معامل التحويل من الحقل unitsPerParent
-              const conversionFactor = parentUnit?.unitsPerParent || 1;
-
-              // 4. التحقق: هل الكمية تملأ وحدات كبرى بالكامل؟
-              const canConvert =
-                conversionFactor > 1 &&
-                baseQty >= conversionFactor &&
-                baseQty % conversionFactor === 0;
-
-              return {
-                id: item.product.id,
-                name: item.product.name,
-                warehousename: item.product.warehouse.name,
-
-                // الكمية: محولة إذا تحقق الشرط، وإلا تبقى بالوحدة الأساسية
-                quantity: canConvert ? baseQty / conversionFactor : baseQty,
-
-                // اسم الوحدة: نأخذه ديناميكياً من الحقل name الخاص بالوحدة
-                sellingUnit: canConvert
-                  ? parentUnit.name
-                  : unitsArray.find((u: any) => u.isBase)?.name || "حبة",
-
-                // السعر: نضرب السعر الأساسي في معامل التحويل ليطابق الوحدة الجديدة
-                unitCost: item.price,
-
-                totalCost: item.totalPrice,
-              };
-            })}
-            totals={{
-              total: supplierId.totalAmount,
-              paid: supplierId.amountPaid,
-              due: supplierId.amountDue,
-            }}
-            supplierName={supplier_name}
-            isCash={supplierId.paymentMethod}
-            company={{
-              name: company.company?.name || "",
-              address: company.company?.address || "",
-              city: company.company?.city || "",
-              phone: company.company?.phone || "",
-              logoUrl: company.company?.logoUrl || "",
-            }}
-          />
-        </div>
-      );
+      <PurchaseActions original={row.original} />;
     },
   },
 ];

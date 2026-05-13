@@ -1,25 +1,21 @@
 "use client";
-import { UpdateProduct } from "@/lib/actions/Product";
-import { fetchAllFormData } from "@/lib/actions/roles";
 import Dailogreuse from "@/components/common/dailogreuse";
-import { SelectField } from "@/components/common/selectproduct";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { UpdateProduct } from "@/lib/actions/Product";
+import { fetchAllFormData } from "@/lib/actions/roles";
 import { useAuth } from "@/lib/context/AuthContext";
 import { UpdateProductFormValues, UpdateProducts } from "@/lib/zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Check, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { Card } from "@/components/ui/card";
-import WarehouseForm from "@/components/forms/warehouseShortcut";
-import SupplierForm from "@/components/forms/suppliershortcut";
-import CategoryForm from "@/components/forms/catigresShortcut";
-import { Check, Plus, Trash2 } from "lucide-react";
-import dynamic from "next/dynamic";
 
 const LiveBarcodeScanner = dynamic(
   () => import("@/app/(app)/(sales)/cashiercontrol/_components/barcodetesting"),
@@ -225,7 +221,7 @@ export default function ProductEditForm({
       open={open}
       setOpen={setOpen}
       btnLabl="تعديل"
-      style="w-full max-w-[1400px] overflow-y-auto rounded-lg p-6 xl:max-w-[1600px]"
+      style="w-full max-w-[1200px] overflow-y-auto rounded-lg p-6 xl:max-w-[1300px]"
       titel="قم بتحديث تفاصيل المنتج"
       description={`تعديل المنتج: ${product?.name}`}
     >
@@ -315,30 +311,16 @@ export default function ProductEditForm({
                   Scan barcode
                 </Button>
               </div>
-              {/* <Dailogreuse
-                open={opens}
-                setOpen={setOpens}
-                btnLabl="تعديل"
-                style="w-full max-w-[1400px] overflow-y-auto rounded-lg p-6 xl:max-w-[1600px]"
-                titel="قم بتحديث تفاصيل المنتج"
-                description={`تعديل المنتج: ${product?.name}`}
-              >
-                {/* <BarcodeScanner
-                  action={(result) => setValue("barcode", result.text)}
-                /> */}
-              {/* </Dailogreuse>{" "} */}
             </div>
-            <div className="w-90 md:w-1/2">
-              <LiveBarcodeScanner
-                opened={openScanner}
-                action={() => setOpenScanner(false)}
-                onDetected={(code) => {
-                  setValue("barcode", code);
-                  console.log(code);
-                  setOpenScanner(false);
-                }}
-              />
-            </div>
+            <LiveBarcodeScanner
+              opened={openScanner}
+              action={() => setOpenScanner(false)}
+              onDetected={(code) => {
+                setValue("barcode", code);
+                console.log(code);
+                setOpenScanner(false);
+              }}
+            />
           </Card>
 
           {/* وحدات البيع المخصصة */}

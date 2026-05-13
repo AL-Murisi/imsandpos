@@ -1,167 +1,212 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
-  <link
-    href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap"
-    rel="stylesheet"
-  />
-  <head>
+<head>
     <meta charset="UTF-8" />
     <title>تقرير الأرباح والخسائر</title>
-
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet" />
     <style>
+
       body {
         font-family: "Cairo", sans-serif;
         direction: rtl;
         text-align: right;
-        margin: 40px;
+        margin: 20px;
+        margin-top: 10px;
+        margin-bottom: 10px;
+        background: #f8f9fa;
+        color: #333;
       }
 
-      h1,
-      h2,
-      h3 {
-        margin: 0;
-        padding: 0;
-      }
+      .flex { display: flex; }
+      .justify-between { justify-content: space-between; }
+      .items-center { align-items: center; }
+      .mb-2 { margin-bottom: 8px; }
+      .gap-2 { gap: 8px; }
+      .grid { display: grid; }
+      .grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+      .text-sm { font-size: 12px; }
+      .text-lg { font-size: 16px; font-weight: bold; }
+      .text-center { text-align: center; }
+      .text-xs { font-size: 10px; }
+      .green { color: #0f766e; }
+      .grey { color: #64748b; }
+      .text-3xl { font-size: 24px; font-weight: bold; }
+      .text-2xl { font-size: 15px; font-weight: bold; }
 
       .header {
-        border-bottom: 1px solid black;
-        border-radius: 6px;
-      }
-      .flex {
-        display: flex;
-      }
-      .justify-between {
-        justify-content: space-between;
-      }
-      .items-center {
-        align-items: center;
-      }
-      .mb-2 {
-        margin-bottom: 8px;
-      }
-      .gap-2 {
-        gap: 8px;
-      }
-      .grid {
         display: grid;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+        align-items: center;
+        gap: 18px;
+        margin-bottom: 22px;
+        padding: 22px 26px;
+        border: 1px solid #d9e2ec;
+        border-bottom: 3px solid #0f766e;
+        border-radius: 20px;
+        background: linear-gradient(135deg, #ffffff 0%, #f7fbfb 55%, #eef7f6 100%);
+        box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
       }
-      .grid-cols-2 {
-        grid-template-columns: repeat(2, 1fr);
+
+      .header-right, .header-left {
+        min-width: 0;
+        padding: 14px 16px;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.88);
+        line-height: 1.8;
+        font-size: 13px;
       }
-      .text-sm {
+      .header-right { text-align: right; }
+      .header-left { text-align: right; }
+      .header-right > div:first-child {
+        font-size: 24px !important;
+        font-weight: 700 !important;
+        line-height: 1.35 !important;
+        max-width: none !important;
+        word-break: break-word;
+        color: #0f766e !important;
+      }
+
+      .header-center, .logo-title-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+      }
+
+      .header-center img, .logo-title-container img {
+        width: 96px !important;
+        height: 96px !important;
+        object-fit: contain;
+        padding: 10px;
+        border-radius: 20px;
+        background: #ffffff;
+        border: 1px solid #d9e2ec;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+      }
+
+      .title-box {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 6px 16px;
+        border-radius: 999px;
+        background: #ecfeff;
+        border: 1px solid #99f6e4;
+        color: #115e59;
         font-size: 12px;
-      }
-      .text-lg {
-        font-size: 16px;
-        font-weight: bold;
-      }
-      .text-center {
-        text-align: center;
-      }
-      .text-xs {
-        font-size: 10px;
-      }
-      .green {
-        color: green;
-      }
-      .grey {
-        color: grey;
-      }
-      .text-3xl {
-        font-size: 24px;
-        font-weight: bold;
-      }
-      .text-2xl {
-        font-size: 15px;
-        font-weight: bold;
-      }
-      .justify-between {
-        justify-content: space-between;
-      }
-      .items-center {
-        align-items: center;
-      }
-      .items-center {
-        align-items: center;
+        font-weight: 700;
+        white-space: nowrap;
+        letter-spacing: 0.2px;
       }
 
       .section-title {
         font-size: 20px;
-        border-bottom: 2px solid #444;
-        margin-top: 35px;
-        margin-bottom: 10px;
-        padding-bottom: 5px;
+        color: #0f172a;
+        background: linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%);
+        border: 1px solid #99f6e4;
+        padding: 10px 14px;
+        border-radius: 14px;
+        margin-top: 26px;
+        margin-bottom: 12px;
+        font-weight: 700;
       }
 
       table {
         width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 25px;
+        border-collapse: separate;
+        border-spacing: 0;
+        table-layout: fixed;
+        overflow: hidden;
+        border: 1px solid #dbe4ea;
+        border-radius: 16px;
+        background: #ffffff;
       }
-
-      table th,
-      table td {
-        padding: 10px;
-        border: 1px solid #ddd;
-        font-size: 15px;
+      th, td {
+        border: 0;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 10px 8px;
+        font-size: 12px;
+        text-align: center;
+        word-wrap: break-word;
       }
-
-      table th {
-        background: #f4f4f4;
-        font-weight: bold;
+      th {
+        background: linear-gradient(135deg, #0f766e 0%, #115e59 100%);
+        color: #ffffff;
+        font-weight: 700;
       }
-
+      thead { display: table-header-group; }
+      tr { page-break-inside: avoid; }
       .total-row {
-        background: #f7f7f7;
+        background: #f0fdfa;
         font-weight: bold;
+        color: #0f172a;
+      }
+      .highlight-row {
+        background: linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%);
+        font-weight: bold;
+        color: #0f172a;
+        border: 2px solid #0f766e;
+      }
+      .highlight-row td { font-size: 1.1em; padding: 14px 8px; }
+
+      .info-box {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px 10px;
+        padding: 10px;
+        direction: rtl;
+      }
+      .info-box p {
+        margin: 0;
+        font-size: 14px;
+        line-height: 1.6;
       }
 
       .footer {
-        margin-top: 50px;
+        margin-top: 28px;
         text-align: center;
-        font-size: 14px;
-        color: #777;
+        font-size: 12px;
+        color: #64748b;
+        padding-top: 14px;
+        border-top: 1px solid #e2e8f0;
       }
-      .logo-title-container {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 10px;
-      }
+      .currency { font-family: "Tahoma", sans-serif; }
+      .page-container { page-break-after: always; }
+      .page-container:last-child { page-break-after: auto; }
+
     </style>
-  </head>
-
-  <body>
-    <div class="section">
-      <div class="header mb-2 flex items-center justify-between" dir="rtl">
-        <!-- Company -->
-        <div class="grid grid-rows-3 items-baseline gap-2 text-right">
-          <span class="green text-3xl font-bold"> {{company.name}} </span>
-          <div>الموقع: {{company.branchName}}</div>
-        </div>
-
-        <!-- Logo -->
-        <div class="logo-title-container">
-          <img src="{{company.logoUrl}}" style="width: 100px; height: 90px" />
-        </div>
-
-        <!-- Branch -->
-        <div class="grid grid-rows-4">
-          <div class="text-lg">{{company.address}}</div>
-          <div class="text-lg">{{company.city}}</div>
-          <div class="text-lg">الموقع: {{company.branchLocation}}</div>
+</head>
+<body>
+<div class="section">
+      <div class="header">
+        <div class="header-right">
+          <div class="text-3xl" style="color: #0f766e; font-weight: 700">
+            {{company.name}}
+          </div>
           <div>تلفون: {{company.phone}}</div>
+          <div>الفرع: {{company.branchName}}</div>
+        </div>
+        <div class="logo-title-container">
+          <img src="{{company.logoUrl}}" />
+          <div class="title-box">📊 تقرير الأرباح والخسائر</div>
+        </div>
+        <div class="header-left">
+          <div class="text-lg">المركز الرئيسي: {{company.address}}</div>
+          <div>{{company.city}}</div>
+          <div class="text-lg">فرع: {{company.branchLocation}}</div>
         </div>
       </div>
     </div>
-    <div class="">
-      <h1>تقرير الأرباح والخسائر</h1>
 
-      <p>الفترة: {{from}} إلى {{to}}</p>
+    <div class="info-box">
+      <p><strong>الفترة من:</strong> {{from}}</p>
+      <p><strong>الفترة إلى:</strong> {{to}}</p>
     </div>
 
     <!-- Revenue Section -->
-    <div class="section-title">الإيرادات</div>
+    <div class="section-title">📈 الإيرادات</div>
     <table>
       <thead>
         <tr>
@@ -173,19 +218,19 @@
         {{#each revenue}}
         <tr>
           <td>{{this.name}}</td>
-          <td>{{this.amount}}</td>
+          <td class="currency">{{this.amount}}</td>
         </tr>
         {{/each}}
 
         <tr class="total-row">
           <td>إجمالي الإيرادات</td>
-          <td>{{totalRevenue}}</td>
+          <td class="currency">{{totalRevenue}}</td>
         </tr>
       </tbody>
     </table>
 
     <!-- COGS Section -->
-    <div class="section-title">تكلفة البضاعة المباعة</div>
+    <div class="section-title">📦 تكلفة البضاعة المباعة</div>
     <table>
       <thead>
         <tr>
@@ -197,21 +242,28 @@
         {{#each cogs}}
         <tr>
           <td>{{this.name}}</td>
-          <td>{{this.amount}}</td>
+          <td class="currency">{{this.amount}}</td>
         </tr>
         {{/each}}
 
         <tr class="total-row">
           <td>إجمالي تكلفة البضاعة</td>
-          <td>{{totalCogs}}</td>
+          <td class="currency">{{totalCogs}}</td>
         </tr>
       </tbody>
     </table>
 
     <!-- Gross Profit -->
+    <div class="section-title">💰 الربح الإجمالي (Gross Profit)</div>
+    <table>
+      <tr class="highlight-row">
+        <td>الربح الإجمالي</td>
+        <td class="currency">{{grossProfit}}</td>
+      </tr>
+    </table>
 
     <!-- Expenses Section -->
-    <div class="section-title">المصاريف</div>
+    <div class="section-title">💸 المصاريف</div>
     <table>
       <thead>
         <tr>
@@ -223,42 +275,29 @@
         {{#each expenses}}
         <tr>
           <td>{{this.name}}</td>
-
-          <td>{{this.amount}}</td>
+          <td class="currency">{{this.amount}}</td>
         </tr>
         {{/each}}
 
         <tr class="total-row">
           <td>إجمالي المصاريف</td>
-          <td>{{totalExpenses}}</td>
+          <td class="currency">{{totalExpenses}}</td>
         </tr>
       </tbody>
     </table>
 
     <!-- Net Profit -->
+    <div class="section-title">🏆 صافي الربح (Net Profit)</div>
     <table>
-      <tr class="total-row">
+      <tr class="highlight-row">
         <td>صافي الربح</td>
-        <td>{{netProfit}}</td>
-      </tr>
-    </table>
-    <table>
-      <tr class="total-row">
-        <td>الربح الإجمالي (Gross Profit)</td>
-        <td>{{grossProfit}}</td>
+        <td class="currency">{{netProfit}}</td>
       </tr>
     </table>
 
-    <table>
-      <tr class="total-row" style="border: 2px solid #000">
-        <td style="font-size: 1.2em">صافي الربح (Net Profit)</td>
-        <td style="font-size: 1.2em">{{netProfit}}</td>
-      </tr>
-    </table>
     <div class="footer">
-      <div>المستخدم:{{createby}}</div>
-
+      <div>المستخدم: {{createby}}</div>
       تم إنشاء هذا التقرير بواسطة نظام إدارة المخزون والمحاسبة.
     </div>
-  </body>
+</body>
 </html>

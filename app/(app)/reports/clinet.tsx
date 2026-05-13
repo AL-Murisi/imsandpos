@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { getSession } from "next-auth/react";
+
 import {
   Select,
   SelectContent,
@@ -365,6 +367,7 @@ function getAllowedReportsForRoles(roleOrRoles: string | string[]) {
 }
 
 export default function ReportsPage({
+  role,
   user: userOptions,
   users,
   banks,
@@ -373,6 +376,7 @@ export default function ReportsPage({
   warehouse,
   branch,
 }: {
+  role: string | "";
   user:
     | {
         id?: string;
@@ -408,7 +412,6 @@ export default function ReportsPage({
       }[]
     | undefined;
 }) {
-  const { user: authUser } = useAuth();
   const searchParams = useSearchParams();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -436,20 +439,20 @@ export default function ReportsPage({
   const [isBulkSubmitting, setIsBulkSubmitting] = useState(false);
   const [bulkProgress, setBulkProgress] = useState(0);
   const allowedReports = useMemo(
-    () => getAllowedReportsForRoles(authUser?.role ?? ""),
-    [authUser?.role],
+    () => getAllowedReportsForRoles(role ?? ""),
+    [role],
   );
   const allowedReportIds = useMemo(
     () => new Set(allowedReports.map((report) => report.id)),
     [allowedReports],
   );
   const allowedCategories = useMemo(() => {
-    if (authUser?.role === "admin") return categories;
+    if (role === "admin") return categories;
     const allowedTypes = new Set(allowedReports.map((report) => report.type));
     return categories.filter(
       (cat) => cat.id === "all" || allowedTypes.has(cat.id),
     );
-  }, [allowedReports, authUser?.role]);
+  }, [allowedReports, role]);
 
   const filteredReports =
     category === "all"
@@ -574,18 +577,6 @@ export default function ReportsPage({
   ];
   return (
     <div className="w-full p-2">
-      {/* Header */}
-      {/* <div className="flex items-center justify-between">
-        <div>
-          <h1 className="flex items-center gap-2 text-3xl font-bold">
-            📊 التقارير
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            قم بإنشاء وتحميل التقارير المالية والإدارية
-          </p>
-        </div>
-      </div> */}
-      {/* Category Filter */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-7">
         {allowedCategories.map((cat) => (
           <Card

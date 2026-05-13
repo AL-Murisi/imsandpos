@@ -1,18 +1,15 @@
 "use client";
 
+import { Receipt } from "@/components/common/receipt";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ColumnDef } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, ArrowUpDown, EditIcon } from "lucide-react";
-import Debtupdate from "./form";
-import Recitp from "./recitp";
-import { useCurrency } from "@/components/CurrencyProvider";
-import { ReturnForm } from "./Returnitems";
-import { useFormatter } from "@/hooks/usePrice";
-import { useTranslations } from "next-intl";
 import { useCompany } from "@/hooks/useCompany";
-import { Receipt, ReceiptItem } from "@/components/common/receipt";
+import { useFormatter } from "@/hooks/usePrice";
+import { ColumnDef } from "@tanstack/react-table";
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { ReturnForm } from "./Returnitems";
 import { PrintButton } from "./test";
 
 interface DebtSaleData {
@@ -57,6 +54,84 @@ const SortableHeader: React.FC<SortableHeaderProps> = ({ column, label }) => {
   );
 };
 
+function DebtAction({ debt }: { debt: any }) {
+  const t = useTranslations("payment");
+
+  const { company } = useCompany();
+
+  const userAgent =
+    typeof window !== "undefined" ? navigator.userAgent.toLowerCase() : "";
+  const isMobileUA =
+    /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(
+      userAgent,
+    );
+
+  return (
+    <div className="flex flex-row gap-2">
+      {/* {amountDue > 0 && debt.sale_type !== "RETURN" && (
+            <Debtupdate debt={debt} />
+          )} */}
+      {isMobileUA ? (
+        <PrintButton
+          saleNumber={debt.invoiceNumber ?? ""}
+          items={debt.saleItems.map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            warehousename: item.warehouse,
+            selectedQty: item.quantity,
+            sellingUnit: item.unit,
+            unit_price: item.unitPrice,
+
+            total: item.totalPrice,
+          }))}
+          totals={{
+            totalBefore: debt.totalAmount,
+            discount: debt.items?.discount ?? 0,
+            totalAfter: debt.totalAmount,
+          }}
+          receivedAmount={Number(debt.amountPaid ?? 0)}
+          calculatedChange={Number(debt.calculated_change ?? 0)}
+          userName={debt.cashierName ?? ""}
+          customerName={debt.customer?.name ?? debt.customerName ?? "لايوجد"}
+          customerDebt={Number(debt.customer_debt ?? 0)}
+          isCash={Boolean(debt.is_cash)}
+          t={t}
+          company={company}
+        />
+      ) : (
+        <Receipt
+          saleNumber={debt.invoiceNumber ?? ""}
+          items={debt.saleItems.map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            warehousename: item.warehouse,
+            selectedQty: item.quantity,
+            sellingUnit: item.unit,
+            unit_price: item.unitPrice,
+
+            total: item.totalPrice,
+          }))}
+          totals={{
+            totalBefore: debt.totalAmount,
+            discount: debt.items?.discount ?? 0,
+            totalAfter: debt.totalAmount,
+          }}
+          receivedAmount={Number(debt.amountPaid ?? 0)}
+          calculatedChange={Number(debt.calculated_change ?? 0)}
+          userName={debt.cashierName ?? ""}
+          customerName={debt.customer?.name ?? debt.customerName ?? "لايوجد"}
+          customerDebt={Number(debt.customer_debt ?? 0)}
+          isCash={Boolean(debt.is_cash)}
+          t={t}
+          company={company}
+        />
+      )}
+      {debt.sale_type === "SALE" && !debt.hasReturnSale && (
+        <ReturnForm sale={debt} />
+      )}
+    </div>
+  );
+}
 export const debtSaleColumns: ColumnDef<any>[] = [
   {
     id: "select",
@@ -210,87 +285,7 @@ export const debtSaleColumns: ColumnDef<any>[] = [
     id: "actions",
     enableHiding: false,
     cell: ({ row }) => {
-      const t = useTranslations("payment");
-
-      const { company } = useCompany();
-
-      const userAgent =
-        typeof window !== "undefined" ? navigator.userAgent.toLowerCase() : "";
-      const isMobileUA =
-        /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(
-          userAgent,
-        );
-      const debt = row.original;
-
-      return (
-        <div className="flex flex-row gap-2">
-          {/* {amountDue > 0 && debt.sale_type !== "RETURN" && (
-            <Debtupdate debt={debt} />
-          )} */}
-          {isMobileUA ? (
-            <PrintButton
-              saleNumber={debt.invoiceNumber ?? ""}
-              items={debt.saleItems.map((item: any) => ({
-                id: item.id,
-                name: item.name,
-                warehousename: item.warehouse,
-                selectedQty: item.quantity,
-                sellingUnit: item.unit,
-                unit_price: item.unitPrice,
-
-                total: item.totalPrice,
-              }))}
-              totals={{
-                totalBefore: debt.totalAmount,
-                discount: debt.items?.discount ?? 0,
-                totalAfter: debt.totalAmount,
-              }}
-              receivedAmount={Number(debt.amountPaid ?? 0)}
-              calculatedChange={Number(debt.calculated_change ?? 0)}
-              userName={debt.cashierName ?? ""}
-              customerName={
-                debt.customer?.name ?? debt.customerName ?? "لايوجد"
-              }
-              customerDebt={Number(debt.customer_debt ?? 0)}
-              isCash={Boolean(debt.is_cash)}
-              t={t}
-              company={company}
-            />
-          ) : (
-            <Receipt
-              saleNumber={debt.invoiceNumber ?? ""}
-              items={debt.saleItems.map((item: any) => ({
-                id: item.id,
-                name: item.name,
-                warehousename: item.warehouse,
-                selectedQty: item.quantity,
-                sellingUnit: item.unit,
-                unit_price: item.unitPrice,
-
-                total: item.totalPrice,
-              }))}
-              totals={{
-                totalBefore: debt.totalAmount,
-                discount: debt.items?.discount ?? 0,
-                totalAfter: debt.totalAmount,
-              }}
-              receivedAmount={Number(debt.amountPaid ?? 0)}
-              calculatedChange={Number(debt.calculated_change ?? 0)}
-              userName={debt.cashierName ?? ""}
-              customerName={
-                debt.customer?.name ?? debt.customerName ?? "لايوجد"
-              }
-              customerDebt={Number(debt.customer_debt ?? 0)}
-              isCash={Boolean(debt.is_cash)}
-              t={t}
-              company={company}
-            />
-          )}
-          {debt.sale_type === "SALE" && !debt.hasReturnSale && (
-            <ReturnForm sale={debt} />
-          )}
-        </div>
-      );
+      <DebtAction debt={row.original} />;
     },
   },
 ];

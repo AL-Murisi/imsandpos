@@ -284,7 +284,41 @@ export type FinancialVoucher = {
   employee?: { name: string };
   expense?: { expense_number: string };
 };
+function VoucherAction({ voucher }: { voucher: any }) {
+  const { company } = useCompany();
 
+  // 2. تجهيز بيانات الطرف (عميل أو مورد)
+  const partyName = voucher.customer?.name || voucher.supplier?.name;
+  return (
+    <div className="flex items-center gap-2">
+      <VoucherReceipt
+        voucherNumber={voucher.voucherNumber}
+        voucherType={voucher.type}
+        amount={voucher.amount}
+        curruncy={voucher.currencyCode}
+        personName={
+          partyName ??
+          voucher.invoice?.invoiceNumber ??
+          voucher.expense?.expense_number
+        }
+        description={voucher.notes || "بدون وصف"}
+        paymentMethod={voucher.paymentMethod === "cash" ? "نقداً" : "بنكي"}
+        date={voucher.date}
+        company={{
+          name: company?.name || "",
+          address: company?.address,
+          city: company?.city,
+          phone: company?.phone,
+          logoUrl: company?.logoUrl,
+        }}
+      />
+
+      <Button variant="ghost" size="sm" title="عرض التفاصيل">
+        <Eye className="h-4 w-4" />
+      </Button>
+    </div>
+  );
+}
 export const voucherColumns: ColumnDef<FinancialVoucher>[] = [
   {
     id: "select",
@@ -378,42 +412,8 @@ export const voucherColumns: ColumnDef<FinancialVoucher>[] = [
   {
     id: "actions",
     cell: ({ row }) => {
-      const voucher = row.original;
-
+      <VoucherAction voucher={row.original} />;
       // 1. استخراج بيانات الشركة باستخدام الـ Hook الذي تملكه
-      const { company } = useCompany();
-
-      // 2. تجهيز بيانات الطرف (عميل أو مورد)
-      const partyName = voucher.customer?.name || voucher.supplier?.name;
-      return (
-        <div className="flex items-center gap-2">
-          <VoucherReceipt
-            voucherNumber={voucher.voucherNumber}
-            voucherType={voucher.type}
-            amount={voucher.amount}
-            curruncy={voucher.currencyCode}
-            personName={
-              partyName ??
-              voucher.invoice?.invoiceNumber ??
-              voucher.expense?.expense_number
-            }
-            description={voucher.notes || "بدون وصف"}
-            paymentMethod={voucher.paymentMethod === "cash" ? "نقداً" : "بنكي"}
-            date={voucher.date}
-            company={{
-              name: company?.name || "",
-              address: company?.address,
-              city: company?.city,
-              phone: company?.phone,
-              logoUrl: company?.logoUrl,
-            }}
-          />
-
-          <Button variant="ghost" size="sm" title="عرض التفاصيل">
-            <Eye className="h-4 w-4" />
-          </Button>
-        </div>
-      );
     },
   },
 ];

@@ -18,10 +18,83 @@ import { format } from "date-fns";
 import { ArrowDown, ArrowUp, ArrowUpDown, Trash2 } from "lucide-react";
 import { useTransition } from "react";
 
-type SortableHeaderProps = {
-  column: any;
-  label: string;
-};
+// ============================================================
+// ✅ COMPONENTS WITH HOOKS (extracted from cell renderers)
+// ============================================================
+
+function SellingUnitsCell({ units }: { units: any[] }) {
+  const { currency } = useCurrency();
+
+  if (!units || units.length === 0)
+    return <span className="text-muted-foreground text-xs">لا توجد وحدات</span>;
+
+  return (
+    <div className="flex max-w-[250px] flex-wrap gap-1">
+      {units.map((unit, index) => (
+        <Badge
+          key={index}
+          variant="secondary"
+          className={`px-1.5 py-0 text-[10px] ${unit.isBase ? "border-green-500 bg-green-50 text-green-700" : ""}`}
+        >
+          {unit.name}:{" "}
+          {new Intl.NumberFormat(currency.locale, {
+            style: "currency",
+            currency: currency.currency,
+            numberingSystem: "latn",
+          }).format(unit.price)}
+        </Badge>
+      ))}
+    </div>
+  );
+}
+
+function WholesalePriceCell({ price }: { price: number }) {
+  const { currency } = useCurrency();
+  return price
+    ? new Intl.NumberFormat(currency.locale, {
+        style: "currency",
+        currency: currency.currency,
+        numberingSystem: "latn",
+      }).format(price)
+    : "N/A";
+}
+
+function ProductActionsCell({ product }: { product: ProductFormValues }) {
+  const { user } = useAuth();
+  const [isPending, startTransition] = useTransition();
+  const id = product.id ?? "";
+
+  if (!user) return null;
+
+  return (
+    <div className="flex gap-2">
+      <ConfirmModal
+        title="تأكيد الحذف"
+        description={`هل أنت متأكد من حذف هذا ${product.name}؟ هذه العملية لا يمكن التراجع عنها.`}
+        action={() =>
+          startTransition(async () => {
+            deleteProduct(id, user.companyId);
+          })
+        }
+        confirmText="حذف"
+      >
+        <Button
+          disabled={isPending}
+          className="text-red-600 hover:bg-orange-300/20 hover:text-red-700"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </ConfirmModal>
+      <ProductEditFormm product={product} type={product.type ?? "full"} />
+    </div>
+  );
+}
+
+// ============================================================
+// ✅ SORTABLE HEADER (no hooks, fine as-is)
+// ============================================================
+
+type SortableHeaderProps = { column: any; label: string };
 
 const SortableHeader: React.FC<SortableHeaderProps> = ({ column, label }) => {
   const isSorted = column.getIsSorted();
@@ -54,8 +127,9 @@ const SortableHeader: React.FC<SortableHeaderProps> = ({ column, label }) => {
   );
 };
 
-// keep your existing SortableHeader
-// ... other imports
+// ============================================================
+// ✅ COLUMN DEFINITIONS (no hooks inside cell)
+// ============================================================
 
 export const createColumns = (
   tt: (key: string) => string,
@@ -76,7 +150,6 @@ export const createColumns = (
       accessorKey: "barcode",
       header: tt("barcode"),
     },
-
     {
       accessorKey: "sku",
       header: ({ column }) => (
@@ -95,50 +168,22 @@ export const createColumns = (
         <SortableHeader column={column} label={tt("categoryId")} />
       ),
     },
-
     {
       accessorKey: "sellingUnits",
-      header: "وحدات البيع", // تأكد من إضافة الترجمة في ملفات الـ i18n
-      cell: ({ row }) => {
-        const units = row.getValue("sellingUnits") as any[];
-        const { currency } = useCurrency();
-
-        if (!units || units.length === 0)
-          return (
-            <span className="text-muted-foreground text-xs">لا توجد وحدات</span>
-          );
-
-        return (
-          <div className="flex max-w-[250px] flex-wrap gap-1">
-            {units.map((unit, index) => (
-              <Badge
-                key={index}
-                variant="secondary"
-                className={`px-1.5 py-0 text-[10px] ${unit.isBase ? "border-green-500 bg-green-50 text-green-700" : ""}`}
-              >
-                {unit.name}:{" "}
-                {new Intl.NumberFormat(currency.locale, {
-                  style: "currency",
-                  currency: currency.currency,
-                  numberingSystem: "latn",
-                }).format(unit.price)}
-              </Badge>
-            ))}
-          </div>
-        );
-      },
+      header: "وحدات البيع",
+      cell: ({ row }) => (
+        <SellingUnitsCell units={row.getValue("sellingUnits")} />
+      ), // ✅ Component
     },
     {
       accessorKey: "sellingUnitsQty",
-      header: " الكميه لكل وحده", // تأكد من إضافة الترجمة في ملفات الـ i18n
+      header: "الكميه لكل وحده",
       cell: ({ row }) => {
         const units = row.getValue("sellingUnitsQty") as any[];
-
         if (!units || units.length === 0)
           return (
             <span className="text-muted-foreground text-xs">لا توجد وحدات</span>
           );
-
         return (
           <div className="flex max-w-[250px] flex-wrap gap-1">
             {units.map((unit, index) => (
@@ -154,94 +199,17 @@ export const createColumns = (
         );
       },
     },
-    // {
-    //   accessorKey: "unitsPerPacket",
-    //   header: tt("unitsPerPacket"),
-    // },
-    // {
-    //   accessorKey: "pricePerUnit",
-    //   header: tt("pricePerUnit"),
-    //   cell: ({ row }) => {
-    //     const price = row.getValue("pricePerUnit") as number;
-    //     const { currency } = useCurrency();
-    //     return price
-    //       ? new Intl.NumberFormat(currency.locale, {
-    //           style: "currency",
-    //           currency: currency.currency,
-    //           numberingSystem: "latn",
-    //         }).format(price)
-    //       : "N/A";
-    //   },
-    // },
-    // {
-    //   accessorKey: "pricePerPacket",
-    //   header: tt("pricePerPacket"),
-    //   cell: ({ row }) => {
-    //     const price = row.getValue("pricePerPacket") as number;
-    //     const { currency } = useCurrency();
-    //     return price
-    //       ? new Intl.NumberFormat(currency.locale, {
-    //           style: "currency",
-    //           currency: currency.currency,
-    //           numberingSystem: "latn",
-    //         }).format(price)
-    //       : "N/A";
-    //   },
-    // },
-
-    // {
-    //   accessorKey: "packetsPerCarton",
-    //   header: tt("packetsPerCarton"),
-    // },
-    // {
-    //   accessorKey: "pricePerCarton",
-    //   header: tt("pricePerCarton"),
-    //   cell: ({ row }) => {
-    //     const price = row.getValue("pricePerCarton") as number;
-    //     const { currency } = useCurrency();
-    //     return price
-    //       ? new Intl.NumberFormat(currency.locale, {
-    //           style: "currency",
-    //           currency: currency.currency,
-    //           numberingSystem: "latn",
-    //         }).format(price)
-    //       : "N/A";
-    //   },
-    // },
     {
       accessorKey: "minWholesaleQty",
       header: tt("minWholesaleQty"),
     },
-
     {
       accessorKey: "wholesalePrice",
       header: tt("wholesalePrice"),
-      cell: ({ row }) => {
-        const price = row.getValue("wholesalePrice") as number;
-        const { currency } = useCurrency();
-        return price
-          ? new Intl.NumberFormat(currency.locale, {
-              style: "currency",
-              currency: currency.currency,
-              numberingSystem: "latn",
-            }).format(price)
-          : "N/A";
-      },
+      cell: ({ row }) => (
+        <WholesalePriceCell price={row.getValue("wholesalePrice")} />
+      ), // ✅ Component
     },
-
-    // {
-    //   accessorKey: "weight",
-    //   header: tt("weight"),
-    //   cell: ({ row }) => {
-    //     const weight = row.getValue("weight") as number;
-    //     return weight ? `${weight} kg` : "N/A";
-    //   },
-    // },
-    // {
-    //   accessorKey: "dimensions",
-    //   header: tt("dimensions"),
-    //   cell: ({ row }) => row.getValue("dimensions") || "N/A",
-    // },
     {
       accessorKey: "isActive",
       header: tt("isActive"),
@@ -263,48 +231,12 @@ export const createColumns = (
     {
       id: "actions",
       header: tt("actions"),
-      cell: ({ row }) => {
-        const product = row.original;
-        const id = product.id ?? "";
-        const { user } = useAuth();
-        if (!user) return;
-
-        const [isPending, startTransition] = useTransition();
-
-        return (
-          <div className="flex gap-2">
-            {" "}
-            {/* <SellingUnitsManager /> */}
-            <ConfirmModal
-              title="تأكيد الحذف"
-              description={`هل أنت متأكد من حذف هذا ${product.name}؟ هذه العملية لا يمكن التراجع عنها.`}
-              action={() =>
-                startTransition(async () => {
-                  deleteProduct(id, user.companyId);
-                })
-              }
-              confirmText="حذف"
-            >
-              <Button
-                disabled={isPending}
-                className="text-red-600 hover:bg-orange-300/20 hover:text-red-700"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </ConfirmModal>
-            <div className="flex gap-2">
-              <ProductEditFormm
-                product={product}
-                type={product.type ?? "full"}
-              />
-            </div>
-          </div>
-        );
-      },
+      cell: ({ row }) => <ProductActionsCell product={row.original} />, // ✅ Component
     },
   ];
 };
 
+// ... rest of file (ExpiryStatus, etc.) stays the same
 export default function sortfilteringsearch() {}
 
 type ExpiryProps = {

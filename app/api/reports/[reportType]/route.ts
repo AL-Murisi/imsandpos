@@ -10,6 +10,7 @@ import { Prisma } from "@prisma/client";
 import { reserveStock } from "@/lib/actions/warehouse";
 import { useFormatter } from "@/hooks/usePrice";
 import { se } from "date-fns/locale";
+import { Decimal } from "@prisma/client/runtime/library";
 
 export const runtime = "nodejs";
 
@@ -50,7 +51,20 @@ const createDateFilter = (fromDate?: string, toDate?: string) => ({
   ...(fromDate && { gte: new Date(fromDate).toISOString() }),
   ...(toDate && { lte: new Date(toDate).toISOString() }),
 });
-
+interface GroupedInvoice {
+  invoiceNumber: string;
+  date: string;
+  salestype: string;
+  cashierName: string;
+  items: {
+    product: string;
+    quantity: number;
+    sellingUnit: string | null;
+    price: Decimal;
+    total: number;
+  }[];
+  invoiceTotal: number;
+}
 export async function POST(req: NextRequest, context: RouteContext) {
   try {
     const { reportType } = await context.params;
@@ -162,6 +176,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
               },
             },
           },
+          orderBy: { invoice: { invoiceDate: "asc" } },
         });
 
         data = {
@@ -172,7 +187,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
             total: s.totalPrice.toNumber(), // Decimal to Number
             sellingUnit: s.unit,
             date: s.invoice.invoiceDate.toLocaleDateString("ar-EG"), // Usually better for reports
-            salestype: s.invoice.sale_type === "SALE" ? "???" : "?????",
+            salestype: s.invoice.sale_type === "SALE" ? "بيع" : "مرتجع",
             price: s.price,
           })),
           period: {
@@ -228,12 +243,15 @@ export async function POST(req: NextRequest, context: RouteContext) {
           where: {
             id: { in: salesByProduct.map((s) => s.productId) },
           },
+          select: {
+            id: true,
+            name: true,
+          },
         });
 
         data = {
           ...baseData,
           salesByProduct: salesByProduct.map((s) => {
-            const product = products.find((p) => p.id === s.productId);
             return {
               product: products.find((p) => p.id === s.productId)?.name,
               quantity: s._sum.quantity,
@@ -338,26 +356,20 @@ export async function POST(req: NextRequest, context: RouteContext) {
       case "daily-sales": {
         templateFile = "daily-sales-report.html";
 
-        // ?? Today range
         const fromDate = new Date();
         fromDate.setHours(0, 0, 0, 0);
 
         const toDate = new Date();
         toDate.setHours(23, 59, 59, 999);
-        const sales = await prisma.invoiceItem.findMany({
+
+        const salesItems = await prisma.invoiceItem.findMany({
           where: {
             companyId: user.companyId,
             invoice: {
               cashierId: scopedUserId,
-
-              // 1. Fixed logic: Get items BETWEEN from and to
-              invoiceDate: {
-                gte: fromDate,
-                lte: toDate,
-              },
+              invoiceDate: { gte: fromDate, lte: toDate },
               sale_type: salesTypes,
               ...(branchId && { branchId }),
-              // 2. Critical: Only include Sales (exclude purchases)
             },
           },
           select: {
@@ -365,9 +377,11 @@ export async function POST(req: NextRequest, context: RouteContext) {
             totalPrice: true,
             unit: true,
             price: true,
-            product: { select: { id: true, name: true } },
+            product: { select: { name: true } },
             invoice: {
               select: {
+                id: true, // We use this for grouping
+                invoiceNumber: true, // Displayed in header
                 invoiceDate: true,
                 sale_type: true,
                 cashier: { select: { name: true } },
@@ -376,43 +390,42 @@ export async function POST(req: NextRequest, context: RouteContext) {
             },
           },
         });
-        // const sales = await prisma.invoiceItem.findMany({
-        //   where: {
-        //     companyId: user.companyId,
-        //     invoice: {
-        //       ...cashierFilter,
-        //       invoiceDate: {
-        //         gte: fromDate,
-        //         lte: toDate,
-        //       },
-        //       sale_type: salesTypes,
-        //       ...(branchId && { branchId }),
-        //     },
-        //   },
-        //   include: {
-        //     product: true,
-        //     invoice: { include: { cashier: true, branch: true } },
-        //   },
-        // });
+
+        // --- GROUPING LOGIC ---
+        const groupedInvoices: Record<string, GroupedInvoice> = {};
+        salesItems.forEach((item) => {
+          const invId = item.invoice.id;
+          if (!groupedInvoices[invId]) {
+            groupedInvoices[invId] = {
+              invoiceNumber: item.invoice.invoiceNumber || invId,
+              date: item.invoice.invoiceDate.toLocaleDateString("ar-EG"),
+              salestype: item.invoice.sale_type === "SALE" ? "بيع" : "مرتجع",
+              cashierName: item.invoice.cashier?.name ?? "",
+              items: [],
+              invoiceTotal: 0,
+            };
+          }
+
+          const total = item.totalPrice.toNumber();
+          groupedInvoices[invId].items.push({
+            product: item.product.name,
+            quantity: item.quantity.toNumber(),
+            sellingUnit: item.unit,
+            price: item.price,
+            total: total,
+          });
+          groupedInvoices[invId].invoiceTotal += total;
+        });
 
         data = {
           ...baseData,
-          sales: sales.map((s) => ({
-            product: s.product.name,
-            quantity: s.quantity.toNumber(),
-            total: s.totalPrice.toNumber(),
-            sellingUnit: s.unit,
-            date: s.invoice.invoiceDate.toLocaleDateString("ar-EG"),
-            salestype: s.invoice.sale_type === "SALE" ? "بيع" : "مرتجع",
-            price: s.price,
-          })),
-          casherNmae: sales[0]?.invoice.cashier?.name ?? "",
-          branchName: sales[0]?.invoice.branch?.name ?? "",
+          receipts: Object.values(groupedInvoices), // Array of grouped receipts
+          branchName: salesItems[0]?.invoice.branch?.name ?? "",
           period: {
             from: fromDate.toLocaleDateString("ar-EG"),
             to: toDate.toLocaleDateString("ar-EG"),
           },
-          totalSales: sales.reduce(
+          totalSales: salesItems.reduce(
             (sum, s) => sum + s.totalPrice.toNumber(),
             0,
           ),
@@ -1497,19 +1510,23 @@ export async function POST(req: NextRequest, context: RouteContext) {
       }
       case "customer_statment": {
         templateFile = "customer_statment.html";
+
         const mappings = await prisma.account_mappings.findMany({
           where: { company_id: user.companyId, is_default: true },
           select: { mapping_type: true, account_id: true },
         });
+
         const arAccount = mappings.find(
           (m) => m.mapping_type === "accounts_receivable",
         )?.account_id;
+
         if (!arAccount) {
           return new Response(
             JSON.stringify({ error: "Accounts receivable not mapped" }),
             { status: 400 },
           );
         }
+
         const fiscalYear = await prisma.fiscal_periods.findFirst({
           where: {
             company_id: user.companyId,
@@ -1517,43 +1534,77 @@ export async function POST(req: NextRequest, context: RouteContext) {
           },
           select: { start_date: true, end_date: true },
         });
-        if (!fiscalYear) return;
+
+        // FIX 1: Return proper error response instead of undefined
+        if (!fiscalYear) {
+          return new Response(
+            JSON.stringify({ error: "No active fiscal year found" }),
+            { status: 400 },
+          );
+        }
+
         const fromDate = new Date(fiscalYear.start_date);
-        fromDate.setHours(0, 0, 0, 0); // Start of day
-
+        fromDate.setHours(0, 0, 0, 0);
         const toDate = new Date(fiscalYear.end_date);
-        toDate.setHours(23, 59, 59, 999); // End of day
+        toDate.setHours(23, 59, 59, 999);
 
-        // 1?? ??? ??????? (???? ???? ?? ??????)
-        const customers = await prisma.customer.findMany({
-          where: customerId
-            ? {
+        // FIX 2: Don't filter by outstandingBalance — fetch ALL customers
+        // The balance should come from journal lines, not the denormalized field
+        const customers = customerId
+          ? await prisma.customer.findMany({
+              where: {
+                companyId: user.companyId,
                 id: customerId,
-                companyId: user.companyId,
-                ...(branchId && { branch_id: branchId }),
-              }
-            : {
-                companyId: user.companyId,
-                outstandingBalance: { gt: 0 },
                 ...(branchId && { branch_id: branchId }),
               },
-          select: { id: true, name: true, phoneNumber: true },
-        });
+              select: { id: true, name: true, phoneNumber: true },
+            })
+          : await prisma.customer.findMany({
+              where: {
+                companyId: user.companyId,
+                invoice: {
+                  some: {
+                    companyId: user.companyId,
+                    sale_type: "SALE",
+                  },
+                },
+                ...(branchId && { branch_id: branchId }),
+              },
+              select: { id: true, name: true, phoneNumber: true },
+            });
 
-        const allStatements = []; // This will hold each separate page
+        // FIX 3: Early exit if no customers found
+        if (customers.length === 0) {
+          data = { statements: [], ...baseData };
+          break;
+        }
+
+        const allStatements = [];
 
         for (const c of customers) {
+          // FIX 4: Include branch filter in invoice/transaction queries
           const invoiceIds = await prisma.invoice.findMany({
-            where: { companyId: user.companyId, customerId: c.id },
-            select: { id: true },
-          });
-          const paymentIds = await prisma.financialTransaction.findMany({
             where: {
               companyId: user.companyId,
               customerId: c.id,
+              ...(branchId && { branchId }),
             },
             select: { id: true },
           });
+
+          const paymentIds = await prisma.financialTransaction.findMany({
+            where: {
+              companyId: user.companyId,
+              OR: [
+                { customerId: c.id },
+                // Also catch payments linked via invoice
+                { invoiceId: { in: invoiceIds.map((i) => i.id) } },
+              ],
+              ...(branchId && { branchId }),
+            },
+            select: { id: true },
+          });
+
           const invoiceIdList = invoiceIds.map((i) => i.id);
           const paymentIdList = paymentIds.map((p) => p.id);
           const customerReferenceIds = [
@@ -1562,7 +1613,9 @@ export async function POST(req: NextRequest, context: RouteContext) {
             ...paymentIdList,
           ];
 
-          // Find all unique currencies this customer has used in posted journal headers
+          // FIX 5: Handle empty reference IDs
+          if (customerReferenceIds.length === 0) continue;
+
           const lineCurrencies = await prisma.journalLine.findMany({
             where: {
               companyId: user.companyId,
@@ -1576,14 +1629,18 @@ export async function POST(req: NextRequest, context: RouteContext) {
             select: { currencyCode: true },
           });
 
-          const currencySet = new Set<string | null>([
-            ...lineCurrencies.map((x) => x.currencyCode ?? null),
-          ]);
+          // FIX 6: Ensure we always have at least one currency to process
+          const currencyCodes =
+            lineCurrencies.length > 0
+              ? lineCurrencies.map((x) => x.currencyCode)
+              : [null]; // Process at least once with "Local" currency
+
+          const currencySet = new Set(currencyCodes);
 
           for (const currCode of currencySet) {
             const currencyCode = currCode || "Local";
 
-            // 1. Get Opening Balance for THIS currency
+            // Opening balance query
             const openingLines = await prisma.journalLine.findMany({
               where: {
                 companyId: user.companyId,
@@ -1603,7 +1660,8 @@ export async function POST(req: NextRequest, context: RouteContext) {
                 : Number(e.debit) - Number(e.credit);
               return sum + val;
             }, 0);
-            // 2. Get Period Entries for THIS currency
+
+            // Period entries query
             const lines = await prisma.journalLine.findMany({
               where: {
                 companyId: user.companyId,
@@ -1627,32 +1685,28 @@ export async function POST(req: NextRequest, context: RouteContext) {
                 },
                 debit: true,
                 credit: true,
-                currencyCode: true,
                 foreignAmount: true,
                 memo: true,
               },
             });
 
-            const combinedEntries = [
-              ...lines.map((entry) => ({
-                date: entry.header?.entryDate,
-                debit: Number(entry.debit),
-                credit: Number(entry.credit),
-                foreignAmount: entry.foreignAmount,
-                description: entry.memo ?? entry.header?.description,
-                docNo: entry.header?.entryNumber,
-                typeName: entry.header?.referenceType,
-              })),
-            ].sort((a, b) => {
-              const aTime = a.date ? new Date(a.date).getTime() : 0;
-              const bTime = b.date ? new Date(b.date).getTime() : 0;
-              return aTime - bTime;
-            });
+            // FIX 7: Skip if no transactions AND no opening balance (truly empty)
+            if (lines.length === 0 && openingBalance === 0) continue;
+
+            const combinedEntries = lines.map((entry) => ({
+              date: entry.header?.entryDate,
+              debit: Number(entry.debit),
+              credit: Number(entry.credit),
+              foreignAmount: entry.foreignAmount,
+              description: entry.memo ?? entry.header?.description,
+              docNo: entry.header?.entryNumber,
+              typeName: entry.header?.referenceType,
+            }));
 
             let runningBalance = openingBalance;
+
             const transactions = combinedEntries.map((entry) => {
               const isDebit = Number(entry.debit) > 0;
-              // Use foreign_amount if available
               const amount = entry.foreignAmount
                 ? Math.abs(Number(entry.foreignAmount))
                 : isDebit
@@ -1676,7 +1730,6 @@ export async function POST(req: NextRequest, context: RouteContext) {
               };
             });
 
-            // Push as a separate statement entry
             allStatements.push({
               customerName: c.name,
               customerPhone: c.phoneNumber,
@@ -1696,6 +1749,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
           }
         }
 
+        // FIX 8: Ensure data is always set, even if empty
         data = { statements: allStatements, ...baseData };
         break;
       }
@@ -1961,246 +2015,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
         break;
       }
-      case "customer_statment": {
-        templateFile = "customer_statment.html";
 
-        const mappings = await prisma.account_mappings.findMany({
-          where: { company_id: user.companyId, is_default: true },
-          select: { mapping_type: true, account_id: true },
-        });
-
-        const arAccount = mappings.find(
-          (m) => m.mapping_type === "accounts_receivable",
-        )?.account_id;
-
-        if (!arAccount) {
-          return new Response(
-            JSON.stringify({ error: "Accounts receivable not mapped" }),
-            { status: 400 },
-          );
-        }
-
-        const fiscalYear = await prisma.fiscal_periods.findFirst({
-          where: {
-            company_id: user.companyId,
-            is_closed: false,
-          },
-          select: { start_date: true, end_date: true },
-        });
-
-        // FIX 1: Return proper error response instead of undefined
-        if (!fiscalYear) {
-          return new Response(
-            JSON.stringify({ error: "No active fiscal year found" }),
-            { status: 400 },
-          );
-        }
-
-        const fromDate = new Date(fiscalYear.start_date);
-        fromDate.setHours(0, 0, 0, 0);
-        const toDate = new Date(fiscalYear.end_date);
-        toDate.setHours(23, 59, 59, 999);
-
-        // FIX 2: Don't filter by outstandingBalance — fetch ALL customers
-        // The balance should come from journal lines, not the denormalized field
-        const customers = await prisma.customer.findMany({
-          where: {
-            companyId: user.companyId,
-            ...(customerId && { id: customerId }),
-            ...(branchId && { branch_id: branchId }),
-          },
-          select: { id: true, name: true, phoneNumber: true },
-        });
-
-        // FIX 3: Early exit if no customers found
-        if (customers.length === 0) {
-          data = { statements: [], ...baseData };
-          break;
-        }
-
-        const allStatements = [];
-
-        for (const c of customers) {
-          // FIX 4: Include branch filter in invoice/transaction queries
-          const invoiceIds = await prisma.invoice.findMany({
-            where: {
-              companyId: user.companyId,
-              customerId: c.id,
-              ...(branchId && { branchId }),
-            },
-            select: { id: true },
-          });
-
-          const paymentIds = await prisma.financialTransaction.findMany({
-            where: {
-              companyId: user.companyId,
-              OR: [
-                { customerId: c.id },
-                // Also catch payments linked via invoice
-                { invoiceId: { in: invoiceIds.map((i) => i.id) } },
-              ],
-              ...(branchId && { branchId }),
-            },
-            select: { id: true },
-          });
-
-          const invoiceIdList = invoiceIds.map((i) => i.id);
-          const paymentIdList = paymentIds.map((p) => p.id);
-          const customerReferenceIds = [
-            c.id,
-            ...invoiceIdList,
-            ...paymentIdList,
-          ];
-
-          // FIX 5: Handle empty reference IDs
-          if (customerReferenceIds.length === 0) continue;
-
-          const lineCurrencies = await prisma.journalLine.findMany({
-            where: {
-              companyId: user.companyId,
-              accountId: arAccount,
-              header: {
-                referenceId: { in: customerReferenceIds },
-                ...(branchId && { branchId }),
-              },
-            },
-            distinct: ["currencyCode"],
-            select: { currencyCode: true },
-          });
-
-          // FIX 6: Ensure we always have at least one currency to process
-          const currencyCodes =
-            lineCurrencies.length > 0
-              ? lineCurrencies.map((x) => x.currencyCode)
-              : [null]; // Process at least once with "Local" currency
-
-          const currencySet = new Set(currencyCodes);
-
-          for (const currCode of currencySet) {
-            const currencyCode = currCode || "Local";
-
-            // Opening balance query
-            const openingLines = await prisma.journalLine.findMany({
-              where: {
-                companyId: user.companyId,
-                accountId: arAccount,
-                currencyCode: currCode ?? null,
-                header: {
-                  referenceId: { in: customerReferenceIds },
-                  ...(branchId && { branchId }),
-                  entryDate: { lt: fromDate },
-                },
-              },
-            });
-
-            const openingBalance = openingLines.reduce((sum, e) => {
-              const val = e.foreignAmount
-                ? Number(e.foreignAmount)
-                : Number(e.debit) - Number(e.credit);
-              return sum + val;
-            }, 0);
-
-            // Period entries query
-            const lines = await prisma.journalLine.findMany({
-              where: {
-                companyId: user.companyId,
-                accountId: arAccount,
-                currencyCode: currCode ?? null,
-                header: {
-                  referenceId: { in: customerReferenceIds },
-                  ...(branchId && { branchId }),
-                  entryDate: { gte: fromDate, lte: toDate },
-                },
-              },
-              orderBy: { header: { entryDate: "asc" } },
-              select: {
-                header: {
-                  select: {
-                    entryDate: true,
-                    entryNumber: true,
-                    description: true,
-                    referenceType: true,
-                  },
-                },
-                debit: true,
-                credit: true,
-                foreignAmount: true,
-                memo: true,
-              },
-            });
-
-            // FIX 7: Skip if no transactions AND no opening balance (truly empty)
-            if (lines.length === 0 && openingBalance === 0) continue;
-
-            const combinedEntries = lines.map((entry) => ({
-              date: entry.header?.entryDate,
-              debit: Number(entry.debit),
-              credit: Number(entry.credit),
-              foreignAmount: entry.foreignAmount,
-              description: entry.memo ?? entry.header?.description,
-              docNo: entry.header?.entryNumber,
-              typeName: entry.header?.referenceType,
-            }));
-
-            let runningBalance = openingBalance;
-
-            const transactions = combinedEntries.map((entry) => {
-              const isDebit = Number(entry.debit) > 0;
-              const amount = entry.foreignAmount
-                ? Math.abs(Number(entry.foreignAmount))
-                : isDebit
-                  ? Number(entry.debit)
-                  : Number(entry.credit);
-
-              const dVal = isDebit ? amount : 0;
-              const cVal = !isDebit ? amount : 0;
-              runningBalance = runningBalance + dVal - cVal;
-
-              return {
-                date: entry.date
-                  ? new Date(entry.date).toLocaleDateString("ar-EG")
-                  : "",
-                debit: dVal.toFixed(2),
-                credit: cVal.toFixed(2),
-                balance: runningBalance.toFixed(2),
-                description: entry.description,
-                docNo: entry.docNo,
-                typeName: entry.typeName,
-              };
-            });
-
-            allStatements.push({
-              customerName: c.name,
-              customerPhone: c.phoneNumber,
-              currency: currencyCode,
-              openingBalance: openingBalance.toFixed(2),
-              closingBalance: runningBalance.toFixed(2),
-              totalDebit: transactions
-                .reduce((s, t) => s + Number(t.debit), 0)
-                .toFixed(2),
-              totalCredit: transactions
-                .reduce((s, t) => s + Number(t.credit), 0)
-                .toFixed(2),
-              transactions,
-              periodFrom: fromDate.toLocaleDateString("ar-EG"),
-              periodTo: toDate.toLocaleDateString("ar-EG"),
-            });
-            console.log(
-              "=== PUSHING TO allStatements ===",
-              allStatements.length,
-            );
-            console.log({
-              customerCount: customers.length,
-              firstCustomer: customers[0]?.name,
-              referenceIds: allStatements,
-            });
-          }
-        }
-
-        // FIX 8: Ensure data is always set, even if empty
-        data = { statements: allStatements, ...baseData };
-        break;
-      }
       case "customer-payments": {
         templateFile = "customer-payments-report.html";
         const payments = await prisma.financialTransaction.findMany({

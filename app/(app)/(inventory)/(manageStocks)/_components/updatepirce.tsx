@@ -12,6 +12,7 @@ import Dailogreuse from "@/components/common/dailogreuse";
 import { updateSellingUnits } from "@/lib/actions/Product";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 type SellingUnit = {
   id: string;
@@ -134,29 +135,31 @@ export function PriceMismatchAlert({
       className="mt-2 rounded-md border border-amber-300 bg-amber-50 p-2 text-xs"
       dir="rtl"
     >
-      <div className="flex flex-col gap-1">
-        <p className="text-[13px] font-semibold text-amber-800">
-          سعر التكلفة لا يتطابق مع تسعير الوحدة
-        </p>
-        <p className="font-medium text-amber-700">
-          المُدخل:{" "}
-          <span className="font-bold underline">{inventory.unitCost}</span> -
-          المتوقع: <span className="font-bold underline">{expectedCost}</span>
-        </p>
-      </div>
+      {Number(inventory.unitCost) > expectedCost && (
+        <div className="flex flex-col gap-1">
+          <p className="text-[13px] font-semibold text-amber-800">
+            سعر التكلفة لا يتطابق مع تسعير الوحدة
+          </p>
+          <p className="font-medium text-amber-700">
+            المُدخل:{" "}
+            <span className="font-bold underline">{inventory.unitCost}</span> -
+            المتوقع: <span className="font-bold underline">{expectedCost}</span>
+          </p>
+        </div>
+      )}
 
       <div className="mt-2 flex gap-2">
         <Button
           className="h-7 text-[11px] text-amber-900"
           onClick={() => setOpen(true)}
         >
-          تعديل الوحدات والأسعار
+          تعديل
         </Button>
         <Button
           className="h-7 text-[11px]"
           onClick={() => action(expectedCost)}
         >
-          اعتماد السعر المتوقع فقط
+          السعر
         </Button>
       </div>
 
@@ -182,7 +185,7 @@ export function PriceMismatchAlert({
             </Button>
           </div>
 
-          <div className="custom-scrollbar max-h-[55vh] space-y-4 overflow-y-auto pr-1">
+          <ScrollArea className="max-h-[85vh]" dir="rtl">
             {fields.map((field, index) => (
               <Card
                 key={field.id}
@@ -275,7 +278,7 @@ export function PriceMismatchAlert({
                 </div>
               </Card>
             ))}
-          </div>
+          </ScrollArea>
 
           <div className="flex flex-col gap-2 border-t pt-4">
             <div className="flex items-center justify-between rounded border border-blue-100 bg-blue-50 p-2 text-[11px]">

@@ -32,7 +32,59 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { EditSupplierForm } from "./editform";
 import { ConfirmModal } from "@/components/common/confirm-modal";
+function SupplierActions({ supplier }: { supplier: any }) {
+  const { user } = useAuth();
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
+  if (!user) return null;
+
+  return (
+    <div className="flex gap-3">
+      <Button
+        onClick={() =>
+          startTransition(async () => {
+            router.push(`/batches?supplierId=${supplier.id}`);
+          })
+        }
+      >
+        التوريد
+      </Button>
+
+      <ConfirmModal
+        title="تأكيد الحذف"
+        description={`هل أنت متأكد من حذف ${supplier.name}؟ هذه العملية لا يمكن التراجع عنها.`}
+        action={() =>
+          startTransition(async () => {
+            deleteCustomer(supplier.id, user.companyId);
+          })
+        }
+        confirmText="حذف"
+      >
+        <Button
+          disabled={isPending}
+          className="text-red-600 hover:bg-orange-300/20 hover:text-red-700"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </ConfirmModal>
+
+      <EditSupplierForm supplier={supplier} />
+
+      <Button
+        disabled={isLoading}
+        onClick={() => {
+          setIsLoading(true);
+          router.push(`/suppliers/${supplier.id}`);
+        }}
+      >
+        {isLoading && <Clock className="h-4 w-4 animate-spin" />}
+        {isLoading ? "جاري الفتح..." : "كشف حساب"}
+      </Button>
+    </div>
+  );
+}
 const PaymentEditForm = dynamic(
   () => import("./form").then((m) => m.PaymentEditForm),
   {
@@ -141,55 +193,8 @@ export const supplierColumns: ColumnDef<any>[] = [
   {
     id: "actions",
     enableHiding: false,
-    cell: ({ row }) => {
-      const { user } = useAuth();
-      if (!user) return;
-      const supplier = row.original;
-      const [isLoading, setIsLoading] = useState(false);
-      const router = useRouter();
-      const [isPending, startTransition] = useTransition();
-      return (
-        <div className="flex gap-3">
-          <Button
-            onClick={() =>
-              startTransition(async () => {
-                router.push(`/batches?supplierId=${supplier.id}`);
-              })
-            }
-          >
-            التوريد
-          </Button>
-          <ConfirmModal
-            title="تأكيد الحذف"
-            description={`هل أنت متأكد من حذف هذا ${supplier.name}؟ هذه العملية لا يمكن التراجع عنها.`}
-            action={() =>
-              startTransition(async () => {
-                deleteCustomer(supplier.id, user.companyId);
-              })
-            }
-            confirmText="حذف"
-          >
-            <Button
-              disabled={isPending}
-              className="text-red-600 hover:bg-orange-300/20 hover:text-red-700"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </ConfirmModal>
-          <EditSupplierForm supplier={supplier} />
-          <Button
-            disabled={isLoading}
-            onClick={() => {
-              setIsLoading(true);
-              router.push(`/suppliers/${supplier.id}`);
-            }}
-          >
-            {isLoading && <Clock className="h-4 w-4 animate-spin" />}
-            {isLoading ? "جاري الفتح..." : "كشف حساب"}
-          </Button>
-        </div>
-      );
-    },
+
+    cell: ({ row }) => <SupplierActions supplier={row.original} />, // ✅ Component, not inline hooks
   },
 ];
 
