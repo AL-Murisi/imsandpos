@@ -231,7 +231,9 @@ export const createColumns = (
     {
       id: "actions",
       header: tt("actions"),
-      cell: ({ row }) => <ProductActionsCell product={row.original} />, // ✅ Component
+      cell: ({ row }) => {
+        return <ProductActionsCell product={row.original} />;
+      }, // ✅ Component
     },
   ];
 };

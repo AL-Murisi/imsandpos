@@ -154,14 +154,13 @@ export default function SupplierForm() {
               {/* NOTE: Original code had htmlFor="city" but register("phoneNumber") for this input.
                      Corrected to htmlFor="city" and register("city").
                      If it was intended for phoneNumber, please adjust accordingly. */}
-              <div className="grid gap-2">
+              {/* <div className="grid gap-2">
                 <Label htmlFor="city">المدينة</Label>
                 <Input id="city" type="text" {...register("city")} />
                 {errors.city && (
                   <p className="text-xs text-red-500">{errors.city.message}</p>
                 )}
               </div>
-              {/* State */}
               <div className="grid gap-2">
                 <Label htmlFor="state">الولاية/المحافظة</Label>
                 <Input id="state" type="text" {...register("state")} />
@@ -169,7 +168,6 @@ export default function SupplierForm() {
                   <p className="text-xs text-red-500">{errors.state.message}</p>
                 )}
               </div>
-              {/* Country */}
               <div className="grid gap-2">
                 <Label htmlFor="country">البلد</Label>
                 <Input id="country" type="text" {...register("country")} />
@@ -179,7 +177,6 @@ export default function SupplierForm() {
                   </p>
                 )}
               </div>
-              {/* Postal Code */}
               <div className="grid gap-2">
                 <Label htmlFor="postalCode">الرمز البريدي</Label>
                 <Input
@@ -193,7 +190,7 @@ export default function SupplierForm() {
                   </p>
                 )}
               </div>
-              {/* Tax ID */}
+             
               <div className="grid gap-2">
                 <Label htmlFor="taxId">الرقم الضريبي</Label>
                 <Input id="taxId" type="text" {...register("taxId")} />
@@ -201,7 +198,7 @@ export default function SupplierForm() {
                   <p className="text-xs text-red-500">{errors.taxId.message}</p>
                 )}
               </div>
-              {/* Payment Terms */}
+           
               <div className="grid gap-2">
                 <Label htmlFor="paymentTerms">شروط الدفع</Label>
                 <Input
@@ -214,7 +211,7 @@ export default function SupplierForm() {
                     {errors.paymentTerms.message}
                   </p>
                 )}
-              </div>
+              </div> */}
               {/* <div className="grid gap-2">
                 <Label htmlFor="totalPurchased">
                   إجمالي المشتريات الافتتاحي

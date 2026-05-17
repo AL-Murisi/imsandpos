@@ -36,7 +36,8 @@
     "next.config.js",
     "app/reports/clinet.ts",
     "server.js",
-    "public/swcustom.js"
+    "public/swcustom.js",
+    "app/(app)/(sales)/salesDashboard/_components/CashierTrendChart"
   ],
   "exclude": ["node_modules", "sw.ts"]
 }

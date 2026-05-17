@@ -10,12 +10,12 @@ import { updateProductStockOptimistic } from "@/lib/slices/productsSlice";
 import { useAppDispatch, useAppSelector } from "@/lib/store";
 import List from "./productListing";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { setProductsLocal } from "@/lib/slices/productsSlice";
 import { Button } from "@/components/ui/button";
 import { IconReload } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { CameraIcon } from "lucide-react";
+import { CameraIcon, Loader2 } from "lucide-react";
 
 type forsale = ProductForSale & {
   warehousename: string;
@@ -126,6 +126,8 @@ export default function ProductsList({
     null,
   );
   const router = useRouter();
+  const [isRefreshing, startRefresh] = useTransition(); // ✅ Add this
+
   const productSearchOptions = useMemo(() => {
     return product.map((p) => ({
       id: p.id,
@@ -200,12 +202,20 @@ export default function ProductsList({
             </div>
           </DraggableDailogreuse>{" "}
           <Button
-            className="w-10 text-center"
-            variant="ghost"
-            onClick={() => router.refresh()}
+            variant="outline"
+            onClick={() => {
+              startRefresh(() => {
+                router.refresh();
+              });
+            }}
+            disabled={isRefreshing}
           >
-            <IconReload />
-          </Button>{" "}
+            {isRefreshing ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <IconReload />
+            )}
+          </Button>
         </div>
       </div>
       <List

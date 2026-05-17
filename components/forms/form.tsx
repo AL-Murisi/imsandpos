@@ -52,11 +52,7 @@ export default function WarehouseForm({
       name: warehouse,
       email: "",
       phoneNumber: "",
-      address: "",
-      city: "",
-      state: "",
-      country: "",
-      postalCode: "",
+      location: "",
     },
   });
 
@@ -143,7 +139,7 @@ export default function WarehouseForm({
                   </p>
                 )}
               </div>
-              <div className="grid gap-2">
+              {/* <div className="grid gap-2">
                 <Label htmlFor="address">العنوان</Label>
                 <Input id="address" type="text" {...register("address")} />
                 {errors.address && (
@@ -152,18 +148,14 @@ export default function WarehouseForm({
                   </p>
                 )}
               </div>
-              {/* City */}
-              {/* NOTE: Original code had htmlFor="city" but register("phoneNumber") for this input.
-                     Corrected to htmlFor="city" and register("city").
-                     If it was intended for phoneNumber, please adjust accordingly. */}
-              <div className="grid gap-2">
+         <div className="grid gap-2">
                 <Label htmlFor="city">المدينة</Label>
                 <Input id="city" type="text" {...register("city")} />
                 {errors.city && (
                   <p className="text-xs text-red-500">{errors.city.message}</p>
                 )}
               </div>
-              {/* State */}
+           
               <div className="grid gap-2">
                 <Label htmlFor="state">الولاية/المحافظة</Label>
                 <Input id="state" type="text" {...register("state")} />
@@ -171,7 +163,7 @@ export default function WarehouseForm({
                   <p className="text-xs text-red-500">{errors.state.message}</p>
                 )}
               </div>
-              {/* Country */}
+           
               <div className="grid gap-2">
                 <Label htmlFor="address">العنوان</Label>
                 <Input id="address" type="text" {...register("address")} />
@@ -189,7 +181,8 @@ export default function WarehouseForm({
                     {errors.country.message}
                   </p>
                 )}
-              </div>
+              </div> 
+              */}
               {/* Postal Code */}
               <div className="grid gap-2">
                 <Label htmlFor="postalCode">الرمز البريدي</Label>

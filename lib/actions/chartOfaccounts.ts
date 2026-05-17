@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/session";
 import { Prisma, PrismaClient } from "@prisma/client";
 import { validateFiscalYear } from "./fiscalYear";
+import { sortAccountsByHierarchy } from "@/hooks/sortAccount";
 
 // Types
 type AccountType =
@@ -565,80 +566,6 @@ export async function getAccount(accountId: string) {
     return { success: false, error: "فشل في جلب الحساب" };
   }
 }
-
-// 3. CREATE ACCOUNT
-// export async function createAccount(data: CreateAccountInput) {
-//   try {
-//     const { companyId, userId } = await getUserCompany();
-//     await validateFiscalYear(companyId);
-//     // Check if account code already exists
-//     const existing = await prisma.accounts.findFirst({
-//       where: {
-//         company_id: companyId,
-//         account_code: data.account_code,
-//       },
-//     });
-
-//     if (existing) {
-//       return { success: false, error: "رمز الحساب موجود مسبقاً" };
-//     }
-
-//     // Calculate level based on parent
-//     let level = 1;
-//     if (data.parent_id) {
-//       const parent = await prisma.accounts.findUnique({
-//         where: { id: data.parent_id },
-//         select: { level: true },
-//       });
-//       level = (parent?.level || 0) + 1;
-//     }
-
-//     const account = await prisma.accounts.create({
-//       data: {
-//         company_id: companyId,
-//         account_code: data.account_code,
-//         account_name_en: data.account_name_en,
-//         account_name_ar: data.account_name_ar,
-//         account_type: data.account_type as any,
-//         account_category: data.account_category as any,
-//         parent_id: data.parent_id || null,
-//         level,
-//         opening_balance: data.opening_balance || 0,
-//         balance: data.opening_balance || 0,
-//         description: data.description,
-//         allow_manual_entry: data.allow_manual_entry ?? true,
-//         is_active: true,
-//       },
-//     });
-
-//     // Create opening balance journal entry if applicable
-//     if (data.opening_balance && data.opening_balance !== 0) {
-//       const entryNumber = `JE-${new Date().getFullYear()}-OPENING-${Date.now()}`;
-
-//       await prisma.journal_entries.create({
-//         data: {
-//           company_id: companyId,
-//           entry_number: entryNumber,
-//           account_id: account.id,
-//           description: `الرصيد الافتتاحي لحساب ${data.account_name_ar || data.account_name_en}`,
-//           entry_date: new Date(),
-//           debit: data.opening_balance > 0 ? data.opening_balance : 0,
-//           credit: data.opening_balance < 0 ? Math.abs(data.opening_balance) : 0,
-//           is_posted: true,
-//           is_automated: true,
-//           reference_type: "opening_balance",
-//           created_by: userId,
-//         },
-//       });
-//     }
-
-//     revalidatePath("/chartOfAccount");
-//     return { success: true, data: account, message: "تم إنشاء الحساب بنجاح" };
-//   } catch (error) {
-//     console.error("Create account error:", error);
-//     return { success: false, error: "فشل في إنشاء الحساب" };
-//   }
-// }
 export async function createAccount(
   data: CreateAccountInput | CreateAccountInput[],
 ) {
@@ -646,7 +573,10 @@ export async function createAccount(
     const { companyId, userId } = await getUserCompany();
     const items = Array.isArray(data) ? data : [data];
 
-    // 1. Pre-validation: Check for active fiscal year
+    // Sort so parents are created before children
+    const sortedItems = sortAccountsByHierarchy(items);
+
+    // Pre-validation: Check for active fiscal year
     const activeFiscalYear = await prisma.fiscal_periods.findFirst({
       where: { company_id: companyId, is_closed: false },
     });
@@ -655,12 +585,12 @@ export async function createAccount(
       return { success: false, error: "لا توجد سنة مالية نشطة" };
     }
 
-    // 2. Execute everything in a transaction
     const results = await prisma.$transaction(async (tx) => {
-      const createdAccounts = [];
+      const createdAccounts = new Map<string, string>(); // code → id
+      const createdAccountsList = [];
 
-      for (const accountData of items) {
-        // Check if account code already exists within this company
+      for (const accountData of sortedItems) {
+        // Check for duplicate in DB
         const existing = await tx.accounts.findFirst({
           where: {
             company_id: companyId,
@@ -674,18 +604,38 @@ export async function createAccount(
           );
         }
 
-        // Calculate hierarchy level
-        let level = 1;
-        if (accountData.parent_id) {
-          const parent = await tx.accounts.findUnique({
-            where: { id: accountData.parent_id },
-          });
-          if (!parent)
-            throw new Error(
-              `الحساب الأب لـ ${accountData.account_code} غير موجود`,
-            );
-          level = (parent.level || 0) + 1;
-        }
+        // Resolve parent: check memory map first (created in this batch)
+        // let parentId: string | null = null;
+        // let level = 1;
+
+        // if (accountData.parent_id) {
+        //   // 1. Check if parent was created earlier in this batch
+        //   parentId = createdAccounts.get(accountData.parent_id) || null;
+
+        //   // 2. If not in batch, check DB (for mixed batch/existing)
+        //   if (!parentId) {
+        //     const parentFromDb = await tx.accounts.findFirst({
+        //       where: {
+        //         company_id: companyId,
+        //         account_code: accountData.parent_id, // parent_id is account_code here
+        //       },
+        //     });
+        //     parentId = parentFromDb?.id || null;
+        //   }
+
+        //   if (!parentId) {
+        //     throw new Error(
+        //       `الحساب الأب ${accountData.parent_id} غير موجود (للحساب ${accountData.account_code})`,
+        //     );
+        //   }
+
+        //   // Get parent's level from DB if not in memory
+        //   const parentAccount = await tx.accounts.findUnique({
+        //     where: { id: parentId },
+        //     select: { level: true },
+        //   });
+        //   level = (parentAccount?.level || 0) + 1;
+        // }
 
         // Create the account
         const account = await tx.accounts.create({
@@ -696,19 +646,21 @@ export async function createAccount(
             account_name_ar: accountData.account_name_ar,
             account_type: accountData.account_type as any,
             account_category: accountData.account_category as any,
-            parent_id: accountData.parent_id || null,
-            level: accountData.level,
+            parent_id: accountData.parent_id,
+            level: accountData.level, // ✅ Use calculated level, not accountData.level
             currency_code: accountData.currency_code || null,
-            opening_balance: accountData.opening_balance || 0,
-            balance: accountData.opening_balance || 0,
+
             description: accountData.description,
             allow_manual_entry: accountData.allow_manual_entry ?? true,
-
             is_system: false,
           },
         });
 
-        // Create Journal Entry for opening balance
+        // Store in map for children to reference
+        createdAccounts.set(account.account_code, account.id);
+        createdAccountsList.push(account);
+
+        // Create Journal Entry for opening balance (if any)
         if (accountData.opening_balance && accountData.opening_balance !== 0) {
           const offsetAccountId = await resolveOpeningBalanceOffsetAccount(
             tx,
@@ -774,25 +726,23 @@ export async function createAccount(
           await tx.accounts.update({
             where: { id: offsetAccountId },
             data: {
-              balance: {
-                increment: offsetDelta,
-              },
+              balance: { increment: offsetDelta },
             },
           });
         }
-        createdAccounts.push(account);
       }
+
       await ensureDefaultAccountMappings(
         tx,
         companyId,
-        createdAccounts.map((account) => ({
+        createdAccountsList.map((account) => ({
           id: account.id,
           account_code: account.account_code,
           account_category: account.account_category,
         })),
       );
 
-      return createdAccounts;
+      return createdAccountsList;
     });
 
     revalidatePath("/chartOfAccount");
@@ -813,6 +763,217 @@ export async function createAccount(
     };
   }
 }
+// export async function createAccount(
+//   data: CreateAccountInput | CreateAccountInput[],
+// ) {
+//   try {
+//     const { companyId, userId } = await getUserCompany();
+//     const items = Array.isArray(data) ? data : [data];
+
+//     // 1. Pre-validation: Check for active fiscal year
+//     const activeFiscalYear = await prisma.fiscal_periods.findFirst({
+//       where: { company_id: companyId, is_closed: false },
+//     });
+
+//     if (!activeFiscalYear) {
+//       return { success: false, error: "لا توجد سنة مالية نشطة" };
+//     }
+
+//     // 2. Execute everything in a transaction
+//     const results = await prisma.$transaction(async (tx) => {
+//       const createdAccounts = [];
+
+//       for (const accountData of items) {
+//         // Check if account code already exists within this company
+//         const existing = await tx.accounts.findFirst({
+//           where: {
+//             company_id: companyId,
+//             account_code: accountData.account_code,
+//           },
+//         });
+
+//         if (existing) {
+//           throw new Error(
+//             `رمز الحساب ${accountData.account_code} موجود مسبقاً`,
+//           );
+//         }
+//         // Calculate hierarchy level
+//         let level = 1;
+//         if (accountData.parent_id) {
+//           const parent = await tx.accounts.findUnique({
+//             where: {
+//               id: accountData.parent_id,
+//               company_id: companyId, // Ensure parent belongs to same company
+//             },
+//           });
+
+//           if (!parent) {
+//             throw new Error(
+//               `الحساب الأب برقم التعريف ${accountData.parent_id} غير موجود`,
+//             );
+//           }
+
+//           level = (parent.level || 0) + 1;
+//         }
+
+//         // Create the account
+//         const account = await tx.accounts.create({
+//           data: {
+//             company_id: companyId,
+//             account_code: accountData.account_code,
+//             account_name_en: accountData.account_name_en,
+//             account_name_ar: accountData.account_name_ar,
+//             account_type: accountData.account_type as any,
+//             account_category: accountData.account_category as any,
+//             parent_id: accountData.parent_id || null,
+//             level: level, // ✅ Use calculated level
+//             currency_code: accountData.currency_code || null,
+//             opening_balance: accountData.opening_balance || 0,
+//             balance: accountData.opening_balance || 0,
+//             description: accountData.description,
+//             allow_manual_entry: accountData.allow_manual_entry ?? true,
+//             is_system: false,
+//           },
+//         });
+//         // Calculate hierarchy level
+//         // let level = 1;
+//         // if (accountData.parent_id) {
+//         //   const parent = await tx.accounts.findUnique({
+//         //     where: { id: accountData.parent_id },
+//         //   });
+//         //   if (!parent)
+//         //     throw new Error(
+//         //       `الحساب الأب لـ ${accountData.account_code} غير موجود`,
+//         //     );
+//         //   level = (parent.level || 0) + 1;
+//         // }
+
+//         // // Create the account
+//         // const account = await tx.accounts.create({
+//         //   data: {
+//         //     company_id: companyId,
+//         //     account_code: accountData.account_code,
+//         //     account_name_en: accountData.account_name_en,
+//         //     account_name_ar: accountData.account_name_ar,
+//         //     account_type: accountData.account_type as any,
+//         //     account_category: accountData.account_category as any,
+//         //     parent_id: accountData.parent_id || null,
+//         //     level: level, // ✅ FIXED: use calculated level, not accountData.level
+//         //     currency_code: accountData.currency_code || null,
+//         //     opening_balance: accountData.opening_balance || 0,
+//         //     balance: accountData.opening_balance || 0,
+//         //     description: accountData.description,
+//         //     allow_manual_entry: accountData.allow_manual_entry ?? true,
+
+//         //     is_system: false,
+//         //   },
+//         // });
+
+//         // Create Journal Entry for opening balance
+//         if (accountData.opening_balance && accountData.opening_balance !== 0) {
+//           const offsetAccountId = await resolveOpeningBalanceOffsetAccount(
+//             tx,
+//             companyId,
+//             account.id,
+//           );
+
+//           if (!offsetAccountId) {
+//             throw new Error(
+//               `لا يوجد حساب مقابل مناسب للرصيد الافتتاحي للحساب ${accountData.account_code}`,
+//             );
+//           }
+
+//           const openingAmount = Math.abs(Number(accountData.opening_balance));
+//           const signedOpeningAmount = Number(accountData.opening_balance);
+//           const accountLine = isDebitNature(accountData.account_type)
+//             ? signedOpeningAmount >= 0
+//               ? { debit: openingAmount, credit: 0 }
+//               : { debit: 0, credit: openingAmount }
+//             : signedOpeningAmount >= 0
+//               ? { debit: 0, credit: openingAmount }
+//               : { debit: openingAmount, credit: 0 };
+
+//           await tx.journalHeader.create({
+//             data: {
+//               companyId,
+//               entryNumber: `JE-OPEN-${account.account_code}-${Date.now()}`,
+//               branchId: accountData.branchId,
+//               description: `رصيد افتتاحي: ${account.account_name_ar || account.account_name_en}`,
+//               entryDate: new Date(),
+//               status: "POSTED",
+//               referenceType: "opening-balance",
+//               referenceId: account.id,
+//               createdBy: userId,
+//               lines: {
+//                 create: [
+//                   {
+//                     companyId,
+//                     accountId: account.id,
+//                     debit: accountLine.debit,
+//                     credit: accountLine.credit,
+//                     currencyCode: accountData.currency_code || undefined,
+//                     foreignAmount: accountData.currency_code
+//                       ? openingAmount
+//                       : undefined,
+//                     baseAmount: openingAmount,
+//                     memo: `رصيد افتتاحي للحساب ${account.account_name_ar || account.account_name_en}`,
+//                   },
+//                   {
+//                     companyId,
+//                     accountId: offsetAccountId,
+//                     debit: accountLine.credit,
+//                     credit: accountLine.debit,
+//                     baseAmount: openingAmount,
+//                     memo: `مقابل الرصيد الافتتاحي للحساب ${account.account_name_ar || account.account_name_en}`,
+//                   },
+//                 ],
+//               },
+//             },
+//           });
+
+//           const offsetDelta = accountLine.credit - accountLine.debit;
+//           await tx.accounts.update({
+//             where: { id: offsetAccountId },
+//             data: {
+//               balance: {
+//                 increment: offsetDelta,
+//               },
+//             },
+//           });
+//         }
+//         createdAccounts.push(account);
+//       }
+//       await ensureDefaultAccountMappings(
+//         tx,
+//         companyId,
+//         createdAccounts.map((account) => ({
+//           id: account.id,
+//           account_code: account.account_code,
+//           account_category: account.account_category,
+//         })),
+//       );
+
+//       return createdAccounts;
+//     });
+
+//     revalidatePath("/chartOfAccount");
+
+//     return {
+//       success: true,
+//       data: results,
+//       message:
+//         items.length > 1
+//           ? `تم إنشاء ${items.length} حسابات بنجاح`
+//           : "تم إنشاء الحساب بنجاح",
+//     };
+//   } catch (error: any) {
+//     console.error("Create account error:", error);
+//     return {
+//       success: false,
+//       error: error.message || "حدث خطأ أثناء إنشاء الحسابات",
+//     };
+//   }
+// }
 // 4. UPDATE ACCOUNT
 export async function updateAccounts(
   accountId: string,

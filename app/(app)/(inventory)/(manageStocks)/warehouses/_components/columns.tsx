@@ -124,7 +124,7 @@ export const columns: ColumnDef<any>[] = [
   },
   {
     accessorKey: "location",
-    header: ({ column }) => <SortableHeader column={column} label="location" />,
+    header: ({ column }) => <SortableHeader column={column} label="العنوان" />,
     cell: ({ row }) => <div>{row.getValue("location")}</div>,
   },
   {
@@ -141,35 +141,35 @@ export const columns: ColumnDef<any>[] = [
     ),
     cell: ({ row }) => <div>{row.getValue("phoneNumber")}</div>,
   },
-  {
-    accessorKey: "address",
-    header: ({ column }) => <SortableHeader column={column} label="العنوان" />,
-    cell: ({ row }) => <div>{row.getValue("address")}</div>,
-  },
-  {
-    accessorKey: "city",
-    header: ({ column }) => <SortableHeader column={column} label="المدينة" />,
-    cell: ({ row }) => <div>{row.getValue("city")}</div>,
-  },
-  {
-    accessorKey: "state",
-    header: ({ column }) => (
-      <SortableHeader column={column} label="الولاية / المنطقة" />
-    ),
-    cell: ({ row }) => <div>{row.getValue("state")}</div>,
-  },
-  {
-    accessorKey: "country",
-    header: ({ column }) => <SortableHeader column={column} label="الدولة" />,
-    cell: ({ row }) => <div>{row.getValue("country")}</div>,
-  },
-  {
-    accessorKey: "postalCode",
-    header: ({ column }) => (
-      <SortableHeader column={column} label="الرمز البريدي" />
-    ),
-    cell: ({ row }) => <div>{row.getValue("postalCode")}</div>,
-  },
+  // {
+  //   accessorKey: "address",
+  //   header: ({ column }) => <SortableHeader column={column} label="العنوان" />,
+  //   cell: ({ row }) => <div>{row.getValue("address")}</div>,
+  // },
+  // {
+  //   accessorKey: "city",
+  //   header: ({ column }) => <SortableHeader column={column} label="المدينة" />,
+  //   cell: ({ row }) => <div>{row.getValue("city")}</div>,
+  // },
+  // {
+  //   accessorKey: "state",
+  //   header: ({ column }) => (
+  //     <SortableHeader column={column} label="الولاية / المنطقة" />
+  //   ),
+  //   cell: ({ row }) => <div>{row.getValue("state")}</div>,
+  // },
+  // {
+  //   accessorKey: "country",
+  //   header: ({ column }) => <SortableHeader column={column} label="الدولة" />,
+  //   cell: ({ row }) => <div>{row.getValue("country")}</div>,
+  // },
+  // {
+  //   accessorKey: "postalCode",
+  //   header: ({ column }) => (
+  //     <SortableHeader column={column} label="الرمز البريدي" />
+  //   ),
+  //   cell: ({ row }) => <div>{row.getValue("postalCode")}</div>,
+  // },
 
   {
     accessorKey: "createdAt",

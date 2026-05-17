@@ -19,7 +19,6 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { toast } from "sonner";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { useCompany } from "@/hooks/useCompany";
-import { SellingUnit } from "@/lib/zod";
 import {
   FormValue,
   PurchaseReturnSchema,

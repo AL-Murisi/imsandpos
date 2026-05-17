@@ -2,7 +2,6 @@
 
 import { SelectField } from "@/components/common/selection";
 import { useTablePrams } from "@/hooks/useTableParams";
-import dynamic from "next/dynamic";
 
 // import SearchInput from "@/components/common/SearchInput";
 import SearchInput from "@/components/common/searchtest";
@@ -12,7 +11,6 @@ import { inventoryColumns } from "./columnsMovment";
 import { Calendar22 } from "@/components/common/DatePicker";
 import { DataTable } from "@/components/common/ReusbleTable";
 import MultiInventoryUpdateForm from "./multiplr";
-import { Prisma } from "@prisma/client";
 import { useCompany } from "@/hooks/useCompany";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";

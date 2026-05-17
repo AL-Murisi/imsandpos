@@ -412,7 +412,7 @@ export const voucherColumns: ColumnDef<FinancialVoucher>[] = [
   {
     id: "actions",
     cell: ({ row }) => {
-      <VoucherAction voucher={row.original} />;
+      return <VoucherAction voucher={row.original} />;
       // 1. استخراج بيانات الشركة باستخدام الـ Hook الذي تملكه
     },
   },

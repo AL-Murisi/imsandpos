@@ -1191,7 +1191,7 @@ export async function updateMultipleInventories(
             );
           }
 
-          const entryNumber = `PUR-${currentYear}-${purchase.id}`;
+          const entryNumber = `PUR-${currentYear}-${purchase.invoiceNumber}`;
           const desc = `مشتريات: ${purchase.invoiceNumber}`;
 
           journalLines.push(
@@ -2124,6 +2124,7 @@ export async function fetchWarehouse(companyId: string) {
       phoneNumber: true,
       address: true,
       city: true,
+      location: true,
       state: true,
       country: true,
       postalCode: true,
@@ -2177,7 +2178,7 @@ export async function createWarehouse(
         email,
       },
     });
-    revalidatePath("warehouses");
+    revalidatePath("/warehouses");
     revalidatePath("/products");
     return warehouse;
   } catch (error) {
@@ -2187,7 +2188,7 @@ export async function createWarehouse(
 }
 
 export async function updateWarehouse(id: string, input: UpdateWarehouseInput) {
-  const parsed = UpdateWarehouseSchema.safeParse(input);
+  const parsed = CreateWarehouseSchema.safeParse(input);
   if (!parsed.success) {
     throw new Error("Invalid warehouse data");
   }

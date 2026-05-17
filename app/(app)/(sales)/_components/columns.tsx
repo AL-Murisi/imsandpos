@@ -285,7 +285,7 @@ export const debtSaleColumns: ColumnDef<any>[] = [
     id: "actions",
     enableHiding: false,
     cell: ({ row }) => {
-      <DebtAction debt={row.original} />;
+      return <DebtAction debt={row.original} />;
     },
   },
 ];

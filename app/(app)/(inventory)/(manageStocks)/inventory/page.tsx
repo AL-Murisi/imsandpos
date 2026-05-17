@@ -1,6 +1,6 @@
 import { ParsedSort } from "@/hooks/sort";
 import { fetchAllFormData } from "@/lib/actions/roles";
-import { fetchAllFormDatas, getInventoryById } from "@/lib/actions/warehouse";
+import { getInventoryById } from "@/lib/actions/warehouse";
 import { getSession } from "@/lib/session";
 import { Prisma } from "@prisma/client";
 import { SortingState } from "@tanstack/react-table";

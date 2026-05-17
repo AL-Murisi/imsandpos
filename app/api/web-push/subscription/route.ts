@@ -140,13 +140,6 @@ export async function DELETE(request: Request) {
       return response;
     }
 
-    await prisma.pushSubscription.deleteMany({
-      where: {
-        userId: userinf.userId,
-        endpoint,
-      },
-    });
-
     return NextResponse.json({ message: "Subscription deleted" });
   } catch (error) {
     console.error("[API] Error deleting subscription:", error);

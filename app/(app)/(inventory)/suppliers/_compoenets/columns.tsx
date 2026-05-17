@@ -194,7 +194,9 @@ export const supplierColumns: ColumnDef<any>[] = [
     id: "actions",
     enableHiding: false,
 
-    cell: ({ row }) => <SupplierActions supplier={row.original} />, // ✅ Component, not inline hooks
+    cell: ({ row }) => {
+      return <SupplierActions supplier={row.original} />;
+    },
   },
 ];
 

@@ -23,16 +23,17 @@ export const CreateWarehouseSchema = z.object({
   city: z.string().optional(),
   state: z.string().optional(),
   country: z.string().optional(),
-  branchId: z.string().min(1, "الفرع مطلوب"),
+  // branchId: z.string().min(1, "الفرع مطلوب"),
   postalCode: z.string().optional(),
   phoneNumber: z.string().optional(),
-  email: z.string().email().optional(),
+  email: z
+    .string()
+    .email("بريد إلكتروني غير صالح")
+    .optional()
+    .or(z.literal("")),
 });
 
 export type WarehouseInput = z.infer<typeof CreateWarehouseSchema>;
 
-export const UpdateWarehouseSchema = CreateWarehouseSchema.omit({
-  branchId: true,
-});
-
-export type UpdateWarehouseInput = z.infer<typeof UpdateWarehouseSchema>;
+export const UpdateWarehouseSchema = CreateWarehouseSchema;
+export type UpdateWarehouseInput = z.infer<typeof CreateWarehouseSchema>;

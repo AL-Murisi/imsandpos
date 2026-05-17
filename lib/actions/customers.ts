@@ -73,106 +73,106 @@ async function resolveCustomerOpeningOffsetAccount(
   return fallbackEquityAccount?.id ?? null;
 }
 
-async function createCustomerOpeningBalanceArtifacts(
-  tx: Prisma.TransactionClient,
-  params: {
-    companyId: string;
-    customerId: string;
-    customerName: string;
-    createdBy: string;
-    outstandingBalance: number;
-  },
-) {
-  if (params.outstandingBalance <= 0) {
-    return null;
-  }
+// async function createCustomerOpeningBalanceArtifacts(
+//   tx: Prisma.TransactionClient,
+//   params: {
+//     companyId: string;
+//     customerId: string;
+//     customerName: string;
+//     createdBy: string;
+//     outstandingBalance: number;
+//   },
+// ) {
+//   if (params.outstandingBalance <= 0) {
+//     return null;
+//   }
 
-  const mappings = await tx.account_mappings.findMany({
-    where: { company_id: params.companyId, is_default: true },
-    select: { mapping_type: true, account_id: true },
-  });
+//   const mappings = await tx.account_mappings.findMany({
+//     where: { company_id: params.companyId, is_default: true },
+//     select: { mapping_type: true, account_id: true },
+//   });
 
-  const arAccount = mappings.find(
-    (mapping) => mapping.mapping_type === "accounts_receivable",
-  )?.account_id;
+//   const arAccount = mappings.find(
+//     (mapping) => mapping.mapping_type === "accounts_receivable",
+//   )?.account_id;
 
-  if (!arAccount) {
-    throw new Error("Accounts receivable account mapping is required");
-  }
+//   if (!arAccount) {
+//     throw new Error("Accounts receivable account mapping is required");
+//   }
 
-  const offsetAccount = await resolveCustomerOpeningOffsetAccount(
-    tx,
-    params.companyId,
-  );
+//   const offsetAccount = await resolveCustomerOpeningOffsetAccount(
+//     tx,
+//     params.companyId,
+//   );
 
-  if (!offsetAccount) {
-    throw new Error("No equity account found for opening balance posting");
-  }
+//   if (!offsetAccount) {
+//     throw new Error("No equity account found for opening balance posting");
+//   }
 
-  const company = await tx.company.findUnique({
-    where: { id: params.companyId },
-    select: { base_currency: true },
-  });
+//   const company = await tx.company.findUnique({
+//     where: { id: params.companyId },
+//     select: { base_currency: true },
+//   });
 
-  const invoiceNumber = `OPEN-AR-${Date.now()}-${params.customerId.slice(-4).toUpperCase()}`;
-  const description = `رصيد افتتاحي عميل - ${params.customerName} - ${invoiceNumber}`;
-  const entryNumber = `JE-OPEN-CUST-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+//   const invoiceNumber = `OPEN-AR-${Date.now()}-${params.customerId.slice(-4).toUpperCase()}`;
+//   const description = `رصيد افتتاحي عميل - ${params.customerName} - ${invoiceNumber}`;
+//   const entryNumber = `JE-OPEN-CUST-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
-  const openingInvoice = await tx.invoice.create({
-    data: {
-      companyId: params.companyId,
-      invoiceNumber,
-      cashierId: params.createdBy,
-      customerId: params.customerId,
-      customerName: params.customerName,
-      sale_type: "SALE",
-      status: "unpaid",
-      totalAmount: params.outstandingBalance,
-      amountPaid: 0,
-      amountDue: params.outstandingBalance,
-      currencyCode: company?.base_currency ?? null,
-      baseAmount: params.outstandingBalance,
-      invoiceDate: new Date(),
-    },
-  });
+//   const openingInvoice = await tx.invoice.create({
+//     data: {
+//       companyId: params.companyId,
+//       invoiceNumber,
+//       cashierId: params.createdBy,
+//       customerId: params.customerId,
+//       customerName: params.customerName,
+//       sale_type: "SALE",
+//       status: "unpaid",
+//       totalAmount: params.outstandingBalance,
+//       amountPaid: 0,
+//       amountDue: params.outstandingBalance,
+//       currencyCode: company?.base_currency ?? null,
+//       baseAmount: params.outstandingBalance,
+//       invoiceDate: new Date(),
+//     },
+//   });
 
-  await tx.journalHeader.create({
-    data: {
-      companyId: params.companyId,
-      entryNumber,
-      description,
-      referenceType: "رصيد افتتاحي عميل",
-      referenceId: openingInvoice.id,
-      entryDate: new Date(),
-      status: "POSTED",
-      createdBy: params.createdBy,
-      lines: {
-        create: [
-          {
-            companyId: params.companyId,
-            accountId: arAccount,
-            debit: params.outstandingBalance,
-            credit: 0,
-            currencyCode: company?.base_currency ?? null,
-            baseAmount: params.outstandingBalance,
-            memo: `${description} - مدين`,
-          },
-          {
-            companyId: params.companyId,
-            accountId: offsetAccount,
-            debit: 0,
-            credit: params.outstandingBalance,
-            currencyCode: company?.base_currency ?? null,
-            baseAmount: params.outstandingBalance,
-            memo: `${description} - مقابل الرصيد الافتتاحي`,
-          },
-        ],
-      },
-    },
-  });
+//   await tx.journalHeader.create({
+//     data: {
+//       companyId: params.companyId,
+//       entryNumber,
+//       description,
+//       referenceType: "رصيد افتتاحي عميل",
+//       referenceId: openingInvoice.id,
+//       entryDate: new Date(),
+//       status: "POSTED",
+//       createdBy: params.createdBy,
+//       lines: {
+//         create: [
+//           {
+//             companyId: params.companyId,
+//             accountId: arAccount,
+//             debit: params.outstandingBalance,
+//             credit: 0,
+//             currencyCode: company?.base_currency ?? null,
+//             baseAmount: params.outstandingBalance,
+//             memo: `${description} - مدين`,
+//           },
+//           {
+//             companyId: params.companyId,
+//             accountId: offsetAccount,
+//             debit: 0,
+//             credit: params.outstandingBalance,
+//             currencyCode: company?.base_currency ?? null,
+//             baseAmount: params.outstandingBalance,
+//             memo: `${description} - مقابل الرصيد الافتتاحي`,
+//           },
+//         ],
+//       },
+//     },
+//   });
 
-  return openingInvoice;
-}
+//   return openingInvoice;
+// }
 export async function getCustomerById(
   companyId: string,
   page: number = 0, // 0-indexed page number

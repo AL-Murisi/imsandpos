@@ -21,8 +21,39 @@ interface CreateCompanyInput {
   base_currency: string;
   supabaseId?: string;
   plan?: string;
+  fiscalYearStart: number;
 }
+async function createFiscalYearAndPeriods(
+  companyId: string,
+  startMonth: number,
+) {
+  const now = new Date();
+  const currentYear = now.getFullYear();
 
+  // Determine fiscal year boundaries
+  // If startMonth is 1 (Jan), fiscal year is Jan-Dec of current year
+  // If startMonth is 4 (Apr), fiscal year is Apr current year - Mar next year
+  const fiscalYearStartDate = new Date(currentYear, startMonth - 1, 1);
+  const fiscalYearEndDate = new Date(currentYear + 1, startMonth - 1, 0); // Last day of month before start
+
+  // Adjust if fiscal year hasn't started yet this calendar year
+  if (now < fiscalYearStartDate) {
+    fiscalYearStartDate.setFullYear(currentYear - 1);
+    fiscalYearEndDate.setFullYear(currentYear);
+  }
+
+  // Create the fiscal year
+  const fiscalYear = await prisma.fiscal_periods.create({
+    data: {
+      company_id: companyId,
+      period_name: `${fiscalYearStartDate.getFullYear()}-${fiscalYearEndDate.getFullYear()}`,
+      start_date: fiscalYearStartDate,
+      end_date: fiscalYearEndDate,
+    },
+  });
+
+  return fiscalYear;
+}
 export async function createCompany(data: CreateCompanyInput) {
   let {
     name,
@@ -37,50 +68,67 @@ export async function createCompany(data: CreateCompanyInput) {
     base_currency,
     supabaseId,
     plan,
+    fiscalYearStart,
   } = data;
-  email = email.trim().toLowerCase();
+
+  const now = new Date();
+  const currentYear = now.getFullYear();
+
+  email = adminEmail.trim().toLowerCase();
   adminEmail = adminEmail.trim().toLowerCase();
+
   const invitePassword =
     typeof adminPassword === "string" && adminPassword.length > 0
       ? adminPassword
       : randomBytes(16).toString("hex");
 
   try {
-    // 1️⃣ Check if company already exists
-    let company = await prisma.company.findUnique({
+    // ─── 1️⃣ CHECK IF COMPANY EMAIL EXISTS ───
+    const existingCompany = await prisma.company.findUnique({
       where: { email },
+      select: {
+        email: true,
+        users:{select:{email:true}}
+      }
     });
 
-    if (!company) {
-      company = await prisma.company.create({
-        include: {
-          branches: true,
-        },
-        data: {
-          name,
-          email,
-          phone,
-          address,
-          city,
-          country,
-          isActive: true,
-          base_currency,
-          branches: {
-            create: {
-              location: address ?? "",
-              name: "الفرع الرئيسي",
-            },
-          },
-          plan: normalizeSubscriptionPlan(plan),
-        },
-      });
-    } else if (plan) {
-      company = await prisma.company.update({
-        where: { id: company.id },
-        data: { plan: normalizeSubscriptionPlan(plan) },
-      });
+    if (existingCompany?.email) {
+      return {
+        success: false,
+        message:
+          "هذا البريد الإلكتروني مسجل مسبقاً لشركة أخرى. إذا كنت تمتلك حساباً، يمكنك تسجيل الدخول.",
+      };
     }
 
+    
+    // ─── 3️⃣ CREATE COMPANY ───
+    const company = await prisma.company.create({
+      include: {
+        branches: true,
+      },
+      data: {
+        name,
+        email,
+        phone,
+        address,
+        city,
+        country,
+        isActive: true,
+        base_currency,
+        branches: {
+          create: {
+            location: address ?? "",
+            name: "الفرع الرئيسي",
+          },
+        },
+        plan: normalizeSubscriptionPlan(plan),
+      },
+    });
+
+    // ─── 4️⃣ CREATE FISCAL YEAR ───
+    await createFiscalYearAndPeriods(company.id, fiscalYearStart);
+
+    // ─── 5️⃣ SETUP CURRENCY ───
     await prisma.currency.upsert({
       where: { code: base_currency },
       update: {},
@@ -110,77 +158,21 @@ export async function createCompany(data: CreateCompanyInput) {
       normalizeSubscriptionPlan(plan),
     );
 
-    // 2️⃣ Ensure base roles exist
-    const baseRoles = [
-      {
-        name: "admin",
-        description: "Full access to all modules",
-        permissions: ["*"],
+    // ─── 6️⃣ CREATE ADMIN USER ───
+    const user = await prisma.user.create({
+      data: {
+        companyId: company.id,
+        email: adminEmail,
+        name: adminName,
+        phoneNumber: phone,
+        password: invitePassword,
+        supabaseId,
+        role: "admin",
+        isActive: false,
       },
-      {
-        name: "cashier",
-        description: "Sales and cashier operations",
-        permissions: ["sales", "cashier"],
-      },
-      {
-        name: "manager_wh",
-        description: "Warehouse management",
-        permissions: ["inventory", "warehouse"],
-      },
-      {
-        name: "accountant",
-        description: "Journal entries, vouchers, chart of accounts",
-        permissions: ["journal_entries", "voucher", "chart_of_accounts"],
-      },
-    ];
-
-    // 3️⃣ Create admin user (if not exists)
-    let user = await prisma.user.findUnique({
-      where: { email: adminEmail },
     });
 
-    if (!user) {
-      user = await prisma.user.create({
-        data: {
-          companyId: company.id,
-          email: adminEmail,
-          name: adminName,
-          phoneNumber: phone,
-          password: invitePassword,
-          supabaseId,
-          role: "admin",
-          isActive: false,
-        },
-      });
-    } else if (user.companyId !== company.id) {
-      return {
-        success: false,
-        message: "Admin email is already linked to another company",
-      };
-    } else if (supabaseId && !user.supabaseId) {
-      user = await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          supabaseId,
-          isActive: false,
-          name: adminName,
-          phoneNumber: phone,
-          password: invitePassword,
-        },
-      });
-    } else {
-      user = await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          name: adminName,
-          phoneNumber: phone,
-          password: invitePassword,
-          isActive: false,
-          role: "admin",
-        },
-      });
-    }
-
+    // ─── 7️⃣ CREATE INVITE TOKEN ───
     await prisma.userInvite.deleteMany({
       where: {
         userId: user.id,
@@ -201,6 +193,7 @@ export async function createCompany(data: CreateCompanyInput) {
       },
     });
 
+    // ─── 8️⃣ SEND EMAIL ───
     try {
       await sendUserInviteEmail({
         email: adminEmail,

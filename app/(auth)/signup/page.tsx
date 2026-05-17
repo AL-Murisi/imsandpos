@@ -2,7 +2,6 @@
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -37,28 +36,24 @@ import Link from "next/link";
 import { SelectField } from "@/components/common/selectproduct";
 import { fallbackCurrencyOptions } from "@/lib/actions/currnciesOptions";
 import { useCurrencyOptions } from "@/hooks/useCurrencyOptions";
+import { CalendarDays } from "lucide-react";
+import { CompanySignupSchema, FormValues } from "@/lib/zod/pos";
 
-const CompanySignupSchema = z
-  .object({
-    name: z.string().min(2, "اسم الشركة يجب أن يكون على الأقل حرفين"),
-    phone: z.string().optional(),
-    address: z.string().optional(),
-    city: z.string().optional(),
-    country: z.string().optional(),
-    adminName: z.string().min(2, "اسم المدير يجب أن يكون على الأقل حرفين"),
-    adminEmail: z.string().email("البريد الإلكتروني غير صحيح"),
-    adminPassword: z
-      .string()
-      .min(6, "كلمة المرور يجب أن تكون على الأقل 6 أحرف"),
-    confirmPassword: z.string(),
-    base_currency: z.string(),
-  })
-  .refine((data) => data.adminPassword === data.confirmPassword, {
-    message: "كلمات المرور غير متطابقة",
-    path: ["confirmPassword"],
-  });
-
-type FormValues = z.infer<typeof CompanySignupSchema>;
+// Month options for fiscal year start
+const FISCAL_MONTH_OPTIONS = [
+  { id: "1", name: "يناير (January)" },
+  { id: "2", name: "فبراير (February)" },
+  { id: "3", name: "مارس (March)" },
+  { id: "4", name: "أبريل (April)" },
+  { id: "5", name: "مايو (May)" },
+  { id: "6", name: "يونيو (June)" },
+  { id: "7", name: "يوليو (July)" },
+  { id: "8", name: "أغسطس (August)" },
+  { id: "9", name: "سبتمبر (September)" },
+  { id: "10", name: "أكتوبر (October)" },
+  { id: "11", name: "نوفمبر (November)" },
+  { id: "12", name: "ديسمبر (December)" },
+];
 
 const PLAN_OPTIONS = [
   {
@@ -107,29 +102,31 @@ export default function CompanySignup() {
       address: "",
       city: "",
       country: "",
+
       adminName: "",
       adminEmail: "",
       adminPassword: "",
       confirmPassword: "",
       base_currency: "YER",
+      fiscalYearStart: 1, // number, not string
     },
   });
 
   const currency = watch("base_currency");
 
-  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (!file.type.startsWith("image/")) {
-        setErrorMessage("يرجى اختيار ملف صورة صحيح");
-        return;
-      }
-      setLogoFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => setLogoPreview(reader.result as string);
-      reader.readAsDataURL(file);
-    }
-  };
+  // const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   const file = e.target.files?.[0];
+  //   if (file) {
+  //     if (!file.type.startsWith("image/")) {
+  //       setErrorMessage("يرجى اختيار ملف صورة صحيح");
+  //       return;
+  //     }
+  //     setLogoFile(file);
+  //     const reader = new FileReader();
+  //     reader.onloadend = () => setLogoPreview(reader.result as string);
+  //     reader.readAsDataURL(file);
+  //   }
+  // };
 
   const onSubmit = async (data: FormValues) => {
     if (loading) return;
@@ -152,30 +149,11 @@ export default function CompanySignup() {
         adminPassword: data.adminPassword,
         base_currency: data.base_currency,
         plan: selectedPlan,
+        fiscalYearStart: data.fiscalYearStart, // NEW
       });
 
       if (result.success) {
-        // Upload logo if provided
-        let logoUrl = null;
-        // if (logoFile) {
-        //   logoUrl = await uploadLogo(result.companyId);
-
-        //   // Update company with logo URL if upload was successful
-        //   if (logoUrl) {
-        //     await fetch('/api/company/update-logo', {
-        //       method: 'POST',
-        //       headers: {
-        //         'Content-Type': 'application/json',
-        //       },
-        //       body: JSON.stringify({
-        //         companyId: result.companyId,
-        //         logoUrl: logoUrl,
-        //       }),
-        //     });
-        //   }
-        // }
-
-        setSuccessMessage("تم إنشاء الشركة بنجاح! جاري التحويل...");
+        setSuccessMessage("تم إنشاء الشركة بنجاح!  تم ارسال ايميل لتاكيد...");
         reset();
         setLogoFile(null);
         setLogoPreview(null);
@@ -243,13 +221,16 @@ export default function CompanySignup() {
                   }`}
                 >
                   <div className="text-base font-bold">{plan.label}</div>
-                  <div className="mt-1 text-xs opacity-80">{plan.description}</div>
+                  <div className="mt-1 text-xs opacity-80">
+                    {plan.description}
+                  </div>
                 </button>
               );
             })}
           </div>
           <div className="mt-3 text-center text-sm text-blue-100">
-            سيتم تسجيل الاشتراك على خطة <span className="font-bold">{selectedPlan}</span> عند إنشاء الحساب.
+            سيتم تسجيل الاشتراك على خطة{" "}
+            <span className="font-bold">{selectedPlan}</span> عند إنشاء الحساب.
           </div>
         </div>
 
@@ -342,6 +323,28 @@ export default function CompanySignup() {
                       className="border-gray-700 bg-gray-900/50"
                       placeholder="صنعاء"
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-gray-300">بداية السنة المالية</Label>
+                    <div className="relative">
+                      <CalendarDays
+                        className="absolute top-3 right-3 z-10 text-gray-500"
+                        size={18}
+                      />
+                      <SelectField
+                        options={FISCAL_MONTH_OPTIONS}
+                        action={(value) =>
+                          setValue("fiscalYearStart", parseInt(value), {
+                            shouldValidate: true,
+                          })
+                        }
+                        value={watch("fiscalYearStart")?.toString()} // convert number to string for select
+                        placeholder="اختر شهر بداية السنة المالية"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      الشهر الذي تبدأ فيه السنة المالية للمنشأة
+                    </p>
                   </div>
                 </div>
               </div>

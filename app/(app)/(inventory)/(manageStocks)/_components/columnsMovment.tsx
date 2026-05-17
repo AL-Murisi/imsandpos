@@ -816,7 +816,7 @@ export const purchaseColumns: ColumnDef<any>[] = [
     id: "actions",
     header: "إجراءات",
     cell: ({ row }) => {
-      <PurchaseActions original={row.original} />;
+      return <PurchaseActions original={row.original} />;
     },
   },
 ];
