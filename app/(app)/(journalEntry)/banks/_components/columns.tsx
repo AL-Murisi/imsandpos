@@ -145,7 +145,7 @@ export const bankColumns: ColumnDef<BankRow>[] = [
     id: "actions",
     header: "إجراءات",
     cell: ({ row }) => {
-      <BankAction bank={row.original} />;
+      return <BankAction bank={row.original} />;
     },
   },
 ];

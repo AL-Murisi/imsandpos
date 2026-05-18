@@ -629,7 +629,7 @@ export async function processReturn(data: any, companyId: string) {
         );
 
       const entryNumber = `RET-${new Date().getFullYear()}-${voucherNumber}`;
-      const referenceId = transactionId ?? returnSale.id;
+      const referenceId = returnSale.id;
       const desc = `مرتجع بيع: ${returnSale.invoiceNumber} / original ${originalSale.invoiceNumber}${paymentMethod === "bank" ? ` - ${transferNumber}` : ""}`;
 
       const isForeign =

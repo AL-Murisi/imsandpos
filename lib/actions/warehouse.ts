@@ -448,7 +448,6 @@ export async function processPurchaseReturn(
                 invoiceNumber: returnInvoiceNumber,
                 cashierId: userId,
                 branchId,
-                warehouseId: items[0]?.warehouseId,
                 supplierId: originalPurchase.supplierId,
                 sale_type: "RETURN_PURCHASE",
                 totalAmount: totalReturnCost,
